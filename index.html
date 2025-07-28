@@ -574,6 +574,52 @@
             object-fit: cover;
         }
 
+        .invite-image-section {
+            flex: 1;
+            background: linear-gradient(135deg, var(--semper-navy) 0%, var(--primary-color) 50%, var(--semper-red) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .invite-image-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: var(--bg-image);
+            background-size: cover;
+            background-position: center;
+            filter: blur(10px);
+            opacity: 0.3;
+            z-index: 1;
+        }
+
+        .invite-image-section::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--semper-gold);
+            z-index: 3;
+        }
+
+        .invite-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 2;
+        }
+
         .invite-content {
             padding: 2rem;
         }
@@ -636,6 +682,14 @@
             background: var(--secondary-color);
             color: white;
         }
+
+        .rsvp-form .btn[type="submit"] {
+            display: block;
+            margin: 1rem auto 0 auto;
+            text-align: center;
+        }
+
+
 
         .hidden {
             display: none !important;
@@ -781,6 +835,71 @@
             </form>
         </div>
 
+        <!-- Edit Event Page -->
+        <div id="edit" class="page">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+                <h2 style="color: var(--semper-navy); font-size: 2rem; font-weight: 700;">Edit Event</h2>
+                <div style="font-size: 0.875rem; color: var(--semper-red); font-weight: 600;">
+                    ✏️ Mission Update
+                </div>
+            </div>
+            <form id="edit-event-form">
+                <input type="hidden" id="edit-event-id">
+                
+                <div class="form-group">
+                    <label for="edit-event-title">Event Title</label>
+                    <input type="text" id="edit-event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-event-date">Date</label>
+                    <input type="date" id="edit-event-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-event-time">Time</label>
+                    <input type="time" id="edit-event-time" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-event-location">Location</label>
+                    <input type="text" id="edit-event-location" placeholder="e.g., Base Chapel, Building 123">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-event-description">Description</label>
+                    <textarea id="edit-event-description" placeholder="Additional details about the event..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Cover Image (Optional)</label>
+                    <div class="image-upload" id="edit-cover-upload">
+                        <p>Click or drag to upload cover image</p>
+                        <input type="file" id="edit-cover-input" accept="image/*" style="display: none;">
+                    </div>
+                    <img id="edit-cover-preview" class="image-preview hidden">
+                    <button type="button" class="btn" onclick="removeEventImage()" id="remove-image-btn" style="display: none; margin-top: 0.5rem;">🗑️ Remove Image</button>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="edit-ask-reason"> Ask guests why they're attending
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="edit-allow-guests"> Allow guests to bring additional people
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-success">💾 Save Changes</button>
+                    <button type="button" class="btn" onclick="cancelEdit()">❌ Cancel</button>
+                </div>
+            </form>
+        </div>
+
         <!-- Event Management Page -->
         <div id="manage" class="page">
             <div id="event-details"></div>
@@ -869,6 +988,9 @@
 
             // Event form submission
             document.getElementById('event-form').addEventListener('submit', handleEventSubmit);
+
+            // Edit event form submission
+            document.getElementById('edit-event-form').addEventListener('submit', handleEditSubmit);
         }
 
         // Page navigation
@@ -908,53 +1030,56 @@
         // Check URL hash on load
         function checkURLHash() {
             const hash = window.location.hash.substring(1);
+            console.log('Current hash:', hash);
+            console.log('Current search:', window.location.search);
+            
             if (hash.startsWith('invite/')) {
                 const eventId = hash.split('/')[1];
+                console.log('Processing invite for event ID:', eventId);
+                
                 // Try to get event from URL first, then from localStorage
                 const urlEvent = getEventFromURL();
                 if (urlEvent) {
+                    console.log('Found event in URL:', urlEvent.title);
                     // Store in localStorage for local management
                     if (!events[eventId]) {
                         events[eventId] = urlEvent;
                         saveData();
                     }
+                    showInvite(eventId);
+                } else {
+                    console.log('No event found in URL, checking localStorage');
+                    if (events[eventId]) {
+                        showInvite(eventId);
+                    } else {
+                        console.error('Event not found in URL or localStorage');
+                        // Don't redirect, show error in invite page
+                        showInvite(eventId); // This will show "Event Not Found"
+                    }
                 }
-                showInvite(eventId);
+                
                 // Hide navigation for guests
                 document.querySelector('.nav').style.display = 'none';
+                return; // Important: prevent further execution
             } else if (hash.startsWith('manage/')) {
                 const eventId = hash.split('/')[1];
                 showEventManagement(eventId);
-                // Show navigation for hosts
                 document.querySelector('.nav').style.display = 'flex';
             } else {
-                // Show navigation for normal pages
-                document.querySelector('.nav').style.display = 'flex';
-                // Clear any URL parameters when not on invite page
+                // Only clear URL parameters if we're NOT processing an invite
                 if (window.location.search) {
                     const newURL = window.location.origin + window.location.pathname + window.location.hash;
                     window.history.replaceState({}, document.title, newURL);
                 }
+                // Show navigation for normal pages
+                document.querySelector('.nav').style.display = 'flex';
             }
         }
 
-        // Generate shareable invite URL with event data
-        function generateInviteURL(eventData) {
-            const baseURL = window.location.origin + window.location.pathname;
-            const encodedData = btoa(JSON.stringify({
-                id: eventData.id,
-                title: eventData.title,
-                date: eventData.date,
-                time: eventData.time,
-                location: eventData.location,
-                description: eventData.description,
-                coverImage: eventData.coverImage,
-                askReason: eventData.askReason,
-                allowGuests: eventData.allowGuests,
-                created: eventData.created
-            }));
-            return `${baseURL}#invite/${eventData.id}?data=${encodedData}`;
-        }
+function generateInviteURL(eventData) {
+    const baseURL = window.location.origin + window.location.pathname;
+    return `${baseURL}#invite/${eventData.id}`;
+}
 
         // Decode event data from URL
         function getEventFromURL() {
@@ -963,12 +1088,15 @@
             
             if (encodedData) {
                 try {
-                    return JSON.parse(atob(encodedData));
+                    const decodedEvent = JSON.parse(atob(encodedData));
+                    console.log('Decoded event from URL:', decodedEvent); // Debug log
+                    return decodedEvent;
                 } catch (e) {
                     console.error('Failed to decode event data from URL:', e);
                     return null;
                 }
             }
+            console.log('No data parameter found in URL:', window.location.search); // Debug log
             return null;
         }
         function generateUUID() {
@@ -1164,7 +1292,7 @@
                     <div class="search-controls">
                         <div class="search-row">
                             <input type="text" id="response-search" class="search-input" 
-                                   placeholder="🔍 Search responses by name, reason, or any field..." 
+                                   placeholder="🔍 Search responses by name, organization, phone, email, reason, or any field..."
                                    onkeyup="filterResponses('${eventId}')">
                             
                             <select id="attendance-filter" class="search-filter" onchange="filterResponses('${eventId}')">
@@ -1185,6 +1313,9 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
+                                <th>Organization</th>
+                                <th>Phone</th>
+                                <th>Email</th>
                                 <th>Attending</th>
                                 ${event.askReason ? '<th>Reason</th>' : ''}
                                 ${event.allowGuests ? '<th>Guests</th>' : ''}
@@ -1195,20 +1326,30 @@
                 `;
                 
                 eventResponses.forEach((response, index) => {
-                    responseTableHTML += `
-                        <tr class="response-row" data-response-index="${index}" data-name="${response.guestName.toLowerCase()}" 
-                            data-attending="${response.attending}" data-reason="${(response.reason || '').toLowerCase()}" 
-                            data-guest-count="${response.guestCount || 0}">
-                            <td><strong>${response.guestName}</strong></td>
-                            <td class="${response.attending ? 'attending-yes' : 'attending-no'}">
-                                ${response.attending ? '✅ Yes' : '❌ No'}
-                            </td>
-                            ${event.askReason ? `<td>${response.reason || '-'}</td>` : ''}
-                            ${event.allowGuests ? `<td><strong>${response.guestCount || 0}</strong> ${(response.guestCount || 0) === 1 ? 'guest' : 'guests'}</td>` : ''}
-                            <td>${new Date(response.timestamp).toLocaleString()}</td>
-                        </tr>
-                    `;
-                });
+                // Handle both new detailed format and legacy format
+                const displayName = response.guestName || `${response.rank || ''} ${response.firstName || ''} ${response.lastName || ''}`.trim() || 'Unknown';
+                const organization = response.organization || 'N/A';
+                const phone = response.phone || 'N/A';
+                const email = response.email || 'N/A';
+    
+                responseTableHTML += `
+                    <tr class="response-row" data-response-index="${index}" data-name="${displayName.toLowerCase()}" 
+                        data-attending="${response.attending}" data-reason="${(response.reason || '').toLowerCase()}" 
+                        data-guest-count="${response.guestCount || 0}" data-organization="${organization.toLowerCase()}"
+                        data-phone="${phone.toLowerCase()}" data-email="${email.toLowerCase()}">
+                        <td><strong>${displayName}</strong></td>
+                        <td>${organization}</td>
+                        <td>${phone}</td>
+                        <td>${email}</td>
+                        <td class="${response.attending ? 'attending-yes' : 'attending-no'}">
+                            ${response.attending ? '✅ Yes' : '❌ No'}
+                        </td>
+                        ${event.askReason ? `<td>${response.reason || '-'}</td>` : ''}
+                        ${event.allowGuests ? `<td><strong>${response.guestCount || 0}</strong> ${(response.guestCount || 0) === 1 ? 'guest' : 'guests'}</td>` : ''}
+                        <td>${new Date(response.timestamp).toLocaleString()}</td>
+                    </tr>
+                `;
+            });
                 
                 responseTableHTML += '</tbody></table>';
             } else {
@@ -1230,6 +1371,7 @@
                 </div>
                 
                 <div style="margin: 2rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn" onclick="editEvent('${eventId}')">✏️ Edit Event</button>
                     <button class="btn" onclick="copyInviteLink('${eventId}')">🔗 Copy Invite Link</button>
                     <button class="btn btn-success" onclick="exportEventData('${eventId}')">📥 Export Data</button>
                     <button class="btn" onclick="showPage('dashboard')">🏠 Back to Dashboard</button>
@@ -1263,49 +1405,98 @@
                 showPage('invite');
                 return;
             }
+            // ... rest of function
 
             document.getElementById('invite-content').innerHTML = `
-                <div class="invite-display">
-                    <div class="invite-header">
-                        ${event.coverImage ? 
-                            `<img src="${event.coverImage}" alt="Event cover" class="invite-cover">` :
-                            `<h2 style="text-align: center;">You're Invited!</h2>`
-                        }
-                    </div>
-                    <div class="invite-content">
-                        <h1 class="invite-title">${event.title}</h1>
-                        <div class="invite-details">
-                            <div class="invite-detail">
-                                <strong>📅 Date:</strong> ${event.date}
-                            </div>
-                            <div class="invite-detail">
-                                <strong>🕐 Time:</strong> ${event.time}
-                            </div>
-                            ${event.location ? `
-                                <div class="invite-detail">
-                                    <strong>📍 Location:</strong> ${event.location}
-                                </div>
-                            ` : ''}
-                            ${event.description ? `
-                                <div class="invite-detail">
-                                    <strong>📝 Details:</strong> ${event.description}
-                                </div>
-                            ` : ''}
+                <div class="${event.coverImage ? 'invite-display-split' : 'invite-display'}">
+                    ${event.coverImage ? `
+                        <div class="invite-image-section" style="--bg-image: url('${event.coverImage}')">
+                            <img src="${event.coverImage}" alt="Event cover" class="invite-image">
                         </div>
+                        <div class="invite-details-section">
+                            <h1 class="invite-title-main">${event.title}</h1>
+                            <div class="invite-details">
+                                <div class="invite-detail">
+                                    <strong>📅 Date:</strong> ${event.date}
+                                </div>
+                                <div class="invite-detail">
+                                    <strong>🕐 Time:</strong> ${event.time}
+                                </div>
+                                ${event.location ? `
+                                    <div class="invite-detail">
+                                        <strong>📍 Location:</strong> ${event.location}
+                                    </div>
+                                ` : ''}
+                                ${event.description ? `
+                                    <div class="invite-detail">
+                                        <strong>📝 Details:</strong> ${event.description}
+                                    </div>
+                                ` : ''}
+                            </div>
+                    ` : `
+                        <div class="invite-header">
+                            <h2 style="text-align: center;">You're Invited!</h2>
+                        </div>
+                        <div class="invite-content">
+                            <h1 class="invite-title">${event.title}</h1>
+                            <div class="invite-details">
+                                <div class="invite-detail">
+                                    <strong>📅 Date:</strong> ${event.date}
+                                </div>
+                                <div class="invite-detail">
+                                    <strong>🕐 Time:</strong> ${event.time}
+                                </div>
+                                ${event.location ? `
+                                    <div class="invite-detail">
+                                        <strong>📍 Location:</strong> ${event.location}
+                                    </div>
+                                ` : ''}
+                                ${event.description ? `
+                                    <div class="invite-detail">
+                                        <strong>📝 Details:</strong> ${event.description}
+                                    </div>
+                                ` : ''}
+                            </div>
+                    `}
                         
                         <div class="rsvp-form">
                             <h3>RSVP</h3>
                             <form id="rsvp-form" onsubmit="handleRSVP(event, '${eventId}')">
                                 <div class="form-group">
-                                    <label for="guest-name">Your Name</label>
-                                    <input type="text" id="guest-name" required>
+                                    <label for="guest-rank">Rank/Title *</label>
+                                    <input type="text" id="guest-rank" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="guest-firstname">First Name *</label>
+                                    <input type="text" id="guest-firstname" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="guest-lastname">Last Name *</label>
+                                    <input type="text" id="guest-lastname" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="guest-organization">Organization</label>
+                                    <input type="text" id="guest-organization">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="guest-phone">Phone Number *</label>
+                                    <input type="text" id="guest-phone" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="guest-email">Email *</label>
+                                    <input type="email" id="guest-email" required>
                                 </div>
                                 
                                 <div class="rsvp-options">
-                                    <div class="rsvp-option" onclick="selectRSVP(true)">
+                                    <div class="rsvp-option" onclick="selectRSVP(true, this)">
                                         ✅ I'll be there!
                                     </div>
-                                    <div class="rsvp-option" onclick="selectRSVP(false)">
+                                    <div class="rsvp-option" onclick="selectRSVP(false, this)">
                                         ❌ Can't make it
                                     </div>
                                 </div>
@@ -1331,7 +1522,9 @@
                                     </div>
                                 ` : ''}
                                 
-                                <button type="submit" class="btn">Submit RSVP</button>
+                                <div style="text-align: center; margin-top: 1rem;">
+                                    <button type="submit" class="btn">Submit RSVP</button>
+                                </div>
                             </form>
                             
                             <div style="text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
@@ -1350,12 +1543,12 @@
         }
 
         // RSVP selection
-        function selectRSVP(attending) {
+        function selectRSVP(attending, element) {
             document.querySelectorAll('.rsvp-option').forEach(option => {
                 option.classList.remove('selected');
             });
             
-            event.target.classList.add('selected');
+            element.classList.add('selected');
             document.getElementById('attending').value = attending;
         }
 
@@ -1369,9 +1562,23 @@
                 return;
             }
 
+            // Create display name in format "Rank FirstName LastName"
+            const rank = document.getElementById('guest-rank').value.trim();
+            const firstName = document.getElementById('guest-firstname').value.trim();
+            const lastName = document.getElementById('guest-lastname').value.trim();
+            const displayName = `${rank} ${firstName} ${lastName}`;
+
             const responseData = {
                 id: generateUUID(),
-                guestName: document.getElementById('guest-name').value,
+                // New detailed fields
+                rank: rank,
+                firstName: firstName,
+                lastName: lastName,
+                organization: document.getElementById('guest-organization').value.trim(),
+                phone: document.getElementById('guest-phone').value.trim(),
+                email: document.getElementById('guest-email').value.trim(),
+                // Display name for backward compatibility
+                guestName: displayName,
                 attending: attending === 'true',
                 reason: document.getElementById('reason') ? document.getElementById('reason').value : '',
                 guestCount: document.getElementById('guest-count') ? parseInt(document.getElementById('guest-count').value) : 0,
@@ -1428,12 +1635,17 @@
                 const attending = row.getAttribute('data-attending');
                 const reason = row.getAttribute('data-reason');
                 const guestCount = row.getAttribute('data-guest-count');
-                
-                // Check search term match
+                const organization = row.getAttribute('data-organization');
+                const phone = row.getAttribute('data-phone');
+                const email = row.getAttribute('data-email');
+
                 const matchesSearch = searchTerm === '' || 
                     name.includes(searchTerm) || 
                     reason.includes(searchTerm) ||
-                    guestCount.includes(searchTerm);
+                    guestCount.includes(searchTerm) ||
+                    organization.includes(searchTerm) ||
+                    phone.includes(searchTerm) ||
+                    email.includes(searchTerm);
                 
                 // Check attendance filter
                 const matchesAttendance = attendanceFilter === '' ||
@@ -1484,11 +1696,159 @@
             
             showToast('🧹 Search cleared', 'success');
         }
+        // Edit event function
+        function editEvent(eventId) {
+            const event = events[eventId];
+            if (!event) {
+                showToast('Event not found', 'error');
+                return;
+            }
+
+            // Populate form with current event data
+            document.getElementById('edit-event-id').value = eventId;
+            document.getElementById('edit-event-title').value = event.title;
+            document.getElementById('edit-event-date').value = event.date;
+            document.getElementById('edit-event-time').value = event.time;
+            document.getElementById('edit-event-location').value = event.location || '';
+            document.getElementById('edit-event-description').value = event.description || '';
+            document.getElementById('edit-ask-reason').checked = event.askReason || false;
+            document.getElementById('edit-allow-guests').checked = event.allowGuests || false;
+
+            // Handle cover image
+            const editCoverPreview = document.getElementById('edit-cover-preview');
+            const removeImageBtn = document.getElementById('remove-image-btn');
+            
+            if (event.coverImage) {
+                editCoverPreview.src = event.coverImage;
+                editCoverPreview.classList.remove('hidden');
+                removeImageBtn.style.display = 'block';
+            } else {
+                editCoverPreview.classList.add('hidden');
+                removeImageBtn.style.display = 'none';
+            }
+
+            // Set up image upload for edit form
+            setupEditImageUpload();
+
+            showPage('edit');
+        }
+
+        // Setup image upload for edit form
+        function setupEditImageUpload() {
+            const editCoverUpload = document.getElementById('edit-cover-upload');
+            const editCoverInput = document.getElementById('edit-cover-input');
+            const editCoverPreview = document.getElementById('edit-cover-preview');
+            const removeImageBtn = document.getElementById('remove-image-btn');
+
+            editCoverUpload.onclick = () => editCoverInput.click();
+            
+            editCoverInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        editCoverPreview.src = e.target.result;
+                        editCoverPreview.classList.remove('hidden');
+                        removeImageBtn.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            // Drag and drop for edit form
+            editCoverUpload.ondragover = (e) => {
+                e.preventDefault();
+                editCoverUpload.style.borderColor = 'var(--secondary-color)';
+            };
+
+            editCoverUpload.ondragleave = () => {
+                editCoverUpload.style.borderColor = 'var(--border-color)';
+            };
+
+            editCoverUpload.ondrop = (e) => {
+                e.preventDefault();
+                editCoverUpload.style.borderColor = 'var(--border-color)';
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        editCoverPreview.src = e.target.result;
+                        editCoverPreview.classList.remove('hidden');
+                        removeImageBtn.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+        }
+
+        // Remove event image
+        function removeEventImage() {
+            const editCoverPreview = document.getElementById('edit-cover-preview');
+            const removeImageBtn = document.getElementById('remove-image-btn');
+            const editCoverInput = document.getElementById('edit-cover-input');
+            
+            editCoverPreview.src = '';
+            editCoverPreview.classList.add('hidden');
+            removeImageBtn.style.display = 'none';
+            editCoverInput.value = '';
+        }
+
+        // Cancel edit
+        function cancelEdit() {
+            const eventId = document.getElementById('edit-event-id').value;
+            showEventManagement(eventId);
+        }
+
+        // Handle edit form submission
+        function handleEditSubmit(e) {
+            e.preventDefault();
+            
+            const eventId = document.getElementById('edit-event-id').value;
+            const event = events[eventId];
+            
+            if (!event) {
+                showToast('Event not found', 'error');
+                return;
+            }
+
+            // Update event data
+            event.title = document.getElementById('edit-event-title').value;
+            event.date = document.getElementById('edit-event-date').value;
+            event.time = document.getElementById('edit-event-time').value;
+            event.location = document.getElementById('edit-event-location').value;
+            event.description = document.getElementById('edit-event-description').value;
+            event.coverImage = document.getElementById('edit-cover-preview').src || '';
+            event.askReason = document.getElementById('edit-ask-reason').checked;
+            event.allowGuests = document.getElementById('edit-allow-guests').checked;
+            event.lastModified = Date.now();
+
+            // Save updated event
+            events[eventId] = event;
+            saveData();
+
+            // Show success message
+            showToast('✅ Event updated successfully!', 'success');
+
+            // Return to event management
+            showEventManagement(eventId);
+        }
         function copyInviteLink(eventId) {
-            const link = `${window.location.origin}${window.location.pathname}#invite/${eventId}`;
+            console.log('COPY LINK - Event ID:', eventId);
+            const event = events[eventId];
+            if (!event) {
+                showToast('Event not found', 'error');
+                return;
+            }
+            
+            const link = generateInviteURL(event);
+            console.log('COPY LINK - Generated URL:', link);
+            
             navigator.clipboard.writeText(link).then(() => {
+                console.log('COPY LINK - Successfully copied:', link);
                 showToast('🔗 Invite link copied to clipboard!', 'success');
             }).catch(() => {
+                console.log('COPY LINK - Clipboard failed, showing prompt');
+                prompt('Copy this invite link:', link);
                 showToast('Failed to copy link', 'error');
             });
         }
@@ -1498,17 +1858,24 @@
             const event = events[eventId];
             const eventResponses = responses[eventId] || [];
             
-            let csvContent = "Name,Attending,";
+            let csvContent = "Rank,First Name,Last Name,Organization,Phone,Email,Attending,";
             if (event.askReason) csvContent += "Reason,";
             if (event.allowGuests) csvContent += "Guest Count,";
             csvContent += "Timestamp\n";
-            
+
             eventResponses.forEach(response => {
-                let row = `"${response.guestName}","${response.attending ? 'Yes' : 'No'}",`;
-                if (event.askReason) row += `"${response.reason || ''}",`;
-                if (event.allowGuests) row += `"${response.guestCount || 0}",`;
-                row += `"${new Date(response.timestamp).toLocaleString()}"\n`;
-                csvContent += row;
+                const rank = response.rank || '';
+                const firstName = response.firstName || '';
+                const lastName = response.lastName || '';
+                const organization = response.organization || '';
+                const phone = response.phone || '';
+                const email = response.email || '';
+                
+                csvContent += `"${rank}","${firstName}","${lastName}","${organization}","${phone}","${email}",`;
+                csvContent += `"${response.attending ? 'Yes' : 'No'}",`;
+                if (event.askReason) csvContent += `"${response.reason || ''}",`;
+                if (event.allowGuests) csvContent += `"${response.guestCount || 0}",`;
+                csvContent += `"${new Date(response.timestamp).toLocaleString()}"\n`;
             });
 
             // Create and download CSV file
