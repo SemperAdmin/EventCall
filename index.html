@@ -910,6 +910,15 @@
             const hash = window.location.hash.substring(1);
             if (hash.startsWith('invite/')) {
                 const eventId = hash.split('/')[1];
+                // Try to get event from URL first, then from localStorage
+                const urlEvent = getEventFromURL();
+                if (urlEvent) {
+                    // Store in localStorage for local management
+                    if (!events[eventId]) {
+                        events[eventId] = urlEvent;
+                        saveData();
+                    }
+                }
                 showInvite(eventId);
                 // Hide navigation for guests
                 document.querySelector('.nav').style.display = 'none';
@@ -921,10 +930,47 @@
             } else {
                 // Show navigation for normal pages
                 document.querySelector('.nav').style.display = 'flex';
+                // Clear any URL parameters when not on invite page
+                if (window.location.search) {
+                    const newURL = window.location.origin + window.location.pathname + window.location.hash;
+                    window.history.replaceState({}, document.title, newURL);
+                }
             }
         }
 
-        // Generate UUID
+        // Generate shareable invite URL with event data
+        function generateInviteURL(eventData) {
+            const baseURL = window.location.origin + window.location.pathname;
+            const encodedData = btoa(JSON.stringify({
+                id: eventData.id,
+                title: eventData.title,
+                date: eventData.date,
+                time: eventData.time,
+                location: eventData.location,
+                description: eventData.description,
+                coverImage: eventData.coverImage,
+                askReason: eventData.askReason,
+                allowGuests: eventData.allowGuests,
+                created: eventData.created
+            }));
+            return `${baseURL}#invite/${eventData.id}?data=${encodedData}`;
+        }
+
+        // Decode event data from URL
+        function getEventFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const encodedData = urlParams.get('data');
+            
+            if (encodedData) {
+                try {
+                    return JSON.parse(atob(encodedData));
+                } catch (e) {
+                    console.error('Failed to decode event data from URL:', e);
+                    return null;
+                }
+            }
+            return null;
+        }
         function generateUUID() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 const r = Math.random() * 16 | 0;
@@ -1179,7 +1225,7 @@
                 
                 <div style="margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border-left: 4px solid var(--semper-gold);">
                     <strong style="color: var(--semper-navy);">🔗 Invite Link:</strong><br>
-                    <input type="text" value="${window.location.origin}${window.location.pathname}#invite/${eventId}" 
+                    <input type="text" value="${generateInviteURL(event)}" 
                            style="width: 100%; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.375rem;" readonly onclick="this.select()">
                 </div>
                 
@@ -1198,7 +1244,8 @@
 
         // Show invite view
         function showInvite(eventId) {
-            const event = events[eventId];
+            // Try to get event from URL first, then localStorage
+            let event = getEventFromURL() || events[eventId];
             
             // Hide navigation for guest view
             document.querySelector('.nav').style.display = 'none';
@@ -1208,6 +1255,9 @@
                     <div style="text-align: center; padding: 3rem;">
                         <h2 style="color: var(--error-color); margin-bottom: 1rem;">❌ Event Not Found</h2>
                         <p>This invite link may be invalid or the event may have been deleted.</p>
+                        <p style="font-size: 0.875rem; color: var(--text-color); margin-top: 1rem;">
+                            Please contact the event organizer for assistance.
+                        </p>
                     </div>
                 `;
                 showPage('invite');
@@ -1328,12 +1378,19 @@
                 timestamp: Date.now()
             };
 
-            // Save response
+            // Save response to localStorage (for the host to see)
             if (!responses[eventId]) {
                 responses[eventId] = [];
             }
             responses[eventId].push(responseData);
             saveData();
+
+            // Also try to save to the URL event's responses if it exists
+            const urlEvent = getEventFromURL();
+            if (urlEvent && !events[eventId]) {
+                events[eventId] = urlEvent;
+                saveData();
+            }
 
             // Show confirmation
             showToast('🎖️ RSVP submitted successfully!', 'success');
