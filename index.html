@@ -726,6 +726,26 @@
             }
         }
 
+        /* Add this to your <style> section */
+        .custom-question-item {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            align-items: center;
+        }
+
+        .custom-question-input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+        }
+
+        .custom-question-item .btn {
+            padding: 0.5rem;
+            font-size: 0.875rem;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -829,6 +849,18 @@
                     <label>
                         <input type="checkbox" id="allow-guests"> Allow guests to bring additional people
                     </label>
+                </div>
+
+                <!-- Add this after the "allow guests" checkbox in the create event form -->
+                <div class="form-group">
+                    <label>Custom Questions (Optional)</label>
+                    <div id="custom-questions-container">
+                        <div class="custom-question-item">
+                            <input type="text" placeholder="Enter your question..." class="custom-question-input">
+                            <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn" onclick="addCustomQuestion()">➕ Add Question</button>
                 </div>
 
                 <button type="submit" class="btn">🚀 Deploy Event</button>
@@ -1158,6 +1190,7 @@ function generateInviteURL(eventData) {
                 coverImage: document.getElementById('cover-preview').src || '',
                 askReason: document.getElementById('ask-reason').checked,
                 allowGuests: document.getElementById('allow-guests').checked,
+                customQuestions: getCustomQuestions(),
                 created: Date.now(),
                 adminKey: generateUUID()
             };
@@ -1319,6 +1352,7 @@ function generateInviteURL(eventData) {
                                 <th>Attending</th>
                                 ${event.askReason ? '<th>Reason</th>' : ''}
                                 ${event.allowGuests ? '<th>Guests</th>' : ''}
+                                ${event.customQuestions ? event.customQuestions.map(q => `<th>${q.question}</th>`).join('') : ''}
                                 <th>Submitted</th>
                             </tr>
                         </thead>
@@ -1346,6 +1380,9 @@ function generateInviteURL(eventData) {
                         </td>
                         ${event.askReason ? `<td>${response.reason || '-'}</td>` : ''}
                         ${event.allowGuests ? `<td><strong>${response.guestCount || 0}</strong> ${(response.guestCount || 0) === 1 ? 'guest' : 'guests'}</td>` : ''}
+                        ${event.customQuestions ? event.customQuestions.map(q => 
+                            `<td>${response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '-'}</td>`
+                        ).join('') : ''}
                         <td>${new Date(response.timestamp).toLocaleString()}</td>
                     </tr>
                 `;
@@ -1492,6 +1529,21 @@ function generateInviteURL(eventData) {
                                     <input type="email" id="guest-email" required>
                                 </div>
                                 
+                                ${event.askReason ? `
+                                    <div class="form-group">
+                                        <label for="reason">Why are you attending? (Optional)</label>
+                                        <textarea id="reason" placeholder="Share your thoughts..."></textarea>
+                                    </div>
+                                ` : ''}
+                                ${event.customQuestions && event.customQuestions.length > 0 ? 
+                                    event.customQuestions.map(q => `
+                                        <div class="form-group">
+                                            <label for="${q.id}">${q.question}</label>
+                                            <textarea id="${q.id}" placeholder="Your answer..."></textarea>
+                                        </div>
+                                    `).join('') : ''
+                                }
+                                
                                 <div class="rsvp-options">
                                     <div class="rsvp-option" onclick="selectRSVP(true, this)">
                                         ✅ I'll be there!
@@ -1501,14 +1553,7 @@ function generateInviteURL(eventData) {
                                     </div>
                                 </div>
                                 <input type="hidden" id="attending" value="">
-                                
-                                ${event.askReason ? `
-                                    <div class="form-group">
-                                        <label for="reason">Why are you attending? (Optional)</label>
-                                        <textarea id="reason" placeholder="Share your thoughts..."></textarea>
-                                    </div>
-                                ` : ''}
-                                
+
                                 ${event.allowGuests ? `
                                     <div class="form-group">
                                         <label for="guest-count">How many additional guests?</label>
@@ -1562,6 +1607,18 @@ function generateInviteURL(eventData) {
                 return;
             }
 
+            // Collect custom question answers
+            const customAnswers = {};
+            const event = events[eventId] || getEventFromURL();
+            if (event && event.customQuestions) {
+                event.customQuestions.forEach(q => {
+                    const answerElement = document.getElementById(q.id);
+                    if (answerElement) {
+                        customAnswers[q.id] = answerElement.value;
+                    }
+                });
+            }
+
             // Create display name in format "Rank FirstName LastName"
             const rank = document.getElementById('guest-rank').value.trim();
             const firstName = document.getElementById('guest-firstname').value.trim();
@@ -1582,6 +1639,7 @@ function generateInviteURL(eventData) {
                 attending: attending === 'true',
                 reason: document.getElementById('reason') ? document.getElementById('reason').value : '',
                 guestCount: document.getElementById('guest-count') ? parseInt(document.getElementById('guest-count').value) : 0,
+                customAnswers: customAnswers, // Add this line
                 timestamp: Date.now()
             };
 
@@ -1913,6 +1971,39 @@ function generateInviteURL(eventData) {
             setTimeout(() => {
                 toast.remove();
             }, 3000);
+        }
+
+        // Custom Question Management Functions
+        // Add a new custom question input
+        function addCustomQuestion() {
+            const container = document.getElementById('custom-questions-container');
+            const questionItem = document.createElement('div');
+            questionItem.className = 'custom-question-item';
+            questionItem.innerHTML = `
+                <input type="text" placeholder="Enter your question..." class="custom-question-input">
+                <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
+            `;
+            container.appendChild(questionItem);
+        }
+
+        // Remove a custom question input
+        function removeCustomQuestion(button) {
+            button.parentElement.remove();
+        }
+
+        // Get custom questions from the form
+        function getCustomQuestions() {
+            const inputs = document.querySelectorAll('.custom-question-input');
+            const questions = [];
+            inputs.forEach((input, index) => {
+                if (input.value.trim()) {
+                    questions.push({
+                        id: `custom_${index}`,
+                        question: input.value.trim()
+                    });
+                }
+            });
+            return questions;
         }
 
         // Handle browser back/forward
