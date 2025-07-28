@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventCall - Where Every Event Matters</title>
+    <style>
+        :root {
+            --primary-color: #1a1a2e;
+            --secondary-color: #c41e3a;
+            --accent-gold: #ffd700;
+            --navy-blue: #0f1419;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --text-color: #2c3e50;
+            --bg-color: #ffffff;
+            --border-color: #d1d5db;
+            --gray-50: #f8f9fb;
+            --gray-100: #f1f3f5;
+            --gray-200: #e5e7eb;
+            --semper-red: #c41e3a;
+            --semper-gold: #ffd700;
+            --semper-navy: #0f1419;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--gray-50) 0%, #ffffff 100%);
+            color: var(--text-color);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--semper-navy) 0%, var(--primary-color) 50%, var(--semper-red) 100%);
+            color: white;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 215, 0, 0.1) 50%, transparent 70%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .header h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 0.5rem;
+        }
+
+        .header .tagline {
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 400;
+            opacity: 0.9;
+            font-style: italic;
+            color: var(--semper-gold);
+        }
+
+        .semper-branding {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: var(--semper-gold);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .semper-branding:hover {
+            color: #ffffff;
+            transform: scale(1.05);
+        }
+
+        .semper-branding::before,
+        .semper-branding::after {
+            content: '';
+            width: 50px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--semper-gold), transparent);
+            margin: 0 1rem;
+        }
+
+        .footer {
+            background: var(--semper-navy);
+            color: white;
+            padding: 2rem 0;
+            margin-top: 3rem;
+            text-align: center;
+            border-top: 3px solid var(--semper-gold);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .footer-logo {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--semper-gold);
+            margin-bottom: 1rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .footer-link {
+            color: var(--semper-gold);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border: 2px solid transparent;
+            border-radius: 0.375rem;
+        }
+
+        .footer-link:hover {
+            color: white;
+            border-color: var(--semper-gold);
+            background: rgba(255, 215, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .footer-description {
+            font-size: 0.875rem;
+            color: #cbd5e1;
+            margin: 1rem 0;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .footer-copyright {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #374151;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .nav button {
+            background: linear-gradient(135deg, var(--semper-red) 0%, #8b1538 100%);
+            color: white;
+            border: 2px solid var(--semper-gold);
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .nav button:hover::before {
+            left: 100%;
+        }
+
+        .nav button:hover {
+            background: linear-gradient(135deg, #8b1538 0%, var(--semper-red) 100%);
+            border-color: var(--accent-gold);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(196, 30, 58, 0.4);
+        }
+
+        .nav button.active {
+            background: linear-gradient(135deg, var(--semper-gold) 0%, #e6c200 100%);
+            color: var(--semper-navy);
+            border-color: var(--semper-navy);
+            font-weight: 700;
+        }
+
+        .page {
+            display: none;
+            background: white;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-size: 1rem;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--semper-red) 0%, #8b1538 100%);
+            color: white;
+            border: 2px solid var(--semper-gold);
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #8b1538 0%, var(--semper-red) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(196, 30, 58, 0.4);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: var(--error-color);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .image-upload {
+            border: 2px dashed var(--border-color);
+            border-radius: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            transition: border-color 0.2s;
+            cursor: pointer;
+        }
+
+        .image-upload:hover {
+            border-color: var(--secondary-color);
+        }
+
+        .image-upload.dragover {
+            border-color: var(--secondary-color);
+            background-color: var(--gray-50);
+        }
+
+        .image-preview {
+            max-width: 300px;
+            max-height: 200px;
+            margin: 1rem auto;
+            display: block;
+            border-radius: 0.375rem;
+        }
+
+        .event-card {
+            background: linear-gradient(135deg, white 0%, var(--gray-50) 100%);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 20px rgba(196, 30, 58, 0.1);
+            border-left: 6px solid var(--semper-red);
+            border-top: 2px solid var(--semper-gold);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .event-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--semper-gold), transparent);
+            opacity: 0.1;
+            border-radius: 0 1rem 0 100px;
+        }
+
+        .event-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .event-meta {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        .response-stats {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .response-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .stat {
+            background: var(--gray-100);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .stat:first-child {
+            background: linear-gradient(135deg, var(--semper-gold), #e6c200);
+            color: var(--semper-navy);
+            border: 2px solid var(--semper-navy);
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .stat:first-child .stat-label {
+            color: var(--semper-navy);
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .response-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .response-table th,
+        .response-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .response-table th {
+            background: var(--gray-50);
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .search-controls {
+            background: var(--gray-50);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            border: 2px solid var(--semper-gold);
+        }
+
+        .search-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--semper-red);
+            box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.1);
+        }
+
+        .search-filter {
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            background: white;
+            min-width: 150px;
+        }
+
+        .search-stats {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.875rem;
+            color: var(--semper-navy);
+            font-weight: 600;
+        }
+
+        .clear-search {
+            background: var(--semper-red);
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+
+        .clear-search:hover {
+            background: #8b1538;
+        }
+
+        .response-row {
+            transition: all 0.3s ease;
+        }
+
+        .response-row.hidden {
+            display: none;
+        }
+
+        .response-row.highlight {
+            background-color: rgba(255, 215, 0, 0.1);
+            border-left: 4px solid var(--semper-gold);
+        }
+
+        .attending-yes {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .attending-no {
+            color: var(--error-color);
+            font-weight: 600;
+        }
+
+        .invite-display {
+            max-width: 600px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, white 0%, var(--gray-50) 100%);
+            border-radius: 1.5rem;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(196, 30, 58, 0.15);
+            border: 3px solid var(--semper-gold);
+        }
+
+        .invite-header {
+            position: relative;
+            height: 200px;
+            background: linear-gradient(135deg, var(--semper-navy) 0%, var(--primary-color) 50%, var(--semper-red) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .invite-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--semper-gold);
+        }
+
+        .invite-cover {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .invite-content {
+            padding: 2rem;
+        }
+
+        .invite-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .invite-details {
+            margin-bottom: 2rem;
+        }
+
+        .invite-detail {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding: 0.5rem;
+            background: var(--gray-50);
+            border-radius: 0.375rem;
+        }
+
+        .invite-detail strong {
+            min-width: 80px;
+            color: var(--primary-color);
+        }
+
+        .rsvp-form {
+            background: var(--gray-50);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .rsvp-options {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .rsvp-option {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .rsvp-option:hover {
+            border-color: var(--secondary-color);
+        }
+
+        .rsvp-option.selected {
+            border-color: var(--secondary-color);
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success {
+            background: var(--success-color);
+        }
+
+        .toast.error {
+            background: var(--error-color);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .nav {
+                flex-wrap: wrap;
+            }
+            
+            .response-stats {
+                flex-direction: column;
+            }
+            
+            .rsvp-options {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="semper-branding" onclick="window.open('https://linktr.ee/semperadmin', '_blank')">
+                    POWERED BY SEMPER ADMIN
+                </div>
+                <h1>EventCall</h1>
+                <div class="tagline">Where Every Event Matters</div>
+            </div>
+            <div class="nav">
+                <button onclick="showPage('dashboard')" class="active" id="nav-dashboard">🏠 Dashboard</button>
+                <button onclick="showPage('create')" id="nav-create">➕ Create Event</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Dashboard Page -->
+        <div id="dashboard" class="page active">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+                <h2 style="color: var(--semper-navy); font-size: 2rem; font-weight: 700;">Your Events</h2>
+                <div style="font-size: 0.875rem; color: var(--semper-red); font-weight: 600;">
+                    🎖️ Mission Ready Events
+                </div>
+            </div>
+            <div id="events-list">
+                <p>No events created yet. <a href="#" onclick="showPage('create')" style="color: var(--semper-red); font-weight: 600;">Create your first event</a></p>
+            </div>
+        </div>
+
+        <!-- Create Event Page -->
+        <div id="create" class="page">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+                <h2 style="color: var(--semper-navy); font-size: 2rem; font-weight: 700;">Create New Event</h2>
+                <div style="font-size: 0.875rem; color: var(--semper-red); font-weight: 600;">
+                    🎯 Mission Planning
+                </div>
+            </div>
+            <form id="event-form">
+                <div class="form-group">
+                    <label for="event-title">Event Title</label>
+                    <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson">
+                </div>
+
+                <div class="form-group">
+                    <label for="event-date">Date</label>
+                    <input type="date" id="event-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="event-time">Time</label>
+                    <input type="time" id="event-time" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="event-location">Location</label>
+                    <input type="text" id="event-location" placeholder="e.g., Base Chapel, Building 123">
+                </div>
+
+                <div class="form-group">
+                    <label for="event-description">Description</label>
+                    <textarea id="event-description" placeholder="Additional details about the event..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Cover Image (Optional)</label>
+                    <div class="image-upload" id="cover-upload">
+                        <p>Click or drag to upload cover image</p>
+                        <input type="file" id="cover-input" accept="image/*" style="display: none;">
+                    </div>
+                    <img id="cover-preview" class="image-preview hidden">
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="ask-reason"> Ask guests why they're attending
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="allow-guests"> Allow guests to bring additional people
+                    </label>
+                </div>
+
+                <button type="submit" class="btn">🚀 Deploy Event</button>
+            </form>
+        </div>
+
+        <!-- Event Management Page -->
+        <div id="manage" class="page">
+            <div id="event-details"></div>
+        </div>
+
+        <!-- Invite View Page -->
+        <div id="invite" class="page">
+            <div id="invite-content"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-logo">SEMPER ADMIN</div>
+            
+            <div class="footer-links">
+                <a href="https://linktr.ee/semperadmin" target="_blank" class="footer-link">
+                    🔗 Official Linktree
+                </a>
+                <a href="mailto:contact@semperadmin.com" class="footer-link">
+                    📧 Contact Us
+                </a>
+                <a href="#" onclick="showPage('create')" class="footer-link">
+                    🚀 Create Event
+                </a>
+            </div>
+            
+            <div class="footer-description">
+                Professional event management solutions for military personnel and organizations. 
+                Streamlining communications and logistics for ceremonies, promotions, retirements, and special events.
+            </div>
+            
+            <div class="footer-copyright">
+                © 2025 Semper Admin. All rights reserved. | EventCall - Professional Military Event Management
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentEvent = null;
+        let events = {};
+        let responses = {};
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            setupEventListeners();
+            checkURLHash();
+        });
+
+        // Load data from localStorage
+        function loadData() {
+            const savedEvents = localStorage.getItem('mia_events');
+            const savedResponses = localStorage.getItem('mia_responses');
+            
+            if (savedEvents) {
+                events = JSON.parse(savedEvents);
+            }
+            
+            if (savedResponses) {
+                responses = JSON.parse(savedResponses);
+            }
+            
+            renderDashboard();
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('mia_events', JSON.stringify(events));
+            localStorage.setItem('mia_responses', JSON.stringify(responses));
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Cover image upload
+            const coverUpload = document.getElementById('cover-upload');
+            const coverInput = document.getElementById('cover-input');
+            const coverPreview = document.getElementById('cover-preview');
+
+            coverUpload.addEventListener('click', () => coverInput.click());
+            coverUpload.addEventListener('dragover', handleDragOver);
+            coverUpload.addEventListener('drop', handleDrop);
+            coverInput.addEventListener('change', handleImageUpload);
+
+            // Event form submission
+            document.getElementById('event-form').addEventListener('submit', handleEventSubmit);
+        }
+
+        // Page navigation
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Remove active class from nav buttons
+            document.querySelectorAll('.nav button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected page
+            document.getElementById(pageId).classList.add('active');
+            
+            // Only update nav button if it exists (not hidden for guests)
+            const navButton = document.getElementById(`nav-${pageId}`);
+            if (navButton) {
+                navButton.classList.add('active');
+            }
+            
+            // Update URL hash (but don't change invite URLs)
+            if (!window.location.hash.includes('invite/')) {
+                window.location.hash = pageId;
+            }
+            
+            // Show navigation for host pages, hide for invite pages
+            if (pageId === 'invite') {
+                document.querySelector('.nav').style.display = 'none';
+            } else {
+                document.querySelector('.nav').style.display = 'flex';
+            }
+        }
+
+        // Check URL hash on load
+        function checkURLHash() {
+            const hash = window.location.hash.substring(1);
+            if (hash.startsWith('invite/')) {
+                const eventId = hash.split('/')[1];
+                showInvite(eventId);
+                // Hide navigation for guests
+                document.querySelector('.nav').style.display = 'none';
+            } else if (hash.startsWith('manage/')) {
+                const eventId = hash.split('/')[1];
+                showEventManagement(eventId);
+                // Show navigation for hosts
+                document.querySelector('.nav').style.display = 'flex';
+            } else {
+                // Show navigation for normal pages
+                document.querySelector('.nav').style.display = 'flex';
+            }
+        }
+
+        // Generate UUID
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // Image upload handlers
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processImageFile(files[0]);
+            }
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                processImageFile(file);
+            }
+        }
+
+        function processImageFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showToast('Please select an image file', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('cover-preview');
+                preview.src = e.target.result;
+                preview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Event form submission
+        function handleEventSubmit(e) {
+            e.preventDefault();
+            
+            const eventData = {
+                id: generateUUID(),
+                title: document.getElementById('event-title').value,
+                date: document.getElementById('event-date').value,
+                time: document.getElementById('event-time').value,
+                location: document.getElementById('event-location').value,
+                description: document.getElementById('event-description').value,
+                coverImage: document.getElementById('cover-preview').src || '',
+                askReason: document.getElementById('ask-reason').checked,
+                allowGuests: document.getElementById('allow-guests').checked,
+                created: Date.now(),
+                adminKey: generateUUID()
+            };
+
+            // Save event
+            events[eventData.id] = eventData;
+            responses[eventData.id] = [];
+            saveData();
+
+            // Show success message
+            showToast('🎖️ Event deployed successfully!', 'success');
+
+            // Reset form and show dashboard
+            document.getElementById('event-form').reset();
+            document.getElementById('cover-preview').classList.add('hidden');
+            renderDashboard();
+            showPage('dashboard');
+        }
+
+        // Render dashboard
+        function renderDashboard() {
+            const eventsList = document.getElementById('events-list');
+            const eventIds = Object.keys(events);
+
+            if (eventIds.length === 0) {
+                eventsList.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-color);"><h3 style="color: var(--semper-navy); margin-bottom: 1rem;">🎯 Ready for Your First Mission?</h3><p>No events created yet. <a href="#" onclick="showPage(\'create\')" style="color: var(--semper-red); font-weight: 600; text-decoration: none;">Deploy your first event →</a></p></div>';
+                return;
+            }
+
+            let html = '';
+            eventIds.forEach(eventId => {
+                const event = events[eventId];
+                const eventResponses = responses[eventId] || [];
+                const attending = eventResponses.filter(r => r.attending === true).length;
+                const notAttending = eventResponses.filter(r => r.attending === false).length;
+                const totalGuests = eventResponses.reduce((sum, r) => sum + (parseInt(r.guestCount) || 0), 0);
+                const attendingWithGuests = eventResponses.filter(r => r.attending === true).reduce((sum, r) => sum + (parseInt(r.guestCount) || 0), 0);
+                const totalHeadcount = attending + attendingWithGuests;
+
+                html += `
+                    <div class="event-card">
+                        <h3 style="color: var(--semper-navy); font-size: 1.5rem; margin-bottom: 0.5rem;">${event.title}</h3>
+                        <div class="event-meta">
+                            📅 ${event.date} at ${event.time}<br>
+                            📍 ${event.location || 'No location specified'}<br>
+                            🕐 Deployed ${new Date(event.created).toLocaleDateString()}
+                        </div>
+                        <div class="response-stats">
+                            <div class="stat">
+                                <div class="stat-number" style="color: var(--semper-navy); font-size: 2rem; font-weight: 900;">${totalHeadcount}</div>
+                                <div class="stat-label">🎖️ TOTAL HEADCOUNT</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number" style="color: var(--success-color);">${attending}</div>
+                                <div class="stat-label">✅ Attending</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number" style="color: var(--error-color);">${notAttending}</div>
+                                <div class="stat-label">❌ Not Attending</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number" style="color: var(--semper-navy);">${eventResponses.length}</div>
+                                <div class="stat-label">📊 Total Responses</div>
+                            </div>
+                            ${event.allowGuests ? `
+                                <div class="stat">
+                                    <div class="stat-number" style="color: var(--semper-red);">${totalGuests}</div>
+                                    <div class="stat-label">👥 Additional Guests</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button class="btn" onclick="showEventManagement('${eventId}')">📊 Manage</button>
+                                <button class="btn" onclick="copyInviteLink('${eventId}')">🔗 Copy Link</button>
+                                <button class="btn btn-success" onclick="exportEventData('${eventId}')">📥 Export</button>
+                                <button class="btn btn-danger" onclick="deleteEvent('${eventId}')">🗑️ Delete</button>
+                            </div>
+                    </div>
+                `;
+            });
+
+            eventsList.innerHTML = html;
+        }
+
+        // Show event management
+        function showEventManagement(eventId) {
+            const event = events[eventId];
+            const eventResponses = responses[eventId] || [];
+            
+            if (!event) {
+                showToast('Event not found', 'error');
+                return;
+            }
+
+            // Calculate attendance statistics
+            const attending = eventResponses.filter(r => r.attending === true).length;
+            const notAttending = eventResponses.filter(r => r.attending === false).length;
+            const totalGuests = eventResponses.reduce((sum, r) => sum + (parseInt(r.guestCount) || 0), 0);
+            const attendingWithGuests = eventResponses.filter(r => r.attending === true).reduce((sum, r) => sum + (parseInt(r.guestCount) || 0), 0);
+            const totalHeadcount = attending + attendingWithGuests;
+
+            let responseTableHTML = '';
+            if (eventResponses.length > 0) {
+                responseTableHTML = `
+                    <div style="margin-bottom: 2rem;">
+                        <div class="response-stats">
+                            <div class="stat">
+                                <div class="stat-number" style="color: var(--semper-navy); font-size: 2rem; font-weight: 900;">${totalHeadcount}</div>
+                                <div class="stat-label">🎖️ TOTAL HEADCOUNT</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number" style="color: var(--success-color);">${attending}</div>
+                                <div class="stat-label">✅ Attending</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number" style="color: var(--error-color);">${notAttending}</div>
+                                <div class="stat-label">❌ Not Attending</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number" style="color: var(--semper-navy);">${eventResponses.length}</div>
+                                <div class="stat-label">📊 Total Responses</div>
+                            </div>
+                            ${event.allowGuests ? `
+                                <div class="stat">
+                                    <div class="stat-number" style="color: var(--semper-red);">${totalGuests}</div>
+                                    <div class="stat-label">👥 Additional Guests</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="search-controls">
+                        <div class="search-row">
+                            <input type="text" id="response-search" class="search-input" 
+                                   placeholder="🔍 Search responses by name, reason, or any field..." 
+                                   onkeyup="filterResponses('${eventId}')">
+                            
+                            <select id="attendance-filter" class="search-filter" onchange="filterResponses('${eventId}')">
+                                <option value="">All Responses</option>
+                                <option value="attending">✅ Attending Only</option>
+                                <option value="not-attending">❌ Not Attending Only</option>
+                            </select>
+                            
+                            <button class="clear-search" onclick="clearSearch('${eventId}')">Clear</button>
+                        </div>
+                        
+                        <div class="search-stats" id="search-stats-${eventId}">
+                            📊 Showing ${eventResponses.length} of ${eventResponses.length} responses
+                        </div>
+                    </div>
+                    
+                    <table class="response-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Attending</th>
+                                ${event.askReason ? '<th>Reason</th>' : ''}
+                                ${event.allowGuests ? '<th>Guests</th>' : ''}
+                                <th>Submitted</th>
+                            </tr>
+                        </thead>
+                        <tbody id="response-table-body-${eventId}">
+                `;
+                
+                eventResponses.forEach((response, index) => {
+                    responseTableHTML += `
+                        <tr class="response-row" data-response-index="${index}" data-name="${response.guestName.toLowerCase()}" 
+                            data-attending="${response.attending}" data-reason="${(response.reason || '').toLowerCase()}" 
+                            data-guest-count="${response.guestCount || 0}">
+                            <td><strong>${response.guestName}</strong></td>
+                            <td class="${response.attending ? 'attending-yes' : 'attending-no'}">
+                                ${response.attending ? '✅ Yes' : '❌ No'}
+                            </td>
+                            ${event.askReason ? `<td>${response.reason || '-'}</td>` : ''}
+                            ${event.allowGuests ? `<td><strong>${response.guestCount || 0}</strong> ${(response.guestCount || 0) === 1 ? 'guest' : 'guests'}</td>` : ''}
+                            <td>${new Date(response.timestamp).toLocaleString()}</td>
+                        </tr>
+                    `;
+                });
+                
+                responseTableHTML += '</tbody></table>';
+            } else {
+                responseTableHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-color);"><h3 style="color: var(--semper-navy);">📭 No Responses Yet</h3><p>Share your invite link to start collecting responses!</p></div>';
+            }
+
+            document.getElementById('event-details').innerHTML = `
+                <h2 style="color: var(--semper-navy); font-size: 2rem; margin-bottom: 1rem;">${event.title}</h2>
+                <div class="event-meta" style="margin-bottom: 2rem;">
+                    📅 ${event.date} at ${event.time}<br>
+                    📍 ${event.location || 'No location specified'}<br>
+                    📝 ${event.description || 'No description provided'}
+                </div>
+                
+                <div style="margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border-left: 4px solid var(--semper-gold);">
+                    <strong style="color: var(--semper-navy);">🔗 Invite Link:</strong><br>
+                    <input type="text" value="${window.location.origin}${window.location.pathname}#invite/${eventId}" 
+                           style="width: 100%; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.375rem;" readonly onclick="this.select()">
+                </div>
+                
+                <div style="margin: 2rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn" onclick="copyInviteLink('${eventId}')">🔗 Copy Invite Link</button>
+                    <button class="btn btn-success" onclick="exportEventData('${eventId}')">📥 Export Data</button>
+                    <button class="btn" onclick="showPage('dashboard')">🏠 Back to Dashboard</button>
+                </div>
+                
+                <h3 style="color: var(--semper-navy); margin-bottom: 1rem;">📊 Responses (${eventResponses.length})</h3>
+                ${responseTableHTML}
+            `;
+            
+            showPage('manage');
+        }
+
+        // Show invite view
+        function showInvite(eventId) {
+            const event = events[eventId];
+            
+            // Hide navigation for guest view
+            document.querySelector('.nav').style.display = 'none';
+            
+            if (!event) {
+                document.getElementById('invite-content').innerHTML = `
+                    <div style="text-align: center; padding: 3rem;">
+                        <h2 style="color: var(--error-color); margin-bottom: 1rem;">❌ Event Not Found</h2>
+                        <p>This invite link may be invalid or the event may have been deleted.</p>
+                    </div>
+                `;
+                showPage('invite');
+                return;
+            }
+
+            document.getElementById('invite-content').innerHTML = `
+                <div class="invite-display">
+                    <div class="invite-header">
+                        ${event.coverImage ? 
+                            `<img src="${event.coverImage}" alt="Event cover" class="invite-cover">` :
+                            `<h2 style="text-align: center;">You're Invited!</h2>`
+                        }
+                    </div>
+                    <div class="invite-content">
+                        <h1 class="invite-title">${event.title}</h1>
+                        <div class="invite-details">
+                            <div class="invite-detail">
+                                <strong>📅 Date:</strong> ${event.date}
+                            </div>
+                            <div class="invite-detail">
+                                <strong>🕐 Time:</strong> ${event.time}
+                            </div>
+                            ${event.location ? `
+                                <div class="invite-detail">
+                                    <strong>📍 Location:</strong> ${event.location}
+                                </div>
+                            ` : ''}
+                            ${event.description ? `
+                                <div class="invite-detail">
+                                    <strong>📝 Details:</strong> ${event.description}
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="rsvp-form">
+                            <h3>RSVP</h3>
+                            <form id="rsvp-form" onsubmit="handleRSVP(event, '${eventId}')">
+                                <div class="form-group">
+                                    <label for="guest-name">Your Name</label>
+                                    <input type="text" id="guest-name" required>
+                                </div>
+                                
+                                <div class="rsvp-options">
+                                    <div class="rsvp-option" onclick="selectRSVP(true)">
+                                        ✅ I'll be there!
+                                    </div>
+                                    <div class="rsvp-option" onclick="selectRSVP(false)">
+                                        ❌ Can't make it
+                                    </div>
+                                </div>
+                                <input type="hidden" id="attending" value="">
+                                
+                                ${event.askReason ? `
+                                    <div class="form-group">
+                                        <label for="reason">Why are you attending? (Optional)</label>
+                                        <textarea id="reason" placeholder="Share your thoughts..."></textarea>
+                                    </div>
+                                ` : ''}
+                                
+                                ${event.allowGuests ? `
+                                    <div class="form-group">
+                                        <label for="guest-count">How many additional guests?</label>
+                                        <select id="guest-count">
+                                            <option value="0">Just me</option>
+                                            <option value="1">+1 guest</option>
+                                            <option value="2">+2 guests</option>
+                                            <option value="3">+3 guests</option>
+                                            <option value="4">+4 guests</option>
+                                        </select>
+                                    </div>
+                                ` : ''}
+                                
+                                <button type="submit" class="btn">Submit RSVP</button>
+                            </form>
+                            
+                            <div style="text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                                <div style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.5rem;">Powered by</div>
+                                <a href="https://linktr.ee/semperadmin" target="_blank" 
+                                   style="color: var(--semper-red); font-weight: 700; text-decoration: none; font-size: 0.875rem;">
+                                    SEMPER ADMIN
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            showPage('invite');
+        }
+
+        // RSVP selection
+        function selectRSVP(attending) {
+            document.querySelectorAll('.rsvp-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            event.target.classList.add('selected');
+            document.getElementById('attending').value = attending;
+        }
+
+        // Handle RSVP submission
+        function handleRSVP(e, eventId) {
+            e.preventDefault();
+            
+            const attending = document.getElementById('attending').value;
+            if (attending === '') {
+                showToast('Please select if you\'re attending', 'error');
+                return;
+            }
+
+            const responseData = {
+                id: generateUUID(),
+                guestName: document.getElementById('guest-name').value,
+                attending: attending === 'true',
+                reason: document.getElementById('reason') ? document.getElementById('reason').value : '',
+                guestCount: document.getElementById('guest-count') ? parseInt(document.getElementById('guest-count').value) : 0,
+                timestamp: Date.now()
+            };
+
+            // Save response
+            if (!responses[eventId]) {
+                responses[eventId] = [];
+            }
+            responses[eventId].push(responseData);
+            saveData();
+
+            // Show confirmation
+            showToast('🎖️ RSVP submitted successfully!', 'success');
+            
+            // Show confirmation message
+            document.getElementById('invite-content').innerHTML = `
+                <div class="invite-display">
+                    <div class="invite-content" style="text-align: center; padding: 3rem;">
+                        <h2 style="color: var(--success-color); margin-bottom: 1rem;">✅ RSVP Confirmed!</h2>
+                        <p style="font-size: 1.1rem; margin-bottom: 1rem;">Thank you for your response, <strong>${responseData.guestName}</strong>.</p>
+                        <div style="padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; margin: 1rem 0;">
+                            <p>You indicated that you <strong style="color: ${responseData.attending ? 'var(--success-color)' : 'var(--error-color)'};">${responseData.attending ? 'WILL ATTEND' : 'CANNOT ATTEND'}</strong>.</p>
+                            ${responseData.guestCount > 0 ? `<p style="margin-top: 0.5rem;">Additional guests: <strong>${responseData.guestCount}</strong></p>` : ''}
+                            ${responseData.reason ? `<p style="margin-top: 0.5rem; font-style: italic;">"${responseData.reason}"</p>` : ''}
+                        </div>
+                        <p style="font-size: 0.875rem; color: var(--text-color); margin-bottom: 1.5rem;">Your response has been recorded. You may close this window.</p>
+                        <button class="btn" onclick="showInvite('${eventId}')" style="margin-right: 1rem;">📋 View Invite Again</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Filter responses based on search and filters
+        function filterResponses(eventId) {
+            const searchTerm = document.getElementById('response-search').value.toLowerCase();
+            const attendanceFilter = document.getElementById('attendance-filter').value;
+            const rows = document.querySelectorAll(`#response-table-body-${eventId} .response-row`);
+            const statsElement = document.getElementById(`search-stats-${eventId}`);
+            
+            let visibleCount = 0;
+            let totalCount = rows.length;
+            
+            rows.forEach(row => {
+                const name = row.getAttribute('data-name');
+                const attending = row.getAttribute('data-attending');
+                const reason = row.getAttribute('data-reason');
+                const guestCount = row.getAttribute('data-guest-count');
+                
+                // Check search term match
+                const matchesSearch = searchTerm === '' || 
+                    name.includes(searchTerm) || 
+                    reason.includes(searchTerm) ||
+                    guestCount.includes(searchTerm);
+                
+                // Check attendance filter
+                const matchesAttendance = attendanceFilter === '' ||
+                    (attendanceFilter === 'attending' && attending === 'true') ||
+                    (attendanceFilter === 'not-attending' && attending === 'false');
+                
+                // Show/hide row based on filters
+                if (matchesSearch && matchesAttendance) {
+                    row.classList.remove('hidden');
+                    visibleCount++;
+                    
+                    // Add highlight effect if searching
+                    if (searchTerm !== '') {
+                        row.classList.add('highlight');
+                    } else {
+                        row.classList.remove('highlight');
+                    }
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+            
+            // Update stats
+            if (searchTerm || attendanceFilter) {
+                statsElement.innerHTML = `🔍 Showing ${visibleCount} of ${totalCount} responses`;
+                if (visibleCount === 0) {
+                    statsElement.innerHTML += ' - <span style="color: var(--error-color);">No matches found</span>';
+                }
+            } else {
+                statsElement.innerHTML = `📊 Showing ${totalCount} of ${totalCount} responses`;
+            }
+        }
+
+        // Clear search filters
+        function clearSearch(eventId) {
+            document.getElementById('response-search').value = '';
+            document.getElementById('attendance-filter').value = '';
+            
+            // Show all rows and remove highlights
+            const rows = document.querySelectorAll(`#response-table-body-${eventId} .response-row`);
+            rows.forEach(row => {
+                row.classList.remove('hidden', 'highlight');
+            });
+            
+            // Update stats
+            const statsElement = document.getElementById(`search-stats-${eventId}`);
+            statsElement.innerHTML = `📊 Showing ${rows.length} of ${rows.length} responses`;
+            
+            showToast('🧹 Search cleared', 'success');
+        }
+        function copyInviteLink(eventId) {
+            const link = `${window.location.origin}${window.location.pathname}#invite/${eventId}`;
+            navigator.clipboard.writeText(link).then(() => {
+                showToast('🔗 Invite link copied to clipboard!', 'success');
+            }).catch(() => {
+                showToast('Failed to copy link', 'error');
+            });
+        }
+
+        // Export event data
+        function exportEventData(eventId) {
+            const event = events[eventId];
+            const eventResponses = responses[eventId] || [];
+            
+            let csvContent = "Name,Attending,";
+            if (event.askReason) csvContent += "Reason,";
+            if (event.allowGuests) csvContent += "Guest Count,";
+            csvContent += "Timestamp\n";
+            
+            eventResponses.forEach(response => {
+                let row = `"${response.guestName}","${response.attending ? 'Yes' : 'No'}",`;
+                if (event.askReason) row += `"${response.reason || ''}",`;
+                if (event.allowGuests) row += `"${response.guestCount || 0}",`;
+                row += `"${new Date(response.timestamp).toLocaleString()}"\n`;
+                csvContent += row;
+            });
+
+            // Create and download CSV file
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${event.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_responses.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showToast('📊 Data exported successfully!', 'success');
+        }
+
+        // Delete event
+        function deleteEvent(eventId) {
+            if (confirm('Are you sure you want to delete this event? This cannot be undone.')) {
+                delete events[eventId];
+                delete responses[eventId];
+                saveData();
+                renderDashboard();
+                showToast('🎯 Event deleted successfully', 'success');
+            }
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Handle browser back/forward
+        window.addEventListener('hashchange', checkURLHash);
+
+        // Global click handler for RSVP options (since they're dynamically generated)
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('rsvp-option')) {
+                document.querySelectorAll('.rsvp-option').forEach(option => {
+                    option.classList.remove('selected');
+                });
+                
+                e.target.classList.add('selected');
+                const attending = e.target.textContent.includes("I'll be there");
+                document.getElementById('attending').value = attending;
+            }
+        });
+    </script>
+</body>
+</html>
