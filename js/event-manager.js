@@ -13,9 +13,9 @@ class EventManager {
      * Show event management page
      * @param {string} eventId - Event ID
      */
-    async showEventManagement(eventId) {
-        const event = events[eventId];
-        const eventResponses = responses[eventId] || [];
+    async     showEventManagement(eventId) {
+        const event = window.events ? window.events[eventId] : null;
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
         
         if (!event) {
             showToast(MESSAGES.error.eventNotFound, 'error');
@@ -324,7 +324,7 @@ class EventManager {
      * @param {string} eventId - Event ID
      */
     editEvent(eventId) {
-        const event = events[eventId];
+        const event = window.events ? window.events[eventId] : null;
         if (!event) {
             showToast(MESSAGES.error.eventNotFound, 'error');
             return;
@@ -443,7 +443,9 @@ class EventManager {
             await githubAPI.saveEvent(eventData);
 
             // Update local state
-            events[eventData.id] = eventData;
+            if (window.events) {
+                window.events[eventData.id] = eventData;
+            }
 
             showToast('✅ Event updated successfully!', 'success');
 
@@ -464,7 +466,7 @@ class EventManager {
      * @param {string} eventId - Event ID to duplicate
      */
     duplicateEvent(eventId) {
-        const event = events[eventId];
+        const event = window.events ? window.events[eventId] : null;
         if (!event) {
             showToast(MESSAGES.error.eventNotFound, 'error');
             return;
@@ -516,7 +518,7 @@ class EventManager {
         }
 
         try {
-            const eventResponses = responses[eventId] || [];
+            const eventResponses = window.responses ? window.responses[eventId] || [] : [];
             const deletedResponse = eventResponses[responseIndex];
             
             if (!deletedResponse) {
@@ -526,7 +528,9 @@ class EventManager {
 
             // Remove from local array
             eventResponses.splice(responseIndex, 1);
-            responses[eventId] = eventResponses;
+            if (window.responses) {
+                window.responses[eventId] = eventResponses;
+            }
 
             // Update GitHub
             const path = `${GITHUB_PATHS.rsvps}/${eventId}.json`;

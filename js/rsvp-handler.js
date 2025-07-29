@@ -57,7 +57,7 @@ class RSVPHandler {
             console.error('RSVP submission failed:', error);
             
             // Try email fallback
-            const event = events[eventId] || getEventFromURL();
+            const event = (window.events ? window.events[eventId] : null) || getEventFromURL();
             if (event) {
                 const rsvpData = this.collectFormData();
                 rsvpData.timestamp = Date.now();
@@ -90,7 +90,7 @@ class RSVPHandler {
             attendingValue = attendingRadio ? attendingRadio.value === 'true' : null;
         }
 
-        const event = events[this.currentEventId] || getEventFromURL();
+        const event = (window.events ? window.events[this.currentEventId] : null) || getEventFromURL();
         const customAnswers = {};
 
         // Collect custom question answers
@@ -175,10 +175,12 @@ class RSVPHandler {
             await githubAPI.saveRSVP(eventId, rsvpData);
             
             // Update local responses if we're the host
-            if (!responses[eventId]) {
-                responses[eventId] = [];
+            if (window.responses && !window.responses[eventId]) {
+                window.responses[eventId] = [];
             }
-            responses[eventId].push(rsvpData);
+            if (window.responses) {
+                window.responses[eventId].push(rsvpData);
+            }
             
             showToast(MESSAGES.success.rsvpSubmitted, 'success');
             
@@ -244,7 +246,7 @@ class RSVPHandler {
      * @param {Object} rsvpData - RSVP data
      */
     showConfirmation(rsvpData) {
-        const event = events[this.currentEventId] || getEventFromURL();
+        const event = (window.events ? window.events[this.currentEventId] : null) || getEventFromURL();
         
         document.getElementById('invite-content').innerHTML = `
             <div class="rsvp-confirmation">
@@ -454,7 +456,8 @@ class RSVPHandler {
      * @returns {boolean} True if duplicate found
      */
     checkDuplicateSubmission(eventId, email) {
-        const eventResponses = responses[eventId] || [];
+        const allResponses = window.responses || {};
+        const eventResponses = allResponses[eventId] || [];
         return eventResponses.some(response => 
             response.email.toLowerCase() === email.toLowerCase()
         );

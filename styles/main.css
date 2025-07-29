@@ -216,6 +216,18 @@ body {
     display: block;
 }
 
+/* App Content - REMOVE OVERLAY */
+.app-content {
+    display: block !important;
+    opacity: 1 !important;
+    /* Remove any overlay styling */
+}
+
+/* Remove any initial loader styles */
+.initial-loader {
+    display: none !important;
+}
+
 /* Utility Classes */
 .hidden {
     display: none !important;

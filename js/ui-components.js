@@ -14,7 +14,8 @@ class UIComponents {
      */
     renderDashboard() {
         const eventsList = document.getElementById('events-list');
-        const eventIds = Object.keys(events);
+        const allEvents = window.events || {};
+        const eventIds = Object.keys(allEvents);
 
         if (eventIds.length === 0) {
             eventsList.innerHTML = this.renderEmptyDashboard();
@@ -23,7 +24,7 @@ class UIComponents {
 
         // Sort events by creation date (newest first)
         const sortedEvents = eventIds
-            .map(id => events[id])
+            .map(id => allEvents[id])
             .sort((a, b) => b.created - a.created);
 
         let html = '';
@@ -63,7 +64,8 @@ class UIComponents {
      * @returns {string} HTML content
      */
     renderEventCard(event) {
-        const eventResponses = responses[event.id] || [];
+        const allResponses = window.responses || {};
+        const eventResponses = allResponses[event.id] || [];
         const stats = calculateEventStats(eventResponses);
         const timeUntil = getTimeUntilEvent(event.date, event.time);
         const isPast = isEventInPast(event.date, event.time);
@@ -465,7 +467,8 @@ class UIComponents {
      * @param {string} eventId - Event ID
      */
     updateEventCard(eventId) {
-        const event = events[eventId];
+        const allEvents = window.events || {};
+        const event = allEvents[eventId];
         if (!event) return;
 
         const eventCard = document.querySelector(`.event-card[data-event-id="${eventId}"]`);
