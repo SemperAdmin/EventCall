@@ -1,0 +1,324 @@
+/* EventCall - Invite Page Styles */
+
+/* Invite Display */
+.invite-display {
+    max-width: 600px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, white 0%, var(--gray-50) 100%);
+    border-radius: 1.5rem;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(196, 30, 58, 0.15);
+    border: 3px solid var(--semper-gold);
+}
+
+.invite-display-split {
+    max-width: 800px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, white 0%, var(--gray-50) 100%);
+    border-radius: 1.5rem;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(196, 30, 58, 0.15);
+    border: 3px solid var(--semper-gold);
+    display: flex;
+    min-height: 600px;
+}
+
+.invite-header {
+    position: relative;
+    height: 200px;
+    background: linear-gradient(135deg, var(--semper-navy) 0%, var(--primary-color) 50%, var(--semper-red) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.invite-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--semper-gold);
+}
+
+.invite-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.invite-image-section {
+    flex: 1;
+    background: linear-gradient(135deg, var(--semper-navy) 0%, var(--primary-color) 50%, var(--semper-red) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.invite-image-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
+    filter: blur(10px);
+    opacity: 0.3;
+    z-index: 1;
+}
+
+.invite-image-section::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--semper-gold);
+    z-index: 3;
+}
+
+.invite-image {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    position: relative;
+    z-index: 2;
+}
+
+.invite-details-section {
+    flex: 1;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.invite-content {
+    padding: 2rem;
+}
+
+.invite-title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.invite-title-main {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.invite-details {
+    margin-bottom: 2rem;
+}
+
+.invite-detail {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background: var(--gray-50);
+    border-radius: 0.375rem;
+}
+
+.invite-detail strong {
+    min-width: 80px;
+    color: var(--primary-color);
+}
+
+/* RSVP Form */
+.rsvp-form {
+    background: var(--gray-50);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+}
+
+.rsvp-form h3 {
+    color: var(--semper-navy);
+    margin-bottom: 1rem;
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.rsvp-options {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.rsvp-option {
+    flex: 1;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+    background: white;
+}
+
+.rsvp-option:hover {
+    border-color: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(196, 30, 58, 0.1);
+}
+
+.rsvp-option.selected {
+    border-color: var(--secondary-color);
+    background: var(--secondary-color);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(196, 30, 58, 0.2);
+}
+
+.rsvp-form .btn {
+    width: 100%;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+/* Radio Button Styling for RSVP */
+.rsvp-radio-group {
+    margin-bottom: 1.5rem;
+}
+
+.rsvp-radio-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    flex: 1;
+    text-align: center;
+    font-weight: 600;
+    background: white;
+    transition: all 0.2s;
+}
+
+.rsvp-radio-option:hover {
+    border-color: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(196, 30, 58, 0.1);
+}
+
+.rsvp-radio-option input[type="radio"] {
+    margin: 0;
+    width: auto;
+}
+
+.rsvp-radio-option input[type="radio"]:checked + span {
+    color: var(--secondary-color);
+    font-weight: 700;
+}
+
+/* Confirmation Styles */
+.rsvp-confirmation {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 1rem;
+    padding: 3rem;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.confirmation-title {
+    color: var(--success-color);
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.confirmation-message {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+.confirmation-details {
+    background: var(--gray-50);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+}
+
+.confirmation-status {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.confirmation-note {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+}
+
+/* Powered By Footer */
+.invite-powered-by {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.powered-by-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.powered-by-link {
+    color: var(--semper-red);
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.3s ease;
+}
+
+.powered-by-link:hover {
+    color: var(--semper-navy);
+}
+
+/* Error States */
+.invite-error {
+    text-align: center;
+    padding: 3rem;
+    color: var(--error-color);
+}
+
+.invite-error h2 {
+    color: var(--error-color);
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.invite-error p {
+    color: var(--text-color);
+    margin-bottom: 1rem;
+}
+
+.invite-error-note {
+    font-size: 0.875rem;
+    color: var(--text-color);
+    margin-top: 1rem;
+}
