@@ -6,163 +6,262 @@
     <title>EventCall - Where Every Event Matters</title>
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/invite.css">
     <link rel="stylesheet" href="styles/responsive.css">
+    
+    <!-- Preload and initial hide styles -->
+    <style>
+        /* Initial loading state - hide main app until user authenticates */
+        .app-content {
+            display: none;
+        }
+        
+        .app-content.authenticated {
+            display: block;
+        }
+        
+        /* Loading spinner for initial app load */
+        .initial-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--semper-navy) 0%, var(--primary-color) 50%, var(--semper-red) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 15000;
+            color: white;
+        }
+        
+        .loader-content {
+            text-align: center;
+        }
+        
+        .loader-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 215, 0, 0.3);
+            border-top: 4px solid var(--semper-gold);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loader-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--semper-gold);
+        }
+        
+        .loader-subtext {
+            font-size: 0.875rem;
+            opacity: 0.8;
+            margin-top: 0.5rem;
+        }
+    </style>
 </head>
 <body>
-    <div class="header">
+    <!-- Initial Loading Screen -->
+    <div class="initial-loader" id="initial-loader">
+        <div class="loader-content">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">🎖️ EventCall</div>
+            <div class="loader-subtext">Initializing Military Event Management</div>
+        </div>
+    </div>
+
+    <!-- Main Application Content (Hidden until authenticated) -->
+    <div class="app-content" id="app-content">
+        <div class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="semper-branding" onclick="window.open('https://linktr.ee/semperadmin', '_blank')">
+                        POWERED BY SEMPER ADMIN
+                    </div>
+                    <h1>EventCall</h1>
+                    <div class="tagline">Where Every Event Matters</div>
+                </div>
+                <div class="nav">
+                    <button onclick="showPage('dashboard')" class="active" id="nav-dashboard">🏠 Dashboard</button>
+                    <button onclick="showPage('create')" id="nav-create">➕ Create Event</button>
+                </div>
+            </div>
+        </div>
+
         <div class="container">
-            <div class="header-content">
-                <div class="semper-branding" onclick="window.open('https://linktr.ee/semperadmin', '_blank')">
-                    POWERED BY SEMPER ADMIN
-                </div>
-                <h1>EventCall</h1>
-                <div class="tagline">Where Every Event Matters</div>
-            </div>
-            <div class="nav">
-                <button onclick="showPage('dashboard')" class="active" id="nav-dashboard">🏠 Dashboard</button>
-                <button onclick="showPage('create')" id="nav-create">➕ Create Event</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="container">
-        <!-- Dashboard Page -->
-        <div id="dashboard" class="page active">
-            <div class="welcome-banner">
-                <div class="welcome-title">🎖️ Welcome to EventCall</div>
-                <div class="welcome-description">
-                    Professional military event management with real-time RSVP tracking. Create events instantly and share invite links for seamless coordination.
-                </div>
-            </div>
-
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
-                <h2 style="color: var(--semper-navy); font-size: 2rem; font-weight: 700;">Your Events</h2>
-                <button class="btn" onclick="syncWithGitHub()">🔄 Sync Data</button>
-            </div>
-            <div id="events-list">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Loading events...
-                </div>
-            </div>
-        </div>
-
-        <!-- Create Event Page -->
-        <div id="create" class="page">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
-                <h2 style="color: var(--semper-navy); font-size: 2rem; font-weight: 700;">Create New Event</h2>
-                <div style="font-size: 0.875rem; color: var(--semper-red); font-weight: 600;">
-                    🎯 Mission Planning
-                </div>
-            </div>
-            <form id="event-form">
-                <div class="form-group">
-                    <label for="event-title">Event Title</label>
-                    <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson">
-                </div>
-
-                <div class="form-group">
-                    <label for="event-date">Date</label>
-                    <input type="date" id="event-date" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="event-time">Time</label>
-                    <input type="time" id="event-time" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="event-location">Location</label>
-                    <input type="text" id="event-location" placeholder="e.g., Base Chapel, Building 123">
-                </div>
-
-                <div class="form-group">
-                    <label for="event-description">Description</label>
-                    <textarea id="event-description" placeholder="Additional details about the event..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Cover Image (Optional)</label>
-                    <div class="image-upload" id="cover-upload">
-                        <p>Click or drag to upload cover image</p>
-                        <input type="file" id="cover-input" accept="image/*" style="display: none;">
+            <!-- Dashboard Page -->
+            <div id="dashboard" class="page active">
+                <div class="welcome-banner">
+                    <div class="welcome-title">🎖️ Welcome to EventCall</div>
+                    <div class="welcome-description">
+                        Professional military event management with real-time RSVP tracking. Create events instantly and share invite links for seamless coordination.
                     </div>
-                    <img id="cover-preview" class="image-preview hidden">
                 </div>
 
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="ask-reason"> Ask guests why they're attending
-                    </label>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+                    <h2 style="color: var(--semper-navy); font-size: 2rem; font-weight: 700;">Your Events</h2>
+                    <button class="btn" onclick="syncWithGitHub()">🔄 Sync Data</button>
                 </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="allow-guests"> Allow guests to bring additional people
-                    </label>
+                <div id="events-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading events...
+                    </div>
                 </div>
+            </div>
 
-                <div class="form-group">
-                    <label>Custom Questions (Optional)</label>
-                    <div id="custom-questions-container">
-                        <div class="custom-question-item">
-                            <input type="text" placeholder="Enter your question..." class="custom-question-input">
-                            <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
+            <!-- Create Event Page -->
+            <div id="create" class="page">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+                    <h2 style="color: var(--semper-navy); font-size: 2rem; font-weight: 700;">Create New Event</h2>
+                    <div style="font-size: 0.875rem; color: var(--semper-red); font-weight: 600;">
+                        🎯 Mission Planning
+                    </div>
+                </div>
+                <form id="event-form">
+                    <div class="form-group">
+                        <label for="event-title">Event Title</label>
+                        <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-date">Date</label>
+                        <input type="date" id="event-date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-time">Time</label>
+                        <input type="time" id="event-time" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-location">Location</label>
+                        <input type="text" id="event-location" placeholder="e.g., Base Chapel, Building 123">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-description">Description</label>
+                        <textarea id="event-description" placeholder="Additional details about the event..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cover Image (Optional)</label>
+                        <div class="image-upload" id="cover-upload">
+                            <p>Click or drag to upload cover image</p>
+                            <input type="file" id="cover-input" accept="image/*" style="display: none;">
                         </div>
+                        <img id="cover-preview" class="image-preview hidden">
                     </div>
-                    <button type="button" class="btn" onclick="addCustomQuestion()">➕ Add Question</button>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="ask-reason"> Ask guests why they're attending
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="allow-guests"> Allow guests to bring additional people
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Custom Questions (Optional)</label>
+                        <div id="custom-questions-container">
+                            <div class="custom-question-item">
+                                <input type="text" placeholder="Enter your question..." class="custom-question-input">
+                                <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn" onclick="addCustomQuestion()">➕ Add Question</button>
+                    </div>
+
+                    <button type="submit" class="btn">🚀 Deploy Event</button>
+                </form>
+            </div>
+
+            <!-- Event Management Page -->
+            <div id="manage" class="page">
+                <div id="event-details"></div>
+            </div>
+
+            <!-- Invite View Page -->
+            <div id="invite" class="page">
+                <div id="invite-content"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-content">
+                <div class="footer-logo">SEMPER ADMIN</div>
+                
+                <div class="footer-links">
+                    <a href="https://linktr.ee/semperadmin" target="_blank" class="footer-link">
+                        🔗 Official Linktree
+                    </a>
+                    <a href="mailto:contact@semperadmin.com" class="footer-link">
+                        📧 Contact Us
+                    </a>
+                    <a href="#" onclick="showPage('create')" class="footer-link">
+                        🚀 Create Event
+                    </a>
                 </div>
-
-                <button type="submit" class="btn">🚀 Deploy Event</button>
-            </form>
-        </div>
-
-        <!-- Event Management Page -->
-        <div id="manage" class="page">
-            <div id="event-details"></div>
-        </div>
-
-        <!-- Invite View Page -->
-        <div id="invite" class="page">
-            <div id="invite-content"></div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer">
-        <div class="footer-content">
-            <div class="footer-logo">SEMPER ADMIN</div>
-            
-            <div class="footer-links">
-                <a href="https://linktr.ee/semperadmin" target="_blank" class="footer-link">
-                    🔗 Official Linktree
-                </a>
-                <a href="mailto:contact@semperadmin.com" class="footer-link">
-                    📧 Contact Us
-                </a>
-                <a href="#" onclick="showPage('create')" class="footer-link">
-                    🚀 Create Event
-                </a>
-            </div>
-            
-            <div class="footer-description">
-                Professional event management solutions for military personnel and organizations. 
-                Streamlining communications and logistics for ceremonies, promotions, retirements, and special events.
-            </div>
-            
-            <div class="footer-copyright">
-                © 2025 Semper Admin. All rights reserved. | EventCall - Professional Military Event Management
+                
+                <div class="footer-description">
+                    Professional event management solutions for military personnel and organizations. 
+                    Streamlining communications and logistics for ceremonies, promotions, retirements, and special events.
+                </div>
+                
+                <div class="footer-copyright">
+                    © 2025 Semper Admin. All rights reserved. | EventCall - Professional Military Event Management
+                </div>
             </div>
         </div>
     </div>
 
     <!-- JavaScript Files -->
     <script src="js/config.js"></script>
+    <script src="js/user-auth.js"></script>
     <script src="js/github-api.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/event-manager.js"></script>
     <script src="js/rsvp-handler.js"></script>
     <script src="js/ui-components.js"></script>
     <script src="js/main.js"></script>
+
+    <!-- Initialize App -->
+    <script>
+        // Remove initial loader once authentication is complete
+        document.addEventListener('DOMContentLoaded', function() {
+            // The main initialization happens in main.js
+            // This just ensures the loader is removed appropriately
+            
+            // Hide initial loader after authentication or error
+            const hideLoader = () => {
+                const loader = document.getElementById('initial-loader');
+                const appContent = document.getElementById('app-content');
+                
+                if (loader) {
+                    loader.style.opacity = '0';
+                    loader.style.transition = 'opacity 0.5s ease';
+                    setTimeout(() => {
+                        loader.remove();
+                        appContent.classList.add('authenticated');
+                    }, 500);
+                }
+            };
+
+            // Hide loader after successful authentication or error
+            window.hideInitialLoader = hideLoader;
+        });
+    </script>
 </body>
 </html>
