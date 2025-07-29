@@ -1110,7 +1110,20 @@
 
 function generateInviteURL(eventData) {
     const baseURL = window.location.origin + window.location.pathname;
-    return `${baseURL}#invite/${eventData.id}`;
+    const encodedData = btoa(JSON.stringify({
+        id: eventData.id,
+        title: eventData.title,
+        date: eventData.date,
+        time: eventData.time,
+        location: eventData.location,
+        description: eventData.description,
+        coverImage: eventData.coverImage,
+        askReason: eventData.askReason,
+        allowGuests: eventData.allowGuests,
+        customQuestions: eventData.customQuestions || [],
+        created: eventData.created
+    }));
+    return `${baseURL}?data=${encodedData}#invite/${eventData.id}`;
 }
 
         // Decode event data from URL
