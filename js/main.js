@@ -1296,14 +1296,32 @@ async function deleteEvent(eventId) {
     }
 }
 
-/**
- * Show event management
- */
 function showEventManagement(eventId) {
+    console.log('🔍 Debug - showEventManagement called with:', eventId);
+    console.log('🔍 Debug - events object:', events);
+    console.log('🔍 Debug - currentUser:', currentUser);
+    
+    // Check if events are still loading
+    if (Object.keys(events).length === 0) {
+        showToast('⏳ Events are still loading, please wait...', 'info');
+        // Retry after a short delay
+        setTimeout(() => showEventManagement(eventId), 1000);
+        return;
+    }
+    
     const event = events[eventId];
     
     if (!event) {
-        showToast('Event not found', 'error');
+        // Try to reload events and retry
+        showToast('🔄 Event not found, refreshing data...', 'info');
+        loadCloudData().then(() => {
+            const retryEvent = events[eventId];
+            if (retryEvent) {
+                eventManager.showEventManagement(eventId);
+            } else {
+                showToast('Event not found or you do not have access to it', 'error');
+            }
+        });
         return;
     }
     

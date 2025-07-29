@@ -5,7 +5,7 @@
 
 // GitHub Database Configuration (Production Ready)
 const GITHUB_CONFIG = {
-    token: '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',
+    token: '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',
     owner: 'SemperAdmin',
     repo: 'EventCall',
     branch: 'main',
