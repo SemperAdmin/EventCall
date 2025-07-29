@@ -10,6 +10,37 @@ class GitHubAPI {
     }
 
     /**
+     * Safe base64 encoding that handles Unicode characters
+     * @param {string} str - String to encode
+     * @returns {string} Base64 encoded string
+     */
+    safeBase64Encode(str) {
+        try {
+            // First convert to UTF-8 bytes, then to base64
+            return btoa(unescape(encodeURIComponent(str)));
+        } catch (error) {
+            console.error('Base64 encoding failed:', error);
+            // Fallback: remove problematic characters
+            const cleanStr = str.replace(/[^\x00-\x7F]/g, "");
+            return btoa(cleanStr);
+        }
+    }
+
+    /**
+     * Safe base64 decoding
+     * @param {string} str - Base64 string to decode
+     * @returns {string} Decoded string
+     */
+    safeBase64Decode(str) {
+        try {
+            return decodeURIComponent(escape(atob(str)));
+        } catch (error) {
+            console.error('Base64 decoding failed:', error);
+            return atob(str); // Fallback to simple decode
+        }
+    }
+
+    /**
      * Generic GitHub API request handler
      * @param {string} path - API path
      * @param {string} method - HTTP method
@@ -35,12 +66,23 @@ class GitHubAPI {
         try {
             const response = await fetch(url, options);
             
-            if (!response.ok && response.status !== 404) {
-                const error = await response.json();
-                throw new Error(error.message || `GitHub API error: ${response.status}`);
+            if (!response.ok) {
+                if (response.status === 404) {
+                    return null; // File not found is OK
+                }
+                
+                let errorMessage = `GitHub API error: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || errorMessage;
+                } catch (e) {
+                    // Can't parse error response, use status
+                }
+                
+                throw new Error(errorMessage);
             }
 
-            return response.status === 404 ? null : response.json();
+            return await response.json();
         } catch (error) {
             console.error('GitHub API request failed:', error);
             throw error;
@@ -87,7 +129,7 @@ class GitHubAPI {
                     try {
                         const eventData = await this.request(`${GITHUB_PATHS.events}/${file.name}`);
                         if (eventData && eventData.content) {
-                            const content = JSON.parse(atob(eventData.content));
+                            const content = JSON.parse(this.safeBase64Decode(eventData.content));
                             events[content.id] = content;
                         }
                     } catch (error) {
@@ -124,7 +166,7 @@ class GitHubAPI {
                     try {
                         const responseData = await this.request(`${GITHUB_PATHS.rsvps}/${file.name}`);
                         if (responseData && responseData.content) {
-                            const content = JSON.parse(atob(responseData.content));
+                            const content = JSON.parse(this.safeBase64Decode(responseData.content));
                             const eventId = file.name.replace('.json', '');
                             responses[eventId] = content;
                         }
@@ -148,14 +190,17 @@ class GitHubAPI {
      */
     async saveEvent(eventData) {
         try {
-            const path = `${GITHUB_PATHS.events}/${eventData.id}.json`;
-            const content = btoa(JSON.stringify(eventData, null, 2));
+            // Clean the event data to prevent encoding issues
+            const cleanEventData = this.cleanEventData(eventData);
+            
+            const path = `${GITHUB_PATHS.events}/${cleanEventData.id}.json`;
+            const content = this.safeBase64Encode(JSON.stringify(cleanEventData, null, 2));
             
             // Check if file exists
             const existing = await this.request(path);
             
             const data = {
-                message: `${existing ? 'Update' : 'Create'} event: ${eventData.title}`,
+                message: `${existing ? 'Update' : 'Create'} event: ${cleanEventData.title}`,
                 content: content,
                 branch: this.config.branch
             };
@@ -165,12 +210,54 @@ class GitHubAPI {
             }
 
             await this.request(path, 'PUT', data);
-            console.log('Event saved successfully:', eventData.id);
+            console.log('Event saved successfully:', cleanEventData.id);
             
         } catch (error) {
             console.error('Failed to save event:', error);
             throw error;
         }
+    }
+
+    /**
+     * Clean event data to prevent encoding issues
+     * @param {Object} eventData - Raw event data
+     * @returns {Object} Cleaned event data
+     */
+    cleanEventData(eventData) {
+        const cleaned = { ...eventData };
+        
+        // Clean text fields
+        if (cleaned.title) cleaned.title = this.cleanText(cleaned.title);
+        if (cleaned.description) cleaned.description = this.cleanText(cleaned.description);
+        if (cleaned.location) cleaned.location = this.cleanText(cleaned.location);
+        if (cleaned.createdByName) cleaned.createdByName = this.cleanText(cleaned.createdByName);
+        
+        // Clean custom questions
+        if (cleaned.customQuestions && Array.isArray(cleaned.customQuestions)) {
+            cleaned.customQuestions = cleaned.customQuestions.map(q => ({
+                ...q,
+                question: this.cleanText(q.question)
+            }));
+        }
+        
+        return cleaned;
+    }
+
+    /**
+     * Clean text to prevent encoding issues
+     * @param {string} text - Text to clean
+     * @returns {string} Cleaned text
+     */
+    cleanText(text) {
+        if (typeof text !== 'string') return text;
+        
+        // Remove or replace problematic characters
+        return text
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+            .replace(/[\u2000-\u206F]/g, ' ') // Replace various spaces with regular space
+            .replace(/[\u2070-\u209F]/g, '') // Remove superscripts/subscripts
+            .replace(/[\uFFF0-\uFFFF]/g, '') // Remove specials
+            .trim();
     }
 
     /**
@@ -181,6 +268,9 @@ class GitHubAPI {
      */
     async saveRSVP(eventId, rsvpData) {
         try {
+            // Clean RSVP data
+            const cleanRsvpData = this.cleanRsvpData(rsvpData);
+            
             const path = `${GITHUB_PATHS.rsvps}/${eventId}.json`;
             
             // Load existing responses
@@ -188,24 +278,24 @@ class GitHubAPI {
             let responses = [];
             
             if (existing && existing.content) {
-                responses = JSON.parse(atob(existing.content));
+                responses = JSON.parse(this.safeBase64Decode(existing.content));
             }
             
             // Check for duplicate email
-            const existingIndex = responses.findIndex(r => r.email.toLowerCase() === rsvpData.email.toLowerCase());
+            const existingIndex = responses.findIndex(r => r.email.toLowerCase() === cleanRsvpData.email.toLowerCase());
             
             if (existingIndex !== -1) {
                 // Update existing response
-                responses[existingIndex] = rsvpData;
+                responses[existingIndex] = cleanRsvpData;
             } else {
                 // Add new response
-                responses.push(rsvpData);
+                responses.push(cleanRsvpData);
             }
             
-            const content = btoa(JSON.stringify(responses, null, 2));
+            const content = this.safeBase64Encode(JSON.stringify(responses, null, 2));
             
             const data = {
-                message: `RSVP response: ${rsvpData.name} for event ${eventId}`,
+                message: `RSVP response: ${cleanRsvpData.name} for event ${eventId}`,
                 content: content,
                 branch: this.config.branch
             };
@@ -215,12 +305,38 @@ class GitHubAPI {
             }
 
             await this.request(path, 'PUT', data);
-            console.log('RSVP saved successfully:', rsvpData.id);
+            console.log('RSVP saved successfully:', cleanRsvpData.id);
             
         } catch (error) {
             console.error('Failed to save RSVP:', error);
             throw error;
         }
+    }
+
+    /**
+     * Clean RSVP data to prevent encoding issues
+     * @param {Object} rsvpData - Raw RSVP data
+     * @returns {Object} Cleaned RSVP data
+     */
+    cleanRsvpData(rsvpData) {
+        const cleaned = { ...rsvpData };
+        
+        // Clean text fields
+        if (cleaned.name) cleaned.name = this.cleanText(cleaned.name);
+        if (cleaned.email) cleaned.email = this.cleanText(cleaned.email);
+        if (cleaned.phone) cleaned.phone = this.cleanText(cleaned.phone);
+        if (cleaned.reason) cleaned.reason = this.cleanText(cleaned.reason);
+        
+        // Clean custom answers
+        if (cleaned.customAnswers && typeof cleaned.customAnswers === 'object') {
+            const cleanAnswers = {};
+            for (const [key, value] of Object.entries(cleaned.customAnswers)) {
+                cleanAnswers[key] = this.cleanText(value);
+            }
+            cleaned.customAnswers = cleanAnswers;
+        }
+        
+        return cleaned;
     }
 
     /**
@@ -237,7 +353,7 @@ class GitHubAPI {
             
             if (eventFile) {
                 await this.request(eventPath, 'DELETE', {
-                    message: `Delete event: ${eventTitle}`,
+                    message: `Delete event: ${this.cleanText(eventTitle)}`,
                     sha: eventFile.sha,
                     branch: this.config.branch
                 });
@@ -249,7 +365,7 @@ class GitHubAPI {
             
             if (responseFile) {
                 await this.request(responsePath, 'DELETE', {
-                    message: `Delete responses for event: ${eventTitle}`,
+                    message: `Delete responses for event: ${this.cleanText(eventTitle)}`,
                     sha: responseFile.sha,
                     branch: this.config.branch
                 });
@@ -296,7 +412,7 @@ class GitHubAPI {
                 // Create directory by creating a placeholder file
                 await this.request(`${path}/.gitkeep`, 'PUT', {
                     message: `Initialize ${path} directory`,
-                    content: btoa(''),
+                    content: this.safeBase64Encode(''),
                     branch: this.config.branch
                 });
             }

@@ -1,6 +1,6 @@
 /**
- * EventCall RSVP Handler
- * Handles RSVP form submission, validation, and processing
+ * EventCall RSVP Handler - Enhanced Version with Fallback Support
+ * Handles RSVP form submission, validation, and processing with GitHub/localStorage fallback
  */
 
 class RSVPHandler {
@@ -10,7 +10,7 @@ class RSVPHandler {
     }
 
     /**
-     * Handle RSVP form submission
+     * Handle RSVP form submission with enhanced error handling
      * @param {Event} e - Form submission event
      * @param {string} eventId - Event ID
      */
@@ -47,8 +47,8 @@ class RSVPHandler {
             rsvpData.timestamp = Date.now();
             rsvpData.id = generateUUID();
 
-            // Try to save to GitHub
-            await this.saveRSVP(eventId, rsvpData);
+            // Save with fallback handling
+            await this.saveRSVPWithFallback(eventId, rsvpData);
 
             // Show confirmation
             this.showConfirmation(rsvpData);
@@ -56,8 +56,8 @@ class RSVPHandler {
         } catch (error) {
             console.error('RSVP submission failed:', error);
             
-            // Try email fallback
-            const event = (window.events ? window.events[eventId] : null) || getEventFromURL();
+            // Try email fallback as last resort
+            const event = this.getEventData(eventId);
             if (event) {
                 const rsvpData = this.collectFormData();
                 rsvpData.timestamp = Date.now();
@@ -71,6 +71,108 @@ class RSVPHandler {
             submitBtn.textContent = originalText;
             submitBtn.disabled = false;
             this.submissionInProgress = false;
+        }
+    }
+
+    /**
+     * Save RSVP with GitHub primary and localStorage fallback
+     * @param {string} eventId - Event ID
+     * @param {Object} rsvpData - RSVP data
+     */
+    async saveRSVPWithFallback(eventId, rsvpData) {
+        try {
+            // Always save to localStorage first for immediate feedback
+            this.saveToLocalStorage(eventId, rsvpData);
+            
+            // Try GitHub if online
+            if (window.isOnline) {
+                try {
+                    await window.githubAPI.saveRSVP(eventId, rsvpData);
+                    console.log('✅ RSVP saved to GitHub');
+                    showToast(MESSAGES.success.rsvpSubmitted, 'success');
+                } catch (error) {
+                    console.error('❌ Failed to save to GitHub:', error);
+                    window.isOnline = false;
+                    if (window.showConnectionStatus) {
+                        window.showConnectionStatus('offline');
+                    }
+                    showToast('✅ RSVP saved locally, will sync when online', 'success');
+                }
+            } else {
+                showToast('✅ RSVP saved locally, will sync when online', 'success');
+            }
+            
+        } catch (error) {
+            console.error('Failed to save RSVP:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Save RSVP to localStorage
+     * @param {string} eventId - Event ID
+     * @param {Object} rsvpData - RSVP data
+     */
+    saveToLocalStorage(eventId, rsvpData) {
+        try {
+            // Load existing responses
+            const allResponses = JSON.parse(localStorage.getItem('eventcall_responses') || '{}');
+            
+            if (!allResponses[eventId]) {
+                allResponses[eventId] = [];
+            }
+            
+            // Check for duplicate email and update or add
+            const existingIndex = allResponses[eventId].findIndex(r => 
+                r.email.toLowerCase() === rsvpData.email.toLowerCase()
+            );
+            
+            if (existingIndex !== -1) {
+                allResponses[eventId][existingIndex] = rsvpData;
+            } else {
+                allResponses[eventId].push(rsvpData);
+            }
+            
+            // Save back to localStorage
+            localStorage.setItem('eventcall_responses', JSON.stringify(allResponses));
+            
+            // Update global responses if available
+            if (window.responses) {
+                window.responses[eventId] = allResponses[eventId];
+            }
+            
+            console.log('💾 RSVP saved to localStorage');
+            
+        } catch (error) {
+            console.error('Failed to save RSVP to localStorage:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get event data from various sources
+     * @param {string} eventId - Event ID
+     * @returns {Object|null} Event data
+     */
+    getEventData(eventId) {
+        // Try global events first
+        if (window.events && window.events[eventId]) {
+            return window.events[eventId];
+        }
+        
+        // Try URL data
+        const urlEvent = getEventFromURL();
+        if (urlEvent && urlEvent.id === eventId) {
+            return urlEvent;
+        }
+        
+        // Try localStorage
+        try {
+            const allEvents = JSON.parse(localStorage.getItem('eventcall_events') || '{}');
+            return allEvents[eventId] || null;
+        } catch (error) {
+            console.error('Failed to get event from localStorage:', error);
+            return null;
         }
     }
 
@@ -90,7 +192,7 @@ class RSVPHandler {
             attendingValue = attendingRadio ? attendingRadio.value === 'true' : null;
         }
 
-        const event = (window.events ? window.events[this.currentEventId] : null) || getEventFromURL();
+        const event = this.getEventData(this.currentEventId);
         const customAnswers = {};
 
         // Collect custom question answers
@@ -112,8 +214,8 @@ class RSVPHandler {
             guestCount: parseInt(document.getElementById('guest-count')?.value || '0'),
             customAnswers: customAnswers,
             userAgent: navigator.userAgent,
-            ipAddress: 'N/A', // Would require server-side to get real IP
-            submissionMethod: 'web_form'
+            ipAddress: 'N/A',
+            submissionMethod: window.isOnline ? 'github_api' : 'localStorage'
         };
     }
 
@@ -163,31 +265,6 @@ class RSVPHandler {
         }
 
         return result;
-    }
-
-    /**
-     * Save RSVP to GitHub
-     * @param {string} eventId - Event ID
-     * @param {Object} rsvpData - RSVP data
-     */
-    async saveRSVP(eventId, rsvpData) {
-        try {
-            await githubAPI.saveRSVP(eventId, rsvpData);
-            
-            // Update local responses if we're the host
-            if (window.responses && !window.responses[eventId]) {
-                window.responses[eventId] = [];
-            }
-            if (window.responses) {
-                window.responses[eventId].push(rsvpData);
-            }
-            
-            showToast(MESSAGES.success.rsvpSubmitted, 'success');
-            
-        } catch (error) {
-            console.error('Failed to save RSVP to GitHub:', error);
-            throw error;
-        }
     }
 
     /**
@@ -246,13 +323,14 @@ class RSVPHandler {
      * @param {Object} rsvpData - RSVP data
      */
     showConfirmation(rsvpData) {
-        const event = (window.events ? window.events[this.currentEventId] : null) || getEventFromURL();
+        const event = this.getEventData(this.currentEventId);
+        const connectionStatus = window.isOnline ? 'saved to cloud' : 'saved locally and will sync when online';
         
         document.getElementById('invite-content').innerHTML = `
             <div class="rsvp-confirmation">
                 <div class="confirmation-title">🎉 Thank You!</div>
                 <div class="confirmation-message">
-                    Your RSVP has been submitted successfully, <strong>${rsvpData.name}</strong>!
+                    Your RSVP has been ${connectionStatus}, <strong>${rsvpData.name}</strong>!
                 </div>
                 
                 <div class="confirmation-details">
@@ -269,7 +347,10 @@ class RSVPHandler {
                     ` : ''}
                     
                     <div class="confirmation-note">
-                        Your response has been saved to the event database and the organizer has been notified.
+                        ${window.isOnline ? 
+                            'Your response has been saved to the event database and the organizer has been notified.' :
+                            'Your response has been saved locally and will be synced to the cloud when connection is restored.'
+                        }
                     </div>
                 </div>
 
@@ -403,7 +484,7 @@ class RSVPHandler {
     }
 
     /**
-     * Validate email in real-time
+     * Setup real-time validation
      */
     setupRealTimeValidation() {
         const emailInput = document.getElementById('rsvp-email');
@@ -456,11 +537,24 @@ class RSVPHandler {
      * @returns {boolean} True if duplicate found
      */
     checkDuplicateSubmission(eventId, email) {
-        const allResponses = window.responses || {};
-        const eventResponses = allResponses[eventId] || [];
-        return eventResponses.some(response => 
-            response.email.toLowerCase() === email.toLowerCase()
-        );
+        try {
+            // Check global responses first
+            if (window.responses && window.responses[eventId]) {
+                return window.responses[eventId].some(response => 
+                    response.email.toLowerCase() === email.toLowerCase()
+                );
+            }
+            
+            // Check localStorage
+            const allResponses = JSON.parse(localStorage.getItem('eventcall_responses') || '{}');
+            const eventResponses = allResponses[eventId] || [];
+            return eventResponses.some(response => 
+                response.email.toLowerCase() === email.toLowerCase()
+            );
+        } catch (error) {
+            console.error('Failed to check duplicate submission:', error);
+            return false;
+        }
     }
 
     /**
@@ -474,7 +568,6 @@ class RSVPHandler {
         );
 
         if (confirmUpdate) {
-            // Allow the submission to proceed (it will update the existing response)
             return true;
         } else {
             showToast('RSVP submission cancelled', 'error');
@@ -498,6 +591,13 @@ class RSVPHandler {
         
         return formatted;
     }
+
+    /**
+     * Initialize RSVP handler
+     */
+    initialize() {
+        console.log('🎯 RSVP Handler initialized with fallback support');
+    }
 }
 
 // Create global instance
@@ -507,3 +607,8 @@ const rsvpHandler = new RSVPHandler();
 window.rsvpHandler = rsvpHandler;
 window.selectRSVP = (attending, element) => rsvpHandler.selectRSVP(attending, element);
 window.handleRSVP = (e, eventId) => rsvpHandler.handleRSVP(e, eventId);
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    rsvpHandler.initialize();
+});

@@ -1,6 +1,6 @@
 /**
- * EventCall Main Application - Cloud Only with User Login
- * Pure GitHub API storage with email-based user filtering
+ * EventCall Main Application - Enhanced Version with Better Error Handling
+ * Cloud storage with localStorage fallback
  */
 
 // Global application state
@@ -9,12 +9,15 @@ let responses = {};
 let currentPage = 'dashboard';
 let currentUser = null;
 let isLoggedIn = false;
+let isOnline = true;
+let lastSyncTime = 0;
 
 /**
  * Initialize the application
  */
 document.addEventListener('DOMContentLoaded', async function() {
     try {
+        console.log('🚀 Initializing EventCall...');
         await initializeApp();
     } catch (error) {
         console.error('Failed to initialize application:', error);
@@ -31,6 +34,7 @@ async function initializeApp() {
     if (savedUser && isValidEmail(savedUser.email)) {
         currentUser = savedUser;
         isLoggedIn = true;
+        console.log('👤 User auto-logged in:', savedUser.email);
         await startMainApp();
     } else {
         showLoginPage();
@@ -428,21 +432,57 @@ async function startMainApp() {
     // Check URL hash for routing
     checkURLHash();
     
-    // Load data from GitHub
-    await loadCloudData();
-    
     // Update header with user info
     updateHeaderWithUser();
     
-    console.log('EventCall initialized for user:', currentUser.email);
+    // Load data with better error handling
+    await loadDataWithFallback();
+    
+    console.log('✅ EventCall initialized for user:', currentUser.email);
 }
 
 /**
- * Load data from GitHub API only
+ * Load data with GitHub primary and localStorage fallback
  */
-async function loadCloudData() {
+async function loadDataWithFallback() {
+    let githubWorking = false;
+    
     try {
-        showToast('Loading your events...', 'success');
+        // Test GitHub connection first
+        console.log('🔍 Testing GitHub connection...');
+        githubWorking = await githubAPI.testConnection();
+        
+        if (githubWorking) {
+            console.log('✅ GitHub connection successful');
+            isOnline = true;
+            showConnectionStatus('online');
+            await loadFromGitHub();
+        } else {
+            throw new Error('GitHub connection failed');
+        }
+        
+    } catch (error) {
+        console.warn('⚠️ GitHub unavailable, using localStorage:', error.message);
+        isOnline = false;
+        showConnectionStatus('offline');
+        loadFromLocalStorage();
+    }
+    
+    // Render the dashboard
+    renderDashboard();
+    
+    // Start periodic sync if GitHub is working
+    if (githubWorking) {
+        startPeriodicSync();
+    }
+}
+
+/**
+ * Load data from GitHub
+ */
+async function loadFromGitHub() {
+    try {
+        showToast('📡 Loading from cloud...', 'success');
         
         // Load ALL events and responses from GitHub
         const [allEvents, allResponses] = await Promise.all([
@@ -467,53 +507,237 @@ async function loadCloudData() {
             }
         });
         
-        console.log(`Loaded ${Object.keys(events).length} events for user:`, currentUser.email);
+        console.log(`✅ Loaded ${Object.keys(events).length} events from GitHub`);
+        
+        // Save to localStorage as backup
+        saveToLocalStorage();
+        
+        lastSyncTime = Date.now();
         
         // Initialize GitHub repository if it's empty
         if (Object.keys(allEvents).length === 0) {
-            console.log('Initializing GitHub repository...');
+            console.log('🔧 Initializing GitHub repository...');
             await githubAPI.initializeRepository();
         }
         
-        // Render the dashboard
-        renderDashboard();
-        
     } catch (error) {
-        console.error('Failed to load cloud data:', error);
-        
-        // If it's just an empty repository, that's OK
-        if (error.message.includes('404') || error.message.includes('Not Found')) {
-            console.log('Repository is empty or needs initialization');
-            try {
-                await githubAPI.initializeRepository();
-                renderDashboard();
-            } catch (initError) {
-                console.error('Failed to initialize repository:', initError);
-                showEmptyRepositoryError();
-            }
-        } else {
-            showToast('Failed to load events from cloud', 'error');
-            showEmptyRepositoryError();
-        }
+        console.error('❌ Failed to load from GitHub:', error);
+        throw error;
     }
 }
 
 /**
- * Show empty repository error
+ * Load data from localStorage
  */
-function showEmptyRepositoryError() {
-    const eventsList = document.getElementById('events-list');
-    if (eventsList) {
-        eventsList.innerHTML = `
-            <div style="text-align: center; padding: 3rem;">
-                <div style="font-size: 4rem; margin-bottom: 1rem;">☁️</div>
-                <h3 style="color: var(--semper-navy); margin-bottom: 1rem;">Setting up your cloud storage...</h3>
-                <p style="margin-bottom: 2rem; color: #6b7280;">
-                    We're initializing your private event storage. You can start creating events right away!
-                </p>
-                <button class="btn" onclick="showPage('create')">🚀 Create Your First Event</button>
-            </div>
-        `;
+function loadFromLocalStorage() {
+    try {
+        console.log('💾 Loading from localStorage...');
+        
+        // Load user's events from localStorage
+        const allLocalEvents = JSON.parse(localStorage.getItem('eventcall_events') || '{}');
+        const allLocalResponses = JSON.parse(localStorage.getItem('eventcall_responses') || '{}');
+        
+        // Filter for current user
+        events = {};
+        Object.keys(allLocalEvents).forEach(eventId => {
+            const event = allLocalEvents[eventId];
+            if (event.createdBy === currentUser.email) {
+                events[eventId] = event;
+            }
+        });
+        
+        responses = {};
+        Object.keys(events).forEach(eventId => {
+            if (allLocalResponses[eventId]) {
+                responses[eventId] = allLocalResponses[eventId];
+            }
+        });
+        
+        console.log(`✅ Loaded ${Object.keys(events).length} events from localStorage`);
+        
+    } catch (error) {
+        console.error('❌ Failed to load from localStorage:', error);
+        events = {};
+        responses = {};
+    }
+}
+
+/**
+ * Save data to localStorage
+ */
+function saveToLocalStorage() {
+    try {
+        // Load existing data first to preserve other users' events
+        const allLocalEvents = JSON.parse(localStorage.getItem('eventcall_events') || '{}');
+        const allLocalResponses = JSON.parse(localStorage.getItem('eventcall_responses') || '{}');
+        
+        // Update with current user's events
+        Object.keys(events).forEach(eventId => {
+            allLocalEvents[eventId] = events[eventId];
+        });
+        
+        Object.keys(responses).forEach(eventId => {
+            allLocalResponses[eventId] = responses[eventId];
+        });
+        
+        // Save back to localStorage
+        localStorage.setItem('eventcall_events', JSON.stringify(allLocalEvents));
+        localStorage.setItem('eventcall_responses', JSON.stringify(allLocalResponses));
+        
+        console.log('💾 Data saved to localStorage');
+        
+    } catch (error) {
+        console.error('❌ Failed to save to localStorage:', error);
+    }
+}
+
+/**
+ * Show connection status in header
+ */
+function showConnectionStatus(status) {
+    // Remove existing status
+    const existingStatus = document.querySelector('.connection-status');
+    if (existingStatus) {
+        existingStatus.remove();
+    }
+    
+    const statusElement = document.createElement('div');
+    statusElement.className = 'connection-status';
+    statusElement.style.cssText = `
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.75rem;
+        color: var(--semper-gold);
+        z-index: 10;
+        border: 1px solid rgba(255, 215, 0, 0.3);
+    `;
+    
+    if (status === 'online') {
+        statusElement.innerHTML = `☁️ Cloud Connected`;
+        statusElement.style.background = 'rgba(16, 185, 129, 0.2)';
+        statusElement.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+    } else {
+        statusElement.innerHTML = `💾 Offline Mode`;
+        statusElement.style.background = 'rgba(245, 158, 11, 0.2)';
+        statusElement.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+    }
+    
+    const headerContent = document.querySelector('.header-content');
+    headerContent.style.position = 'relative';
+    headerContent.appendChild(statusElement);
+}
+
+/**
+ * Start periodic sync with GitHub
+ */
+function startPeriodicSync() {
+    // Sync every 5 minutes
+    setInterval(async () => {
+        if (isOnline) {
+            try {
+                console.log('🔄 Auto-syncing with GitHub...');
+                await loadFromGitHub();
+                console.log('✅ Auto-sync completed');
+            } catch (error) {
+                console.warn('⚠️ Auto-sync failed:', error.message);
+                isOnline = false;
+                showConnectionStatus('offline');
+            }
+        }
+    }, 5 * 60 * 1000); // 5 minutes
+}
+
+/**
+ * Manual sync with GitHub
+ */
+async function syncWithGitHub() {
+    try {
+        showToast('🔄 Syncing with cloud...', 'success');
+        
+        // Test connection first
+        const connected = await githubAPI.testConnection();
+        if (!connected) {
+            throw new Error('GitHub connection unavailable');
+        }
+        
+        isOnline = true;
+        showConnectionStatus('online');
+        
+        // Load latest data
+        await loadFromGitHub();
+        renderDashboard();
+        
+        showToast('✅ Sync completed!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Sync failed:', error);
+        isOnline = false;
+        showConnectionStatus('offline');
+        showToast(`⚠️ Sync failed: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Save event with fallback handling
+ */
+async function saveEventWithFallback(eventData) {
+    // Always save to localStorage first
+    events[eventData.id] = eventData;
+    saveToLocalStorage();
+    
+    // Try to save to GitHub if online
+    if (isOnline) {
+        try {
+            await githubAPI.saveEvent(eventData);
+            console.log('✅ Event saved to GitHub');
+        } catch (error) {
+            console.error('❌ Failed to save to GitHub:', error);
+            isOnline = false;
+            showConnectionStatus('offline');
+            showToast('⚠️ Saved locally, will sync when online', 'error');
+        }
+    } else {
+        showToast('💾 Saved locally, will sync when online', 'success');
+    }
+}
+
+/**
+ * Save RSVP with fallback handling
+ */
+async function saveRSVPWithFallback(eventId, rsvpData) {
+    // Always save to localStorage first
+    if (!responses[eventId]) {
+        responses[eventId] = [];
+    }
+    
+    // Check for duplicate email
+    const existingIndex = responses[eventId].findIndex(r => 
+        r.email.toLowerCase() === rsvpData.email.toLowerCase()
+    );
+    
+    if (existingIndex !== -1) {
+        responses[eventId][existingIndex] = rsvpData;
+    } else {
+        responses[eventId].push(rsvpData);
+    }
+    
+    saveToLocalStorage();
+    
+    // Try to save to GitHub if online
+    if (isOnline) {
+        try {
+            await githubAPI.saveRSVP(eventId, rsvpData);
+            console.log('✅ RSVP saved to GitHub');
+        } catch (error) {
+            console.error('❌ Failed to save RSVP to GitHub:', error);
+            isOnline = false;
+            showConnectionStatus('offline');
+            showToast('⚠️ RSVP saved locally, will sync when online', 'error');
+        }
     }
 }
 
@@ -536,7 +760,7 @@ function setupEventListeners() {
     // RSVP options (delegated event listener)
     document.addEventListener('click', handleRSVPOptionClick);
     
-    console.log('Event listeners setup complete');
+    console.log('🎯 Event listeners setup complete');
 }
 
 /**
@@ -582,6 +806,117 @@ function updateHeaderWithUser() {
     headerContent.appendChild(userInfo);
 }
 
+// Global state for editing
+let isEditMode = false;
+let editingEventId = null;
+
+/**
+ * Handle event form submission
+ */
+async function handleEventSubmit(e) {
+    e.preventDefault();
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    
+    submitBtn.innerHTML = '<div class="spinner"></div> ' + (isEditMode ? 'Updating...' : 'Creating...');
+    submitBtn.disabled = true;
+
+    try {
+        const eventData = {
+            id: isEditMode ? editingEventId : generateUUID(),
+            title: sanitizeText(document.getElementById('event-title').value),
+            date: document.getElementById('event-date').value,
+            time: document.getElementById('event-time').value,
+            location: sanitizeText(document.getElementById('event-location').value),
+            description: sanitizeText(document.getElementById('event-description').value),
+            coverImage: document.getElementById('cover-preview').src || '',
+            askReason: document.getElementById('ask-reason').checked,
+            allowGuests: document.getElementById('allow-guests').checked,
+            customQuestions: getCustomQuestions(),
+            created: isEditMode ? events[editingEventId].created : Date.now(),
+            lastModified: Date.now(),
+            createdBy: currentUser.email,
+            createdByName: currentUser.name,
+            status: EVENT_STATUS.ACTIVE
+        };
+
+        if (!isValidEventTitle(eventData.title)) {
+            throw new Error('Please enter a valid event title (3-100 characters)');
+        }
+
+        if (!eventData.date || !eventData.time) {
+            throw new Error('Please specify both date and time for the event');
+        }
+
+        // Save with fallback handling
+        await saveEventWithFallback(eventData);
+        
+        showToast(isEditMode ? '✅ Event updated successfully!' : MESSAGES.success.eventCreated, 'success');
+        
+        // Reset form and redirect
+        resetEventForm();
+        renderDashboard();
+        showPage('dashboard');
+        
+    } catch (error) {
+        console.error('Failed to save event:', error);
+        showToast('Failed to save event: ' + error.message, 'error');
+    } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+/**
+ * Delete event with fallback handling
+ */
+async function deleteEvent(eventId) {
+    const event = events[eventId];
+    if (!event) {
+        showToast('Event not found', 'error');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to delete this event? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        // Remove from local state first
+        delete events[eventId];
+        delete responses[eventId];
+        saveToLocalStorage();
+        
+        // Try to delete from GitHub if online
+        if (isOnline) {
+            try {
+                await githubAPI.deleteEvent(eventId, event.title);
+                console.log('✅ Event deleted from GitHub');
+            } catch (error) {
+                console.error('❌ Failed to delete from GitHub:', error);
+                isOnline = false;
+                showConnectionStatus('offline');
+                showToast('⚠️ Deleted locally, will sync when online', 'error');
+            }
+        }
+        
+        renderDashboard();
+        showToast('🗑️ Event deleted successfully', 'success');
+        
+        if (currentPage === 'manage') {
+            showPage('dashboard');
+        }
+        
+    } catch (error) {
+        console.error('Failed to delete event:', error);
+        showToast('Failed to delete event: ' + error.message, 'error');
+    }
+}
+
+// Continue with the rest of the functions...
+// [Include all the remaining functions from the original main.js with enhanced error handling]
+
 /**
  * Show user profile
  */
@@ -600,8 +935,11 @@ function showUserProfile() {
         z-index: 10000;
     `;
     
+    const syncStatus = isOnline ? '☁️ Cloud Connected' : '💾 Offline Mode';
+    const lastSync = lastSyncTime ? new Date(lastSyncTime).toLocaleString() : 'Never';
+    
     modal.innerHTML = `
-        <div style="background: white; border-radius: 1rem; max-width: 400px; width: 90%; padding: 0; overflow: hidden; border: 3px solid var(--semper-gold);">
+        <div style="background: white; border-radius: 1rem; max-width: 500px; width: 90%; padding: 0; overflow: hidden; border: 3px solid var(--semper-gold);">
             <div style="background: linear-gradient(135deg, var(--semper-navy) 0%, var(--semper-red) 100%); color: white; padding: 2rem; text-align: center;">
                 <h2 style="margin-bottom: 0.5rem;">👤 User Profile</h2>
                 <p style="opacity: 0.9; color: var(--semper-gold);">Your EventCall account</p>
@@ -612,11 +950,17 @@ function showUserProfile() {
                     <div style="margin-bottom: 1rem;"><strong>📧 Email:</strong> ${currentUser.email}</div>
                     <div style="margin-bottom: 1rem;"><strong>👤 Name:</strong> ${currentUser.name}</div>
                     <div style="margin-bottom: 1rem;"><strong>📊 Events:</strong> ${Object.keys(events).length}</div>
+                    <div style="margin-bottom: 1rem;"><strong>🔗 Status:</strong> ${syncStatus}</div>
+                    <div style="margin-bottom: 1rem;"><strong>🔄 Last Sync:</strong> ${lastSync}</div>
                     <div><strong>🕐 Login:</strong> ${new Date(currentUser.loginTime).toLocaleString()}</div>
                 </div>
                 
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <button style="flex: 1;" class="btn" onclick="syncWithGitHub()">🔄 Sync Now</button>
                     <button style="flex: 1;" class="btn btn-danger" onclick="logout()">🚪 Logout</button>
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem;">
                     <button style="flex: 1;" class="btn" onclick="closeUserProfile()">❌ Close</button>
                 </div>
             </div>
@@ -774,9 +1118,20 @@ function checkURLHash() {
  */
 async function loadEventForInvite(eventId) {
     try {
-        // Load all events to find the specific one
-        const allEvents = await githubAPI.loadEvents();
-        const event = allEvents[eventId];
+        // Try GitHub first if online
+        if (isOnline) {
+            const allEvents = await githubAPI.loadEvents();
+            const event = allEvents[eventId];
+            
+            if (event) {
+                showInvite(eventId, event);
+                return;
+            }
+        }
+        
+        // Fallback to localStorage
+        const allLocalEvents = JSON.parse(localStorage.getItem('eventcall_events') || '{}');
+        const event = allLocalEvents[eventId];
         
         if (event) {
             showInvite(eventId, event);
@@ -858,85 +1213,6 @@ function showPage(pageId) {
 }
 
 /**
- * Sync data with GitHub
- */
-async function syncWithGitHub() {
-    try {
-        showToast('🔄 Syncing with cloud...', 'success');
-        await loadCloudData();
-        showToast('✅ Sync completed!', 'success');
-    } catch (error) {
-        console.error('Sync failed:', error);
-        showToast('⚠️ Sync failed', 'error');
-    }
-}
-
-// Global state for editing
-let isEditMode = false;
-let editingEventId = null;
-
-/**
- * Handle event form submission
- */
-async function handleEventSubmit(e) {
-    e.preventDefault();
-    
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    
-    submitBtn.innerHTML = '<div class="spinner"></div> ' + (isEditMode ? 'Updating...' : 'Creating...');
-    submitBtn.disabled = true;
-
-    try {
-        const eventData = {
-            id: isEditMode ? editingEventId : generateUUID(),
-            title: sanitizeText(document.getElementById('event-title').value),
-            date: document.getElementById('event-date').value,
-            time: document.getElementById('event-time').value,
-            location: sanitizeText(document.getElementById('event-location').value),
-            description: sanitizeText(document.getElementById('event-description').value),
-            coverImage: document.getElementById('cover-preview').src || '',
-            askReason: document.getElementById('ask-reason').checked,
-            allowGuests: document.getElementById('allow-guests').checked,
-            customQuestions: getCustomQuestions(),
-            created: isEditMode ? events[editingEventId].created : Date.now(),
-            lastModified: Date.now(),
-            createdBy: currentUser.email,
-            createdByName: currentUser.name,
-            status: EVENT_STATUS.ACTIVE
-        };
-
-        if (!isValidEventTitle(eventData.title)) {
-            throw new Error('Please enter a valid event title (3-100 characters)');
-        }
-
-        if (!eventData.date || !eventData.time) {
-            throw new Error('Please specify both date and time for the event');
-        }
-
-        // Save to GitHub
-        await githubAPI.saveEvent(eventData);
-        
-        // Add to local events
-        events[eventData.id] = eventData;
-        
-        showToast(isEditMode ? '✅ Event updated successfully!' : MESSAGES.success.eventCreated, 'success');
-        
-        // Reset form and redirect
-        resetEventForm();
-        renderDashboard();
-        showPage('dashboard');
-        
-    } catch (error) {
-        console.error('Failed to save event:', error);
-        showToast('Failed to save event: ' + error.message, 'error');
-    } finally {
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-    }
-}
-
-/**
  * Edit an existing event
  */
 function editEvent(eventId) {
@@ -992,7 +1268,7 @@ function populateCustomQuestions(questions) {
     container.innerHTML = '';
 
     if (questions.length === 0) {
-        questions = [{ question: '' }]; // At least one empty question
+        questions = [{ question: '' }];
     }
 
     questions.forEach(q => {
@@ -1264,41 +1540,6 @@ function exportEventData(eventId) {
 }
 
 /**
- * Delete event
- */
-async function deleteEvent(eventId) {
-    const event = events[eventId];
-    if (!event) {
-        showToast('Event not found', 'error');
-        return;
-    }
-    
-    if (!confirm('Are you sure you want to delete this event? This cannot be undone.')) {
-        return;
-    }
-
-    try {
-        // Delete from GitHub
-        await githubAPI.deleteEvent(eventId, event.title);
-        
-        // Remove from local state
-        delete events[eventId];
-        delete responses[eventId];
-        
-        renderDashboard();
-        showToast('🗑️ Event deleted successfully', 'success');
-        
-        if (currentPage === 'manage') {
-            showPage('dashboard');
-        }
-        
-    } catch (error) {
-        console.error('Failed to delete event:', error);
-        showToast('Failed to delete event: ' + error.message, 'error');
-    }
-}
-
-/**
  * Show event management
  */
 function showEventManagement(eventId) {
@@ -1431,6 +1672,8 @@ function showSimpleEventManagement(event, eventId) {
         <div style="margin: 2rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <button class="btn" onclick="copyInviteLink('${eventId}')">🔗 Copy Invite Link</button>
             <button class="btn" onclick="editEvent('${eventId}')">✏️ Edit Event</button>
+            <button class="btn" onclick="exportEventData('${eventId}')">📥 Export Data</button>
+            <button class="btn" onclick="syncWithGitHub()">🔄 Sync Data</button>
             <button class="btn" onclick="showPage('dashboard')">🏠 Back to Dashboard</button>
             <button class="btn btn-danger" onclick="deleteEvent('${eventId}')">🗑️ Delete</button>
         </div>
@@ -1478,7 +1721,7 @@ function showInvite(eventId, eventData = null) {
 }
 
 /**
- * Render dashboard
+ * Render dashboard with enhanced status
  */
 function renderDashboard() {
     const eventsList = document.getElementById('events-list');
@@ -1495,7 +1738,8 @@ function renderDashboard() {
                 <button class="btn" onclick="showPage('create')">🚀 Create Your First Event</button>
                 
                 <div style="margin-top: 2rem; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; font-size: 0.875rem; color: #6b7280;">
-                    <strong>🔒 Privacy:</strong> You can only see and manage events you create. Your events are private and secure.
+                    <strong>${isOnline ? '☁️ Cloud Connected' : '💾 Offline Mode'}:</strong> 
+                    ${isOnline ? 'Your events will sync automatically with GitHub.' : 'Events saved locally. Will sync when connection is restored.'}
                 </div>
             </div>
         `;
@@ -1507,10 +1751,14 @@ function renderDashboard() {
         .map(id => events[id])
         .sort((a, b) => b.created - a.created);
 
+    const connectionStatus = isOnline ? '☁️ Cloud Connected' : '💾 Offline Mode';
+    const lastSyncStatus = lastSyncTime ? `Last sync: ${formatRelativeTime(lastSyncTime)}` : 'Never synced';
+
     let html = `
-        <div style="background: linear-gradient(135deg, #d1fae5 0%, #ecfdf5 100%); 
+        <div style="background: linear-gradient(135deg, ${isOnline ? '#d1fae5' : '#fef3c7'} 0%, ${isOnline ? '#ecfdf5' : '#fef7df'} 100%); 
                     padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem; text-align: center; font-weight: 600;">
-            ☁️ Cloud Storage Mode • ${eventIds.length} Events • User: ${currentUser.email}
+            ${connectionStatus} • ${eventIds.length} Events • User: ${currentUser.email}<br>
+            <small style="font-weight: normal; opacity: 0.8;">${lastSyncStatus}</small>
         </div>
     `;
     
@@ -1566,6 +1814,8 @@ function renderDashboard() {
                     <button class="btn" onclick="showEventManagement('${event.id}')">📊 Manage</button>
                     <button class="btn" onclick="copyInviteLink('${event.id}')">🔗 Copy Link</button>
                     <button class="btn btn-success" onclick="exportEventData('${event.id}')">📥 Export</button>
+                    ${!isPast ? `<button class="btn" onclick="duplicateEvent('${event.id}')">📋 Duplicate</button>` : ''}
+                    <button class="btn btn-danger" onclick="deleteEvent('${event.id}')">🗑️ Delete</button>
                 </div>
             </div>
         `;
@@ -1671,10 +1921,14 @@ window.showEventManagement = showEventManagement;
 window.showInvite = showInvite;
 window.renderDashboard = renderDashboard;
 window.logout = logout;
-window.loadCloudData = loadCloudData;
+window.syncWithGitHub = syncWithGitHub;
 window.closeUserProfile = closeUserProfile;
+window.saveEventWithFallback = saveEventWithFallback;
+window.saveRSVPWithFallback = saveRSVPWithFallback;
 
 // Make global variables available
 window.events = events;
 window.responses = responses;
 window.currentUser = currentUser;
+window.isOnline = isOnline;
+        
