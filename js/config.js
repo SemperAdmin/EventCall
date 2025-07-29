@@ -1,11 +1,11 @@
 /**
- * EventCall Configuration - Fixed Version with New Token
+ * EventCall Configuration - Updated with New API Key
  * Contains all configuration constants and settings
  */
 
 // GitHub Database Configuration (Production Ready)
 const GITHUB_CONFIG = {
-    token: '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',
+    token: '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',
     owner: 'SemperAdmin',
     repo: 'EventCall',
     branch: 'main',

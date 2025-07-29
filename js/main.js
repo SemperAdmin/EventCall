@@ -1,6 +1,6 @@
 /**
- * EventCall Main Application - Complete Version, GitHub Only
- * Full functionality with clean GitHub-only storage
+ * EventCall Main Application - Complete with Integrated Event Management
+ * Full functionality with built-in event management
  */
 
 // Global application state
@@ -801,6 +801,311 @@ async function handleEventSubmit(e) {
 }
 
 /**
+ * Show comprehensive event management interface
+ * @param {string} eventId - Event ID
+ */
+function showEventManagement(eventId) {
+    const event = events[eventId];
+    
+    if (!event) {
+        showToast('Event not found', 'error');
+        return;
+    }
+    
+    // Check if user owns this event
+    if (event.createdBy !== currentUser.email) {
+        showToast('You can only manage events you created', 'error');
+        showPage('dashboard');
+        return;
+    }
+    
+    const eventResponses = responses[eventId] || [];
+    const stats = calculateEventStats(eventResponses);
+    const inviteURL = generateInviteURL(event);
+    const timeUntil = getTimeUntilEvent(event.date, event.time);
+    const isPast = isEventInPast(event.date, event.time);
+
+    let responseTableHTML = '';
+    if (eventResponses.length > 0) {
+        responseTableHTML = generateResponseTable(event, eventResponses, stats);
+    } else {
+        responseTableHTML = `
+            <div style="text-align: center; padding: 2rem; color: var(--text-color);">
+                <h3 style="color: var(--semper-navy);">📭 No RSVPs Yet</h3>
+                <p>Share your invite link to start collecting responses!</p>
+            </div>
+        `;
+    }
+
+    document.getElementById('event-details').innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h2 style="color: var(--semper-navy); font-size: 2rem; margin-bottom: 0.5rem;">${event.title}</h2>
+                <div class="event-meta" style="margin-bottom: 1rem;">
+                    📅 ${formatDate(event.date)} at ${formatTime(event.time)}<br>
+                    📍 ${event.location || 'No location specified'}<br>
+                    📝 ${event.description || 'No description provided'}<br>
+                    🕐 Created ${formatRelativeTime(event.created)}<br>
+                    ${isPast ? '⏰ <span style="color: var(--error-color);">Event has passed</span>' : `⏳ ${timeUntil}`}
+                </div>
+            </div>
+            ${event.coverImage ? `
+                <div style="max-width: 200px;">
+                    <img src="${event.coverImage}" alt="Event cover" style="width: 100%; border-radius: 0.5rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                </div>
+            ` : ''}
+        </div>
+        
+        <div style="margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border-left: 4px solid var(--semper-gold);">
+            <strong style="color: var(--semper-navy);">🔗 Invite Link:</strong><br>
+            <input type="text" value="${inviteURL}" 
+                   style="width: 100%; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.375rem;" 
+                   readonly onclick="this.select()" id="invite-link-input">
+            <div style="margin-top: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                Click the link above to select and copy, or use the Copy Link button below.
+            </div>
+        </div>
+        
+        <div style="margin: 2rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn" onclick="copyInviteLink('${eventId}')">🔗 Copy Invite Link</button>
+            <button class="btn" onclick="editEvent('${eventId}')">✏️ Edit Event</button>
+            <button class="btn btn-success" onclick="exportEventData('${eventId}')">📥 Export Data</button>
+            <button class="btn btn-success" onclick="loadCloudData()">🔄 Sync Data</button>
+            <button class="btn" onclick="showPage('dashboard')">🏠 Back to Dashboard</button>
+            ${isPast ? '' : `<button class="btn" onclick="duplicateEvent('${eventId}')">📋 Duplicate Event</button>`}
+        </div>
+        
+        <h3 style="color: var(--semper-navy); margin-bottom: 1rem;">📊 RSVP Responses (${eventResponses.length})</h3>
+        ${responseTableHTML}
+    `;
+    
+    showPage('manage');
+    window.location.hash = `manage/${eventId}`;
+}
+
+/**
+ * Generate comprehensive response table with search and stats
+ * @param {Object} event - Event data
+ * @param {Array} eventResponses - RSVP responses
+ * @param {Object} stats - Event statistics
+ * @returns {string} HTML content
+ */
+function generateResponseTable(event, eventResponses, stats) {
+    const eventId = event.id;
+
+    let html = `
+        <div style="margin-bottom: 2rem;">
+            <div class="response-stats">
+                <div class="stat">
+                    <div class="stat-number" style="color: var(--semper-navy); font-size: 2rem; font-weight: 900;">${stats.totalHeadcount}</div>
+                    <div class="stat-label">🎖️ TOTAL HEADCOUNT</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" style="color: var(--success-color);">${stats.attending}</div>
+                    <div class="stat-label">✅ Attending</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" style="color: var(--error-color);">${stats.notAttending}</div>
+                    <div class="stat-label">❌ Not Attending</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" style="color: var(--semper-navy);">${stats.total}</div>
+                    <div class="stat-label">📊 Total RSVPs</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="search-controls">
+            <div class="search-row">
+                <input type="text" id="response-search" class="search-input" 
+                       placeholder="🔍 Search responses by name, email, phone, or any field..."
+                       onkeyup="filterResponses('${eventId}')">
+                
+                <select id="attendance-filter" class="search-filter" onchange="filterResponses('${eventId}')">
+                    <option value="">All Responses</option>
+                    <option value="attending">✅ Attending Only</option>
+                    <option value="not-attending">❌ Not Attending Only</option>
+                </select>
+                
+                <button class="clear-search" onclick="clearSearch('${eventId}')">Clear</button>
+            </div>
+            
+            <div class="search-stats" id="search-stats-${eventId}">
+                📊 Showing ${eventResponses.length} of ${eventResponses.length} responses
+            </div>
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Attending</th>
+                        ${event.askReason ? '<th>Reason</th>' : ''}
+                        ${event.allowGuests ? '<th>Guests</th>' : ''}
+                        ${event.customQuestions ? event.customQuestions.map(q => `<th>${q.question}</th>`).join('') : ''}
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="response-table-body-${eventId}">
+    `;
+    
+    eventResponses.forEach((response, index) => {
+        const displayName = response.name || 'Unknown';
+        const email = response.email || 'N/A';
+        const phone = response.phone || 'N/A';
+
+        html += `
+            <tr class="response-row" data-response-index="${index}" 
+                data-name="${displayName.toLowerCase()}" 
+                data-attending="${response.attending}" 
+                data-reason="${(response.reason || '').toLowerCase()}" 
+                data-guest-count="${response.guestCount || 0}"
+                data-phone="${phone.toLowerCase()}" 
+                data-email="${email.toLowerCase()}">
+                <td><strong>${displayName}</strong></td>
+                <td><a href="mailto:${email}" style="color: var(--semper-red); text-decoration: none;">${email}</a></td>
+                <td>${phone !== 'N/A' ? `<a href="tel:${phone}" style="color: var(--semper-red); text-decoration: none;">${phone}</a>` : phone}</td>
+                <td class="${response.attending ? 'attending-yes' : 'attending-no'}">
+                    ${response.attending ? '✅ Yes' : '❌ No'}
+                </td>
+                ${event.askReason ? `<td style="max-width: 200px; word-wrap: break-word;">${response.reason || '-'}</td>` : ''}
+                ${event.allowGuests ? `<td><strong>${response.guestCount || 0}</strong> ${(response.guestCount || 0) === 1 ? 'guest' : 'guests'}</td>` : ''}
+                ${event.customQuestions ? event.customQuestions.map(q => 
+                    `<td style="max-width: 150px; word-wrap: break-word;">${response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '-'}</td>`
+                ).join('') : ''}
+                <td style="font-size: 0.875rem;">${new Date(response.timestamp).toLocaleString()}</td>
+                <td>
+                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" 
+                            onclick="deleteResponse('${eventId}', ${index})" 
+                            title="Delete this RSVP">🗑️</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table></div>';
+    return html;
+}
+
+/**
+ * Filter responses based on search criteria
+ * @param {string} eventId - Event ID
+ */
+function filterResponses(eventId) {
+    const searchTerm = document.getElementById('response-search').value.toLowerCase();
+    const attendanceFilter = document.getElementById('attendance-filter').value;
+    const rows = document.querySelectorAll(`#response-table-body-${eventId} .response-row`);
+    const statsElement = document.getElementById(`search-stats-${eventId}`);
+    
+    let visibleCount = 0;
+    let totalCount = rows.length;
+    
+    rows.forEach(row => {
+        const name = row.getAttribute('data-name');
+        const attending = row.getAttribute('data-attending');
+        const reason = row.getAttribute('data-reason');
+        const guestCount = row.getAttribute('data-guest-count');
+        const phone = row.getAttribute('data-phone');
+        const email = row.getAttribute('data-email');
+
+        const matchesSearch = searchTerm === '' || 
+            name.includes(searchTerm) || 
+            reason.includes(searchTerm) ||
+            guestCount.includes(searchTerm) ||
+            phone.includes(searchTerm) ||
+            email.includes(searchTerm);
+        
+        const matchesAttendance = attendanceFilter === '' ||
+            (attendanceFilter === 'attending' && attending === 'true') ||
+            (attendanceFilter === 'not-attending' && attending === 'false');
+        
+        if (matchesSearch && matchesAttendance) {
+            row.classList.remove('hidden');
+            visibleCount++;
+            
+            if (searchTerm !== '') {
+                row.classList.add('highlight');
+            } else {
+                row.classList.remove('highlight');
+            }
+        } else {
+            row.classList.add('hidden');
+        }
+    });
+    
+    if (searchTerm || attendanceFilter) {
+        statsElement.innerHTML = `🔍 Showing ${visibleCount} of ${totalCount} responses`;
+        if (visibleCount === 0) {
+            statsElement.innerHTML += ' - <span style="color: var(--error-color);">No matches found</span>';
+        }
+    } else {
+        statsElement.innerHTML = `📊 Showing ${totalCount} of ${totalCount} responses`;
+    }
+}
+
+/**
+ * Clear search filters
+ * @param {string} eventId - Event ID
+ */
+function clearSearch(eventId) {
+    document.getElementById('response-search').value = '';
+    document.getElementById('attendance-filter').value = '';
+    
+    const rows = document.querySelectorAll(`#response-table-body-${eventId} .response-row`);
+    rows.forEach(row => {
+        row.classList.remove('hidden', 'highlight');
+    });
+    
+    const statsElement = document.getElementById(`search-stats-${eventId}`);
+    statsElement.innerHTML = `📊 Showing ${rows.length} of ${rows.length} responses`;
+    
+    showToast('🧹 Search cleared', 'success');
+}
+
+/**
+ * Delete a specific RSVP response
+ * @param {string} eventId - Event ID
+ * @param {number} responseIndex - Index of response to delete
+ */
+async function deleteResponse(eventId, responseIndex) {
+    if (!confirm('Are you sure you want to delete this RSVP response?')) {
+        return;
+    }
+
+    try {
+        const eventResponses = responses[eventId] || [];
+        const deletedResponse = eventResponses[responseIndex];
+        
+        if (!deletedResponse) {
+            showToast('Response not found', 'error');
+            return;
+        }
+
+        // Remove from local array
+        eventResponses.splice(responseIndex, 1);
+        responses[eventId] = eventResponses;
+
+        // Update GitHub
+        await githubAPI.saveRSVP(eventId, { 
+            placeholder: true, 
+            responses: eventResponses 
+        });
+
+        // Refresh the event management view
+        showEventManagement(eventId);
+        showToast('🗑️ RSVP response deleted successfully', 'success');
+
+    } catch (error) {
+        console.error('Failed to delete response:', error);
+        showToast('Failed to delete response: ' + error.message, 'error');
+    }
+}
+
+/**
  * Render dashboard
  */
 function renderDashboard() {
@@ -1296,45 +1601,6 @@ async function deleteEvent(eventId) {
     }
 }
 
-function showEventManagement(eventId) {
-    console.log('🔍 Debug - showEventManagement called with:', eventId);
-    console.log('🔍 Debug - events object:', events);
-    console.log('🔍 Debug - currentUser:', currentUser);
-    
-    // Check if events are still loading
-    if (Object.keys(events).length === 0) {
-        showToast('⏳ Events are still loading, please wait...', 'info');
-        // Retry after a short delay
-        setTimeout(() => showEventManagement(eventId), 1000);
-        return;
-    }
-    
-    const event = events[eventId];
-    
-    if (!event) {
-        // Try to reload events and retry
-        showToast('🔄 Event not found, refreshing data...', 'info');
-        loadCloudData().then(() => {
-            const retryEvent = events[eventId];
-            if (retryEvent) {
-                eventManager.showEventManagement(eventId);
-            } else {
-                showToast('Event not found or you do not have access to it', 'error');
-            }
-        });
-        return;
-    }
-    
-    // Check if user owns this event
-    if (event.createdBy !== currentUser.email) {
-        showToast('You can only manage events you created', 'error');
-        showPage('dashboard');
-        return;
-    }
-    
-    eventManager.showEventManagement(eventId);
-}
-
 /**
  * Show invite
  */
@@ -1525,9 +1791,11 @@ window.renderDashboard = renderDashboard;
 window.logout = logout;
 window.loadCloudData = loadCloudData;
 window.closeUserProfile = closeUserProfile;
+window.filterResponses = filterResponses;
+window.clearSearch = clearSearch;
+window.deleteResponse = deleteResponse;
 
 // Make global variables available
 window.events = events;
 window.responses = responses;
 window.currentUser = currentUser;
-                
