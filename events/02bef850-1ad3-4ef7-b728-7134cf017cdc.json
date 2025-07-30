@@ -1,0 +1,21 @@
+{
+  "id": "02bef850-1ad3-4ef7-b728-7134cf017cdc",
+  "title": "TEST ICO GYSGT SHORTER",
+  "date": "2025-08-01",
+  "time": "08:00",
+  "location": "Hole 13",
+  "description": "dfasdfasdf",
+  "coverImage": "",
+  "askReason": true,
+  "allowGuests": true,
+  "customQuestions": [
+    {
+      "id": "custom_0",
+      "question": "asdfasdfasdf"
+    }
+  ],
+  "created": 1753844902322,
+  "status": "active",
+  "createdBy": "barbcardrw@aol.com",
+  "createdByName": "barbcardrw"
+}
