@@ -79,7 +79,7 @@ class RSVPHandler {
 
         // Simple shared token for public RSVP submissions
         // This token has minimal permissions - only create issues in public repos
-        const sharedToken = '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';
+        const sharedToken = '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';
 
         const issueTitle = `RSVP: ${rsvpData.name} - ${event.title}`;
         const issueBody = this.createIssueBody(event, rsvpData);
