@@ -322,3 +322,156 @@
     color: var(--text-color);
     margin-top: 1rem;
 }
+
+/* Add this to your styles/invite.css */
+
+/* Modern RSVP Options */
+.rsvp-option {
+    padding: 1.5rem 1rem;
+    border: 3px solid var(--border-color);
+    border-radius: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    background: linear-gradient(135deg, white 0%, var(--gray-50) 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.rsvp-option::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.rsvp-option:hover {
+    border-color: var(--semper-gold);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(196, 30, 58, 0.15);
+}
+
+.rsvp-option:hover::before {
+    left: 100%;
+}
+
+.rsvp-option.selected {
+    border-color: var(--semper-red);
+    background: linear-gradient(135deg, var(--semper-red) 0%, #8b1538 100%);
+    color: white;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(196, 30, 58, 0.3);
+}
+
+.rsvp-option.selected::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+/* Enhanced form styling */
+.rsvp-form .form-group input,
+.rsvp-form .form-group select,
+.rsvp-form .form-group textarea {
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.rsvp-form .form-group input:focus,
+.rsvp-form .form-group select:focus,
+.rsvp-form .form-group textarea:focus {
+    outline: none;
+    border-color: var(--semper-red);
+    box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.1);
+    transform: translateY(-1px);
+}
+
+.rsvp-form .form-group label {
+    font-weight: 600;
+    color: var(--semper-navy);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* Guest count section styling */
+#guest-count-group {
+    background: linear-gradient(135deg, #fef3c7 0%, #fef7df 100%);
+    border: 2px solid var(--semper-gold);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-top: 1rem;
+}
+
+#guest-count-group label {
+    color: var(--semper-navy) !important;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+#guest-count {
+    width: 100%;
+    border: 2px solid var(--semper-gold) !important;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: white;
+}
+
+/* Submit button enhancement */
+.rsvp-form .btn {
+    background: linear-gradient(135deg, var(--semper-red) 0%, #8b1538 100%);
+    border: 3px solid var(--semper-gold);
+    border-radius: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.rsvp-form .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3), transparent);
+    transition: left 0.5s;
+}
+
+.rsvp-form .btn:hover::before {
+    left: 100%;
+}
+
+.rsvp-form .btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(196, 30, 58, 0.4);
+    border-color: #e6c200;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .rsvp-option {
+        padding: 1rem 0.5rem;
+    }
+    
+    #guest-count-group {
+        padding: 1rem;
+    }
+    
+    .rsvp-form .btn {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        min-width: 150px;
+    }
+}

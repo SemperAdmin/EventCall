@@ -1,11 +1,11 @@
 /**
- * EventCall Configuration - Updated with New API Key
- * Contains all configuration constants and settings
+ * EventCall Configuration - Manager Setup Flow
+ * Tokens are entered by each manager during setup
  */
 
-// GitHub Database Configuration (Production Ready)
+// GitHub Database Configuration
 const GITHUB_CONFIG = {
-    token: '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',
+    token: '', // Will be set by userAuth system at runtime
     owner: 'SemperAdmin',
     repo: 'EventCall',
     branch: 'main',
@@ -21,7 +21,8 @@ const APP_CONFIG = {
     allowedImageTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
     maxCustomQuestions: 10,
     toastDuration: 3000,
-    syncInterval: 30000 // 30 seconds
+    syncInterval: 30000, // 30 seconds
+    requireManagerSetup: true // Enable manager setup flow
 };
 
 // UI Messages
@@ -40,7 +41,8 @@ const MESSAGES = {
         linkCopied: '🔗 Invite link copied to clipboard!',
         dataExported: '📊 Data exported successfully!',
         syncCompleted: '✅ Sync completed!',
-        searchCleared: '🧹 Search cleared'
+        searchCleared: '🧹 Search cleared',
+        githubConnected: '🔗 GitHub connected automatically!'
     },
     error: {
         eventNotFound: 'Event not found',
@@ -52,7 +54,9 @@ const MESSAGES = {
         loadFailed: 'Failed to load events',
         deleteFailed: 'Failed to delete event',
         exportFailed: 'Failed to export data',
-        copyFailed: 'Failed to copy link'
+        copyFailed: 'Failed to copy link',
+        tokenRequired: 'GitHub token is required for cloud sync',
+        tokenInvalid: 'Invalid GitHub token format'
     },
     confirm: {
         deleteEvent: 'Are you sure you want to delete this event? This cannot be undone.'
@@ -61,7 +65,8 @@ const MESSAGES = {
         noEvents: 'No events found.',
         noResponses: 'No RSVPs yet. Share your invite link to start collecting responses!',
         emailFallback: '📧 Email fallback activated - please send the email',
-        firstEvent: 'Create your first event to get started with professional military event management.'
+        firstEvent: 'Create your first event to get started with professional military event management.',
+        tokenAutomatic: 'GitHub token configured automatically for seamless cloud sync.'
     }
 };
 
@@ -111,7 +116,8 @@ const VALIDATION = {
     email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     phone: /^[\+]?[1-9][\d]{0,15}$/,
     eventTitle: /^.{3,100}$/,
-    name: /^[a-zA-Z\s\-\.]{2,50}$/
+    name: /^[a-zA-Z\s\-\.]{2,50}$/,
+    githubToken: /^gh[ps]_[A-Za-z0-9_]{36,255}$/
 };
 
 // CSS Classes for Dynamic Styling
@@ -129,13 +135,16 @@ const CSS_CLASSES = {
     }
 };
 
-// Local Storage Keys
+// Local Storage Keys (avoid storing sensitive data)
 const STORAGE_KEYS = {
     events: 'eventcall_events',
     responses: 'eventcall_responses',
     settings: 'eventcall_settings',
     cache: 'eventcall_cache'
+    // Note: Never store tokens in localStorage
 };
+
+console.log('✅ EventCall configuration loaded with default token support');
 
 // Export configuration for use in other modules
 if (typeof module !== 'undefined' && module.exports) {

@@ -1,26 +1,43 @@
 /**
- * EventCall GitHub API Integration
- * Handles all GitHub API interactions for data storage and retrieval
+ * EventCall GitHub API Integration - Enhanced with Issue Processing
+ * Added RSVP issue processing and management capabilities
  */
 
 class GitHubAPI {
     constructor() {
         this.config = GITHUB_CONFIG;
         this.baseURL = `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents`;
+        this.issuesURL = `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/issues`;
+        this.corsProxy = 'https://api.allorigins.win/raw?url=';
+        this.useCorsProxy = false;
+    }
+
+    /**
+     * Get token from userAuth or config
+     */
+    getToken() {
+        if (window.userAuth && window.userAuth.getGitHubToken()) {
+            return window.userAuth.getGitHubToken();
+        }
+        return this.config.token || '';
+    }
+
+    /**
+     * Check if token is available
+     */
+    hasToken() {
+        const token = this.getToken();
+        return !!(token && token.length > 10);
     }
 
     /**
      * Safe base64 encoding that handles Unicode characters
-     * @param {string} str - String to encode
-     * @returns {string} Base64 encoded string
      */
     safeBase64Encode(str) {
         try {
-            // First convert to UTF-8 bytes, then to base64
             return btoa(unescape(encodeURIComponent(str)));
         } catch (error) {
             console.error('Base64 encoding failed:', error);
-            // Fallback: remove problematic characters
             const cleanStr = str.replace(/[^\x00-\x7F]/g, "");
             return btoa(cleanStr);
         }
@@ -28,34 +45,34 @@ class GitHubAPI {
 
     /**
      * Safe base64 decoding
-     * @param {string} str - Base64 string to decode
-     * @returns {string} Decoded string
      */
     safeBase64Decode(str) {
         try {
             return decodeURIComponent(escape(atob(str)));
         } catch (error) {
             console.error('Base64 decoding failed:', error);
-            return atob(str); // Fallback to simple decode
+            return atob(str);
         }
     }
 
     /**
      * Generic GitHub API request handler
-     * @param {string} path - API path
-     * @param {string} method - HTTP method
-     * @param {Object} data - Request data
-     * @returns {Promise<Object|null>} API response or null if not found
      */
     async request(path, method = 'GET', data = null) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available. Please login and provide token.');
+        }
+
         const url = `${this.baseURL}/${path}`;
         
         const options = {
             method,
             headers: {
-                'Authorization': `token ${this.config.token}`,
+                'Authorization': `token ${token}`,
                 'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'User-Agent': 'EventCall-App'
             }
         };
 
@@ -63,176 +80,648 @@ class GitHubAPI {
             options.body = JSON.stringify(data);
         }
 
-        try {
-            const response = await fetch(url, options);
-            
-            if (!response.ok) {
-                if (response.status === 404) {
-                    return null; // File not found is OK
-                }
-                
-                let errorMessage = `GitHub API error: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || errorMessage;
-                } catch (e) {
-                    // Can't parse error response, use status
-                }
-                
-                throw new Error(errorMessage);
-            }
+        const response = await fetch(url, options);
+        return await this.handleResponse(response);
+    }
 
-            return await response.json();
-        } catch (error) {
-            console.error('GitHub API request failed:', error);
-            throw error;
+    /**
+     * Handle response and check for errors
+     */
+    async handleResponse(response) {
+        if (!response.ok) {
+            if (response.status === 404) {
+                return null;
+            }
+            
+            let errorMessage = `GitHub API error: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorMessage;
+                
+                if (response.status === 401) {
+                    errorMessage = 'GitHub token is invalid or expired. Please check your token.';
+                } else if (response.status === 403) {
+                    errorMessage = 'GitHub API rate limit exceeded or insufficient permissions';
+                }
+            } catch (e) {
+                // Can't parse error response
+            }
+            
+            throw new Error(errorMessage);
         }
+
+        return await response.json();
     }
 
     /**
      * Test GitHub connection
-     * @returns {Promise<boolean>} Connection status
      */
     async testConnection() {
+        const token = this.getToken();
+        if (!token) {
+            console.warn('⚠️ No GitHub token available for connection test');
+            return false;
+        }
+
         try {
             const response = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}`, {
                 headers: {
-                    'Authorization': `token ${this.config.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
                 }
             });
-            return response.ok;
+            
+            if (response.ok) {
+                const repoData = await response.json();
+                console.log('✅ GitHub connection successful:', repoData.full_name);
+                this.updateTokenStatus(true);
+                return true;
+            } else {
+                console.error('❌ GitHub connection failed:', response.status, response.statusText);
+                this.updateTokenStatus(false);
+                return false;
+            }
         } catch (error) {
-            console.error('GitHub connection test failed:', error);
+            console.error('❌ GitHub connection test failed:', error);
+            this.updateTokenStatus(false);
             return false;
         }
     }
 
     /**
-     * Load all events from GitHub
-     * @returns {Promise<Object>} Events object
+     * Update token status in UI
+     */
+    updateTokenStatus(connected) {
+        const statusIcon = document.getElementById('token-status-icon');
+        const statusText = document.getElementById('token-status-text');
+        
+        if (statusIcon && statusText) {
+            if (connected) {
+                statusIcon.textContent = '✅';
+                statusText.textContent = 'GitHub Connected';
+                statusText.style.color = '#10b981';
+            } else {
+                statusIcon.textContent = '❌';
+                statusText.textContent = 'GitHub Disconnected';
+                statusText.style.color = '#ef4444';
+            }
+        }
+    }
+
+    /**
+     * Load all events from GitHub for current user
      */
     async loadEvents() {
+        const token = this.getToken();
+        if (!token) {
+            console.warn('⚠️ No GitHub token - returning empty events');
+            return {};
+        }
+
         try {
-            const response = await this.request(`${GITHUB_PATHS.events}`);
+            console.log('Loading events from GitHub...');
             
-            if (!response || !Array.isArray(response)) {
-                console.log('No events directory found or empty');
-                return {};
+            const treeResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/git/trees/main?recursive=1`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
+                }
+            });
+
+            if (!treeResponse.ok) {
+                if (treeResponse.status === 404) {
+                    console.log('Repository or main branch not found, treating as empty');
+                    return {};
+                }
+                throw new Error(`Failed to load repository tree: ${treeResponse.status}`);
             }
 
+            const treeData = await treeResponse.json();
             const events = {};
-            
-            // Load each event file
-            for (const file of response) {
-                if (file.name.endsWith('.json')) {
-                    try {
-                        const eventData = await this.request(`${GITHUB_PATHS.events}/${file.name}`);
-                        if (eventData && eventData.content) {
-                            const content = JSON.parse(this.safeBase64Decode(eventData.content));
+
+            const eventFiles = treeData.tree.filter(item => 
+                item.path.startsWith('events/') && 
+                item.path.endsWith('.json') && 
+                item.type === 'blob'
+            );
+
+            for (const file of eventFiles) {
+                try {
+                    const fileResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/git/blobs/${file.sha}`, {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    });
+
+                    if (fileResponse.ok) {
+                        const fileData = await fileResponse.json();
+                        const content = JSON.parse(this.safeBase64Decode(fileData.content));
+                        
+                        if (window.userAuth && window.userAuth.isLoggedIn()) {
+                            const currentUser = window.userAuth.getCurrentUser();
+                            if (content.createdBy === currentUser) {
+                                events[content.id] = content;
+                                console.log('✅ Loaded event for user:', content.title);
+                            }
+                        } else {
                             events[content.id] = content;
                         }
-                    } catch (error) {
-                        console.error(`Failed to load event ${file.name}:`, error);
                     }
+                } catch (error) {
+                    console.error(`Failed to load event file ${file.path}:`, error);
                 }
             }
 
+            console.log(`✅ Loaded ${Object.keys(events).length} events from GitHub for current user`);
             return events;
+
         } catch (error) {
-            console.error('Failed to load events:', error);
+            console.error('Failed to load events from GitHub:', error);
             return {};
         }
     }
 
     /**
      * Load all RSVP responses from GitHub
-     * @returns {Promise<Object>} Responses object
      */
     async loadResponses() {
+        const token = this.getToken();
+        if (!token) {
+            console.warn('⚠️ No GitHub token - returning empty responses');
+            return {};
+        }
+
         try {
-            const response = await this.request(`${GITHUB_PATHS.rsvps}`);
+            console.log('Loading responses from GitHub...');
             
-            if (!response || !Array.isArray(response)) {
-                console.log('No responses directory found or empty');
+            const treeResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/git/trees/main?recursive=1`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
+                }
+            });
+
+            if (!treeResponse.ok) {
+                console.log('No responses found or repository not accessible');
                 return {};
             }
 
+            const treeData = await treeResponse.json();
             const responses = {};
-            
-            // Load each response file
-            for (const file of response) {
-                if (file.name.endsWith('.json')) {
-                    try {
-                        const responseData = await this.request(`${GITHUB_PATHS.rsvps}/${file.name}`);
-                        if (responseData && responseData.content) {
-                            const content = JSON.parse(this.safeBase64Decode(responseData.content));
-                            const eventId = file.name.replace('.json', '');
-                            responses[eventId] = content;
+
+            const responseFiles = treeData.tree.filter(item => 
+                item.path.startsWith('rsvps/') && 
+                item.path.endsWith('.json') && 
+                item.type === 'blob'
+            );
+
+            for (const file of responseFiles) {
+                try {
+                    const fileResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/git/blobs/${file.sha}`, {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
                         }
-                    } catch (error) {
-                        console.error(`Failed to load responses ${file.name}:`, error);
+                    });
+
+                    if (fileResponse.ok) {
+                        const fileData = await fileResponse.json();
+                        const content = JSON.parse(this.safeBase64Decode(fileData.content));
+                        const eventId = file.path.replace('rsvps/', '').replace('.json', '');
+                        
+                        if (window.events && window.events[eventId]) {
+                            responses[eventId] = content;
+                            console.log('✅ Loaded responses for event:', eventId);
+                        }
                     }
+                } catch (error) {
+                    console.error(`Failed to load response file ${file.path}:`, error);
                 }
             }
 
+            console.log(`✅ Loaded responses for ${Object.keys(responses).length} events from GitHub`);
             return responses;
+
         } catch (error) {
-            console.error('Failed to load responses:', error);
+            console.error('Failed to load responses from GitHub:', error);
             return {};
         }
     }
 
     /**
-     * Save event to GitHub
-     * @param {Object} eventData - Event data
-     * @returns {Promise<void>}
+     * Load RSVP issues from GitHub
      */
-    async saveEvent(eventData) {
-        try {
-            // Clean the event data to prevent encoding issues
-            const cleanEventData = this.cleanEventData(eventData);
-            
-            const path = `${GITHUB_PATHS.events}/${cleanEventData.id}.json`;
-            const content = this.safeBase64Encode(JSON.stringify(cleanEventData, null, 2));
-            
-            // Check if file exists
-            const existing = await this.request(path);
-            
-            const data = {
-                message: `${existing ? 'Update' : 'Create'} event: ${cleanEventData.title}`,
-                content: content,
-                branch: this.config.branch
-            };
+    async loadRSVPIssues() {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token required to load RSVP issues');
+        }
 
-            if (existing) {
-                data.sha = existing.sha;
+        try {
+            console.log('🔍 Loading RSVP issues from GitHub...');
+            
+            // Get issues with RSVP label
+            const response = await fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to load RSVP issues: ${response.status}`);
             }
 
-            await this.request(path, 'PUT', data);
-            console.log('Event saved successfully:', cleanEventData.id);
+            const issues = await response.json();
+            console.log(`✅ Found ${issues.length} RSVP issues`);
             
+            return issues;
+
         } catch (error) {
-            console.error('Failed to save event:', error);
+            console.error('Failed to load RSVP issues:', error);
             throw error;
         }
     }
 
     /**
+     * Process RSVP issues and convert to JSON files
+     */
+    async processRSVPIssues() {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token required to process RSVPs');
+        }
+
+        try {
+            showToast('🔄 Processing RSVP submissions...', 'success');
+            
+            const issues = await this.loadRSVPIssues();
+            const processedCount = { total: 0, success: 0, errors: 0 };
+            const eventGroups = {};
+
+            // Group issues by event ID
+            for (const issue of issues) {
+                try {
+                    const rsvpData = this.extractRSVPFromIssue(issue);
+                    if (rsvpData && rsvpData.eventId) {
+                        if (!eventGroups[rsvpData.eventId]) {
+                            eventGroups[rsvpData.eventId] = [];
+                        }
+                        eventGroups[rsvpData.eventId].push({
+                            issue: issue,
+                            rsvpData: rsvpData
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Failed to process issue #${issue.number}:`, error);
+                    processedCount.errors++;
+                }
+            }
+
+            // Process each event's RSVPs
+            for (const [eventId, eventRSVPs] of Object.entries(eventGroups)) {
+                try {
+                    await this.saveEventRSVPs(eventId, eventRSVPs);
+                    
+                    // Close processed issues
+                    for (const { issue } of eventRSVPs) {
+                        await this.closeProcessedIssue(issue.number);
+                        processedCount.success++;
+                    }
+                    
+                } catch (error) {
+                    console.error(`Failed to process RSVPs for event ${eventId}:`, error);
+                    processedCount.errors += eventRSVPs.length;
+                }
+            }
+
+            const message = `✅ Processed ${processedCount.success} RSVPs successfully${processedCount.errors > 0 ? ` (${processedCount.errors} errors)` : ''}`;
+            showToast(message, processedCount.errors > 0 ? 'error' : 'success');
+            
+            return {
+                totalIssues: issues.length,
+                processed: processedCount.success,
+                errors: processedCount.errors,
+                eventGroups: Object.keys(eventGroups)
+            };
+
+        } catch (error) {
+            console.error('Failed to process RSVP issues:', error);
+            showToast('❌ Failed to process RSVPs: ' + error.message, 'error');
+            throw error;
+        }
+    }
+
+    /**
+     * Extract RSVP data from GitHub issue
+     */
+    extractRSVPFromIssue(issue) {
+        try {
+            // Look for JSON data in issue body
+            const jsonMatch = issue.body.match(/```json\s*([\s\S]*?)\s*```/);
+            if (!jsonMatch) {
+                console.warn(`No JSON data found in issue #${issue.number}`);
+                return null;
+            }
+
+            const rsvpData = JSON.parse(jsonMatch[1]);
+            
+            // Add GitHub issue metadata
+            rsvpData.issueNumber = issue.number;
+            rsvpData.issueUrl = issue.html_url;
+            rsvpData.processedAt = Date.now();
+            
+            return rsvpData;
+
+        } catch (error) {
+            console.error(`Failed to extract RSVP data from issue #${issue.number}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Save event RSVPs to JSON file
+     */
+    async saveEventRSVPs(eventId, eventRSVPs) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token required');
+        }
+
+        try {
+            const path = `rsvps/${eventId}.json`;
+            
+            // Load existing responses
+            let existingResponses = [];
+            let existingSha = null;
+            
+            try {
+                const existingResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                });
+
+                if (existingResponse.ok) {
+                    const existingData = await existingResponse.json();
+                    existingSha = existingData.sha;
+                    existingResponses = JSON.parse(this.safeBase64Decode(existingData.content));
+                }
+            } catch (error) {
+                // File doesn't exist, start with empty array
+            }
+
+            // Merge new RSVPs with existing ones
+            for (const { rsvpData } of eventRSVPs) {
+                // Check if RSVP already exists (by email)
+                const existingIndex = existingResponses.findIndex(r => 
+                    r.email && r.email.toLowerCase() === rsvpData.email.toLowerCase()
+                );
+                
+                if (existingIndex !== -1) {
+                    // Update existing RSVP
+                    existingResponses[existingIndex] = rsvpData;
+                    console.log(`Updated existing RSVP for ${rsvpData.email}`);
+                } else {
+                    // Add new RSVP
+                    existingResponses.push(rsvpData);
+                    console.log(`Added new RSVP for ${rsvpData.email}`);
+                }
+            }
+            
+            const content = this.safeBase64Encode(JSON.stringify(existingResponses, null, 2));
+            
+            const createData = {
+                message: `Process RSVPs for event ${eventId} (${eventRSVPs.length} submissions)`,
+                content: content,
+                branch: this.config.branch
+            };
+
+            if (existingSha) {
+                createData.sha = existingSha;
+            }
+
+            const createResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'EventCall-App'
+                },
+                body: JSON.stringify(createData)
+            });
+
+            if (!createResponse.ok) {
+                const errorText = await createResponse.text();
+                throw new Error(`Failed to save RSVPs: ${createResponse.status} - ${errorText}`);
+            }
+
+            console.log(`✅ Saved ${eventRSVPs.length} RSVPs for event ${eventId}`);
+
+        } catch (error) {
+            console.error(`Failed to save RSVPs for event ${eventId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Close processed RSVP issue
+     */
+    async closeProcessedIssue(issueNumber) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token required');
+        }
+
+        try {
+            const response = await fetch(`${this.issuesURL}/${issueNumber}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'EventCall-App'
+                },
+                body: JSON.stringify({
+                    state: 'closed',
+                    labels: ['rsvp', 'processed']
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to close issue #${issueNumber}: ${response.status}`);
+            }
+
+            console.log(`✅ Closed processed issue #${issueNumber}`);
+
+        } catch (error) {
+            console.error(`Failed to close issue #${issueNumber}:`, error);
+            // Don't throw - closing issues is not critical
+        }
+    }
+
+    /**
+     * Save event to GitHub
+     */
+    async saveEvent(eventData) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available. Cannot save to cloud.');
+        }
+
+        try {
+            const cleanEventData = this.cleanEventData(eventData);
+            const path = `events/${cleanEventData.id}.json`;
+            const content = this.safeBase64Encode(JSON.stringify(cleanEventData, null, 2));
+            
+            // Check if file exists
+            let existingSha = null;
+            try {
+                const existingResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                });
+
+                if (existingResponse.ok) {
+                    const existingData = await existingResponse.json();
+                    existingSha = existingData.sha;
+                }
+            } catch (error) {
+                // File doesn't exist, which is fine
+            }
+
+            // Create or update the file
+            const createData = {
+                message: `${existingSha ? 'Update' : 'Create'} event: ${cleanEventData.title}`,
+                content: content,
+                branch: this.config.branch
+            };
+
+            if (existingSha) {
+                createData.sha = existingSha;
+            }
+
+            const createResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'EventCall-App'
+                },
+                body: JSON.stringify(createData)
+            });
+
+            if (!createResponse.ok) {
+                const errorText = await createResponse.text();
+                throw new Error(`Failed to save event: ${createResponse.status} - ${errorText}`);
+            }
+
+            console.log('✅ Event saved successfully:', cleanEventData.id);
+            return await createResponse.json();
+
+        } catch (error) {
+            console.error('Failed to save event to GitHub:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete event from GitHub
+     */
+    async deleteEvent(eventId, eventTitle) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available. Cannot delete from cloud.');
+        }
+
+        try {
+            // Delete event file
+            const eventPath = `events/${eventId}.json`;
+            await this.deleteFile(eventPath, `Delete event: ${this.cleanText(eventTitle)}`);
+
+            // Delete associated responses file
+            const responsePath = `rsvps/${eventId}.json`;
+            await this.deleteFile(responsePath, `Delete responses for event: ${this.cleanText(eventTitle)}`);
+
+            console.log('✅ Event deleted successfully:', eventId);
+            
+        } catch (error) {
+            console.error('Failed to delete event:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete a file from GitHub
+     */
+    async deleteFile(path, message) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available');
+        }
+
+        try {
+            // Get file info first
+            const fileResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
+                }
+            });
+
+            if (fileResponse.ok) {
+                const fileData = await fileResponse.json();
+                
+                const deleteResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sha: fileData.sha,
+                        branch: this.config.branch
+                    })
+                });
+
+                if (!deleteResponse.ok) {
+                    throw new Error(`Failed to delete ${path}: ${deleteResponse.status}`);
+                }
+            }
+        } catch (error) {
+            console.log(`File ${path} may not exist, skipping deletion`);
+        }
+    }
+
+    /**
      * Clean event data to prevent encoding issues
-     * @param {Object} eventData - Raw event data
-     * @returns {Object} Cleaned event data
      */
     cleanEventData(eventData) {
         const cleaned = { ...eventData };
         
-        // Clean text fields
         if (cleaned.title) cleaned.title = this.cleanText(cleaned.title);
         if (cleaned.description) cleaned.description = this.cleanText(cleaned.description);
         if (cleaned.location) cleaned.location = this.cleanText(cleaned.location);
         if (cleaned.createdByName) cleaned.createdByName = this.cleanText(cleaned.createdByName);
         
-        // Clean custom questions
         if (cleaned.customQuestions && Array.isArray(cleaned.customQuestions)) {
             cleaned.customQuestions = cleaned.customQuestions.map(q => ({
                 ...q,
@@ -245,204 +734,28 @@ class GitHubAPI {
 
     /**
      * Clean text to prevent encoding issues
-     * @param {string} text - Text to clean
-     * @returns {string} Cleaned text
      */
     cleanText(text) {
         if (typeof text !== 'string') return text;
         
-        // Remove or replace problematic characters
         return text
-            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
-            .replace(/[\u2000-\u206F]/g, ' ') // Replace various spaces with regular space
-            .replace(/[\u2070-\u209F]/g, '') // Remove superscripts/subscripts
-            .replace(/[\uFFF0-\uFFFF]/g, '') // Remove specials
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+            .replace(/[\u2000-\u206F]/g, ' ')
+            .replace(/[\u2070-\u209F]/g, '')
+            .replace(/[\uFFF0-\uFFFF]/g, '')
             .trim();
     }
 
     /**
-     * Save RSVP response to GitHub
-     * @param {string} eventId - Event ID
-     * @param {Object} rsvpData - RSVP data
-     * @returns {Promise<void>}
+     * Get pending RSVP count
      */
-    async saveRSVP(eventId, rsvpData) {
+    async getPendingRSVPCount() {
         try {
-            // Clean RSVP data
-            const cleanRsvpData = this.cleanRsvpData(rsvpData);
-            
-            const path = `${GITHUB_PATHS.rsvps}/${eventId}.json`;
-            
-            // Load existing responses
-            const existing = await this.request(path);
-            let responses = [];
-            
-            if (existing && existing.content) {
-                responses = JSON.parse(this.safeBase64Decode(existing.content));
-            }
-            
-            // Check for duplicate email
-            const existingIndex = responses.findIndex(r => r.email.toLowerCase() === cleanRsvpData.email.toLowerCase());
-            
-            if (existingIndex !== -1) {
-                // Update existing response
-                responses[existingIndex] = cleanRsvpData;
-            } else {
-                // Add new response
-                responses.push(cleanRsvpData);
-            }
-            
-            const content = this.safeBase64Encode(JSON.stringify(responses, null, 2));
-            
-            const data = {
-                message: `RSVP response: ${cleanRsvpData.name} for event ${eventId}`,
-                content: content,
-                branch: this.config.branch
-            };
-
-            if (existing) {
-                data.sha = existing.sha;
-            }
-
-            await this.request(path, 'PUT', data);
-            console.log('RSVP saved successfully:', cleanRsvpData.id);
-            
+            const issues = await this.loadRSVPIssues();
+            return issues.length;
         } catch (error) {
-            console.error('Failed to save RSVP:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Clean RSVP data to prevent encoding issues
-     * @param {Object} rsvpData - Raw RSVP data
-     * @returns {Object} Cleaned RSVP data
-     */
-    cleanRsvpData(rsvpData) {
-        const cleaned = { ...rsvpData };
-        
-        // Clean text fields
-        if (cleaned.name) cleaned.name = this.cleanText(cleaned.name);
-        if (cleaned.email) cleaned.email = this.cleanText(cleaned.email);
-        if (cleaned.phone) cleaned.phone = this.cleanText(cleaned.phone);
-        if (cleaned.reason) cleaned.reason = this.cleanText(cleaned.reason);
-        
-        // Clean custom answers
-        if (cleaned.customAnswers && typeof cleaned.customAnswers === 'object') {
-            const cleanAnswers = {};
-            for (const [key, value] of Object.entries(cleaned.customAnswers)) {
-                cleanAnswers[key] = this.cleanText(value);
-            }
-            cleaned.customAnswers = cleanAnswers;
-        }
-        
-        return cleaned;
-    }
-
-    /**
-     * Delete event from GitHub
-     * @param {string} eventId - Event ID
-     * @param {string} eventTitle - Event title for commit message
-     * @returns {Promise<void>}
-     */
-    async deleteEvent(eventId, eventTitle) {
-        try {
-            // Delete event file
-            const eventPath = `${GITHUB_PATHS.events}/${eventId}.json`;
-            const eventFile = await this.request(eventPath);
-            
-            if (eventFile) {
-                await this.request(eventPath, 'DELETE', {
-                    message: `Delete event: ${this.cleanText(eventTitle)}`,
-                    sha: eventFile.sha,
-                    branch: this.config.branch
-                });
-            }
-
-            // Delete associated responses file
-            const responsePath = `${GITHUB_PATHS.rsvps}/${eventId}.json`;
-            const responseFile = await this.request(responsePath);
-            
-            if (responseFile) {
-                await this.request(responsePath, 'DELETE', {
-                    message: `Delete responses for event: ${this.cleanText(eventTitle)}`,
-                    sha: responseFile.sha,
-                    branch: this.config.branch
-                });
-            }
-
-            console.log('Event deleted successfully:', eventId);
-            
-        } catch (error) {
-            console.error('Failed to delete event:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Create initial directory structure if needed
-     * @returns {Promise<void>}
-     */
-    async initializeRepository() {
-        try {
-            // Create events directory
-            await this.createDirectoryIfNotExists(GITHUB_PATHS.events);
-            
-            // Create rsvps directory
-            await this.createDirectoryIfNotExists(GITHUB_PATHS.rsvps);
-            
-            console.log('Repository initialized successfully');
-            
-        } catch (error) {
-            console.error('Failed to initialize repository:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Create directory if it doesn't exist
-     * @param {string} path - Directory path
-     * @returns {Promise<void>}
-     */
-    async createDirectoryIfNotExists(path) {
-        try {
-            const existing = await this.request(path);
-            
-            if (!existing) {
-                // Create directory by creating a placeholder file
-                await this.request(`${path}/.gitkeep`, 'PUT', {
-                    message: `Initialize ${path} directory`,
-                    content: this.safeBase64Encode(''),
-                    branch: this.config.branch
-                });
-            }
-        } catch (error) {
-            console.error(`Failed to create directory ${path}:`, error);
-            throw error;
-        }
-    }
-
-    /**
-     * Get repository information
-     * @returns {Promise<Object>} Repository info
-     */
-    async getRepositoryInfo() {
-        try {
-            const response = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}`, {
-                headers: {
-                    'Authorization': `token ${this.config.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Repository not found: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Failed to get repository info:', error);
-            throw error;
+            console.error('Failed to get pending RSVP count:', error);
+            return 0;
         }
     }
 }

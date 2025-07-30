@@ -1,6 +1,6 @@
 /**
- * EventCall Event Management
- * Handles event creation, editing, and management functionality
+ * EventCall Event Management - Enhanced with Sync Integration
+ * Handles event creation, editing, management, and RSVP sync functionality
  */
 
 class EventManager {
@@ -10,15 +10,15 @@ class EventManager {
     }
 
     /**
-     * Show event management page
+     * Show event management page with sync functionality
      * @param {string} eventId - Event ID
      */
-    async     showEventManagement(eventId) {
+    async showEventManagement(eventId) {
         const event = window.events ? window.events[eventId] : null;
         const eventResponses = window.responses ? window.responses[eventId] || [] : [];
         
         if (!event) {
-            showToast(MESSAGES.error.eventNotFound, 'error');
+            showToast('Event not found', 'error');
             return;
         }
 
@@ -32,7 +32,15 @@ class EventManager {
             responseTableHTML = `
                 <div style="text-align: center; padding: 2rem; color: var(--text-color);">
                     <h3 style="color: var(--semper-navy);">📭 No RSVPs Yet</h3>
-                    <p>${MESSAGES.info.noResponses}</p>
+                    <p>No RSVPs yet. Share your invite link to start collecting responses!</p>
+                    <div style="margin-top: 1rem;">
+                        <button class="btn btn-success" onclick="syncWithGitHub()" style="margin-right: 0.5rem;">
+                            🔄 Check for New RSVPs
+                        </button>
+                        <button class="btn" onclick="copyInviteLink('${eventId}')">
+                            🔗 Share Invite Link
+                        </button>
+                    </div>
                 </div>
             `;
         }
@@ -43,7 +51,7 @@ class EventManager {
     }
 
     /**
-     * Generate event details HTML
+     * Generate event details HTML with enhanced sync controls
      * @param {Object} event - Event data
      * @param {string} eventId - Event ID
      * @param {string} responseTableHTML - Response table HTML
@@ -53,6 +61,7 @@ class EventManager {
         const inviteURL = generateInviteURL(event);
         const timeUntil = getTimeUntilEvent(event.date, event.time);
         const isPast = isEventInPast(event.date, event.time);
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
 
         return `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
@@ -73,6 +82,27 @@ class EventManager {
                 ` : ''}
             </div>
             
+            <!-- Enhanced Sync Status Section -->
+            <div id="sync-status-section" style="margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border-left: 4px solid var(--semper-gold);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <strong style="color: var(--semper-navy);">📊 RSVP Status:</strong>
+                        <span style="margin-left: 0.5rem;">${eventResponses.length} responses recorded</span>
+                        <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
+                            Last synced: <span id="last-sync-time">Just now</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button class="btn btn-success" onclick="eventManager.syncEventRSVPs('${eventId}')" id="sync-event-btn">
+                            🔄 Sync RSVPs
+                        </button>
+                        <span id="sync-indicator" style="display: none; color: var(--success-color); font-weight: 600;">
+                            ✅ Synced
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
             <div style="margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border-left: 4px solid var(--semper-gold);">
                 <strong style="color: var(--semper-navy);">🔗 Invite Link:</strong><br>
                 <input type="text" value="${inviteURL}" 
@@ -87,18 +117,82 @@ class EventManager {
                 <button class="btn" onclick="eventManager.copyInviteLink('${eventId}')">🔗 Copy Invite Link</button>
                 <button class="btn" onclick="eventManager.editEvent('${eventId}')">✏️ Edit Event</button>
                 <button class="btn btn-success" onclick="exportEventData('${eventId}')">📥 Export Data</button>
-                <button class="btn btn-success" onclick="syncWithGitHub()">🔄 Sync Data</button>
+                <button class="btn btn-success" onclick="syncWithGitHub()">🔄 Sync All RSVPs</button>
                 <button class="btn" onclick="showPage('dashboard')">🏠 Back to Dashboard</button>
                 ${isPast ? '' : `<button class="btn" onclick="eventManager.duplicateEvent('${eventId}')">📋 Duplicate Event</button>`}
             </div>
             
-            <h3 style="color: var(--semper-navy); margin-bottom: 1rem;">📊 RSVP Responses (${responses[eventId] ? responses[eventId].length : 0})</h3>
+            <h3 style="color: var(--semper-navy); margin-bottom: 1rem;">📊 RSVP Responses (${eventResponses.length})</h3>
             ${responseTableHTML}
         `;
     }
 
     /**
-     * Generate response table HTML
+     * Sync RSVPs for a specific event
+     * @param {string} eventId - Event ID
+     */
+    async syncEventRSVPs(eventId) {
+        if (!userAuth.isLoggedIn() || !userAuth.hasGitHubToken()) {
+            showToast('🔐 Please login with GitHub token to sync RSVPs', 'error');
+            return;
+        }
+
+        const syncBtn = document.getElementById('sync-event-btn');
+        const syncIndicator = document.getElementById('sync-indicator');
+        const originalText = syncBtn ? syncBtn.textContent : '';
+
+        try {
+            if (syncBtn) {
+                syncBtn.innerHTML = '<div class="spinner"></div> Syncing...';
+                syncBtn.disabled = true;
+            }
+
+            showToast('🔄 Syncing RSVPs for this event...', 'success');
+
+            // Process RSVP issues for all events (GitHub doesn't allow filtering by event easily)
+            const result = await window.githubAPI.processRSVPIssues();
+            
+            if (result.processed > 0) {
+                // Reload responses for this event
+                const responses = await window.githubAPI.loadResponses();
+                window.responses = responses || {};
+                
+                // Refresh the management view
+                await this.showEventManagement(eventId);
+                
+                showToast(`✅ Synced RSVPs successfully! Found ${result.processed} new responses.`, 'success');
+                
+                // Show sync indicator
+                if (syncIndicator) {
+                    syncIndicator.style.display = 'inline';
+                    setTimeout(() => {
+                        syncIndicator.style.display = 'none';
+                    }, 3000);
+                }
+                
+                // Update last sync time
+                const lastSyncTime = document.getElementById('last-sync-time');
+                if (lastSyncTime) {
+                    lastSyncTime.textContent = new Date().toLocaleTimeString();
+                }
+                
+            } else {
+                showToast('ℹ️ No new RSVPs found for this event', 'success');
+            }
+
+        } catch (error) {
+            console.error('Event RSVP sync failed:', error);
+            showToast('❌ Sync failed: ' + error.message, 'error');
+        } finally {
+            if (syncBtn) {
+                syncBtn.textContent = originalText;
+                syncBtn.disabled = false;
+            }
+        }
+    }
+
+    /**
+     * Generate response table HTML with enhanced features
      * @param {Object} event - Event data
      * @param {Array} eventResponses - RSVP responses
      * @param {Object} stats - Event statistics
@@ -142,6 +236,9 @@ class EventManager {
                     </select>
                     
                     <button class="clear-search" onclick="eventManager.clearSearch('${eventId}')">Clear</button>
+                    <button class="btn btn-success" onclick="eventManager.syncEventRSVPs('${eventId}')" style="margin-left: 0.5rem;">
+                        🔄 Refresh
+                    </button>
                 </div>
                 
                 <div class="search-stats" id="search-stats-${eventId}">
@@ -161,6 +258,7 @@ class EventManager {
                             ${event.allowGuests ? '<th>Guests</th>' : ''}
                             ${event.customQuestions ? event.customQuestions.map(q => `<th>${q.question}</th>`).join('') : ''}
                             <th>Submitted</th>
+                            <th>Source</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -171,6 +269,8 @@ class EventManager {
             const displayName = response.name || 'Unknown';
             const email = response.email || 'N/A';
             const phone = response.phone || 'N/A';
+            const source = response.issueNumber ? `GitHub Issue #${response.issueNumber}` : 'Direct Entry';
+            const sourceIcon = response.issueNumber ? '🔗' : '📝';
 
             html += `
                 <tr class="response-row" data-response-index="${index}" 
@@ -192,10 +292,18 @@ class EventManager {
                         `<td style="max-width: 150px; word-wrap: break-word;">${response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '-'}</td>`
                     ).join('') : ''}
                     <td style="font-size: 0.875rem;">${new Date(response.timestamp).toLocaleString()}</td>
+                    <td style="font-size: 0.875rem;" title="${source}">
+                        ${sourceIcon} ${response.issueNumber ? `#${response.issueNumber}` : 'Direct'}
+                    </td>
                     <td>
                         <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" 
                                 onclick="eventManager.deleteResponse('${eventId}', ${index})" 
                                 title="Delete this RSVP">🗑️</button>
+                        ${response.issueUrl ? `
+                            <a href="${response.issueUrl}" target="_blank" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-left: 0.25rem;" title="View GitHub Issue">
+                                🔗
+                            </a>
+                        ` : ''}
                     </td>
                 </tr>
             `;
@@ -277,7 +385,7 @@ class EventManager {
         const statsElement = document.getElementById(`search-stats-${eventId}`);
         statsElement.innerHTML = `📊 Showing ${rows.length} of ${rows.length} responses`;
         
-        showToast(MESSAGES.success.searchCleared, 'success');
+        showToast('🧹 Search cleared', 'success');
     }
 
     /**
@@ -285,9 +393,9 @@ class EventManager {
      * @param {string} eventId - Event ID
      */
     async copyInviteLink(eventId) {
-        const event = events[eventId];
+        const event = window.events ? window.events[eventId] : null;
         if (!event) {
-            showToast(MESSAGES.error.eventNotFound, 'error');
+            showToast('Event not found', 'error');
             return;
         }
         
@@ -296,7 +404,7 @@ class EventManager {
             const success = await copyToClipboard(link);
             
             if (success) {
-                showToast(MESSAGES.success.linkCopied, 'success');
+                showToast('🔗 Invite link copied to clipboard!', 'success');
                 
                 // Briefly highlight the input field
                 const input = document.getElementById('invite-link-input');
@@ -315,7 +423,7 @@ class EventManager {
             }
         } catch (error) {
             console.error('Failed to copy link:', error);
-            showToast(MESSAGES.error.copyFailed, 'error');
+            showToast('Failed to copy link', 'error');
         }
     }
 
@@ -326,7 +434,7 @@ class EventManager {
     editEvent(eventId) {
         const event = window.events ? window.events[eventId] : null;
         if (!event) {
-            showToast(MESSAGES.error.eventNotFound, 'error');
+            showToast('Event not found', 'error');
             return;
         }
 
@@ -440,7 +548,7 @@ class EventManager {
             eventData.lastModified = Date.now();
 
             // Save to GitHub
-            await githubAPI.saveEvent(eventData);
+            await window.githubAPI.saveEvent(eventData);
 
             // Update local state
             if (window.events) {
@@ -468,7 +576,7 @@ class EventManager {
     duplicateEvent(eventId) {
         const event = window.events ? window.events[eventId] : null;
         if (!event) {
-            showToast(MESSAGES.error.eventNotFound, 'error');
+            showToast('Event not found', 'error');
             return;
         }
 
@@ -532,22 +640,48 @@ class EventManager {
                 window.responses[eventId] = eventResponses;
             }
 
-            // Update GitHub
-            const path = `${GITHUB_PATHS.rsvps}/${eventId}.json`;
-            const content = btoa(JSON.stringify(eventResponses, null, 2));
-            
-            const existing = await githubAPI.request(path);
-            const data = {
-                message: `Delete RSVP response: ${deletedResponse.name}`,
-                content: content,
-                branch: GITHUB_CONFIG.branch
-            };
+            // Update GitHub if connected
+            if (userAuth.hasGitHubToken() && window.githubAPI) {
+                try {
+                    const path = `rsvps/${eventId}.json`;
+                    const content = window.githubAPI.safeBase64Encode(JSON.stringify(eventResponses, null, 2));
+                    
+                    // Get existing file info
+                    const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall/contents/${path}`, {
+                        headers: {
+                            'Authorization': `token ${userAuth.getGitHubToken()}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    });
 
-            if (existing) {
-                data.sha = existing.sha;
+                    let createData = {
+                        message: `Delete RSVP response: ${deletedResponse.name}`,
+                        content: content,
+                        branch: 'main'
+                    };
+
+                    if (existingResponse.ok) {
+                        const existingData = await existingResponse.json();
+                        createData.sha = existingData.sha;
+                    }
+
+                    await fetch(`https://api.github.com/repos/SemperAdmin/EventCall/contents/${path}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${userAuth.getGitHubToken()}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'EventCall-App'
+                        },
+                        body: JSON.stringify(createData)
+                    });
+
+                } catch (error) {
+                    console.error('Failed to update GitHub:', error);
+                    // Continue anyway - local deletion succeeded
+                }
             }
-
-            await githubAPI.request(path, 'PUT', data);
 
             // Refresh the event management view
             this.showEventManagement(eventId);
@@ -588,7 +722,7 @@ class EventManager {
             errors: []
         };
 
-        if (!isValidEventTitle(eventData.title)) {
+        if (!eventData.title || eventData.title.length < 3 || eventData.title.length > 100) {
             result.valid = false;
             result.errors.push('Please enter a valid event title (3-100 characters)');
         }
@@ -617,3 +751,5 @@ const eventManager = new EventManager();
 
 // Make functions available globally for HTML onclick handlers
 window.eventManager = eventManager;
+
+    
