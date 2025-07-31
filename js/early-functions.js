@@ -399,8 +399,7 @@ function checkURLHash() {
     }
 }
 
- * Navigate to dashboard - Available immediately for HTML onclick
- */
+ */ Navigate to dashboard - Available immediately for HTML onclick
 function goToDashboard() {
     showPage('dashboard');
 }
