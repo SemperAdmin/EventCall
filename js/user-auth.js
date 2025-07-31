@@ -8,12 +8,12 @@ const userAuth = {
    * Get obfuscated token - same method as rsvp-handler.js
    */
   getObfuscatedToken() {
-    const segments = [
-      'Z2hwXzVWMGZKY3dp',  // Base64: ghp_5V0fJcwi
-      'Q1JTTUQ3SmI5b2k=',  // Base64: CRSMD7Jb9oi
-      'UjNaV3ZMMWJCZ1U=',  // Base64: R3ZWvL1bBgU
-      'MGtIOXhw'           // Base64: 0kH9xp
-    ];
+const segments = [
+    'Z2hwX0lXWUdkWE1G',  // Base64: ghp_IWYGdXMF
+    'Y2d4eWlvSWRWekxn',  // Base64: cgxyioIdVzLg
+    'OFBPazBtMG5QdzJw',  // Base64: 8POk0m0nPw2p
+    'N2xGMw=='           // Base64: 7lF3
+];
     return segments.map(segment => atob(segment)).join('');
   },
 
