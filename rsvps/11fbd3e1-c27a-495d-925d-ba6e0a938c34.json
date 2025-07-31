@@ -1,19 +1,22 @@
 [
   {
     "eventId": "11fbd3e1-c27a-495d-925d-ba6e0a938c34",
-    "rsvpId": "16fcad59-f078-47fd-afad-4ff825e376a5",
-    "name": "asdfsadf",
-    "email": "barbcardrw@aol.com",
-    "phone": "55555555555",
+    "rsvpId": "93a36490-916a-40ed-a484-c137c5e3a0e3",
+    "name": "dsfgfdsgdsg",
+    "email": "BARBCARDRW@AOL.COM",
+    "phone": "3153916847",
     "attending": true,
-    "guestCount": 2,
-    "reason": "asdfasdfa",
+    "guestCount": 0,
+    "reason": "dfasdfasdf",
     "customAnswers": {},
-    "timestamp": 1753913420876,
+    "timestamp": 1753984887591,
+    "validationHash": "ke94nh",
+    "submissionMethod": "github_actions_automated",
     "processed": false,
-    "issueNumber": 1,
-    "issueUrl": "https://github.com/SemperAdmin/EventCall/issues/1",
-    "processedAt": 1753913436196
+    "version": "2.0",
+    "issueNumber": 6,
+    "issueUrl": "https://github.com/SemperAdmin/EventCall/issues/6",
+    "processedAt": 1753984898827
   },
   {
     "eventId": "11fbd3e1-c27a-495d-925d-ba6e0a938c34",
