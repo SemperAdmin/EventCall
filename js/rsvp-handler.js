@@ -15,15 +15,14 @@ class RSVPHandler {
      * Get secure API token using obfuscation method (keeping existing approach)
      */
     getAPIToken() {
-        // Token parts stored separately and encoded
+        // Correct token segments from original working code
         const tokenSegments = [
             'Z2hwXzVWMGZKY3dp',  // Base64: ghp_5V0fJcwi
-            'Q1JTTUQ3SmI5b2k=',  // Base64: CRSMR7Jb9oi
+            'Q1JTTUQ3SmI5b2k=',  // Base64: CRSMD7Jb9oi
             'UjNaV3ZMMWJCZ1U=',  // Base64: R3ZWvL1bBgU
             'MGtIOXhw'           // Base64: 0kH9xp
         ];
         
-        // Reconstruct token from segments
         const decodedParts = tokenSegments.map(segment => atob(segment));
         return decodedParts.join('');
     }
