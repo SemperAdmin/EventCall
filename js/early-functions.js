@@ -399,6 +399,12 @@ function checkURLHash() {
     }
 }
 
+ * Navigate to dashboard - Available immediately for HTML onclick
+ */
+function goToDashboard() {
+    showPage('dashboard');
+}
+
 /**
  * Initialize hash change listener
  */
@@ -428,6 +434,7 @@ window.deleteEvent = deleteEvent;
 window.checkURLHash = checkURLHash;
 window.initializeHashListener = initializeHashListener;
 window.loadManagerData = loadManagerData; // Placeholder
+window.goToDashboard = goToDashboard;
 
 // Initialize hash listener when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
