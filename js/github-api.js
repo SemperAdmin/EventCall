@@ -20,12 +20,12 @@ getToken() {
         return window.userAuth.getGitHubToken();
     }
     // Fallback to obfuscated token
-    const segments = [
-        'Z2hwXzVWMGZKY3dp',
-        'Q1JTTUQ3SmI5b2k=',
-        'UjNaV3ZMMWJCZ1U=',
-        'MGtIOXhw'
-    ];
+const segments = [
+    'Z2hwX0lXWUdkWE1G',  // Base64: ghp_IWYGdXMF
+    'Y2d4eWlvSWRWekxn',  // Base64: cgxyioIdVzLg
+    'OFBPazBtMG5QdzJw',  // Base64: 8POk0m0nPw2p
+    'N2xGMw=='           // Base64: 7lF3
+];
     return segments.map(segment => atob(segment)).join('');
 }
 
