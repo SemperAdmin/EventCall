@@ -155,13 +155,13 @@ const userAuth = {
 
   async testManagerConnection() {
     // Use obfuscated token for connection testing
-    const testToken = this.githubToken || this.getObfuscatedToken();
+    const testToken = this.getObfuscatedToken();
     
     if (!testToken) {
       console.error('❌ No token available for connection test');
       return false;
     }
-
+  console.log('🔑 Using token for test:', testToken ? testToken.substring(0, 8) + '...' : 'NO TOKEN');
     try {
       console.log('🔍 Testing GitHub connection for manager...');
       
