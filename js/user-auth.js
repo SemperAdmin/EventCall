@@ -164,7 +164,10 @@ const userAuth = {
   console.log('🔑 Using token for test:', testToken ? testToken.substring(0, 8) + '...' : 'NO TOKEN');
     try {
       console.log('🔍 Testing GitHub connection for manager...');
-      
+
+      console.log('🔑 Using token for test:', testToken ? testToken.substring(0, 8) + '...' : 'NO TOKEN');
+      console.log('🔑 Full token length:', testToken ? testToken.length : 0);
+  
       // Test GitHub API connection directly
       const response = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall`, {
         headers: {
