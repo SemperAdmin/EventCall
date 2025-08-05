@@ -1,0 +1,21 @@
+{
+  "id": "841faf92-ea44-480b-8f9d-229bfdbd888f",
+  "title": "MCCES BALL",
+  "date": "2025-11-26",
+  "time": "18:00",
+  "location": "pechanga",
+  "description": "test",
+  "coverImage": "",
+  "askReason": true,
+  "allowGuests": true,
+  "customQuestions": [
+    {
+      "id": "custom_0",
+      "question": "What is your preferred food?"
+    }
+  ],
+  "created": 1754436111896,
+  "status": "active",
+  "createdBy": "adrienne.brown@usmc.mil",
+  "createdByName": "adrienne.brown"
+}
