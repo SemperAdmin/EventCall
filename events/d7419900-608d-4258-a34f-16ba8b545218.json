@@ -1,0 +1,37 @@
+{
+  "id": "d7419900-608d-4258-a34f-16ba8b545218",
+  "title": "Relief and Appointment for SgtMaj Blaise",
+  "date": "2025-09-05",
+  "time": "10:00",
+  "location": "Hanger 4 aboard Marine Corps Air Station Miramar",
+  "description": "",
+  "coverImage": "",
+  "askReason": false,
+  "allowGuests": true,
+  "customQuestions": [
+    {
+      "id": "custom_0",
+      "question": "Rank/Suffix (Mr, Mrs,Ms,Miss"
+    },
+    {
+      "id": "custom_1",
+      "question": "Name (Last, First, MI."
+    },
+    {
+      "id": "custom_2",
+      "question": "Will you be attending the ceremony?"
+    },
+    {
+      "id": "custom_3",
+      "question": "How many in your party?"
+    },
+    {
+      "id": "custom_4",
+      "question": "Name(s) of additional guest"
+    }
+  ],
+  "created": 1754604480952,
+  "status": "active",
+  "createdBy": "kahmryn.robinson.mil@usmc.mil",
+  "createdByName": "kahmryn.robinson.mil"
+}
