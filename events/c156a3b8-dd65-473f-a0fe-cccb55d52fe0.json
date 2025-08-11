@@ -1,0 +1,25 @@
+{
+  "id": "c156a3b8-dd65-473f-a0fe-cccb55d52fe0",
+  "title": "PROMOTION TEST",
+  "date": "2025-09-01",
+  "time": "08:00",
+  "location": "Hole 13",
+  "description": "fasdfasdfa",
+  "coverImage": "http://localhost:3000/",
+  "askReason": true,
+  "allowGuests": true,
+  "customQuestions": [
+    {
+      "id": "custom_0",
+      "question": "asdfasdfasdf"
+    },
+    {
+      "id": "custom_1",
+      "question": "asdfasdf"
+    }
+  ],
+  "created": 1754873608500,
+  "status": "active",
+  "createdBy": "barbcardrw@aol.com",
+  "createdByName": "barbcardrw"
+}
