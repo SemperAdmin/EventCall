@@ -1,0 +1,16 @@
+{
+  "id": "6522e880-fcf0-4726-9bf6-dadb91a2baf9",
+  "title": "PROMOTION TEST",
+  "date": "2025-09-01",
+  "time": "11:01",
+  "location": "dfasdfasdf",
+  "description": "fasdfasdf",
+  "coverImage": "http://localhost:3000/",
+  "askReason": true,
+  "allowGuests": true,
+  "customQuestions": [],
+  "created": 1754874137801,
+  "status": "active",
+  "createdBy": "barbcardrw@aol.com",
+  "createdByName": "barbcardrw"
+}
