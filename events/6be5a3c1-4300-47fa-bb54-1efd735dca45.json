@@ -1,0 +1,25 @@
+{
+  "id": "6be5a3c1-4300-47fa-bb54-1efd735dca45",
+  "title": "PROMOTION TEST",
+  "date": "2025-09-01",
+  "time": "01:01",
+  "location": "dfasdfasdf",
+  "description": "asdfasdfasdfasf",
+  "coverImage": "http://localhost:3000/",
+  "askReason": true,
+  "allowGuests": true,
+  "customQuestions": [
+    {
+      "id": "custom_0",
+      "question": "asdfasdfasdf"
+    },
+    {
+      "id": "custom_1",
+      "question": "asdf"
+    }
+  ],
+  "created": 1754874054056,
+  "status": "active",
+  "createdBy": "barbcardrw@aol.com",
+  "createdByName": "barbcardrw"
+}
