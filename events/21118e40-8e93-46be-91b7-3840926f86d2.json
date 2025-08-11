@@ -1,0 +1,16 @@
+{
+  "title": "Sgt Maness' NJP for DUI",
+  "date": "2026-01-02",
+  "time": "13:03",
+  "location": "dfasdfasdf",
+  "description": "ASDFASDFFDSA",
+  "coverImage": "http://localhost:3000/",
+  "askReason": false,
+  "allowGuests": false,
+  "customQuestions": [],
+  "id": "21118e40-8e93-46be-91b7-3840926f86d2",
+  "created": 1754875477653,
+  "status": "active",
+  "createdBy": "barbcardrw@aol.com",
+  "createdByName": "barbcardrw"
+}
