@@ -1,0 +1,29 @@
+{
+  "id": "44067dfa-562e-44cc-9884-4aacd80e35b1",
+  "title": "PROMOTION TEST",
+  "date": "2025-09-01",
+  "time": "08:00",
+  "location": "Hole 13",
+  "description": "asdfasdfa",
+  "coverImage": "http://localhost:3000/",
+  "askReason": true,
+  "allowGuests": true,
+  "customQuestions": [
+    {
+      "id": "custom_0",
+      "question": "asdfasdf"
+    },
+    {
+      "id": "custom_1",
+      "question": "asdfasdf"
+    },
+    {
+      "id": "custom_2",
+      "question": "asdfasdfasdfasdfa"
+    }
+  ],
+  "created": 1754873906072,
+  "status": "active",
+  "createdBy": "barbcardrw@aol.com",
+  "createdByName": "barbcardrw"
+}
