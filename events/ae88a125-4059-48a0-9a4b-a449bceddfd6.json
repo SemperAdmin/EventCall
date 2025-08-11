@@ -1,0 +1,21 @@
+{
+  "id": "ae88a125-4059-48a0-9a4b-a449bceddfd6",
+  "title": "Sgt Maness' NJP for DUI",
+  "date": "2025-09-01",
+  "time": "03:00",
+  "location": "Hole 13",
+  "description": "dsafasdfasdfas",
+  "coverImage": "http://localhost:3000/",
+  "askReason": true,
+  "allowGuests": true,
+  "customQuestions": [
+    {
+      "id": "custom_0",
+      "question": "Test 1"
+    }
+  ],
+  "created": 1754873474835,
+  "status": "active",
+  "createdBy": "barbcardrw@aol.com",
+  "createdByName": "barbcardrw"
+}
