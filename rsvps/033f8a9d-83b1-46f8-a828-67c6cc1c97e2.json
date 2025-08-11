@@ -1,0 +1,24 @@
+[
+  {
+    "eventId": "033f8a9d-83b1-46f8-a828-67c6cc1c97e2",
+    "rsvpId": "5df4b777-aba3-4040-b3a5-93fe2bf09345",
+    "name": "STEPHEN SHORTER",
+    "email": "barbcardrw@aol.com",
+    "phone": "3153916847",
+    "attending": true,
+    "guestCount": 3,
+    "reason": "asdfasdf",
+    "customAnswers": {
+      "custom_0": "asdfasdf",
+      "custom_1": "asdfasf"
+    },
+    "timestamp": 1754873425958,
+    "validationHash": "f0hg3j",
+    "submissionMethod": "github_actions_automated",
+    "processed": false,
+    "version": "2.0",
+    "issueNumber": 10,
+    "issueUrl": "https://github.com/SemperAdmin/EventCall/issues/10",
+    "processedAt": 1754873503077
+  }
+]
