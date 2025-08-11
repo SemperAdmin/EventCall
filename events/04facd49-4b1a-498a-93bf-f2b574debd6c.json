@@ -1,0 +1,37 @@
+{
+  "id": "04facd49-4b1a-498a-93bf-f2b574debd6c",
+  "title": "Test",
+  "date": "2025-08-15",
+  "time": "08:00",
+  "location": "MCMWTC Command Post, bldg 4048",
+  "description": "This is a test.",
+  "coverImage": "",
+  "askReason": true,
+  "allowGuests": true,
+  "customQuestions": [
+    {
+      "id": "custom_0",
+      "question": "Your Rank/Name/Billet Title"
+    },
+    {
+      "id": "custom_1",
+      "question": "What is your email address?"
+    },
+    {
+      "id": "custom_2",
+      "question": "Do you plan to attend the ceremony?"
+    },
+    {
+      "id": "custom_3",
+      "question": "Are you bringing a guest?"
+    },
+    {
+      "id": "custom_4",
+      "question": "Name of Guest (Please include Mr./Ms./Mrs./Dr. or Military Rank)"
+    }
+  ],
+  "created": 1754946850190,
+  "status": "active",
+  "createdBy": "anthony.colmenares@usmc.mil",
+  "createdByName": "anthony.colmenares"
+}
