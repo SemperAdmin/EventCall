@@ -397,13 +397,50 @@ class LoginUI {
         }
     }
 
-    /**
-     * Hide login screen (for successful login)
-     */
-    hideLoginScreen() {
+ hideLoginScreen() {
         const loginContainer = document.getElementById('login-container');
         if (loginContainer) {
             loginContainer.style.display = 'none';
+        }
+    }
+
+    showUserMenu() {
+        const manager = window.managerAuth.getCurrentManager();
+        if (!manager) return;
+
+        const existing = document.querySelector('.user-menu-dropdown');
+        if (existing) {
+            existing.remove();
+            return;
+        }
+
+        const menu = document.createElement('div');
+        menu.className = 'user-menu-dropdown';
+        menu.innerHTML = `
+            <div class="user-menu-header">
+                <strong>${manager.name}</strong>
+                <small>${manager.email}</small>
+            </div>
+            <div class="user-menu-item" onclick="showPage('dashboard')">
+                📊 Dashboard
+            </div>
+            <div class="user-menu-item" onclick="showPage('create')">
+                ➕ Create Event
+            </div>
+            <div class="user-menu-divider"></div>
+            <div class="user-menu-item" onclick="loginUI.handleLogout()">
+                🚪 Logout
+            </div>
+        `;
+
+        const userBtn = document.querySelector('.user-profile-btn');
+        if (userBtn) userBtn.appendChild(menu);
+    }
+
+    handleLogout() {
+        if (confirm('Are you sure you want to logout?')) {
+            window.managerAuth.logout();
+            location.reload();
         }
     }
 }
