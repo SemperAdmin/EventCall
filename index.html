@@ -103,7 +103,7 @@ function toggleTokenVisibility() {
                 <div class="tagline">🚧 Under Construction 🚧</div>
                 
                 <!-- User Profile Button -->
-                <div class="user-profile-btn" onclick="userAuth.showUserProfile()" title="User Profile & Logout">
+                <div class="user-profile-btn" onclick="managerAuth.logout(); location.reload();" title="Logout">
                     <span class="user-icon">👤</span>
                     <span class="user-email" id="user-email-display">User</span>
                 </div>
@@ -268,7 +268,6 @@ function toggleTokenVisibility() {
   <div style="padding: 0.75rem;">
     <!-- Change Token Button -->
     <div style="padding: 0.75rem 1rem; border-radius: 0.5rem; color: var(--semper-navy); font-weight: 500; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent;" 
-         onclick="userAuth.promptForTokenOverride()"
          onmouseover="this.style.background='#f0f9ff'; this.style.borderColor='#bae6fd'"
          onmouseout="this.style.background=''; this.style.borderColor='transparent'">
       <span style="font-size: 1.1rem;">🔑</span> 

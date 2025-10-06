@@ -45,7 +45,7 @@ function showPage(pageId) {
   }
   
   // Check if user is logged in for all other pages
-  if (typeof userAuth === 'undefined' || !userAuth.isLoggedIn()) {
+  if (typeof managerAuth === 'undefined' || !managerAuth.isAuthenticated()) {
     console.log('🔒 Access denied - user not logged in');
     
     // Show login screen
@@ -54,7 +54,7 @@ function showPage(pageId) {
   }
   
   // User is logged in, proceed to requested page
-  console.log(`✅ Access granted to ${pageId} for user: ${userAuth.getCurrentUser()}`);
+  console.log(`✅ Access granted to ${pageId} for user: ${managerAuth.getCurrentManager()?.email}`);
   showPageContent(pageId);
 }
 
@@ -395,7 +395,7 @@ function checkURLHash() {
         console.log('📊 Direct manage link accessed:', eventId);
         
         // Check login first
-        if (typeof userAuth === 'undefined' || !userAuth.isLoggedIn()) {
+        if (typeof managerAuth === 'undefined' || !managerAuth.isAuthenticated()) {
             console.log('🔒 Manage access denied - redirecting to login');
             showLoginPage();
             return;
