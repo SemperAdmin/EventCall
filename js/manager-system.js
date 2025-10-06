@@ -65,7 +65,7 @@ async function syncWithGitHub() {
         return;
     }
 
-    if (!userAuth.isLoggedIn() || !userAuth.hasGitHubToken()) {
+    if (!managerAuth.isAuthenticated()) {
         showToast('🔐 Please login with GitHub token to sync RSVPs', 'error');
         return;
     }
@@ -117,7 +117,7 @@ async function syncWithGitHub() {
  * Update pending RSVP count in UI
  */
 async function updatePendingRSVPCount() {
-    if (!userAuth.isLoggedIn() || !userAuth.hasGitHubToken()) {
+    if (!managerAuth.isAuthenticated()) {
         return;
     }
 
@@ -197,7 +197,7 @@ async function loadManagerData() {
     if (!window.events) window.events = {};
     if (!window.responses) window.responses = {};
     
-    if (!userAuth.isLoggedIn() || !userAuth.hasGitHubToken()) {
+    if (!managerAuth.isAuthenticated()) {
         console.log('⚠️ No GitHub token available - using local events only');
         renderDashboard();
         return;
@@ -612,7 +612,7 @@ function setupEventForm() {
 function initializeSyncChecker() {
     // Check for pending RSVPs every 30 seconds
     setInterval(async () => {
-        if (userAuth.isLoggedIn() && userAuth.hasGitHubToken() && !syncInProgress) {
+        if (managerAuth.isAuthenticated() && !syncInProgress) {
             await updatePendingRSVPCount();
         }
     }, 30000);
