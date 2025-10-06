@@ -8,6 +8,22 @@
 window.events = {};
 window.responses = {};
 
+// Check authentication on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    // Skip auth check for invite pages (guests don't need login)
+    const isInvitePage = window.location.hash.includes('invite/') || window.location.search.includes('data=');
+    
+    if (!isInvitePage && window.managerAuth) {
+        const isAuthenticated = await window.managerAuth.init();
+        if (!isAuthenticated) {
+            console.log('🔒 Not authenticated - showing login page');
+            window.loginUI.showLoginPage();
+        } else {
+            console.log('✅ Authenticated - showing app');
+        }
+    }
+});
+
 /**
  * Show page navigation - Updated to enforce login state
  */

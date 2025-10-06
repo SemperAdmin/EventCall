@@ -1,164 +1,164 @@
 /**
- * EventCall Configuration - Manager Setup Flow
- * Tokens are entered by each manager during setup
+ * EventCall Secure Configuration
+ * NO hardcoded tokens - Service token managed by GitHub Actions only
  */
 
-// GitHub Database Configuration
+// GitHub Repository Configuration
 const GITHUB_CONFIG = {
-    token: '', // Will be set by userAuth system at runtime
     owner: 'SemperAdmin',
     repo: 'EventCall',
-    branch: 'main',
-    apiBase: 'https://api.github.com/repos'
+    apiBase: 'https://api.github.com/repos',
+    // NO TOKEN HERE - Managed server-side only
 };
 
-// Application Settings
+// Application Configuration
 const APP_CONFIG = {
-    name: 'EventCall',
-    tagline: 'Where Every Event Matters',
-    version: '1.0.0',
-    maxFileSize: 5 * 1024 * 1024, // 5MB
-    allowedImageTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
-    maxCustomQuestions: 10,
-    toastDuration: 3000,
-    syncInterval: 30000, // 30 seconds
-    requireManagerSetup: true // Enable manager setup flow
+    appName: 'EventCall',
+    appVersion: '2.0.0-secure',
+    maxImageSize: 5 * 1024 * 1024, // 5MB
+    allowedImageTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+    sessionTimeout: 30 * 60 * 1000, // 30 minutes
+    codeWordList: [
+        // Military-themed memorable words for code generation
+        'ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT',
+        'GOLF', 'HOTEL', 'INDIA', 'JULIET', 'KILO', 'LIMA',
+        'MIKE', 'NOVEMBER', 'OSCAR', 'PAPA', 'QUEBEC', 'ROMEO',
+        'SIERRA', 'TANGO', 'UNIFORM', 'VICTOR', 'WHISKEY', 'XRAY',
+        'YANKEE', 'ZULU', 'MARINE', 'NAVY', 'ARMY', 'FORCE',
+        'GUARD', 'CORPS', 'UNIT', 'SQUAD', 'TEAM', 'HONOR',
+        'DUTY', 'PRIDE', 'VALOR', 'COURAGE', 'LOYALTY', 'SERVICE'
+    ]
 };
 
-// UI Messages
-const MESSAGES = {
-    loading: {
-        events: 'Loading events...',
-        saving: 'Saving...',
-        syncing: 'Syncing with database...',
-        deleting: 'Deleting...',
-        creating: 'Creating event...'
-    },
-    success: {
-        eventCreated: '🎖️ Event deployed successfully!',
-        eventDeleted: '🗑️ Event deleted successfully',
-        rsvpSubmitted: '✅ RSVP submitted successfully!',
-        linkCopied: '🔗 Invite link copied to clipboard!',
-        dataExported: '📊 Data exported successfully!',
-        syncCompleted: '✅ Sync completed!',
-        searchCleared: '🧹 Search cleared',
-        githubConnected: '🔗 GitHub connected automatically!'
-    },
-    error: {
-        eventNotFound: 'Event not found',
-        invalidFile: 'Please select a valid image file',
-        fileTooLarge: 'File size too large. Maximum size is 5MB',
-        selectAttending: 'Please select if you\'re attending',
-        syncFailed: 'Sync failed',
-        saveFailed: 'Failed to save',
-        loadFailed: 'Failed to load events',
-        deleteFailed: 'Failed to delete event',
-        exportFailed: 'Failed to export data',
-        copyFailed: 'Failed to copy link',
-        tokenRequired: 'GitHub token is required for cloud sync',
-        tokenInvalid: 'Invalid GitHub token format'
-    },
-    confirm: {
-        deleteEvent: 'Are you sure you want to delete this event? This cannot be undone.'
-    },
-    info: {
-        noEvents: 'No events found.',
-        noResponses: 'No RSVPs yet. Share your invite link to start collecting responses!',
-        emailFallback: '📧 Email fallback activated - please send the email',
-        firstEvent: 'Create your first event to get started with professional military event management.',
-        tokenAutomatic: 'GitHub token configured automatically for seamless cloud sync.'
-    }
+// Access Code Configuration
+const CODE_CONFIG = {
+    managerPrefix: 'MGR',
+    eventPrefix: 'EVT',
+    invitePrefix: 'INV',
+    codeLength: 3, // Number of words/segments
+    includeYear: true,
+    separator: '-'
 };
 
-// Event Status Constants
-const EVENT_STATUS = {
-    DRAFT: 'draft',
-    ACTIVE: 'active',
-    COMPLETED: 'completed',
-    CANCELLED: 'cancelled'
+// Authentication Settings
+const AUTH_CONFIG = {
+    requireEmail: true,
+    emailDomains: [], // Empty = allow all domains
+    sessionStorage: true, // Use sessionStorage (expires on close)
+    rememberMeOption: true, // Allow "remember me" checkbox
+    rememberMeDays: 30
 };
 
-// RSVP Status Constants
-const RSVP_STATUS = {
-    ATTENDING: true,
-    NOT_ATTENDING: false,
-    PENDING: null
-};
-
-// File Paths for GitHub Storage
+// Storage Paths in GitHub Repository
 const GITHUB_PATHS = {
+    managers: 'data/managers',
     events: 'events',
     rsvps: 'rsvps',
-    assets: 'assets',
-    logs: 'logs'
+    invites: 'data/invites',
+    logs: 'data/logs'
 };
 
-// Default Event Settings
-const DEFAULT_EVENT = {
-    askReason: false,
-    allowGuests: false,
-    customQuestions: [],
-    maxGuests: 4,
-    requireApproval: false,
-    sendNotifications: true
-};
-
-// API Endpoints
-const API_ENDPOINTS = {
-    github: {
-        contents: (path) => `${GITHUB_CONFIG.apiBase}/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${path}`,
-        repo: `${GITHUB_CONFIG.apiBase}/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}`
+// Messages
+const MESSAGES = {
+    auth: {
+        loginRequired: 'Please log in to access this feature',
+        invalidCode: 'Invalid access code. Please check and try again.',
+        invalidEmail: 'Please enter a valid email address',
+        sessionExpired: 'Your session has expired. Please log in again.',
+        accessDenied: 'You do not have permission to access this event',
+        loginSuccess: 'Welcome back! Access granted.',
+        logoutSuccess: 'You have been logged out successfully'
+    },
+    manager: {
+        accountCreated: 'Manager account created! Your access code is: ',
+        codeGenerated: 'New access code generated',
+        inviteCreated: 'Invite link created successfully',
+        managerAdded: 'Manager added to event',
+        managerRemoved: 'Manager removed from event'
+    },
+    rsvp: {
+        submitSuccess: '✅ RSVP submitted successfully!',
+        submitError: 'Failed to submit RSVP. Please try again.',
+        processing: 'Processing your RSVP...'
     }
 };
 
-// Regular Expressions for Validation
+// Validation Patterns
 const VALIDATION = {
     email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     phone: /^[\+]?[1-9][\d]{0,15}$/,
-    eventTitle: /^.{3,100}$/,
-    name: /^[a-zA-Z\s\-\.]{2,50}$/,
-    githubToken: /^gh[ps]_[A-Za-z0-9_]{36,255}$/
+    managerCode: /^MGR-[A-Z0-9-]+$/,
+    eventCode: /^EVT-[A-Z0-9-]+$/,
+    inviteCode: /^INV-[A-Z0-9-]+$/
 };
 
-// CSS Classes for Dynamic Styling
-const CSS_CLASSES = {
-    hidden: 'hidden',
-    loading: 'loading',
-    active: 'active',
-    selected: 'selected',
-    highlight: 'highlight',
-    error: 'error',
-    success: 'success',
-    attending: {
-        yes: 'attending-yes',
-        no: 'attending-no'
+// Code Generation Helper
+const CodeGenerator = {
+    /**
+     * Generate memorable access code
+     * Format: PREFIX-WORD1-WORD2-YEAR (e.g., EVT-MARINE-BALL-2025)
+     */
+    generate(prefix = 'EVT') {
+        const words = APP_CONFIG.codeWordList;
+        const numWords = CODE_CONFIG.codeLength;
+        const separator = CODE_CONFIG.separator;
+        
+        let code = prefix;
+        
+        // Add random words
+        for (let i = 0; i < numWords; i++) {
+            const randomWord = words[Math.floor(Math.random() * words.length)];
+            code += separator + randomWord;
+        }
+        
+        // Add year if configured
+        if (CODE_CONFIG.includeYear) {
+            const year = new Date().getFullYear();
+            code += separator + year;
+        }
+        
+        // Add random number for uniqueness
+        const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        code += separator + randomNum;
+        
+        return code;
+    },
+    
+    /**
+     * Validate code format
+     */
+    validate(code, prefix = null) {
+        if (!code || typeof code !== 'string') return false;
+        
+        if (prefix) {
+            return code.startsWith(prefix + CODE_CONFIG.separator);
+        }
+        
+        return VALIDATION.managerCode.test(code) || 
+               VALIDATION.eventCode.test(code) || 
+               VALIDATION.inviteCode.test(code);
+    },
+    
+    /**
+     * Extract prefix from code
+     */
+    getPrefix(code) {
+        if (!code) return null;
+        return code.split(CODE_CONFIG.separator)[0];
     }
 };
 
-// Local Storage Keys (avoid storing sensitive data)
-const STORAGE_KEYS = {
-    events: 'eventcall_events',
-    responses: 'eventcall_responses',
-    settings: 'eventcall_settings',
-    cache: 'eventcall_cache'
-    // Note: Never store tokens in localStorage
-};
-
-console.log('✅ EventCall configuration loaded with default token support');
-
-// Export configuration for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        GITHUB_CONFIG,
-        APP_CONFIG,
-        MESSAGES,
-        EVENT_STATUS,
-        RSVP_STATUS,
-        GITHUB_PATHS,
-        DEFAULT_EVENT,
-        API_ENDPOINTS,
-        VALIDATION,
-        CSS_CLASSES,
-        STORAGE_KEYS
-    };
+// Export for use in other modules
+if (typeof window !== 'undefined') {
+    window.GITHUB_CONFIG = GITHUB_CONFIG;
+    window.APP_CONFIG = APP_CONFIG;
+    window.CODE_CONFIG = CODE_CONFIG;
+    window.AUTH_CONFIG = AUTH_CONFIG;
+    window.GITHUB_PATHS = GITHUB_PATHS;
+    window.MESSAGES = MESSAGES;
+    window.VALIDATION = VALIDATION;
+    window.CodeGenerator = CodeGenerator;
 }
+
+console.log('✅ EventCall secure configuration loaded (v2.0.0)');
+console.log('🔒 No tokens in client-side code - All authentication server-side');
