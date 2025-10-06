@@ -304,8 +304,7 @@ class ManagerAuth {
             authorizedEvents: authorizedEvents,
             codeType: codeType,
             loginTime: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + AUTH_CONFIG.sessionTimeout).toISOString()
-        };
+            expiresAt: new Date(Date.now() + (AUTH_CONFIG.sessionTimeout || 1800000)).toISOString()        };
     }
 
     /**
