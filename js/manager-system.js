@@ -533,7 +533,7 @@ async function handleEventSubmit(e) {
     submitBtn.disabled = true;
 
     try {
-        if (!userAuth.isLoggedIn()) {
+        if (!managerAuth.isAuthenticated()) {
             throw new Error('Please log in to create events');
         }
 
@@ -550,8 +550,8 @@ async function handleEventSubmit(e) {
             customQuestions: getCustomQuestions(),
             created: Date.now(),
             status: 'active',
-            createdBy: userAuth.getCurrentUser(),
-            createdByName: userAuth.getCurrentUser().split('@')[0]
+            createdBy: managerAuth.getCurrentManager()?.email,
+            createdByName: managerAuth.getCurrentManager()?.email.split('@')[0]
         };
 
         if (!eventData.title || eventData.title.length < 3) {
@@ -562,7 +562,7 @@ async function handleEventSubmit(e) {
             throw new Error('Please specify both date and time for the event');
         }
 
-        if (userAuth.hasGitHubToken() && window.githubAPI) {
+        if (managerAuth.isAuthenticated() && window.githubAPI) {
             await window.githubAPI.saveEvent(eventData);
         }
         
