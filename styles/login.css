@@ -471,20 +471,22 @@
     }
 }
 /* User Menu Dropdown */
+/* User Menu Dropdown */
 .user-profile-btn {
     position: relative;
+    cursor: pointer;
 }
 
 .user-menu-dropdown {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 0.5rem);
     right: 0;
-    margin-top: 0.5rem;
     background: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    min-width: 200px;
-    z-index: 1000;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    min-width: 250px;
+    z-index: 99999;
+    border: 2px solid var(--semper-gold);
 }
 
 .user-menu-header {
@@ -517,4 +519,37 @@
     height: 1px;
     background: #e5e7eb;
     margin: 0.5rem 0;
+}
+/* User Profile Button - Top Right Position */
+.user-profile-btn {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--semper-navy);
+    color: var(--semper-gold);
+    border-radius: 2rem;
+    cursor: pointer;
+    z-index: 9999;
+    border: 2px solid var(--semper-gold);
+    transition: all 0.3s ease;
+}
+
+.user-profile-btn:hover {
+    background: var(--semper-gold);
+    color: var(--semper-navy);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.user-icon {
+    font-size: 1.2rem;
+}
+
+.user-email {
+    font-weight: 600;
+    font-size: 0.9rem;
 }
