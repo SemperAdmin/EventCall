@@ -16,17 +16,14 @@ class GitHubAPI {
      * Get token from userAuth or config
      */
 getToken() {
-    if (window.userAuth && window.userAuth.getGitHubToken()) {
-        return window.userAuth.getGitHubToken();
+    // Use token from GITHUB_CONFIG
+    if (window.GITHUB_CONFIG && window.GITHUB_CONFIG.token) {
+        return window.GITHUB_CONFIG.token;
     }
-    // Fallback to obfuscated token
-const segments = [
-    'Z2hwX0lXWUdkWE1G',  // Base64: ghp_IWYGdXMF
-    'Y2d4eWlvSWRWekxn',  // Base64: cgxyioIdVzLg
-    'OFBPazBtMG5QdzJw',  // Base64: 8POk0m0nPw2p
-    'N2xGMw=='           // Base64: 7lF3
-];
-    return segments.map(segment => atob(segment)).join('');
+    
+    // Fallback if GITHUB_CONFIG not loaded
+    console.error('GITHUB_CONFIG.token not found');
+    return null;
 }
 
     /**
