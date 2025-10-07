@@ -1,0 +1,21 @@
+{
+  "id": "3566de19-76c1-4519-ac12-9ce1a0fa4a6a",
+  "title": "PROMOTION TEST",
+  "date": "2025-10-15",
+  "time": "08:00",
+  "location": "Hole 13",
+  "description": "dfasdfasdfa",
+  "coverImage": "",
+  "askReason": true,
+  "allowGuests": true,
+  "customQuestions": [
+    {
+      "id": "custom_0",
+      "question": "asdfasdfasdf"
+    }
+  ],
+  "created": 1759807005281,
+  "status": "active",
+  "createdBy": "barbcardrw@aol.com",
+  "createdByName": "barbcardrw"
+}
