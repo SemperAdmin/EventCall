@@ -1,6 +1,5 @@
 /**
- * EventCall RSVP Handler - Enhanced with GitHub Actions Integration
- * Creates GitHub Issues with structured data for automated processing
+ * EventCall RSVP Handler - Secure Backend Integration
  */
 
 class RSVPHandler {
@@ -11,25 +10,17 @@ class RSVPHandler {
         this.retryDelay = 2000;
     }
 
-
-    /**
-     * Generate validation hash for GitHub Actions verification
-     */
     generateValidationHash(rsvpData) {
         const dataString = `${rsvpData.eventId}-${rsvpData.email}-${rsvpData.timestamp}`;
-        // Simple hash for validation (not cryptographic security)
         let hash = 0;
         for (let i = 0; i < dataString.length; i++) {
             const char = dataString.charCodeAt(i);
             hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32-bit integer
+            hash = hash & hash;
         }
         return Math.abs(hash).toString(36);
     }
 
-    /**
-     * Handle RSVP form submission with enhanced error handling and retry logic
-     */
     async handleRSVP(e, eventId) {
         e.preventDefault();
 
@@ -48,7 +39,6 @@ class RSVPHandler {
             submitBtn.innerHTML = '<div class="spinner"></div> Submitting...';
             submitBtn.disabled = true;
 
-            // Collect and validate form data
             const rsvpData = this.collectFormData();
             const validation = this.validateRSVPData(rsvpData);
 
@@ -59,30 +49,17 @@ class RSVPHandler {
                 return;
             }
 
-            // Add enhanced metadata
             rsvpData.timestamp = Date.now();
             rsvpData.rsvpId = generateUUID();
             rsvpData.eventId = eventId;
             rsvpData.validationHash = this.generateValidationHash(rsvpData);
-            rsvpData.submissionMethod = 'github_actions_automated';
+            rsvpData.submissionMethod = 'secure_backend';
 
-            // Attempt submission with retry logic
             const submissionResult = await this.submitWithRetry(eventId, rsvpData);
-
-           if (submissionResult.method === 'secure_backend') {
-            statusMessage = `✅ RSVP Successfully Submitted!`;
-            processingInfo = `
-                <div style="background: #e0f2fe; border-left: 4px solid #0288d1; padding: 1rem; margin: 1rem 0; border-radius: 0.5rem;">
-                    <strong>🔒 Secure Processing:</strong><br>
-                    • Your RSVP has been submitted to our secure backend<br>
-                    • Processing time: ${submissionResult.estimatedProcessingTime}<br>
-                    • Your information is encrypted and protected<br>
-                    • You will receive a confirmation email shortly
-                </div>
-            `;
+            this.showEnhancedConfirmation(rsvpData, submissionResult);
 
         } catch (error) {
-            console.error('RSVP submission failed after all retries:', error);
+            console.error('RSVP submission failed:', error);
             this.showSubmissionError(error);
 
         } finally {
@@ -92,13 +69,10 @@ class RSVPHandler {
         }
     }
 
-    /**
-     * Submit with retry logic for improved reliability
-     */
     async submitWithRetry(eventId, rsvpData, attempt = 1) {
         try {
             showToast(`📤 Submitting RSVP (attempt ${attempt}/${this.maxRetries})...`, 'success');
-            return await this.submitToGitHubIssues(eventId, rsvpData);
+            return await this.submitToSecureBackend(eventId, rsvpData);
             
         } catch (error) {
             console.error(`Submission attempt ${attempt} failed:`, error);
@@ -108,35 +82,26 @@ class RSVPHandler {
                 await new Promise(resolve => setTimeout(resolve, this.retryDelay));
                 return this.submitWithRetry(eventId, rsvpData, attempt + 1);
             } else {
-                // Final attempt failed, try local storage backup
                 try {
                     const localResult = await this.storeLocally(eventId, rsvpData);
-                    showToast('⚠️ GitHub submission failed, saved locally for manual processing', 'error');
+                    showToast('⚠️ Submission failed, saved locally for manual processing', 'error');
                     return localResult;
                 } catch (localError) {
-                    throw new Error(`All submission methods failed. GitHub: ${error.message}, Local: ${localError.message}`);
+                    throw new Error(`All submission methods failed. Backend: ${error.message}, Local: ${localError.message}`);
                 }
             }
         }
     }
 
-    /**
-     * Submit to GitHub Issues with enhanced structured format for GitHub Actions
-     */
-/**
-     * Submit to secure backend via BackendAPI
-     */
-    async submitToGitHubIssues(eventId, rsvpData) {
+    async submitToSecureBackend(eventId, rsvpData) {
         const event = getEventFromURL();
         if (!event) throw new Error('Event data not found');
 
-        // Use the secure BackendAPI instead of direct GitHub API
         if (!window.BackendAPI) {
             throw new Error('Backend API not loaded. Please refresh the page.');
         }
 
         try {
-            // Submit via secure backend workflow
             const result = await window.BackendAPI.submitRSVP(rsvpData);
             
             return {
@@ -149,7 +114,6 @@ class RSVPHandler {
         } catch (error) {
             console.error('Backend submission error:', error);
             
-            // Enhanced error reporting
             let errorMessage = 'Backend submission failed';
             
             if (error.message.includes('Failed: 404')) {
@@ -166,140 +130,6 @@ class RSVPHandler {
         }
     }
 
-        const response = await fetch('https://api.github.com/repos/SemperAdmin/EventCall/issues', {
-            method: 'POST',
-            headers: {
-                'Authorization': `token ${apiToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json',
-                'User-Agent': 'EventCall-RSVP-System'
-            },
-            body: JSON.stringify(issueData)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            let errorMessage = `GitHub API error: ${response.status}`;
-            
-            // Enhanced error reporting
-            switch (response.status) {
-                case 401:
-                    errorMessage = 'Authentication failed - invalid token';
-                    break;
-                case 403:
-                    errorMessage = 'Rate limit exceeded or insufficient permissions';
-                    break;
-                case 422:
-                    errorMessage = 'Invalid data format - please check your input';
-                    break;
-                case 500:
-                    errorMessage = 'GitHub server error - please try again';
-                    break;
-                default:
-                    errorMessage += ` - ${errorData.message || 'Unknown error'}`;
-            }
-            
-            throw new Error(errorMessage);
-        }
-
-        const issueResponse = await response.json();
-        return {
-            method: 'github_issues',
-            success: true,
-            issueNumber: issueResponse.number,
-            issueUrl: issueResponse.html_url,
-            processingStatus: 'automated',
-            estimatedProcessingTime: '1-2 minutes'
-        };
-    }
-
-    /**
-     * Create structured issue body optimized for GitHub Actions parsing
-     */
-    createStructuredIssueBody(event, rsvpData) {
-        const attendingStatus = rsvpData.attending ? '✅ ATTENDING' : '❌ NOT ATTENDING';
-        
-        let body = `## 🎖️ EventCall RSVP Submission\n\n`;
-        
-        // GitHub Actions Processing Markers
-        body += `<!-- EVENTCALL_RSVP_START -->\n`;
-        body += `**Validation Hash:** ${rsvpData.validationHash}\n`;
-        body += `**Submission ID:** ${rsvpData.rsvpId}\n`;
-        body += `**Processing Status:** PENDING\n`;
-        body += `<!-- EVENTCALL_RSVP_END -->\n\n`;
-        
-        // Event Information Section
-        body += `### 📅 Event Details\n`;
-        body += `- **Event:** ${event.title}\n`;
-        body += `- **Date:** ${formatDate(event.date)} at ${formatTime(event.time)}\n`;
-        body += `- **Location:** ${event.location || 'TBD'}\n`;
-        body += `- **Event ID:** ${rsvpData.eventId}\n\n`;
-        
-        // Attendee Information Section
-        body += `### 👤 Attendee Information\n`;
-        body += `- **Name:** ${rsvpData.name}\n`;
-        body += `- **Email:** ${rsvpData.email}\n`;
-        body += `- **Phone:** ${rsvpData.phone || 'Not provided'}\n`;
-        body += `- **Status:** ${attendingStatus}\n`;
-        
-        if (rsvpData.guestCount > 0) {
-            body += `- **Additional Guests:** ${rsvpData.guestCount}\n`;
-        }
-        
-        if (rsvpData.reason) {
-            body += `- **Reason:** ${rsvpData.reason}\n`;
-        }
-
-        // Custom Questions Section
-        if (event.customQuestions && Object.keys(rsvpData.customAnswers).length > 0) {
-            body += `\n### 📝 Custom Questions\n`;
-            event.customQuestions.forEach(q => {
-                if (rsvpData.customAnswers[q.id]) {
-                    body += `**${q.question}**\n`;
-                    body += `${rsvpData.customAnswers[q.id]}\n\n`;
-                }
-            });
-        }
-        
-        // Structured JSON Data for GitHub Actions (enhanced format)
-        body += `\n### 🤖 Automated Processing Data\n`;
-        body += `<!-- GITHUB_ACTIONS_JSON_START -->\n`;
-        body += `\`\`\`json\n`;
-        body += JSON.stringify({
-            eventId: rsvpData.eventId,
-            rsvpId: rsvpData.rsvpId,
-            name: rsvpData.name,
-            email: rsvpData.email,
-            phone: rsvpData.phone || '',
-            attending: rsvpData.attending,
-            guestCount: rsvpData.guestCount || 0,
-            reason: rsvpData.reason || '',
-            customAnswers: rsvpData.customAnswers || {},
-            timestamp: rsvpData.timestamp,
-            validationHash: rsvpData.validationHash,
-            submissionMethod: rsvpData.submissionMethod,
-            processed: false,
-            version: '2.0'
-        }, null, 2);
-        body += `\n\`\`\`\n`;
-        body += `<!-- GITHUB_ACTIONS_JSON_END -->\n`;
-        
-        // Submission Details
-        body += `\n### 📊 Submission Details\n`;
-        body += `- **Submitted:** ${new Date(rsvpData.timestamp).toISOString()}\n`;
-        body += `- **User Agent:** ${navigator.userAgent.substring(0, 100)}...\n`;
-        body += `- **Referrer:** ${document.referrer || 'Direct access'}\n\n`;
-        
-        body += `---\n`;
-        body += `*This RSVP will be automatically processed by GitHub Actions within 1-2 minutes.*\n`;
-        body += `*Submitted via EventCall - Professional Military Event Management*`;
-        
-        return body;
-    }
-
-    /**
-     * Enhanced local storage backup with better error handling
-     */
     async storeLocally(eventId, rsvpData) {
         const storageKey = `eventcall_pending_rsvps_${eventId}`;
         let pendingRSVPs = [];
@@ -314,7 +144,6 @@ class RSVPHandler {
             pendingRSVPs = [];
         }
 
-        // Check for duplicate email and update or add
         const existingIndex = pendingRSVPs.findIndex(r => 
             r.email && r.email.toLowerCase() === rsvpData.email.toLowerCase()
         );
@@ -339,9 +168,6 @@ class RSVPHandler {
         };
     }
 
-    /**
-     * Show enhanced confirmation with tracking information
-     */
     showEnhancedConfirmation(rsvpData, submissionResult) {
         const event = getEventFromURL();
         let statusMessage = '';
@@ -349,18 +175,15 @@ class RSVPHandler {
         let borderColor = '10b981';
         let processingInfo = '';
 
-        if (submissionResult.method === 'github_issues') {
+        if (submissionResult.method === 'secure_backend') {
             statusMessage = `✅ RSVP Successfully Submitted!`;
             processingInfo = `
                 <div style="background: #e0f2fe; border-left: 4px solid #0288d1; padding: 1rem; margin: 1rem 0; border-radius: 0.5rem;">
-                    <strong>🤖 Automated Processing:</strong><br>
-                    • GitHub Issue #${submissionResult.issueNumber} created<br>
-                    • Your RSVP will be automatically processed in ${submissionResult.estimatedProcessingTime}<br>
-                    • Manager's dashboard will update automatically<br>
-                    • Issue will be automatically closed after processing<br>
-                    <a href="${submissionResult.issueUrl}" target="_blank" style="color: #0288d1; text-decoration: none; font-weight: 600;">
-                        → View Submission Status
-                    </a>
+                    <strong>🔒 Secure Processing:</strong><br>
+                    • Your RSVP has been submitted to our secure backend<br>
+                    • Processing time: ${submissionResult.estimatedProcessingTime}<br>
+                    • Your information is encrypted and protected<br>
+                    • You will receive a confirmation email shortly
                 </div>
             `;
         } else {
@@ -370,7 +193,7 @@ class RSVPHandler {
             processingInfo = `
                 <div style="background: #fff8e1; border-left: 4px solid #ff9800; padding: 1rem; margin: 1rem 0; border-radius: 0.5rem;">
                     <strong>📋 Manual Processing Required:</strong><br>
-                    • GitHub submission failed - saved locally<br>
+                    • Submission failed - saved locally<br>
                     • Please contact the event organizer with your RSVP ID: <code>${rsvpData.rsvpId}</code><br>
                     • Organizer can manually sync pending RSVPs from their dashboard
                 </div>
@@ -409,7 +232,6 @@ class RSVPHandler {
                         <strong>RSVP ID:</strong> <code style="background: #e5e7eb; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: monospace;">${rsvpData.rsvpId}</code><br>
                         <strong>Validation Hash:</strong> <code style="background: #e5e7eb; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: monospace;">${rsvpData.validationHash}</code><br>
                         <strong>Submitted:</strong> ${new Date(rsvpData.timestamp).toLocaleString()}<br>
-                        ${submissionResult.issueNumber ? `<strong>GitHub Issue:</strong> #${submissionResult.issueNumber}<br>` : ''}
                     </div>
                 </div>
 
@@ -418,25 +240,16 @@ class RSVPHandler {
                 <div style="margin-top: 2rem; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;">
                     <button class="btn" onclick="window.print()">🖨️ Print Receipt</button>
                     <button class="btn" onclick="window.location.reload()">📝 Submit Another RSVP</button>
-                    ${submissionResult.issueUrl ? `
-                        <a href="${submissionResult.issueUrl}" target="_blank" class="btn" style="text-decoration: none;">
-                            🔗 Track Status
-                        </a>
-                    ` : ''}
                 </div>
             </div>
         `;
     }
 
-    /**
-     * Show enhanced error message with actionable information
-     */
     showSubmissionError(error) {
         const errorDetails = this.categorizeError(error);
         
         showToast(`❌ Submission failed: ${errorDetails.userMessage}`, 'error');
         
-        // Show detailed error page
         document.getElementById('invite-content').innerHTML = `
             <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 1rem; padding: 2rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
                 <div style="color: #ef4444; font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">
@@ -455,15 +268,11 @@ class RSVPHandler {
                 
                 <div style="margin-top: 2rem;">
                     <button class="btn" onclick="window.location.reload()">🔄 Try Again</button>
-                    <button class="btn" onclick="this.copyErrorInfo('${error.message.replace(/'/g, "\\'")}')">📋 Copy Error Info</button>
                 </div>
             </div>
         `;
     }
 
-    /**
-     * Categorize errors for better user experience
-     */
     categorizeError(error) {
         const message = error.message.toLowerCase();
         
@@ -506,36 +315,6 @@ class RSVPHandler {
         }
     }
 
-    /**
-     * Copy error information to clipboard for support
-     */
-    copyErrorInfo(errorMessage) {
-        const errorInfo = `
-EventCall RSVP Error Report
-Generated: ${new Date().toISOString()}
-Event ID: ${this.currentEventId}
-Error: ${errorMessage}
-URL: ${window.location.href}
-User Agent: ${navigator.userAgent}
-        `.trim();
-        
-        navigator.clipboard.writeText(errorInfo).then(() => {
-            showToast('📋 Error information copied to clipboard', 'success');
-        }).catch(() => {
-            // Fallback for older browsers
-            const textarea = document.createElement('textarea');
-            textarea.value = errorInfo;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            showToast('📋 Error information copied to clipboard', 'success');
-        });
-    }
-
-    /**
-     * Collect form data (keeping existing logic)
-     */
     collectFormData() {
         const attendingRadio = document.querySelector('input[name="attending"]:checked');
         const attendingValue = attendingRadio ? attendingRadio.value === 'true' : null;
@@ -564,9 +343,6 @@ User Agent: ${navigator.userAgent}
         };
     }
 
-    /**
-     * Validate RSVP data (keeping existing logic)
-     */
     validateRSVPData(rsvpData) {
         const result = {
             valid: true,
@@ -585,7 +361,7 @@ User Agent: ${navigator.userAgent}
 
         if (rsvpData.attending === null || rsvpData.attending === undefined) {
             result.valid = false;
-            result.errors.push('Please select if you\'re attending');
+            result.errors.push('Please select if you are attending');
         }
 
         if (rsvpData.phone && !isValidPhone(rsvpData.phone)) {
@@ -606,9 +382,6 @@ User Agent: ${navigator.userAgent}
         return result;
     }
 
-    /**
-     * Generate event summary (keeping existing logic)
-     */
     generateEventSummary(event, rsvpData) {
         if (!event) return '';
 
@@ -625,7 +398,6 @@ User Agent: ${navigator.userAgent}
         `;
     }
 
-    // Keep existing setup methods
     setupRealTimeValidation() {
         const emailInput = document.getElementById('rsvp-email');
         if (emailInput) {
@@ -694,7 +466,6 @@ User Agent: ${navigator.userAgent}
     }
 }
 
-// Validation functions (keeping existing)
 function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -712,9 +483,7 @@ function sanitizeText(text) {
     return text.trim().replace(/[<>]/g, '');
 }
 
-// Create global instance
 const rsvpHandler = new RSVPHandler();
 
-// Make functions available globally
 window.rsvpHandler = rsvpHandler;
 window.handleRSVP = (e, eventId) => rsvpHandler.handleRSVP(e, eventId);
