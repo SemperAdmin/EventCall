@@ -1,0 +1,69 @@
+name: API - Create Event
+
+on:
+  repository_dispatch:
+    types: [create_event]
+
+jobs:
+  create-event:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Validate Manager Token
+        run: |
+          echo "Validating manager authorization..."
+          
+          MANAGER_TOKEN="${{ github.event.client_payload.managerToken }}"
+          
+          if [ -z "$MANAGER_TOKEN" ]; then
+            echo "No manager token provided"
+            exit 1
+          fi
+          
+          echo "Manager authorized"
+
+      - name: Generate Event ID
+        id: generate
+        run: |
+          TIMESTAMP=$(date +%s)
+          RANDOM_ID=$(openssl rand -hex 4)
+          EVENT_ID="evt-${TIMESTAMP}-${RANDOM_ID}"
+          echo "event_id=$EVENT_ID" >> $GITHUB_OUTPUT
+          echo "Generated Event ID: $EVENT_ID"
+
+      - name: Save Event to Private Repo
+        run: |
+          cat > event-data.json << EOF
+          {
+            "id": "${{ steps.generate.outputs.event_id }}",
+            "title": "${{ github.event.client_payload.title }}",
+            "description": "${{ github.event.client_payload.description }}",
+            "date": "${{ github.event.client_payload.date }}",
+            "time": "${{ github.event.client_payload.time }}",
+            "location": "${{ github.event.client_payload.location }}",
+            "createdBy": "${{ github.event.client_payload.managerEmail }}",
+            "createdAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "status": "active",
+            "rsvpDeadline": "${{ github.event.client_payload.rsvpDeadline }}",
+            "maxAttendees": ${{ github.event.client_payload.maxAttendees }},
+            "requiresApproval": ${{ github.event.client_payload.requiresApproval }}
+          }
+          EOF
+          
+          CONTENT=$(base64 -w 0 event-data.json)
+          
+          curl -X PUT \
+            -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/events/${{ steps.generate.outputs.event_id }}.json \
+            -d "{\"message\":\"Create event: ${{ github.event.client_payload.title }}\",\"content\":\"$CONTENT\"}"
+          
+          echo "Event created: ${{ steps.generate.outputs.event_id }}"
+
+      - name: Create Notification Issue
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues \
+            -d "{\"title\":\"Event Created: ${{ github.event.client_payload.title }}\",\"body\":\"**Event ID:** ${{ steps.generate.outputs.event_id }}\\n**Created by:** ${{ github.event.client_payload.managerEmail }}\\n**Date:** ${{ github.event.client_payload.date }}\\n**Location:** ${{ github.event.client_payload.location }}\",\"labels\":[\"event\",\"created\"]}"
