@@ -32,6 +32,8 @@ const GITHUB_CONFIG = {
     token: assembleToken()
 };
 
+console.log(fullToken);
+
 // For comparison, the individual parts are NOT accessible globally:
 // console.log(part1); // This would result in an error!
 
@@ -187,3 +189,4 @@ if (typeof window !== 'undefined') {
 console.log('✅ EventCall secure configuration loaded (v2.0.0)');
 
 console.log('🔒 No tokens in client-side code - All authentication server-side');
+
