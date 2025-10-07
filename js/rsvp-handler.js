@@ -11,21 +11,6 @@ class RSVPHandler {
         this.retryDelay = 2000;
     }
 
-    /**
-     * Get secure API token using obfuscation method (keeping existing approach)
-     */
-    getAPIToken() {
-        // Correct token segments from original working code
-        const tokenSegments = [
-            'Z2hwXzVWMGZKY3dp',  // Base64: ghp_5V0fJcwi
-            'Q1JTTUQ3SmI5b2k=',  // Base64: CRSMD7Jb9oi
-            'UjNaV3ZMMWJCZ1U=',  // Base64: R3ZWvL1bBgU
-            'MGtIOXhw'           // Base64: 0kH9xp
-        ];
-        
-        const decodedParts = tokenSegments.map(segment => atob(segment));
-        return decodedParts.join('');
-    }
 
     /**
      * Generate validation hash for GitHub Actions verification
@@ -84,8 +69,17 @@ class RSVPHandler {
             // Attempt submission with retry logic
             const submissionResult = await this.submitWithRetry(eventId, rsvpData);
 
-            // Show enhanced confirmation
-            this.showEnhancedConfirmation(rsvpData, submissionResult);
+           if (submissionResult.method === 'secure_backend') {
+            statusMessage = `✅ RSVP Successfully Submitted!`;
+            processingInfo = `
+                <div style="background: #e0f2fe; border-left: 4px solid #0288d1; padding: 1rem; margin: 1rem 0; border-radius: 0.5rem;">
+                    <strong>🔒 Secure Processing:</strong><br>
+                    • Your RSVP has been submitted to our secure backend<br>
+                    • Processing time: ${submissionResult.estimatedProcessingTime}<br>
+                    • Your information is encrypted and protected<br>
+                    • You will receive a confirmation email shortly
+                </div>
+            `;
 
         } catch (error) {
             console.error('RSVP submission failed after all retries:', error);
@@ -129,24 +123,48 @@ class RSVPHandler {
     /**
      * Submit to GitHub Issues with enhanced structured format for GitHub Actions
      */
+/**
+     * Submit to secure backend via BackendAPI
+     */
     async submitToGitHubIssues(eventId, rsvpData) {
         const event = getEventFromURL();
         if (!event) throw new Error('Event data not found');
 
-        const apiToken = this.getAPIToken();
-        const issueTitle = `RSVP: ${rsvpData.name} - ${event.title}`;
-        const issueBody = this.createStructuredIssueBody(event, rsvpData);
+        // Use the secure BackendAPI instead of direct GitHub API
+        if (!window.BackendAPI) {
+            throw new Error('Backend API not loaded. Please refresh the page.');
+        }
 
-        const issueData = {
-            title: issueTitle,
-            body: issueBody,
-            labels: [
-                'rsvp',
-                'auto-process', // Trigger for GitHub Actions
-                `event-${eventId}`,
-                rsvpData.attending ? 'attending' : 'not-attending'
-            ]
-        };
+        try {
+            // Submit via secure backend workflow
+            const result = await window.BackendAPI.submitRSVP(rsvpData);
+            
+            return {
+                method: 'secure_backend',
+                success: true,
+                processingStatus: 'automated',
+                estimatedProcessingTime: '30-60 seconds',
+                message: 'RSVP submitted to secure backend for processing'
+            };
+        } catch (error) {
+            console.error('Backend submission error:', error);
+            
+            // Enhanced error reporting
+            let errorMessage = 'Backend submission failed';
+            
+            if (error.message.includes('Failed: 404')) {
+                errorMessage = 'Backend workflow not found - please contact administrator';
+            } else if (error.message.includes('Failed: 401')) {
+                errorMessage = 'Authentication failed - please contact administrator';
+            } else if (error.message.includes('Failed: 403')) {
+                errorMessage = 'Permission denied - please contact administrator';
+            } else {
+                errorMessage = error.message;
+            }
+            
+            throw new Error(errorMessage);
+        }
+    }
 
         const response = await fetch('https://api.github.com/repos/SemperAdmin/EventCall/issues', {
             method: 'POST',
