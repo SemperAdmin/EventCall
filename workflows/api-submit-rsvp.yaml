@@ -1,0 +1,86 @@
+@'
+name: API - Submit RSVP
+
+on:
+  repository_dispatch:
+    types: [submit_rsvp]
+
+jobs:
+  save-rsvp:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Validate Input
+        run: |
+          echo "Validating RSVP..."
+          EVENT_ID="${{ github.event.client_payload.eventId }}"
+          NAME="${{ github.event.client_payload.name }}"
+          EMAIL="${{ github.event.client_payload.email }}"
+          
+          if [ -z "$EVENT_ID" ] || [ -z "$NAME" ] || [ -z "$EMAIL" ]; then
+            echo "Missing required fields"
+            exit 1
+          fi
+          
+          if [[ ! "$EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+            echo "Invalid email"
+            exit 1
+          fi
+          
+          echo "Validation passed"
+
+      - name: Check Rate Limit
+        run: |
+          RECENT_RUNS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs?per_page=100" \
+            | jq '[.workflow_runs[] | select(.name == "API - Submit RSVP" and .created_at > (now - 3600 | strftime("%Y-%m-%dT%H:%M:%SZ")))] | length')
+          
+          if [ "$RECENT_RUNS" -gt 50 ]; then
+            echo "Rate limit exceeded"
+            exit 1
+          fi
+
+      - name: Generate RSVP ID
+        id: generate
+        run: |
+          TIMESTAMP=$(date +%s)
+          RANDOM_ID=$(openssl rand -hex 4)
+          RSVP_ID="rsvp-${TIMESTAMP}-${RANDOM_ID}"
+          echo "rsvp_id=$RSVP_ID" >> $GITHUB_OUTPUT
+
+      - name: Save RSVP
+        run: |
+          cat > rsvp-data.json << EOF
+          {
+            "id": "${{ steps.generate.outputs.rsvp_id }}",
+            "eventId": "${{ github.event.client_payload.eventId }}",
+            "name": "${{ github.event.client_payload.name }}",
+            "email": "${{ github.event.client_payload.email }}",
+            "phone": "${{ github.event.client_payload.phone }}",
+            "rank": "${{ github.event.client_payload.rank }}",
+            "unit": "${{ github.event.client_payload.unit }}",
+            "attending": "${{ github.event.client_payload.attending }}",
+            "guests": ${{ github.event.client_payload.guests }},
+            "dietaryRestrictions": "${{ github.event.client_payload.dietaryRestrictions }}",
+            "specialRequests": "${{ github.event.client_payload.specialRequests }}",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "status": "pending"
+          }
+          EOF
+          
+          CONTENT=$(base64 -w 0 rsvp-data.json)
+          
+          curl -X PUT \
+            -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${{ steps.generate.outputs.rsvp_id }}.json \
+            -d "{\"message\":\"Add RSVP\",\"content\":\"$CONTENT\"}"
+
+      - name: Create Notification
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues \
+            -d "{\"title\":\"New RSVP: ${{ github.event.client_payload.name }}\",\"body\":\"Event: ${{ github.event.client_payload.eventId }}\nName: ${{ github.event.client_payload.name }}\nEmail: ${{ github.event.client_payload.email }}\",\"labels\":[\"rsvp\"]}"
+'@ | Out-File -FilePath "C:\Temp\EventCall-Files\.github\workflows\api-submit-rsvp.yml" -Encoding UTF8
