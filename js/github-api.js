@@ -252,62 +252,79 @@ getToken() {
     /**
      * Load all RSVP responses from GitHub
      */
-    async loadResponses() {
-        const token = this.getToken();
-        if (!token) {
-            console.warn('⚠️ No GitHub token - returning empty responses');
+async loadResponses() {
+    const token = this.getToken();
+    if (!token) {
+        console.warn('⚠️ No GitHub token - returning empty responses');
+        return {};
+    }
+
+    try {
+        console.log('📥 Loading responses from private EventCall-Data repo...');
+        
+        // Load from PRIVATE repo: EventCall-Data
+        const treeResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1`, {
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'EventCall-App'
+            }
+        });
+
+        if (!treeResponse.ok) {
+            console.log('No responses found or repository not accessible');
             return {};
         }
 
-        try {
-            console.log('Loading responses from GitHub...');
-            
-            const treeResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/git/trees/main?recursive=1`, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+        const treeData = await treeResponse.json();
+        const responses = {};
 
-            if (!treeResponse.ok) {
-                console.log('No responses found or repository not accessible');
-                return {};
-            }
+        const responseFiles = treeData.tree.filter(item => 
+            item.path.startsWith('rsvps/') && 
+            item.path.endsWith('.json') && 
+            item.type === 'blob'
+        );
 
-            const treeData = await treeResponse.json();
-            const responses = {};
+        console.log(`Found ${responseFiles.length} RSVP files in private repo`);
 
-            const responseFiles = treeData.tree.filter(item => 
-                item.path.startsWith('rsvps/') && 
-                item.path.endsWith('.json') && 
-                item.type === 'blob'
-            );
-
-            for (const file of responseFiles) {
-                try {
-                    const fileResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/git/blobs/${file.sha}`, {
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'User-Agent': 'EventCall-App'
-                        }
-                    });
-
-                    if (fileResponse.ok) {
-                        const fileData = await fileResponse.json();
-                        const content = JSON.parse(this.safeBase64Decode(fileData.content));
-                        const eventId = file.path.replace('rsvps/', '').replace('.json', '');
-                        
-                        if (window.events && window.events[eventId]) {
-                            responses[eventId] = content;
-                            console.log('✅ Loaded responses for event:', eventId);
-                        }
+        for (const file of responseFiles) {
+            try {
+                const fileResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/${file.sha}`, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
                     }
-                } catch (error) {
-                    console.error(`Failed to load response file ${file.path}:`, error);
+                });
+
+                if (fileResponse.ok) {
+                    const fileData = await fileResponse.json();
+                    const content = JSON.parse(this.safeBase64Decode(fileData.content));
+                    
+                    // Extract event ID from RSVP data
+                    const eventId = content.eventId;
+                    
+                    if (eventId && window.events && window.events[eventId]) {
+                        if (!responses[eventId]) {
+                            responses[eventId] = [];
+                        }
+                        responses[eventId].push(content);
+                        console.log('✅ Loaded RSVP for event:', eventId);
+                    }
                 }
+            } catch (error) {
+                console.error(`Failed to load response file ${file.path}:`, error);
             }
+        }
+
+        console.log(`✅ Loaded responses for ${Object.keys(responses).length} events from private repo`);
+        return responses;
+
+    } catch (error) {
+        console.error('Failed to load responses from private repo:', error);
+        return {};
+    }
+}
 
             console.log(`✅ Loaded responses for ${Object.keys(responses).length} events from GitHub`);
             return responses;
