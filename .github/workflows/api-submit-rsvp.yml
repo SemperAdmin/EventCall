@@ -1,0 +1,31 @@
+name: API - Submit RSVP
+
+on:
+  repository_dispatch:
+    types: [submit_rsvp]
+
+jobs:
+  save-rsvp:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Save RSVP to Private Repo
+        run: |
+          echo "Processing RSVP..."
+          
+          TIMESTAMP=$(date +%s)
+          RSVP_ID="rsvp-${TIMESTAMP}-${{ github.run_id }}"
+          
+          cat > rsvp-data.json << 'EOF'
+          ${{ toJSON(github.event.client_payload) }}
+          EOF
+          
+          CONTENT=$(base64 -w 0 rsvp-data.json)
+          
+          curl -X PUT \
+            -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${RSVP_ID}.json \
+            -d "{\"message\":\"Add RSVP\",\"content\":\"$CONTENT\"}"
+          
+          echo "✅ RSVP saved: ${RSVP_ID}"
