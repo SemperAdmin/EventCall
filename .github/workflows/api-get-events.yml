@@ -1,0 +1,58 @@
+name: API - Get Events
+
+on:
+  repository_dispatch:
+    types: [get_events]
+  schedule:
+    - cron: '*/5 * * * *'  # Run every 5 minutes to sync events
+
+jobs:
+  sync-events:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Fetch Events from Private Repo
+        id: fetch
+        run: |
+          echo "Fetching events from private repo..."
+          
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+            "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/events")
+          
+          echo "$RESPONSE" > events-list.json
+          
+          echo "[]" > all-events.json
+          
+          for file in $(echo "$RESPONSE" | jq -r '.[] | select(.name | endswith(".json")) | .download_url'); do
+            EVENT_DATA=$(curl -s -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" "$file")
+            echo "$EVENT_DATA" >> all-events.json
+          done
+          
+          # Combine into array
+          jq -s '.' all-events.json > combined-events.json
+          
+          echo "Fetched $(jq length combined-events.json) events"
+
+      - name: Save to Public Repo for Frontend Access
+        run: |
+          CONTENT=$(base64 -w 0 combined-events.json)
+          
+          # Get current file SHA if it exists
+          SHA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/contents/events-index.json" \
+            | jq -r '.sha // empty')
+          
+          # Prepare request body
+          if [ -z "$SHA" ]; then
+            BODY="{\"message\":\"Update events index\",\"content\":\"$CONTENT\"}"
+          else
+            BODY="{\"message\":\"Update events index\",\"content\":\"$CONTENT\",\"sha\":\"$SHA\"}"
+          fi
+          
+          curl -X PUT \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/contents/events-index.json \
+            -d "$BODY"
+          
+          echo "Events index updated"
