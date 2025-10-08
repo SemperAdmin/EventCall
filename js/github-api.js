@@ -263,9 +263,9 @@ async loadResponses() {
         console.log('📥 Loading responses from private EventCall-Data repo...');
         
         // Load from PRIVATE repo: EventCall-Data
-        const treeResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1`, {
+        const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
             headers: {
-                'Authorization': `token ${token}`,
+                'Authorization': 'token ' + token,
                 'Accept': 'application/vnd.github.v3+json',
                 'User-Agent': 'EventCall-App'
             }
@@ -285,13 +285,13 @@ async loadResponses() {
             item.type === 'blob'
         );
 
-        console.log(`Found ${responseFiles.length} RSVP files in private repo`);
+        console.log('Found ' + responseFiles.length + ' RSVP files in private repo');
 
         for (const file of responseFiles) {
             try {
-                const fileResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/${file.sha}`, {
+                const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
                     headers: {
-                        'Authorization': `token ${token}`,
+                        'Authorization': 'token ' + token,
                         'Accept': 'application/vnd.github.v3+json',
                         'User-Agent': 'EventCall-App'
                     }
@@ -313,10 +313,18 @@ async loadResponses() {
                     }
                 }
             } catch (error) {
-                console.error(`Failed to load response file ${file.path}:`, error);
+                console.error('Failed to load response file ' + file.path + ':', error);
             }
         }
 
+        console.log('✅ Loaded responses for ' + Object.keys(responses).length + ' events from private repo');
+        return responses;
+
+    } catch (error) {
+        console.error('Failed to load responses from private repo:', error);
+        return {};
+    }
+}
         console.log(`✅ Loaded responses for ${Object.keys(responses).length} events from private repo`);
         return responses;
 
