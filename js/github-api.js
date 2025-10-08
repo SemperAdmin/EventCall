@@ -325,23 +325,6 @@ async loadResponses() {
         return {};
     }
 }
-        console.log(`✅ Loaded responses for ${Object.keys(responses).length} events from private repo`);
-        return responses;
-
-    } catch (error) {
-        console.error('Failed to load responses from private repo:', error);
-        return {};
-    }
-}
-
-            console.log(`✅ Loaded responses for ${Object.keys(responses).length} events from GitHub`);
-            return responses;
-
-        } catch (error) {
-            console.error('Failed to load responses from GitHub:', error);
-            return {};
-        }
-    }
 
     /**
      * Load RSVP issues from GitHub
