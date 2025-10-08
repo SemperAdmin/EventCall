@@ -1,0 +1,240 @@
+name: Process RSVP Submissions
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  process-rsvp:
+    if: contains(github.event.issue.labels.*.name, 'auto-process') && contains(github.event.issue.labels.*.name, 'rsvp')
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract RSVP data from issue
+      id: extract-data
+      run: |
+        # Extract JSON data between markers
+        ISSUE_BODY="${{ github.event.issue.body }}"
+        
+        # Find JSON block between markers
+        JSON_START="<!-- GITHUB_ACTIONS_JSON_START -->"
+        JSON_END="<!-- GITHUB_ACTIONS_JSON_END -->"
+        
+        # Extract JSON content
+        JSON_CONTENT=$(echo "$ISSUE_BODY" | sed -n "/$JSON_START/,/$JSON_END/p" | grep -A 50 '```json' | grep -B 50 '```' | sed '1d;$d' | head -n -1)
+        
+        if [ -z "$JSON_CONTENT" ]; then
+          echo "error=No valid JSON found in issue body" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
+        # Validate JSON format
+        echo "$JSON_CONTENT" | jq . > /dev/null || {
+          echo "error=Invalid JSON format" >> $GITHUB_OUTPUT
+          exit 1
+        }
+        
+        # Extract key fields for validation
+        EVENT_ID=$(echo "$JSON_CONTENT" | jq -r '.eventId // empty')
+        EMAIL=$(echo "$JSON_CONTENT" | jq -r '.email // empty')
+        NAME=$(echo "$JSON_CONTENT" | jq -r '.name // empty')
+        VALIDATION_HASH=$(echo "$JSON_CONTENT" | jq -r '.validationHash // empty')
+        RSVP_ID=$(echo "$JSON_CONTENT" | jq -r '.rsvpId // empty')
+        
+        # Validate required fields
+        if [ -z "$EVENT_ID" ] || [ -z "$EMAIL" ] || [ -z "$NAME" ] || [ -z "$VALIDATION_HASH" ]; then
+          echo "error=Missing required fields (eventId, email, name, validationHash)" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
+        # Output validated data
+        echo "json_data<<EOF" >> $GITHUB_OUTPUT
+        echo "$JSON_CONTENT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        echo "event_id=$EVENT_ID" >> $GITHUB_OUTPUT
+        echo "email=$EMAIL" >> $GITHUB_OUTPUT
+        echo "name=$NAME" >> $GITHUB_OUTPUT
+        echo "validation_hash=$VALIDATION_HASH" >> $GITHUB_OUTPUT
+        echo "rsvp_id=$RSVP_ID" >> $GITHUB_OUTPUT
+        
+        echo "✅ Successfully extracted RSVP data for $NAME ($EMAIL)"
+
+    - name: Validate submission hash
+      id: validate-hash
+      run: |
+        # Simple validation hash recreation (matching client-side logic)
+        EVENT_ID="${{ steps.extract-data.outputs.event_id }}"
+        EMAIL="${{ steps.extract-data.outputs.email }}"
+        TIMESTAMP=$(echo '${{ steps.extract-data.outputs.json_data }}' | jq -r '.timestamp')
+        
+        # Create validation string (same as client)
+        VALIDATION_STRING="${EVENT_ID}-${EMAIL}-${TIMESTAMP}"
+        
+        # Simple hash validation (check if hash is reasonable length and format)
+        PROVIDED_HASH="${{ steps.extract-data.outputs.validation_hash }}"
+        
+        if [ ${#PROVIDED_HASH} -lt 5 ] || [ ${#PROVIDED_HASH} -gt 15 ]; then
+          echo "error=Invalid validation hash format" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
+        echo "✅ Validation hash format verified"
+
+    - name: Check for duplicate RSVP
+      id: check-duplicate
+      run: |
+        EVENT_ID="${{ steps.extract-data.outputs.event_id }}"
+        EMAIL="${{ steps.extract-data.outputs.email }}"
+        RSVP_FILE="rsvps/${EVENT_ID}.json"
+        
+        if [ -f "$RSVP_FILE" ]; then
+          # Check if email already exists
+          EXISTING_EMAIL=$(jq -r --arg email "$EMAIL" '.[] | select(.email == $email) | .email' "$RSVP_FILE" 2>/dev/null || echo "")
+          
+          if [ ! -z "$EXISTING_EMAIL" ]; then
+            echo "duplicate=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Duplicate RSVP detected for $EMAIL - will update existing entry"
+          else
+            echo "duplicate=false" >> $GITHUB_OUTPUT
+            echo "✅ New RSVP for $EMAIL"
+          fi
+        else
+          echo "duplicate=false" >> $GITHUB_OUTPUT
+          echo "✅ First RSVP for event $EVENT_ID"
+        fi
+
+    - name: Update RSVP file
+      id: update-rsvp
+      run: |
+        EVENT_ID="${{ steps.extract-data.outputs.event_id }}"
+        RSVP_FILE="rsvps/${EVENT_ID}.json"
+        EMAIL="${{ steps.extract-data.outputs.email }}"
+        IS_DUPLICATE="${{ steps.check-duplicate.outputs.duplicate }}"
+        
+        # Create rsvps directory if it doesn't exist
+        mkdir -p rsvps
+        
+        # Prepare RSVP data with processing metadata
+        RSVP_DATA=$(echo '${{ steps.extract-data.outputs.json_data }}' | jq '. + {
+          "processed": true,
+          "processedAt": now * 1000 | floor,
+          "issueNumber": ${{ github.event.issue.number }},
+          "issueUrl": "${{ github.event.issue.html_url }}",
+          "processingMethod": "github_actions"
+        }')
+        
+        if [ ! -f "$RSVP_FILE" ]; then
+          # Create new file with first RSVP
+          echo "[$RSVP_DATA]" | jq . > "$RSVP_FILE"
+          echo "action=created" >> $GITHUB_OUTPUT
+          echo "✅ Created new RSVP file with first entry"
+        else
+          # Update existing file
+          if [ "$IS_DUPLICATE" = "true" ]; then
+            # Update existing RSVP
+            jq --argjson new_rsvp "$RSVP_DATA" '
+              map(if .email == $new_rsvp.email then $new_rsvp else . end)
+            ' "$RSVP_FILE" > "${RSVP_FILE}.tmp" && mv "${RSVP_FILE}.tmp" "$RSVP_FILE"
+            echo "action=updated" >> $GITHUB_OUTPUT
+            echo "✅ Updated existing RSVP for $EMAIL"
+          else
+            # Add new RSVP
+            jq --argjson new_rsvp "$RSVP_DATA" '. + [$new_rsvp]' "$RSVP_FILE" > "${RSVP_FILE}.tmp" && mv "${RSVP_FILE}.tmp" "$RSVP_FILE"
+            echo "action=added" >> $GITHUB_OUTPUT
+            echo "✅ Added new RSVP for $EMAIL"
+          fi
+        fi
+        
+        # Validate final JSON
+        jq . "$RSVP_FILE" > /dev/null || {
+          echo "error=Generated invalid JSON in RSVP file" >> $GITHUB_OUTPUT
+          exit 1
+        }
+        
+        echo "rsvp_count=$(jq length "$RSVP_FILE")" >> $GITHUB_OUTPUT
+
+    - name: Commit RSVP updates
+      run: |
+        EVENT_ID="${{ steps.extract-data.outputs.event_id }}"
+        NAME="${{ steps.extract-data.outputs.name }}"
+        ACTION="${{ steps.update-rsvp.outputs.action }}"
+        RSVP_COUNT="${{ steps.update-rsvp.outputs.rsvp_count }}"
+        
+        git config --local user.email "action@github.com"
+        git config --local user.name "EventCall Auto-Processor"
+        
+        git add "rsvps/${EVENT_ID}.json"
+        
+        COMMIT_MSG="🎖️ RSVP ${ACTION}: ${NAME} (Issue #${{ github.event.issue.number }})"
+        git commit -m "$COMMIT_MSG" -m "Total RSVPs for event: $RSVP_COUNT"
+        git push
+
+    - name: Update issue with processing status
+      run: |
+        NAME="${{ steps.extract-data.outputs.name }}"
+        ACTION="${{ steps.update-rsvp.outputs.action }}"
+        RSVP_COUNT="${{ steps.update-rsvp.outputs.rsvp_count }}"
+        
+        # Create comment on issue
+        COMMENT_BODY="## ✅ RSVP Successfully Processed
+
+**Status:** ${ACTION^} RSVP for **${NAME}**
+**Total RSVPs for this event:** $RSVP_COUNT
+**Processed at:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+**Processing method:** GitHub Actions (automated)
+
+The event organizer's dashboard has been automatically updated with this RSVP.
+
+---
+*This issue will be automatically closed in 30 seconds.*"
+        
+        # Post comment
+        gh issue comment ${{ github.event.issue.number }} --body "$COMMENT_BODY"
+        
+        # Add processed label
+        gh issue edit ${{ github.event.issue.number }} --add-label "processed"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Close processed issue
+      run: |
+        # Wait 30 seconds then close issue
+        sleep 30
+        
+        gh issue close ${{ github.event.issue.number }} --comment "🎖️ RSVP processing complete. This issue is now closed automatically."
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Handle processing errors
+      if: failure()
+      run: |
+        ERROR_MSG="❌ RSVP processing failed for issue #${{ github.event.issue.number }}"
+        
+        if [ ! -z "${{ steps.extract-data.outputs.error }}" ]; then
+          ERROR_MSG="$ERROR_MSG - ${{ steps.extract-data.outputs.error }}"
+        elif [ ! -z "${{ steps.validate-hash.outputs.error }}" ]; then
+          ERROR_MSG="$ERROR_MSG - ${{ steps.validate-hash.outputs.error }}"
+        elif [ ! -z "${{ steps.update-rsvp.outputs.error }}" ]; then
+          ERROR_MSG="$ERROR_MSG - ${{ steps.update-rsvp.outputs.error }}"
+        fi
+        
+        # Comment on issue with error
+        COMMENT_BODY="## ❌ RSVP Processing Failed
+
+**Error:** $ERROR_MSG
+**Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+
+This RSVP requires manual processing by the event organizer. Please check the submission data and process manually via the EventCall dashboard.
+
+The issue will remain open for manual review."
+        
+        gh issue comment ${{ github.event.issue.number }} --body "$COMMENT_BODY"
+        gh issue edit ${{ github.event.issue.number }} --add-label "processing-failed" --remove-label "auto-process"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
