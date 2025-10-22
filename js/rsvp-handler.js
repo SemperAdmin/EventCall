@@ -330,6 +330,15 @@ class RSVPHandler {
                         <div><strong>Allergy Details:</strong> ${rsvpData.allergyDetails}</div>
                     ` : ''}
 
+                    ${rsvpData.rank || rsvpData.unit || rsvpData.branch ? `
+                        <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f0f9ff; border-radius: 0.5rem;">
+                            <strong>🎖️ Military Information:</strong><br>
+                            ${rsvpData.rank ? `<div>Rank: ${rsvpData.rank}</div>` : ''}
+                            ${rsvpData.unit ? `<div>Unit: ${rsvpData.unit}</div>` : ''}
+                            ${rsvpData.branch ? `<div>Branch: ${rsvpData.branch}</div>` : ''}
+                        </div>
+                    ` : ''}
+
                     ${rsvpData.reason ? `
                         <div><strong>Reason:</strong> ${rsvpData.reason}</div>
                     ` : ''}
@@ -473,6 +482,11 @@ class RSVPHandler {
 
         const allergyDetails = sanitizeText(document.getElementById('allergy-details')?.value || '');
 
+        // Collect military information
+        const rank = document.getElementById('rank')?.value || '';
+        const unit = sanitizeText(document.getElementById('unit')?.value || '');
+        const branch = document.getElementById('branch')?.value || '';
+
         return {
             name: sanitizeText(document.getElementById('rsvp-name')?.value || ''),
             email: sanitizeText(document.getElementById('rsvp-email')?.value || ''),
@@ -482,6 +496,9 @@ class RSVPHandler {
             guestCount: parseInt(document.getElementById('guest-count')?.value || '0'),
             dietaryRestrictions: dietaryRestrictions,
             allergyDetails: allergyDetails,
+            rank: rank,
+            unit: unit,
+            branch: branch,
             customAnswers: customAnswers,
             userAgent: navigator.userAgent
         };

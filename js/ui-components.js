@@ -91,6 +91,14 @@ function createInviteWithoutImageHTML(event, eventId) {
                 ${event.location ? `
                     <div class="invite-detail">
                         <strong>📍 Location:</strong> ${event.location}
+                        <div style="margin-top: 0.5rem;">
+                            <a href="https://maps.google.com/?q=${encodeURIComponent(event.location)}"
+                               target="_blank"
+                               class="btn"
+                               style="display: inline-block; padding: 0.5rem 1rem; font-size: 0.875rem; text-decoration: none;">
+                                🗺️ Get Directions
+                            </a>
+                        </div>
                     </div>
                 ` : ''}
                 ${event.description ? `
@@ -136,6 +144,49 @@ function createRSVPFormHTML(event, eventId) {
                 <div class="form-group">
                     <label for="rsvp-phone">Phone Number</label>
                     <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" style="min-height: 44px;">
+                </div>
+
+                <!-- Military Information (Optional) -->
+                <div style="margin: 1.5rem 0; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
+                    <div style="font-weight: 600; margin-bottom: 0.75rem; color: #1e40af;">🎖️ Military Information (Optional)</div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="rank">Rank</label>
+                        <select id="rank" style="min-height: 44px; font-size: 16px;">
+                            <option value="">Select rank...</option>
+                            <optgroup label="Enlisted">
+                                ${window.MilitaryData ? window.MilitaryData.marineCorps.enlisted.map(r =>
+                                    `<option value="${r.value}">${r.label}</option>`
+                                ).join('') : ''}
+                            </optgroup>
+                            <optgroup label="Officer">
+                                ${window.MilitaryData ? window.MilitaryData.marineCorps.officer.map(r =>
+                                    `<option value="${r.value}">${r.label}</option>`
+                                ).join('') : ''}
+                            </optgroup>
+                            <optgroup label="Warrant Officer">
+                                ${window.MilitaryData ? window.MilitaryData.marineCorps.warrant.map(r =>
+                                    `<option value="${r.value}">${r.label}</option>`
+                                ).join('') : ''}
+                            </optgroup>
+                            <option value="Civilian">Civilian</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="unit">Unit</label>
+                        <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" style="min-height: 44px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="branch">Branch</label>
+                        <select id="branch" style="min-height: 44px; font-size: 16px;">
+                            <option value="">Select branch...</option>
+                            ${window.MilitaryData ? window.MilitaryData.branches.map(b =>
+                                `<option value="${b.value}">${b.label}</option>`
+                            ).join('') : ''}
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -388,6 +439,14 @@ function createInviteWithImageHTML(event, eventId) {
                 ${event.location ? `
                     <div class="invite-detail">
                         <strong>📍 Location:</strong> ${event.location}
+                        <div style="margin-top: 0.5rem;">
+                            <a href="https://maps.google.com/?q=${encodeURIComponent(event.location)}"
+                               target="_blank"
+                               class="btn"
+                               style="display: inline-block; padding: 0.5rem 1rem; font-size: 0.875rem; text-decoration: none;">
+                                🗺️ Get Directions
+                            </a>
+                        </div>
                     </div>
                 ` : ''}
                 ${event.description ? `
