@@ -9,6 +9,10 @@
     <link rel="stylesheet" href="styles/invite.css">
     <link rel="stylesheet" href="styles/responsive.css">
     <link rel="stylesheet" href="styles/login.css">
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- CSV Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
 <!-- Updated Login Page HTML with Obfuscated Token -->
@@ -138,7 +142,10 @@ function toggleTokenVisibility() {
                     🎯 Mission Planning
                 </div>
             </div>
-            
+
+            <!-- Event Templates Selector -->
+            <div id="template-selector-container"></div>
+
             <!-- IMPORTANT: No action attribute, no method attribute -->
             <form id="event-form">
                 <div class="form-group">
@@ -299,6 +306,10 @@ function toggleTokenVisibility() {
 <script src="js/github-api.js"></script>
 <script src="js/calendar-export.js"></script>
 <script src="js/military-data.js"></script>
+<script src="js/event-templates.js"></script>
+<script src="js/qr-checkin.js"></script>
+<script src="js/csv-import.js"></script>
+<script src="js/recurring-events.js"></script>
 <script src="js/event-manager.js"></script>
 <script src="js/manager-system.js"></script>
 <script src="js/ui-components.js"></script>

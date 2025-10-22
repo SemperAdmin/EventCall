@@ -125,7 +125,15 @@ function showPageContent(pageId) {
   if (!window.location.hash.includes('invite/')) {
     window.location.hash = pageId;
   }
-  
+
+  // Initialize template selector on create page
+  if (pageId === 'create' && window.eventTemplates) {
+    const container = document.getElementById('template-selector-container');
+    if (container && !container.hasChildNodes()) {
+      container.innerHTML = window.eventTemplates.generateTemplateSelectorHTML();
+    }
+  }
+
   console.log(`📄 Page changed to: ${pageId}`);
 }
 
