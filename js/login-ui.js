@@ -255,10 +255,10 @@ class LoginUI {
                 
                 // Navigate to dashboard
                 showPage('dashboard');
-                
-                // Reload events
-                if (window.eventManager) {
-                    window.eventManager.loadEvents();
+
+                // Load events and responses from GitHub
+                if (window.loadManagerData) {
+                    await window.loadManagerData();
                 }
             }
 
