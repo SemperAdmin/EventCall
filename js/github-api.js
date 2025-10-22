@@ -289,6 +289,9 @@ async loadResponses() {
 
         for (const file of responseFiles) {
             try {
+                // Extract event ID from filename: rsvps/{eventId}.json
+                const eventId = file.path.replace('rsvps/', '').replace('.json', '');
+
                 const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
                     headers: {
                         'Authorization': 'token ' + token,
@@ -299,17 +302,19 @@ async loadResponses() {
 
                 if (fileResponse.ok) {
                     const fileData = await fileResponse.json();
-                    const content = JSON.parse(this.safeBase64Decode(fileData.content));
-                    
-                    // Extract event ID from RSVP data
-                    const eventId = content.eventId;
-                    
-                    if (eventId && window.events && window.events[eventId]) {
+                    const rsvpArray = JSON.parse(this.safeBase64Decode(fileData.content));
+
+                    // RSVP file contains an array of RSVPs for this event
+                    if (Array.isArray(rsvpArray) && eventId) {
                         if (!responses[eventId]) {
                             responses[eventId] = [];
                         }
-                        responses[eventId].push(content);
-                        console.log('✅ Loaded RSVP for event:', eventId);
+
+                        // Add all RSVPs from the array
+                        responses[eventId] = rsvpArray;
+                        console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId}`);
+                    } else {
+                        console.warn(`⚠️ Unexpected RSVP format for event ${eventId}`);
                     }
                 }
             } catch (error) {

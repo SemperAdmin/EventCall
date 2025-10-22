@@ -491,19 +491,18 @@ class EventManager {
         const container = document.getElementById('custom-questions-container');
         container.innerHTML = '';
 
-        if (questions.length === 0) {
-            questions = [{ question: '' }]; // At least one empty question
+        // Only add questions if they exist - no default empty question
+        if (questions && questions.length > 0) {
+            questions.forEach(q => {
+                const questionItem = document.createElement('div');
+                questionItem.className = 'custom-question-item';
+                questionItem.innerHTML = `
+                    <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${q.question || ''}">
+                    <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
+                `;
+                container.appendChild(questionItem);
+            });
         }
-
-        questions.forEach(q => {
-            const questionItem = document.createElement('div');
-            questionItem.className = 'custom-question-item';
-            questionItem.innerHTML = `
-                <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${q.question || ''}">
-                <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
-            `;
-            container.appendChild(questionItem);
-        });
     }
 
     /**

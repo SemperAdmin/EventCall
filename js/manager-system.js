@@ -504,12 +504,7 @@ function getCustomQuestions() {
 function clearCustomQuestions() {
     const container = document.getElementById('custom-questions-container');
     if (container) {
-        container.innerHTML = `
-            <div class="custom-question-item">
-                <input type="text" placeholder="Enter your question..." class="custom-question-input">
-                <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
-            </div>
-        `;
+        container.innerHTML = '';
     }
 }
 
