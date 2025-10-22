@@ -128,12 +128,33 @@
     .form-group {
         margin-bottom: 1rem;
     }
-    
+
     .form-group input,
     .form-group textarea,
     .form-group select {
-        padding: 0.5rem;
-        font-size: 0.875rem;
+        padding: 0.75rem;
+        font-size: 16px; /* Prevents zoom on iOS */
+        min-height: 44px; /* Touch target size */
+        border-radius: 0.5rem;
+    }
+
+    .form-group label {
+        font-size: 0.95rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Radio buttons - larger touch targets */
+    .rsvp-radio-option {
+        padding: 0.875rem 1rem;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    .rsvp-radio-option input[type="radio"] {
+        width: 20px;
+        height: 20px;
+        margin-right: 0.75rem;
     }
     
     .custom-question-item {

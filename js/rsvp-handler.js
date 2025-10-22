@@ -8,6 +8,9 @@ class RSVPHandler {
         this.submissionInProgress = false;
         this.maxRetries = 3;
         this.retryDelay = 2000;
+        this.editMode = false;
+        this.editToken = null;
+        this.existingRsvpId = null;
     }
 
     generateValidationHash(rsvpData) {
@@ -19,6 +22,97 @@ class RSVPHandler {
             hash = hash & hash;
         }
         return Math.abs(hash).toString(36);
+    }
+
+    /**
+     * Check if URL contains edit token and load existing RSVP
+     */
+    async initEditMode() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const editToken = urlParams.get('edit');
+        const rsvpId = urlParams.get('rsvpId');
+
+        if (editToken && rsvpId) {
+            this.editMode = true;
+            this.editToken = editToken;
+            this.existingRsvpId = rsvpId;
+
+            // Load existing RSVP data from localStorage as fallback
+            // In production, this would fetch from GitHub
+            const event = getEventFromURL();
+            if (event) {
+                const storageKey = `eventcall_pending_rsvps_${event.id}`;
+                try {
+                    const pending = localStorage.getItem(storageKey);
+                    if (pending) {
+                        const rsvps = JSON.parse(pending);
+                        const existing = rsvps.find(r => r.rsvpId === rsvpId || r.editToken === editToken);
+                        if (existing) {
+                            return existing;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Could not load existing RSVP:', e);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Pre-fill form with existing RSVP data
+     */
+    prefillEditForm(rsvpData) {
+        if (!rsvpData) return;
+
+        const nameInput = document.getElementById('rsvp-name');
+        const emailInput = document.getElementById('rsvp-email');
+        const phoneInput = document.getElementById('rsvp-phone');
+        const reasonInput = document.getElementById('reason');
+        const guestCountInput = document.getElementById('guest-count');
+
+        if (nameInput) nameInput.value = rsvpData.name || '';
+        if (emailInput) emailInput.value = rsvpData.email || '';
+        if (phoneInput) phoneInput.value = rsvpData.phone || '';
+        if (reasonInput) reasonInput.value = rsvpData.reason || '';
+        if (guestCountInput) guestCountInput.value = rsvpData.guestCount || 0;
+
+        // Set attending radio button
+        if (rsvpData.attending !== undefined) {
+            const attendingRadio = document.querySelector(`input[name="attending"][value="${rsvpData.attending}"]`);
+            if (attendingRadio) attendingRadio.checked = true;
+        }
+
+        // Show edit mode banner
+        this.showEditModeBanner();
+    }
+
+    /**
+     * Show banner indicating edit mode
+     */
+    showEditModeBanner() {
+        const inviteContent = document.getElementById('invite-content');
+        if (!inviteContent) return;
+
+        const banner = document.createElement('div');
+        banner.className = 'edit-mode-banner';
+        banner.style.cssText = `
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #78350f;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+            border: 2px solid #fcd34d;
+        `;
+        banner.innerHTML = '✏️ <strong>Edit Mode:</strong> You are updating your existing RSVP';
+
+        const firstChild = inviteContent.firstChild;
+        if (firstChild) {
+            inviteContent.insertBefore(banner, firstChild);
+        }
     }
 
     async handleRSVP(e, eventId) {
@@ -50,7 +144,19 @@ class RSVPHandler {
             }
 
             rsvpData.timestamp = Date.now();
-            rsvpData.rsvpId = generateUUID();
+
+            // In edit mode, use existing RSVP ID, otherwise generate new
+            if (this.editMode && this.existingRsvpId) {
+                rsvpData.rsvpId = this.existingRsvpId;
+                rsvpData.editToken = this.editToken;
+                rsvpData.isUpdate = true;
+                rsvpData.lastModified = Date.now();
+            } else {
+                rsvpData.rsvpId = generateUUID();
+                rsvpData.editToken = generateUUID(); // Generate edit token for new RSVPs
+                rsvpData.isUpdate = false;
+            }
+
             rsvpData.eventId = eventId;
             rsvpData.validationHash = this.generateValidationHash(rsvpData);
             rsvpData.submissionMethod = 'secure_backend';
@@ -215,7 +321,15 @@ class RSVPHandler {
                     ${rsvpData.guestCount > 0 ? `
                         <div><strong>Additional Guests:</strong> ${rsvpData.guestCount}</div>
                     ` : ''}
-                    
+
+                    ${rsvpData.dietaryRestrictions && rsvpData.dietaryRestrictions.length > 0 ? `
+                        <div><strong>Dietary Restrictions:</strong> ${rsvpData.dietaryRestrictions.join(', ')}</div>
+                    ` : ''}
+
+                    ${rsvpData.allergyDetails ? `
+                        <div><strong>Allergy Details:</strong> ${rsvpData.allergyDetails}</div>
+                    ` : ''}
+
                     ${rsvpData.reason ? `
                         <div><strong>Reason:</strong> ${rsvpData.reason}</div>
                     ` : ''}
@@ -236,10 +350,30 @@ class RSVPHandler {
                 </div>
 
                 ${this.generateEventSummary(event, rsvpData)}
-                
+
+                ${rsvpData.attending && window.calendarExport ? `
+                <div style="margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
+                    <strong>📅 Add to Your Calendar</strong><br>
+                    <div style="margin-top: 0.75rem;">
+                        ${window.calendarExport.generateCalendarDropdownHTML(event)}
+                    </div>
+                </div>
+                ` : ''}
+
                 <div style="margin-top: 2rem; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;">
                     <button class="btn" onclick="window.print()">🖨️ Print Receipt</button>
+                    <button class="btn" onclick="window.rsvpHandler.copyEditLink('${rsvpData.rsvpId}', '${rsvpData.editToken}')">✏️ Copy Edit Link</button>
                     <button class="btn" onclick="window.location.reload()">📝 Submit Another RSVP</button>
+                </div>
+
+                <div style="margin-top: 1.5rem; padding: 1rem; background: #fffbeb; border-left: 4px solid #fbbf24; border-radius: 0.5rem;">
+                    <strong>✏️ Need to make changes?</strong><br>
+                    <div style="margin-top: 0.5rem; font-size: 0.875rem;">
+                        Save your edit link to update your RSVP later:<br>
+                        <code style="background: #fef3c7; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.75rem; display: inline-block; margin-top: 0.25rem; word-break: break-all;">
+                            ${this.generateEditURL(event, rsvpData.rsvpId, rsvpData.editToken)}
+                        </code>
+                    </div>
                 </div>
             </div>
         `;
@@ -331,6 +465,14 @@ class RSVPHandler {
             });
         }
 
+        // Collect dietary restrictions
+        const dietaryRestrictions = [];
+        document.querySelectorAll('input[name="dietary"]:checked').forEach(checkbox => {
+            dietaryRestrictions.push(checkbox.value);
+        });
+
+        const allergyDetails = sanitizeText(document.getElementById('allergy-details')?.value || '');
+
         return {
             name: sanitizeText(document.getElementById('rsvp-name')?.value || ''),
             email: sanitizeText(document.getElementById('rsvp-email')?.value || ''),
@@ -338,6 +480,8 @@ class RSVPHandler {
             attending: attendingValue,
             reason: sanitizeText(document.getElementById('reason')?.value || ''),
             guestCount: parseInt(document.getElementById('guest-count')?.value || '0'),
+            dietaryRestrictions: dietaryRestrictions,
+            allergyDetails: allergyDetails,
             customAnswers: customAnswers,
             userAgent: navigator.userAgent
         };
@@ -444,24 +588,75 @@ class RSVPHandler {
 
     prefillFormFromURL() {
         const urlParams = new URLSearchParams(window.location.search);
-        
+
         const name = urlParams.get('name');
         const email = urlParams.get('email');
         const phone = urlParams.get('phone');
-        
+
         if (name) {
             const nameInput = document.getElementById('rsvp-name');
             if (nameInput) nameInput.value = decodeURIComponent(name);
         }
-        
+
         if (email) {
             const emailInput = document.getElementById('rsvp-email');
             if (emailInput) emailInput.value = decodeURIComponent(email);
         }
-        
+
         if (phone) {
             const phoneInput = document.getElementById('rsvp-phone');
             if (phoneInput) phoneInput.value = decodeURIComponent(phone);
+        }
+    }
+
+    /**
+     * Generate edit URL for an RSVP
+     */
+    generateEditURL(event, rsvpId, editToken) {
+        if (!event) return '';
+        const currentURL = window.location.href.split('?')[0].split('#')[0];
+        const encodedData = btoa(JSON.stringify({
+            id: event.id,
+            title: event.title,
+            date: event.date,
+            time: event.time,
+            location: event.location,
+            description: event.description,
+            coverImage: event.coverImage,
+            askReason: event.askReason,
+            allowGuests: event.allowGuests,
+            customQuestions: event.customQuestions || [],
+            created: event.created
+        }));
+        return `${currentURL}?data=${encodedData}&edit=${editToken}&rsvpId=${rsvpId}#invite/${event.id}`;
+    }
+
+    /**
+     * Copy edit link to clipboard
+     */
+    async copyEditLink(rsvpId, editToken) {
+        const event = getEventFromURL();
+        if (!event) {
+            showToast('❌ Event data not found', 'error');
+            return;
+        }
+
+        const editURL = this.generateEditURL(event, rsvpId, editToken);
+
+        try {
+            await navigator.clipboard.writeText(editURL);
+            showToast('✏️ Edit link copied to clipboard!', 'success');
+        } catch (error) {
+            // Fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = editURL;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('✏️ Edit link copied!', 'success');
         }
     }
 }
