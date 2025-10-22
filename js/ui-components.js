@@ -99,6 +99,11 @@ function createInviteWithoutImageHTML(event, eventId) {
                     </div>
                 ` : ''}
             </div>
+            <div style="margin: 1.5rem 0; text-align: center;">
+                <div style="display: inline-block;">
+                    ${window.calendarExport ? window.calendarExport.generateCalendarDropdownHTML(event) : ''}
+                </div>
+            </div>
             ${createRSVPFormHTML(event, eventId)}
             <div class="invite-powered-by">
                 <div class="powered-by-text">Powered by</div>
@@ -120,19 +125,52 @@ function createRSVPFormHTML(event, eventId) {
             <form id="rsvp-form" onsubmit="handleRSVP(event, '${eventId}')">
                 <div class="form-group">
                     <label for="rsvp-name">Full Name *</label>
-                    <input type="text" id="rsvp-name" required placeholder="Enter your full name">
+                    <input type="text" id="rsvp-name" name="name" autocomplete="name" required placeholder="Enter your full name" style="min-height: 44px;">
                 </div>
 
                 <div class="form-group">
                     <label for="rsvp-email">Email Address *</label>
-                    <input type="email" id="rsvp-email" required placeholder="your.email@example.com">
+                    <input type="email" id="rsvp-email" name="email" autocomplete="email" required placeholder="your.email@example.com" inputmode="email" style="min-height: 44px;">
                 </div>
 
                 <div class="form-group">
                     <label for="rsvp-phone">Phone Number</label>
-                    <input type="tel" id="rsvp-phone" placeholder="(555) 123-4567">
+                    <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" style="min-height: 44px;">
                 </div>
-                
+
+                <div class="form-group">
+                    <label>Dietary Restrictions (Optional)</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" name="dietary" value="vegetarian" style="margin-right: 0.5rem;">
+                            <span>🥗 Vegetarian</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" name="dietary" value="vegan" style="margin-right: 0.5rem;">
+                            <span>🌱 Vegan</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" name="dietary" value="gluten-free" style="margin-right: 0.5rem;">
+                            <span>🌾 Gluten-Free</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" name="dietary" value="dairy-free" style="margin-right: 0.5rem;">
+                            <span>🥛 Dairy-Free</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" name="dietary" value="halal" style="margin-right: 0.5rem;">
+                            <span>☪️ Halal</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" name="dietary" value="kosher" style="margin-right: 0.5rem;">
+                            <span>✡️ Kosher</span>
+                        </label>
+                    </div>
+                    <div style="margin-top: 0.75rem;">
+                        <input type="text" id="allergy-details" placeholder="Other allergies or dietary needs..." style="min-height: 44px;">
+                    </div>
+                </div>
+
                 ${event.askReason ? `
                     <div class="form-group">
                         <label for="reason">Why are you attending? (Optional)</label>
@@ -159,7 +197,7 @@ function createRSVPFormHTML(event, eventId) {
                 ${event.allowGuests ? `
                     <div class="form-group" id="guest-count-group" style="display: none;">
                         <label for="guest-count">How many additional guests will you bring?</label>
-                        <select id="guest-count">
+                        <select id="guest-count" style="min-height: 44px; font-size: 16px;">
                             <option value="0">Just me</option>
                             <option value="1">+1 guest</option>
                             <option value="2">+2 guests</option>
@@ -169,9 +207,9 @@ function createRSVPFormHTML(event, eventId) {
                         </select>
                     </div>
                 ` : ''}
-                
+
                 <div style="text-align: center; margin-top: 1.5rem;">
-                    <button type="submit" class="btn">📝 Submit RSVP</button>
+                    <button type="submit" class="btn" style="min-height: 48px; padding: 0.875rem 2rem; font-size: 1.1rem;">📝 Submit RSVP</button>
                 </div>
             </form>
         </div>
@@ -215,13 +253,22 @@ function toggleGuestCount(attending) {
 /**
  * Setup RSVP form functionality
  */
-function setupRSVPForm() {
+async function setupRSVPForm() {
     // Setup real-time validation if available
     if (window.rsvpHandler && window.rsvpHandler.setupRealTimeValidation) {
         window.rsvpHandler.setupRealTimeValidation();
     }
-    
-    // Pre-fill form if URL parameters exist
+
+    // Check for edit mode and pre-fill if editing
+    if (window.rsvpHandler && window.rsvpHandler.initEditMode) {
+        const existingRSVP = await window.rsvpHandler.initEditMode();
+        if (existingRSVP) {
+            window.rsvpHandler.prefillEditForm(existingRSVP);
+            return; // Skip regular prefill if in edit mode
+        }
+    }
+
+    // Pre-fill form if URL parameters exist (for new RSVPs)
     if (window.rsvpHandler && window.rsvpHandler.prefillFormFromURL) {
         window.rsvpHandler.prefillFormFromURL();
     }
@@ -348,6 +395,11 @@ function createInviteWithImageHTML(event, eventId) {
                         <strong>📝 Details:</strong> ${event.description}
                     </div>
                 ` : ''}
+            </div>
+            <div style="margin: 1.5rem 0; text-align: center;">
+                <div style="display: inline-block;">
+                    ${window.calendarExport ? window.calendarExport.generateCalendarDropdownHTML(event) : ''}
+                </div>
             </div>
             ${createRSVPFormHTML(event, eventId)}
             <div class="invite-powered-by">
