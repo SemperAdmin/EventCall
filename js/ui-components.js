@@ -151,41 +151,25 @@ function createRSVPFormHTML(event, eventId) {
                     <div style="font-weight: 600; margin-bottom: 0.75rem; color: #1e40af;">🎖️ Military Information (Optional)</div>
 
                     <div class="form-group" style="margin-bottom: 1rem;">
-                        <label for="rank">Rank</label>
-                        <select id="rank" style="min-height: 44px; font-size: 16px;">
-                            <option value="">Select rank...</option>
-                            <optgroup label="Enlisted">
-                                ${window.MilitaryData ? window.MilitaryData.marineCorps.enlisted.map(r =>
-                                    `<option value="${r.value}">${r.label}</option>`
-                                ).join('') : ''}
-                            </optgroup>
-                            <optgroup label="Officer">
-                                ${window.MilitaryData ? window.MilitaryData.marineCorps.officer.map(r =>
-                                    `<option value="${r.value}">${r.label}</option>`
-                                ).join('') : ''}
-                            </optgroup>
-                            <optgroup label="Warrant Officer">
-                                ${window.MilitaryData ? window.MilitaryData.marineCorps.warrant.map(r =>
-                                    `<option value="${r.value}">${r.label}</option>`
-                                ).join('') : ''}
-                            </optgroup>
-                            <option value="Civilian">Civilian</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label for="unit">Unit</label>
-                        <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" style="min-height: 44px;">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="branch">Branch</label>
-                        <select id="branch" style="min-height: 44px; font-size: 16px;">
-                            <option value="">Select branch...</option>
+                        <label for="branch">Service Branch</label>
+                        <select id="branch" onchange="window.updateRanksForBranch && window.updateRanksForBranch()" style="min-height: 44px; font-size: 16px;">
+                            <option value="">Select service branch...</option>
                             ${window.MilitaryData ? window.MilitaryData.branches.map(b =>
                                 `<option value="${b.value}">${b.label}</option>`
                             ).join('') : ''}
                         </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="rank">Rank</label>
+                        <select id="rank" style="min-height: 44px; font-size: 16px;" disabled>
+                            <option value="">Select service branch first...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="unit">Unit</label>
+                        <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" style="min-height: 44px;">
                     </div>
                 </div>
 
@@ -471,6 +455,95 @@ function createInviteWithImageHTML(event, eventId) {
     `;
 }
 
+/**
+ * Update rank dropdown based on selected service branch
+ */
+function updateRanksForBranch() {
+    const branchSelect = document.getElementById('branch');
+    const rankSelect = document.getElementById('rank');
+
+    if (!branchSelect || !rankSelect || !window.MilitaryData) {
+        return;
+    }
+
+    const selectedBranch = branchSelect.value;
+
+    // Clear current ranks
+    rankSelect.innerHTML = '<option value="">Select rank...</option>';
+
+    if (!selectedBranch || selectedBranch === 'Civilian' || selectedBranch === 'Other') {
+        // For Civilian or Other, just add a Civilian option and disable
+        if (selectedBranch === 'Civilian') {
+            rankSelect.innerHTML = '<option value="Civilian">Civilian</option>';
+            rankSelect.disabled = true;
+        } else if (selectedBranch === 'Other') {
+            rankSelect.innerHTML = '<option value="">N/A</option>';
+            rankSelect.disabled = true;
+        } else {
+            rankSelect.innerHTML = '<option value="">Select service branch first...</option>';
+            rankSelect.disabled = true;
+        }
+        return;
+    }
+
+    // Get ranks for selected branch
+    const branchData = window.MilitaryData[selectedBranch];
+
+    if (!branchData) {
+        rankSelect.innerHTML = '<option value="">No ranks available</option>';
+        rankSelect.disabled = true;
+        return;
+    }
+
+    // Enable the rank dropdown
+    rankSelect.disabled = false;
+
+    // Add officer ranks
+    if (branchData.officer && branchData.officer.length > 0) {
+        const officerGroup = document.createElement('optgroup');
+        officerGroup.label = 'Officer';
+        branchData.officer.forEach(rank => {
+            const option = document.createElement('option');
+            option.value = rank.value;
+            option.textContent = rank.label;
+            officerGroup.appendChild(option);
+        });
+        rankSelect.appendChild(officerGroup);
+    }
+
+    // Add warrant officer ranks
+    if (branchData.warrant && branchData.warrant.length > 0) {
+        const warrantGroup = document.createElement('optgroup');
+        warrantGroup.label = 'Warrant Officer';
+        branchData.warrant.forEach(rank => {
+            const option = document.createElement('option');
+            option.value = rank.value;
+            option.textContent = rank.label;
+            warrantGroup.appendChild(option);
+        });
+        rankSelect.appendChild(warrantGroup);
+    }
+
+    // Add enlisted ranks
+    if (branchData.enlisted && branchData.enlisted.length > 0) {
+        const enlistedGroup = document.createElement('optgroup');
+        enlistedGroup.label = 'Enlisted';
+        branchData.enlisted.forEach(rank => {
+            const option = document.createElement('option');
+            option.value = rank.value;
+            option.textContent = rank.label;
+            enlistedGroup.appendChild(option);
+        });
+        rankSelect.appendChild(enlistedGroup);
+    }
+
+    // Add Civilian option at the end
+    const civilianOption = document.createElement('option');
+    civilianOption.value = 'Civilian';
+    civilianOption.textContent = 'Civilian';
+    rankSelect.appendChild(civilianOption);
+}
+
 // Make functions globally available
 window.loadInviteContentDirect = loadInviteContentDirect;
 window.toggleGuestCount = toggleGuestCount;
@@ -480,3 +553,4 @@ window.formatDate = formatDate;
 window.formatTime = formatTime;
 window.createPastEventHTML = createPastEventHTML;
 window.createInviteWithImageHTML = createInviteWithImageHTML;
+window.updateRanksForBranch = updateRanksForBranch;
