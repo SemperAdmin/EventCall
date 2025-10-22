@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSVP Confirmation</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #0f1419, #1f2937); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #ffd700; margin: 0; font-size: 28px;">EventCall</h1>
+                            <p style="color: #ffffff; margin: 5px 0 0 0; font-size: 14px;">Where Every Event Matters</p>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <h2 style="color: #0f1419; margin: 0 0 20px 0;">🎉 RSVP Confirmed!</h2>
+
+                            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                                Thank you for confirming your attendance, <strong>{{GUEST_NAME}}</strong>!
+                            </p>
+
+                            <!-- Event Details Box -->
+                            <table width="100%" cellpadding="15" cellspacing="0" style="background-color: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px; margin: 20px 0;">
+                                <tr>
+                                    <td>
+                                        <h3 style="color: #1e40af; margin: 0 0 15px 0; font-size: 18px;">📅 Event Details</h3>
+                                        <p style="margin: 5px 0; color: #374151;"><strong>Event:</strong> {{EVENT_TITLE}}</p>
+                                        <p style="margin: 5px 0; color: #374151;"><strong>Date:</strong> {{EVENT_DATE}}</p>
+                                        <p style="margin: 5px 0; color: #374151;"><strong>Time:</strong> {{EVENT_TIME}}</p>
+                                        <p style="margin: 5px 0; color: #374151;"><strong>Location:</strong> {{EVENT_LOCATION}}</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- RSVP Details -->
+                            <table width="100%" cellpadding="15" cellspacing="0" style="background-color: #dcfce7; border-left: 4px solid #16a34a; border-radius: 4px; margin: 20px 0;">
+                                <tr>
+                                    <td>
+                                        <h3 style="color: #15803d; margin: 0 0 15px 0; font-size: 18px;">✅ Your RSVP</h3>
+                                        <p style="margin: 5px 0; color: #374151;"><strong>Status:</strong> {{ATTENDING_STATUS}}</p>
+                                        <p style="margin: 5px 0; color: #374151;"><strong>RSVP ID:</strong> <code style="background: #ffffff; padding: 2px 6px; border-radius: 3px; font-family: monospace;">{{RSVP_ID}}</code></p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- QR Code (if attending) -->
+                            {{#if QR_CODE}}
+                            <table width="100%" cellpadding="15" cellspacing="0" style="background-color: #f3f4f6; border-radius: 4px; margin: 20px 0; text-align: center;">
+                                <tr>
+                                    <td>
+                                        <h3 style="color: #1e40af; margin: 0 0 15px 0; font-size: 18px;">📱 Check-In QR Code</h3>
+                                        <p style="color: #6b7280; font-size: 14px; margin: 0 0 15px 0;">Save this QR code for quick check-in at the event</p>
+                                        <img src="{{QR_CODE}}" alt="Check-in QR Code" style="max-width: 200px; height: auto; border-radius: 8px;">
+                                    </td>
+                                </tr>
+                            </table>
+                            {{/if}}
+
+                            <!-- Edit Link -->
+                            <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 20px 0 0 0;">
+                                Need to make changes? <a href="{{EDIT_URL}}" style="color: #0284c7; text-decoration: none;">Edit your RSVP</a>
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f3f4f6; padding: 20px; text-align: center; border-radius: 0 0 8px 8px;">
+                            <p style="color: #6b7280; font-size: 12px; margin: 0;">
+                                Powered by <strong>EventCall</strong> - Professional Military Event Management
+                            </p>
+                            <p style="color: #9ca3af; font-size: 11px; margin: 10px 0 0 0;">
+                                This email was sent because you RSVP'd to an event. If you have questions, please contact the event organizer.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

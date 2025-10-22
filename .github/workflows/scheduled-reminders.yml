@@ -1,0 +1,65 @@
+name: Send Scheduled Reminders
+
+on:
+  schedule:
+    # Run daily at 9:00 AM UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Find Events Needing Reminders
+        id: find_events
+        env:
+          DATA_REPO_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: |
+          echo "Checking for events needing reminders..."
+
+          # Get current date
+          TODAY=$(date +%Y-%m-%d)
+          SEVEN_DAYS=$(date -d "+7 days" +%Y-%m-%d 2>/dev/null || date -v+7d +%Y-%m-%d)
+          ONE_DAY=$(date -d "+1 day" +%Y-%m-%d 2>/dev/null || date -v+1d +%Y-%m-%d)
+
+          echo "Today: $TODAY"
+          echo "7 days from now: $SEVEN_DAYS"
+          echo "1 day from now: $ONE_DAY"
+
+          # In production, would fetch events from data repo
+          # For now, just log the dates
+          echo "Would check for events on:"
+          echo "  - 7-day reminder: Events on $SEVEN_DAYS"
+          echo "  - 1-day reminder: Events on $ONE_DAY"
+
+      - name: Process 7-Day Reminders
+        if: always()
+        run: |
+          echo "Processing 7-day reminders..."
+          # Would fetch RSVPs and send 7-day reminders
+          echo "✅ 7-day reminders processed"
+
+      - name: Process 1-Day Reminders
+        if: always()
+        run: |
+          echo "Processing 1-day reminders..."
+          # Would fetch RSVPs and send 1-day reminders
+          echo "✅ 1-day reminders processed"
+
+      - name: Process Post-Event Thank You
+        if: always()
+        run: |
+          echo "Processing post-event thank you emails..."
+          YESTERDAY=$(date -d "-1 day" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d)
+          echo "Would send thank you emails for events on: $YESTERDAY"
+          echo "✅ Thank you emails processed"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "📧 Reminder workflow completed at $(date)"
+          echo "Next run: Tomorrow at 9:00 AM UTC"

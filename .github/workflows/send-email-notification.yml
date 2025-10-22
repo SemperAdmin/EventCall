@@ -1,0 +1,66 @@
+name: Send Email Notification
+
+on:
+  repository_dispatch:
+    types: [send_email]
+
+jobs:
+  send-email:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Email via SendGrid
+        env:
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        run: |
+          echo "Sending email notification..."
+
+          # Extract data from payload
+          EMAIL_TO='${{ github.event.client_payload.to }}'
+          EMAIL_SUBJECT='${{ github.event.client_payload.subject }}'
+          EMAIL_BODY='${{ github.event.client_payload.body }}'
+          FROM_EMAIL='${{ secrets.FROM_EMAIL }}'
+          FROM_NAME='${{ secrets.FROM_NAME }}'
+
+          # Create JSON payload for SendGrid
+          cat > email_payload.json << EOF
+          {
+            "personalizations": [
+              {
+                "to": [{"email": "${EMAIL_TO}"}],
+                "subject": "${EMAIL_SUBJECT}"
+              }
+            ],
+            "from": {
+              "email": "${FROM_EMAIL:-noreply@eventcall.app}",
+              "name": "${FROM_NAME:-EventCall}"
+            },
+            "content": [
+              {
+                "type": "text/html",
+                "value": "${EMAIL_BODY}"
+              }
+            ]
+          }
+          EOF
+
+          # Send email via SendGrid API
+          if [ -n "$SENDGRID_API_KEY" ]; then
+            curl -X POST \
+              https://api.sendgrid.com/v3/mail/send \
+              -H "Authorization: Bearer ${SENDGRID_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d @email_payload.json
+
+            echo "✅ Email sent to ${EMAIL_TO}"
+          else
+            echo "⚠️ SendGrid API key not configured"
+            echo "Email would be sent to: ${EMAIL_TO}"
+            echo "Subject: ${EMAIL_SUBJECT}"
+          fi
+
+      - name: Log Email Sent
+        run: |
+          echo "Email notification processed at $(date)"
+          echo "Recipient: ${{ github.event.client_payload.to }}"
+          echo "Type: ${{ github.event.client_payload.type }}"

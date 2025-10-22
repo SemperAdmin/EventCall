@@ -161,6 +161,11 @@ class RSVPHandler {
             rsvpData.validationHash = this.generateValidationHash(rsvpData);
             rsvpData.submissionMethod = 'secure_backend';
 
+            // Generate check-in token
+            if (window.qrCheckIn) {
+                rsvpData.checkInToken = window.qrCheckIn.generateCheckInToken(rsvpData.rsvpId);
+            }
+
             const submissionResult = await this.submitWithRetry(eventId, rsvpData);
             this.showEnhancedConfirmation(rsvpData, submissionResult);
 
@@ -274,7 +279,7 @@ class RSVPHandler {
         };
     }
 
-    showEnhancedConfirmation(rsvpData, submissionResult) {
+    async showEnhancedConfirmation(rsvpData, submissionResult) {
         const event = getEventFromURL();
         let statusMessage = '';
         let statusColor = 'd1fae5';
@@ -305,7 +310,18 @@ class RSVPHandler {
                 </div>
             `;
         }
-        
+
+        // Generate QR code if attending
+        let qrCodeHTML = '';
+        if (rsvpData.attending && rsvpData.checkInToken && window.qrCheckIn) {
+            qrCodeHTML = await window.qrCheckIn.generateQRCodeHTML(
+                rsvpData.eventId,
+                rsvpData.rsvpId,
+                rsvpData.checkInToken,
+                rsvpData
+            );
+        }
+
         document.getElementById('invite-content').innerHTML = `
             <div class="rsvp-confirmation">
                 <div class="confirmation-title">🎉 RSVP Submitted Successfully!</div>
@@ -359,6 +375,8 @@ class RSVPHandler {
                 </div>
 
                 ${this.generateEventSummary(event, rsvpData)}
+
+                ${qrCodeHTML}
 
                 ${rsvpData.attending && window.calendarExport ? `
                 <div style="margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
