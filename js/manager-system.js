@@ -8,14 +8,14 @@ let syncInProgress = false;
 let pendingRSVPCount = 0;
 
 // Add custom question function
-function addCustomQuestion() {
+function addCustomQuestion(questionText = '') {
     const container = document.getElementById('custom-questions-container');
     if (!container) return;
-    
+
     const questionItem = document.createElement('div');
     questionItem.className = 'custom-question-item';
     questionItem.innerHTML = `
-        <input type="text" placeholder="Enter your question..." class="custom-question-input">
+        <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${questionText}">
         <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
     `;
     container.appendChild(questionItem);

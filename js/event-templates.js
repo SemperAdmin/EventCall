@@ -196,29 +196,21 @@ class EventTemplates {
         if (allowGuestsCheckbox) allowGuestsCheckbox.checked = template.allowGuests;
 
         // Clear existing custom questions
-        const customQuestionsContainer = document.getElementById('custom-questions-list');
+        const customQuestionsContainer = document.getElementById('custom-questions-container');
         if (customQuestionsContainer) {
             customQuestionsContainer.innerHTML = '';
         }
 
         // Add template custom questions
         if (template.customQuestions && template.customQuestions.length > 0) {
-            // Enable custom questions checkbox
-            const enableCustomQuestionsCheckbox = document.getElementById('enable-custom-questions');
-            if (enableCustomQuestionsCheckbox) {
-                enableCustomQuestionsCheckbox.checked = true;
-                // Trigger the toggle to show the questions container
-                if (window.toggleCustomQuestions) {
-                    window.toggleCustomQuestions(true);
-                }
-            }
-
-            // Add each question
+            // Add each question from the template
             template.customQuestions.forEach(question => {
                 if (window.addCustomQuestion) {
                     window.addCustomQuestion(question.text);
                 }
             });
+
+            console.log(`✅ Added ${template.customQuestions.length} custom questions from template`);
         }
 
         showToast(`✅ Applied "${template.name}" template`, 'success');
