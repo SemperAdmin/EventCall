@@ -123,7 +123,7 @@ getToken() {
     async testConnection() {
         const token = this.getToken();
         if (!token) {
-            console.warn('⚠️ No GitHub token available for connection test');
+            console.warn('âš ï¸ No GitHub token available for connection test');
             return false;
         }
 
@@ -138,16 +138,16 @@ getToken() {
             
             if (response.ok) {
                 const repoData = await response.json();
-                console.log('✅ GitHub connection successful:', repoData.full_name);
+                console.log('âœ… GitHub connection successful:', repoData.full_name);
                 this.updateTokenStatus(true);
                 return true;
             } else {
-                console.error('❌ GitHub connection failed:', response.status, response.statusText);
+                console.error('âŒ GitHub connection failed:', response.status, response.statusText);
                 this.updateTokenStatus(false);
                 return false;
             }
         } catch (error) {
-            console.error('❌ GitHub connection test failed:', error);
+            console.error('âŒ GitHub connection test failed:', error);
             this.updateTokenStatus(false);
             return false;
         }
@@ -162,11 +162,11 @@ getToken() {
         
         if (statusIcon && statusText) {
             if (connected) {
-                statusIcon.textContent = '✅';
+                statusIcon.textContent = 'âœ…';
                 statusText.textContent = 'GitHub Connected';
                 statusText.style.color = '#10b981';
             } else {
-                statusIcon.textContent = '❌';
+                statusIcon.textContent = 'âŒ';
                 statusText.textContent = 'GitHub Disconnected';
                 statusText.style.color = '#ef4444';
             }
@@ -179,12 +179,12 @@ getToken() {
     async loadEvents() {
         const token = this.getToken();
         if (!token) {
-            console.warn('⚠️ No GitHub token - returning empty events');
+            console.warn('âš ï¸ No GitHub token - returning empty events');
             return {};
         }
 
         try {
-            console.log('📥 Loading events from private EventCall-Data repo...');
+            console.log('ðŸ“¥ Loading events from private EventCall-Data repo...');
 
             // Load from PRIVATE repo: EventCall-Data
             const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
@@ -233,7 +233,7 @@ getToken() {
                             const currentManager = window.managerAuth.getCurrentManager();
                             if (content.createdBy === currentManager?.email) {
                                 events[content.id] = content;
-                                console.log('✅ Loaded event for manager:', content.title);
+                                console.log('âœ… Loaded event for manager:', content.title);
                             }
                         } else {
                             // No auth - load all events
@@ -245,7 +245,7 @@ getToken() {
                 }
             }
 
-            console.log(`✅ Loaded ${Object.keys(events).length} events from private repo for current user`);
+            console.log(`âœ… Loaded ${Object.keys(events).length} events from private repo for current user`);
             return events;
 
         } catch (error) {
@@ -260,12 +260,12 @@ getToken() {
 async loadResponses() {
     const token = this.getToken();
     if (!token) {
-        console.warn('⚠️ No GitHub token - returning empty responses');
+        console.warn('âš ï¸ No GitHub token - returning empty responses');
         return {};
     }
 
     try {
-        console.log('📥 Loading responses from private EventCall-Data repo...');
+        console.log('ðŸ“¥ Loading responses from private EventCall-Data repo...');
         
         // Load from PRIVATE repo: EventCall-Data
         const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
@@ -284,15 +284,19 @@ async loadResponses() {
         const treeData = await treeResponse.json();
         const responses = {};
 
-        console.log('🔍 All tree items:', treeData.tree.map(i => i.path).filter(p => p.includes('rsvp')));
-        
+        // Debug: log all files to see the actual structure
+        console.log('🔍 All files in tree:', treeData.tree.length);
+        const rsvpRelated = treeData.tree.filter(item => 
+            item.path.includes('rsvp') || item.path.includes('RSVP')
+        );
+        console.log('🔍 RSVP-related files:', rsvpRelated.map(f => f.path));
+
         const responseFiles = treeData.tree.filter(item => 
             item.path.startsWith('rsvps/') && 
             item.path.endsWith('.json') && 
-            item.type === 'blob'
+            item.type === 'blob' &&
+            item.path !== 'rsvps/.gitkeep'
         );
-        
-        console.log('🔍 Filtered RSVP files:', responseFiles.map(f => f.path));
 
         console.log('Found ' + responseFiles.length + ' RSVP files in private repo');
 
@@ -321,9 +325,9 @@ async loadResponses() {
 
                         // Add all RSVPs from the array
                         responses[eventId] = rsvpArray;
-                        console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId}`);
+                        console.log(`âœ… Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId}`);
                     } else {
-                        console.warn(`⚠️ Unexpected RSVP format for event ${eventId}`);
+                        console.warn(`âš ï¸ Unexpected RSVP format for event ${eventId}`);
                     }
                 }
             } catch (error) {
@@ -331,7 +335,7 @@ async loadResponses() {
             }
         }
 
-        console.log('✅ Loaded responses for ' + Object.keys(responses).length + ' events from private repo');
+        console.log('âœ… Loaded responses for ' + Object.keys(responses).length + ' events from private repo');
         return responses;
 
     } catch (error) {
@@ -350,7 +354,7 @@ async loadResponses() {
         }
 
         try {
-            console.log('🔍 Loading RSVP issues from GitHub...');
+            console.log('ðŸ” Loading RSVP issues from GitHub...');
             
             // Get issues with RSVP label
             const response = await fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
@@ -366,7 +370,7 @@ async loadResponses() {
             }
 
             const issues = await response.json();
-            console.log(`✅ Found ${issues.length} RSVP issues`);
+            console.log(`âœ… Found ${issues.length} RSVP issues`);
             
             return issues;
 
@@ -386,7 +390,7 @@ async loadResponses() {
         }
 
         try {
-            showToast('🔄 Processing RSVP submissions...', 'success');
+            showToast('ðŸ”„ Processing RSVP submissions...', 'success');
             
             const issues = await this.loadRSVPIssues();
             const processedCount = { total: 0, success: 0, errors: 0 };
@@ -428,7 +432,7 @@ async loadResponses() {
                 }
             }
 
-            const message = `✅ Processed ${processedCount.success} RSVPs successfully${processedCount.errors > 0 ? ` (${processedCount.errors} errors)` : ''}`;
+            const message = `âœ… Processed ${processedCount.success} RSVPs successfully${processedCount.errors > 0 ? ` (${processedCount.errors} errors)` : ''}`;
             showToast(message, processedCount.errors > 0 ? 'error' : 'success');
             
             return {
@@ -440,7 +444,7 @@ async loadResponses() {
 
         } catch (error) {
             console.error('Failed to process RSVP issues:', error);
-            showToast('❌ Failed to process RSVPs: ' + error.message, 'error');
+            showToast('âŒ Failed to process RSVPs: ' + error.message, 'error');
             throw error;
         }
     }
@@ -552,7 +556,7 @@ async loadResponses() {
                 throw new Error(`Failed to save RSVPs: ${createResponse.status} - ${errorText}`);
             }
 
-            console.log(`✅ Saved ${eventRSVPs.length} RSVPs for event ${eventId}`);
+            console.log(`âœ… Saved ${eventRSVPs.length} RSVPs for event ${eventId}`);
 
         } catch (error) {
             console.error(`Failed to save RSVPs for event ${eventId}:`, error);
@@ -588,7 +592,7 @@ async loadResponses() {
                 throw new Error(`Failed to close issue #${issueNumber}: ${response.status}`);
             }
 
-            console.log(`✅ Closed processed issue #${issueNumber}`);
+            console.log(`âœ… Closed processed issue #${issueNumber}`);
 
         } catch (error) {
             console.error(`Failed to close issue #${issueNumber}:`, error);
@@ -658,7 +662,7 @@ async loadResponses() {
                 throw new Error(`Failed to save event: ${createResponse.status} - ${errorText}`);
             }
 
-            console.log('✅ Event saved successfully to EventCall-Data:', cleanEventData.id);
+            console.log('âœ… Event saved successfully to EventCall-Data:', cleanEventData.id);
             return await createResponse.json();
 
         } catch (error) {
@@ -685,7 +689,7 @@ async loadResponses() {
             const responsePath = `rsvps/${eventId}.json`;
             await this.deleteFileFromDataRepo(responsePath, `Delete responses for event: ${this.cleanText(eventTitle)}`);
 
-            console.log('✅ Event deleted successfully from EventCall-Data:', eventId);
+            console.log('âœ… Event deleted successfully from EventCall-Data:', eventId);
 
         } catch (error) {
             console.error('Failed to delete event:', error);
@@ -780,7 +784,7 @@ async loadResponses() {
                     throw new Error(`Failed to delete ${path} from EventCall-Data: ${deleteResponse.status}`);
                 }
 
-                console.log(`✅ Deleted ${path} from EventCall-Data`);
+                console.log(`âœ… Deleted ${path} from EventCall-Data`);
             }
         } catch (error) {
             console.log(`File ${path} may not exist in EventCall-Data, skipping deletion`);
