@@ -591,11 +591,11 @@ async function handleEventSubmit(e) {
         }
 
         // Use BackendAPI to trigger workflow and save to EventCall-Data
-        if (managerAuth.isAuthenticated() && window.BackendAPI) {
-            await window.BackendAPI.createEvent(eventData);
+        if (managerAuth.isAuthenticated() && window.githubAPI) {
+            await window.githubAPI.saveEvent(eventData);
             showToast('ðŸ“¤ Event submitted to secure backend for processing...', 'success');
         } else {
-            throw new Error('Backend API not available or not authenticated');
+            throw new Error('GitHub API not available or not authenticated');
         }
 
         if (!window.events) window.events = {};
@@ -622,7 +622,9 @@ async function handleEventSubmit(e) {
         submitBtn.disabled = false;
         
         setTimeout(() => {
-            loadManagerData(); // Reload everything from GitHub
+            if (typeof window.loadManagerData === 'function') {
+                window.loadManagerData();
+            }
             if (window.showPage) {
                 window.showPage('dashboard');
             }
