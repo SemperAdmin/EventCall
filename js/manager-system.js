@@ -636,14 +636,14 @@ function setupEventForm() {
 
 /**
  * Initialize sync status checker
+ * Note: Automatic polling removed to reduce API calls.
+ * Pending RSVP count updates only on:
+ * - Initial dashboard load (loadManagerData)
+ * - Manual sync button click (syncWithGitHub)
  */
 function initializeSyncChecker() {
-    // Check for pending RSVPs every 30 seconds
-    setInterval(async () => {
-        if (managerAuth.isAuthenticated() && !syncInProgress) {
-            await updatePendingRSVPCount();
-        }
-    }, 30000);
+    // Removed automatic polling - use manual sync buttons instead
+    console.log('ℹ️ RSVP sync checker initialized (manual mode)');
 }
 
 // Initialize on DOM ready
