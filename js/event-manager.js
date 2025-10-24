@@ -545,10 +545,15 @@ class EventManager {
             eventData.id = this.currentEvent.id;
             eventData.created = this.currentEvent.created;
             eventData.createdBy = this.currentEvent.createdBy;
+            eventData.createdByName = this.currentEvent.createdByName;
             eventData.lastModified = Date.now();
 
-            // Save to GitHub
-            await window.githubAPI.saveEvent(eventData);
+            // Use BackendAPI to trigger workflow and save to EventCall-Data
+            if (window.BackendAPI) {
+                await window.BackendAPI.createEvent(eventData);
+            } else {
+                throw new Error('Backend API not available');
+            }
 
             // Update local state
             if (window.events) {

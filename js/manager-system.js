@@ -590,10 +590,14 @@ async function handleEventSubmit(e) {
             throw new Error('Please specify both date and time for the event');
         }
 
-        if (managerAuth.isAuthenticated() && window.githubAPI) {
-            await window.githubAPI.saveEvent(eventData);
+        // Use BackendAPI to trigger workflow and save to EventCall-Data
+        if (managerAuth.isAuthenticated() && window.BackendAPI) {
+            await window.BackendAPI.createEvent(eventData);
+            showToast('📤 Event submitted to secure backend for processing...', 'success');
+        } else {
+            throw new Error('Backend API not available or not authenticated');
         }
-        
+
         if (!window.events) window.events = {};
         window.events[eventData.id] = eventData;
         
