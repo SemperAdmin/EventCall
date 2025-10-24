@@ -446,7 +446,6 @@ window.copyInviteLink = copyInviteLink;
 window.exportEventData = exportEventData;
 window.deleteEvent = deleteEvent;
 window.checkURLHash = checkURLHash;
-window.initializeHashListener = initializeHashListener;
 window.goToDashboard = goToDashboard;
 
 // Initialize hash listener when DOM is ready
