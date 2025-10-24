@@ -106,6 +106,7 @@ function createInviteWithoutImageHTML(event, eventId) {
                         <strong>📝 Details:</strong> ${event.description}
                     </div>
                 ` : ''}
+                ${createEventDetailsHTML(event.eventDetails)}
             </div>
             <div style="margin: 1.5rem 0; text-align: center;">
                 <div style="display: inline-block;">
@@ -247,6 +248,27 @@ function createRSVPFormHTML(event, eventId) {
                     <button type="submit" class="btn" style="min-height: 48px; padding: 0.875rem 2rem; font-size: 1.1rem;">📝 Submit RSVP</button>
                 </div>
             </form>
+        </div>
+    `;
+}
+
+/**
+ * Create event details HTML for display on invite
+ */
+function createEventDetailsHTML(eventDetails) {
+    if (!eventDetails || Object.keys(eventDetails).length === 0) {
+        return '';
+    }
+
+    const detailsHTML = Object.values(eventDetails).map(detail => `
+        <div class="invite-detail">
+            <strong>${detail.label}:</strong> ${detail.value}
+        </div>
+    `).join('');
+
+    return `
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+            ${detailsHTML}
         </div>
     `;
 }
@@ -438,6 +460,7 @@ function createInviteWithImageHTML(event, eventId) {
                         <strong>📝 Details:</strong> ${event.description}
                     </div>
                 ` : ''}
+                ${createEventDetailsHTML(event.eventDetails)}
             </div>
             <div style="margin: 1.5rem 0; text-align: center;">
                 <div style="display: inline-block;">

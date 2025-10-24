@@ -13,11 +13,11 @@ class EventTemplates {
                 description: 'Celebrate a Marine\'s advancement in rank',
                 defaultTitle: 'Promotion Ceremony',
                 defaultDescription: 'Please join us in celebrating this significant milestone in a Marine\'s career.',
-                customQuestions: [
-                    { id: 'current-rank', text: 'Current Rank', required: false },
-                    { id: 'new-rank', text: 'New Rank', required: false },
-                    { id: 'promoter-name', text: 'Who will be conducting the promotion?', required: false },
-                    { id: 'special-message', text: 'Special message or dedication (optional)', required: false }
+                eventFields: [
+                    { id: 'honoree-name', label: 'Honoree Name', placeholder: 'e.g., Cpl John Smith', required: true },
+                    { id: 'current-rank', label: 'Current Rank', placeholder: 'e.g., Corporal', required: false },
+                    { id: 'new-rank', label: 'New Rank', placeholder: 'e.g., Sergeant', required: false },
+                    { id: 'promoter-name', label: 'Promoted By', placeholder: 'e.g., Col Johnson', required: false }
                 ],
                 askReason: false,
                 allowGuests: true
@@ -29,11 +29,11 @@ class EventTemplates {
                 description: 'Honor a Marine\'s dedicated service',
                 defaultTitle: 'Retirement Ceremony',
                 defaultDescription: 'Please join us in honoring the distinguished career and dedicated service of a fellow Marine.',
-                customQuestions: [
-                    { id: 'years-service', text: 'Years of Service', required: false },
-                    { id: 'retiring-rank', text: 'Retiring Rank', required: false },
-                    { id: 'attend-reception', text: 'Will you attend the reception following the ceremony?', required: false },
-                    { id: 'meal-choice', text: 'Meal Selection (if applicable)', required: false }
+                eventFields: [
+                    { id: 'retiree-name', label: 'Retiree Name', placeholder: 'e.g., MSgt Jane Doe', required: true },
+                    { id: 'years-service', label: 'Years of Service', placeholder: 'e.g., 22 years', required: false },
+                    { id: 'retiring-rank', label: 'Retiring Rank', placeholder: 'e.g., Master Sergeant', required: false },
+                    { id: 'reception-location', label: 'Reception Location', placeholder: 'e.g., Officers Club', required: false }
                 ],
                 askReason: false,
                 allowGuests: true
@@ -45,11 +45,11 @@ class EventTemplates {
                 description: 'Transfer of leadership ceremony',
                 defaultTitle: 'Change of Command Ceremony',
                 defaultDescription: 'Join us for the formal transfer of authority and responsibility.',
-                customQuestions: [
-                    { id: 'outgoing-co', text: 'Outgoing Commander (Rank & Name)', required: false },
-                    { id: 'incoming-co', text: 'Incoming Commander (Rank & Name)', required: false },
-                    { id: 'reviewing-officer', text: 'Reviewing Officer', required: false },
-                    { id: 'attend-reception', text: 'Will you attend the reception?', required: false }
+                eventFields: [
+                    { id: 'outgoing-co', label: 'Outgoing Commander', placeholder: 'e.g., LtCol Smith', required: true },
+                    { id: 'incoming-co', label: 'Incoming Commander', placeholder: 'e.g., LtCol Williams', required: true },
+                    { id: 'reviewing-officer', label: 'Reviewing Officer', placeholder: 'e.g., Col Davis', required: false },
+                    { id: 'unit-designation', label: 'Unit', placeholder: 'e.g., 2nd Battalion, 1st Marines', required: false }
                 ],
                 askReason: false,
                 allowGuests: true
@@ -61,10 +61,11 @@ class EventTemplates {
                 description: 'Annual birthday celebration',
                 defaultTitle: 'Marine Corps Birthday Ball',
                 defaultDescription: 'Join us in celebrating the founding of the United States Marine Corps with tradition, camaraderie, and honor.',
-                customQuestions: [
-                    { id: 'meal-choice', text: 'Meal Selection', required: true },
-                    { id: 'table-preference', text: 'Table/Seating Preference (if any)', required: false },
-                    { id: 'special-needs', text: 'Special accommodation needs', required: false }
+                eventFields: [
+                    { id: 'ball-year', label: 'Birthday Year', placeholder: 'e.g., 249th Birthday', required: false },
+                    { id: 'venue', label: 'Venue', placeholder: 'e.g., Grand Ballroom', required: false },
+                    { id: 'dress-code', label: 'Dress Code', placeholder: 'e.g., Dress Blues', required: false },
+                    { id: 'ticket-price', label: 'Ticket Price', placeholder: 'e.g., $75 per person', required: false }
                 ],
                 askReason: false,
                 allowGuests: true
@@ -76,10 +77,11 @@ class EventTemplates {
                 description: 'Formal military dining event',
                 defaultTitle: 'Dining In',
                 defaultDescription: 'You are cordially invited to attend our formal dining event, a time-honored military tradition.',
-                customQuestions: [
-                    { id: 'meal-choice', text: 'Meal Selection', required: true },
-                    { id: 'dress-code', text: 'Dress Code Acknowledged (Dress Blues/Formal)', required: false },
-                    { id: 'dietary-restrictions-detail', text: 'Detailed dietary requirements', required: false }
+                eventFields: [
+                    { id: 'event-type', label: 'Event Type', placeholder: 'e.g., Dining In (members only)', required: false },
+                    { id: 'dress-code', label: 'Dress Code', placeholder: 'e.g., Dress Blues / Formal Attire', required: false },
+                    { id: 'guest-speaker', label: 'Guest Speaker', placeholder: 'e.g., Gen Martinez', required: false },
+                    { id: 'cost-per-person', label: 'Cost Per Person', placeholder: 'e.g., $50', required: false }
                 ],
                 askReason: false,
                 allowGuests: true
@@ -91,9 +93,10 @@ class EventTemplates {
                 description: 'Regular unit gathering or inspection',
                 defaultTitle: 'Unit Formation',
                 defaultDescription: 'Mandatory unit formation. All personnel are required to attend unless on approved leave or TDY.',
-                customQuestions: [
-                    { id: 'absence-reason', text: 'If unable to attend, please state reason', required: false },
-                    { id: 'alternate-contact', text: 'Alternate contact information', required: false }
+                eventFields: [
+                    { id: 'formation-type', label: 'Formation Type', placeholder: 'e.g., Company Formation', required: false },
+                    { id: 'uniform', label: 'Uniform', placeholder: 'e.g., Cammies / Service Charlies', required: false },
+                    { id: 'reporting-senior', label: 'Reporting Senior', placeholder: 'e.g., 1stSgt Brown', required: false }
                 ],
                 askReason: true,
                 allowGuests: false
@@ -105,10 +108,11 @@ class EventTemplates {
                 description: 'Professional development or skills training',
                 defaultTitle: 'Training Event',
                 defaultDescription: 'Professional military education and training session.',
-                customQuestions: [
-                    { id: 'training-level', text: 'Current skill level with topic', required: false },
-                    { id: 'special-topics', text: 'Topics you\'d like covered', required: false },
-                    { id: 'equipment-needed', text: 'Special equipment or materials needed', required: false }
+                eventFields: [
+                    { id: 'training-topic', label: 'Training Topic', placeholder: 'e.g., Combat First Aid', required: true },
+                    { id: 'instructor', label: 'Instructor', placeholder: 'e.g., SSgt Martinez', required: false },
+                    { id: 'prerequisites', label: 'Prerequisites', placeholder: 'e.g., Basic Combat Training', required: false },
+                    { id: 'equipment-bring', label: 'Equipment to Bring', placeholder: 'e.g., Notebook, pen', required: false }
                 ],
                 askReason: false,
                 allowGuests: false
@@ -120,10 +124,10 @@ class EventTemplates {
                 description: 'Family-friendly unit event',
                 defaultTitle: 'Family Day Event',
                 defaultDescription: 'Bring your families to celebrate and build camaraderie outside of duty hours.',
-                customQuestions: [
-                    { id: 'total-attendees', text: 'Total number of family members attending', required: true },
-                    { id: 'children-ages', text: 'Ages of children attending', required: false },
-                    { id: 'activities-interest', text: 'Activities of interest', required: false }
+                eventFields: [
+                    { id: 'activities-available', label: 'Activities', placeholder: 'e.g., BBQ, Games, Bounce Houses', required: false },
+                    { id: 'food-provided', label: 'Food/Beverages', placeholder: 'e.g., BBQ lunch provided', required: false },
+                    { id: 'parking-info', label: 'Parking', placeholder: 'e.g., Main lot open', required: false }
                 ],
                 askReason: false,
                 allowGuests: true
@@ -135,10 +139,11 @@ class EventTemplates {
                 description: 'Honor fallen Marines',
                 defaultTitle: 'Memorial Service',
                 defaultDescription: 'We gather to honor and remember those who made the ultimate sacrifice.',
-                customQuestions: [
-                    { id: 'relationship', text: 'Relationship to honoree (optional)', required: false },
-                    { id: 'attend-reception', text: 'Will you attend the reception?', required: false },
-                    { id: 'special-message', text: 'Message for the family (optional)', required: false }
+                eventFields: [
+                    { id: 'honoree-name', label: 'In Memory Of', placeholder: 'e.g., Sgt Robert Johnson', required: true },
+                    { id: 'service-dates', label: 'Service Dates', placeholder: 'e.g., 2010 - 2024', required: false },
+                    { id: 'chaplain', label: 'Officiant', placeholder: 'e.g., Chaplain Smith', required: false },
+                    { id: 'reception-info', label: 'Reception Details', placeholder: 'e.g., Location and time', required: false }
                 ],
                 askReason: false,
                 allowGuests: true
@@ -150,9 +155,10 @@ class EventTemplates {
                 description: 'Recognize outstanding achievement',
                 defaultTitle: 'Awards Ceremony',
                 defaultDescription: 'Join us in recognizing Marines for their exceptional performance and dedication.',
-                customQuestions: [
-                    { id: 'award-recipient', text: 'Name of award recipient (if applicable)', required: false },
-                    { id: 'guest-presenter', text: 'Are you presenting an award?', required: false }
+                eventFields: [
+                    { id: 'award-type', label: 'Award(s) Presented', placeholder: 'e.g., Navy Achievement Medal', required: false },
+                    { id: 'recipient-names', label: 'Recipients', placeholder: 'e.g., Cpl Smith, LCpl Jones', required: false },
+                    { id: 'presenting-officer', label: 'Presenting Officer', placeholder: 'e.g., CO, Col Davis', required: false }
                 ],
                 askReason: false,
                 allowGuests: true
@@ -195,22 +201,39 @@ class EventTemplates {
         if (askReasonCheckbox) askReasonCheckbox.checked = template.askReason;
         if (allowGuestsCheckbox) allowGuestsCheckbox.checked = template.allowGuests;
 
-        // Clear existing custom questions
-        const customQuestionsContainer = document.getElementById('custom-questions-container');
-        if (customQuestionsContainer) {
-            customQuestionsContainer.innerHTML = '';
-        }
+        // Clear and populate event details fields
+        const eventDetailsContainer = document.getElementById('event-details-container');
+        if (eventDetailsContainer && template.eventFields && template.eventFields.length > 0) {
+            eventDetailsContainer.innerHTML = '';
 
-        // Add template custom questions
-        if (template.customQuestions && template.customQuestions.length > 0) {
-            // Add each question from the template
-            template.customQuestions.forEach(question => {
-                if (window.addCustomQuestion) {
-                    window.addCustomQuestion(question.text);
-                }
+            template.eventFields.forEach(field => {
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'form-group';
+                fieldDiv.innerHTML = `
+                    <label for="event-detail-${field.id}">
+                        ${field.label}${field.required ? ' *' : ''}
+                    </label>
+                    <input
+                        type="text"
+                        id="event-detail-${field.id}"
+                        name="${field.id}"
+                        placeholder="${field.placeholder || ''}"
+                        ${field.required ? 'required' : ''}
+                        class="event-detail-field"
+                        data-field-id="${field.id}"
+                        data-field-label="${field.label}"
+                    >
+                `;
+                eventDetailsContainer.appendChild(fieldDiv);
             });
 
-            console.log(`✅ Added ${template.customQuestions.length} custom questions from template`);
+            // Show the event details section
+            const eventDetailsSection = document.getElementById('event-details-section');
+            if (eventDetailsSection) {
+                eventDetailsSection.style.display = 'block';
+            }
+
+            console.log(`✅ Added ${template.eventFields.length} event detail fields from template`);
         }
 
         showToast(`✅ Applied "${template.name}" template`, 'success');
