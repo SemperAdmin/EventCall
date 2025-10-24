@@ -284,11 +284,15 @@ async loadResponses() {
         const treeData = await treeResponse.json();
         const responses = {};
 
+        console.log('🔍 All tree items:', treeData.tree.map(i => i.path).filter(p => p.includes('rsvp')));
+        
         const responseFiles = treeData.tree.filter(item => 
             item.path.startsWith('rsvps/') && 
             item.path.endsWith('.json') && 
             item.type === 'blob'
         );
+        
+        console.log('🔍 Filtered RSVP files:', responseFiles.map(f => f.path));
 
         console.log('Found ' + responseFiles.length + ' RSVP files in private repo');
 
