@@ -159,30 +159,44 @@ jobs:
         
         echo "rsvp_count=$(jq length "$RSVP_FILE")" >> $GITHUB_OUTPUT
 
-    - name: Commit RSVP updates
-      run: |
-        EVENT_ID="${{ steps.extract-data.outputs.event_id }}"
-        NAME="${{ steps.extract-data.outputs.name }}"
-        ACTION="${{ steps.update-rsvp.outputs.action }}"
-        RSVP_COUNT="${{ steps.update-rsvp.outputs.rsvp_count }}"
-        
-        git config --local user.email "action@github.com"
-        git config --local user.name "EventCall Auto-Processor"
-        
-        git add "rsvps/${EVENT_ID}.json"
-        
-        COMMIT_MSG="🎖️ RSVP ${ACTION}: ${NAME} (Issue #${{ github.event.issue.number }})"
-        git commit -m "$COMMIT_MSG" -m "Total RSVPs for event: $RSVP_COUNT"
-        git push
-
-    - name: Update issue with processing status
-      run: |
-        NAME="${{ steps.extract-data.outputs.name }}"
-        ACTION="${{ steps.update-rsvp.outputs.action }}"
-        RSVP_COUNT="${{ steps.update-rsvp.outputs.rsvp_count }}"
-        
-        # Create comment on issue
-        COMMENT_BODY="## ✅ RSVP Successfully Processed
+      - name: Save RSVP to EventCall-Data repository
+        run: |
+          EVENT_ID="${{ steps.extract-data.outputs.event_id }}"
+          NAME="${{ steps.extract-data.outputs.name }}"
+          ACTION="${{ steps.update-rsvp.outputs.action }}"
+          RSVP_COUNT="${{ steps.update-rsvp.outputs.rsvp_count }}"
+          RSVP_FILE="rsvps/${EVENT_ID}.json"
+          
+          # Read the RSVP file and encode to base64
+          CONTENT=$(base64 -w 0 "$RSVP_FILE")
+          
+          # Check if file exists in EventCall-Data repo
+          EXISTING_SHA=$(curl -s \
+            -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/$RSVP_FILE" \
+            | jq -r '.sha // empty')
+          
+          # Prepare API request
+          if [ -z "$EXISTING_SHA" ]; then
+            MESSAGE="🎖️ RSVP ${ACTION}: ${NAME} (Issue #${{ github.event.issue.number }})"
+            curl -X PUT \
+              -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/$RSVP_FILE" \
+              -d "{\"message\":\"$MESSAGE\",\"content\":\"$CONTENT\",\"branch\":\"main\"}"
+          else
+            MESSAGE="🎖️ RSVP ${ACTION}: ${NAME} (Total: $RSVP_COUNT)"
+            curl -X PUT \
+              -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/$RSVP_FILE" \
+              -d "{\"message\":\"$MESSAGE\",\"content\":\"$CONTENT\",\"sha\":\"$EXISTING_SHA\",\"branch\":\"main\"}"
+          fi
+          
+          echo "✅ RSVP saved to EventCall-Data repository: $RSVP_FILE"
 
 **Status:** ${ACTION^} RSVP for **${NAME}**
 **Total RSVPs for this event:** $RSVP_COUNT
@@ -237,4 +251,5 @@ The issue will remain open for manual review."
         gh issue comment ${{ github.event.issue.number }} --body "$COMMENT_BODY"
         gh issue edit ${{ github.event.issue.number }} --add-label "processing-failed" --remove-label "auto-process"
       env:
+
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
