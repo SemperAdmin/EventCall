@@ -134,13 +134,19 @@ function showPageContent(pageId) {
     }
   }
 
-  console.log(`ðŸ“„ Page changed to: ${pageId}`);
+  console.log(`📄 Page changed to: ${pageId}`);
 
-  // Load data when switching to dashboard
-  if (pageId === 'dashboard' && typeof window.loadManagerData === 'function') {
-    window.loadManagerData();
-  }
-}
+    // DEBUG: Check if loadManagerData exists
+    if (pageId === 'dashboard') {
+      console.log('🔍 Dashboard detected. Checking loadManagerData...');
+      console.log('🔍 typeof window.loadManagerData:', typeof window.loadManagerData);
+      console.log('🔍 window.loadManagerData:', window.loadManagerData);
+    }
+    
+    // Load data when switching to dashboard
+    if (pageId === 'dashboard' && typeof window.loadManagerData === 'function') {
+      window.loadManagerData();
+    }
 
 /**
  * Show toast notification - Available immediately
