@@ -1,0 +1,18 @@
+{
+  "id": "f7717bb1-e092-4cc3-a1e0-04825d1927ce",
+  "title": "Unit Formation",
+  "date": "2025-10-31",
+  "time": "15:28",
+  "location": "MCBH",
+  "description": "Mandatory unit formation. All personnel are required to attend unless on approved leave or TDY.",
+  "coverImage": "",
+  "askReason": true,
+  "allowGuests": false,
+  "requiresMealChoice": false,
+  "customQuestions": [],
+  "eventDetails": {},
+  "created": 1761269354335,
+  "status": "active",
+  "createdBy": "barbcardrw@aol.com",
+  "createdByName": "barbcardrw"
+}
