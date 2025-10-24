@@ -487,7 +487,7 @@ function sanitizeText(text) {
 function getCustomQuestions() {
     const inputs = document.querySelectorAll('.custom-question-input');
     const questions = [];
-    
+
     inputs.forEach((input, index) => {
         const text = sanitizeText(input.value);
         if (text && text.length >= 3) {
@@ -497,14 +497,45 @@ function getCustomQuestions() {
             });
         }
     });
-    
+
     return questions;
+}
+
+function getEventDetails() {
+    const detailFields = document.querySelectorAll('.event-detail-field');
+    const details = {};
+
+    detailFields.forEach(field => {
+        const value = sanitizeText(field.value);
+        const fieldId = field.getAttribute('data-field-id');
+        const fieldLabel = field.getAttribute('data-field-label');
+
+        if (value) {
+            details[fieldId] = {
+                label: fieldLabel,
+                value: value
+            };
+        }
+    });
+
+    return details;
 }
 
 function clearCustomQuestions() {
     const container = document.getElementById('custom-questions-container');
     if (container) {
         container.innerHTML = '';
+    }
+}
+
+function clearEventDetails() {
+    const container = document.getElementById('event-details-container');
+    const section = document.getElementById('event-details-section');
+    if (container) {
+        container.innerHTML = '';
+    }
+    if (section) {
+        section.style.display = 'none';
     }
 }
 
@@ -543,6 +574,7 @@ async function handleEventSubmit(e) {
             askReason: document.getElementById('ask-reason').checked,
             allowGuests: document.getElementById('allow-guests').checked,
             customQuestions: getCustomQuestions(),
+            eventDetails: getEventDetails(),
             created: Date.now(),
             status: 'active',
             createdBy: managerAuth.getCurrentManager()?.email,
@@ -574,6 +606,7 @@ async function handleEventSubmit(e) {
             coverPreview.src = '';
         }
         clearCustomQuestions();
+        clearEventDetails();
         
     } catch (error) {
         console.error('Failed to save event:', error);
@@ -627,6 +660,8 @@ window.generateUUID = generateUUID;
 window.sanitizeText = sanitizeText;
 window.getCustomQuestions = getCustomQuestions;
 window.clearCustomQuestions = clearCustomQuestions;
+window.getEventDetails = getEventDetails;
+window.clearEventDetails = clearEventDetails;
 window.setupEventForm = setupEventForm;
 window.calculateEventStats = calculateEventStats;
 window.formatDate = formatDate;
