@@ -174,38 +174,40 @@ function createRSVPFormHTML(event, eventId) {
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Dietary Restrictions (Optional)</label>
-                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" name="dietary" value="vegetarian" style="margin-right: 0.5rem;">
-                            <span>🥗 Vegetarian</span>
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" name="dietary" value="vegan" style="margin-right: 0.5rem;">
-                            <span>🌱 Vegan</span>
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" name="dietary" value="gluten-free" style="margin-right: 0.5rem;">
-                            <span>🌾 Gluten-Free</span>
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" name="dietary" value="dairy-free" style="margin-right: 0.5rem;">
-                            <span>🥛 Dairy-Free</span>
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" name="dietary" value="halal" style="margin-right: 0.5rem;">
-                            <span>☪️ Halal</span>
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" name="dietary" value="kosher" style="margin-right: 0.5rem;">
-                            <span>✡️ Kosher</span>
-                        </label>
+                ${event.requiresMealChoice ? `
+                    <div class="form-group">
+                        <label>Dietary Restrictions (Optional)</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" name="dietary" value="vegetarian" style="margin-right: 0.5rem;">
+                                <span>🥗 Vegetarian</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" name="dietary" value="vegan" style="margin-right: 0.5rem;">
+                                <span>🌱 Vegan</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" name="dietary" value="gluten-free" style="margin-right: 0.5rem;">
+                                <span>🌾 Gluten-Free</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" name="dietary" value="dairy-free" style="margin-right: 0.5rem;">
+                                <span>🥛 Dairy-Free</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" name="dietary" value="halal" style="margin-right: 0.5rem;">
+                                <span>☪️ Halal</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" name="dietary" value="kosher" style="margin-right: 0.5rem;">
+                                <span>✡️ Kosher</span>
+                            </label>
+                        </div>
+                        <div style="margin-top: 0.75rem;">
+                            <input type="text" id="allergy-details" placeholder="Other allergies or dietary needs..." style="min-height: 44px;">
+                        </div>
                     </div>
-                    <div style="margin-top: 0.75rem;">
-                        <input type="text" id="allergy-details" placeholder="Other allergies or dietary needs..." style="min-height: 44px;">
-                    </div>
-                </div>
+                ` : ''}
 
                 ${event.askReason ? `
                     <div class="form-group">
