@@ -593,6 +593,7 @@ async function handleEventSubmit(e) {
         // Use BackendAPI to trigger workflow and save to EventCall-Data
         if (managerAuth.isAuthenticated() && window.githubAPI) {
             await window.githubAPI.saveEvent(eventData);
+            const showToast = window.showToast || function(msg, type) { console.log(msg); };
             showToast('✅ Event saved to EventCall-Data repository', 'success');
         } else {
             throw new Error('GitHub API not available or not authenticated');
