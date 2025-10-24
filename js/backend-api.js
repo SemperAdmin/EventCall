@@ -86,25 +86,23 @@ async triggerWorkflow(eventType, payload) {
 
         // Prepare event payload for workflow
         const payload = {
-            id: eventData.id,
-            title: String(eventData.title || '').trim(),
-            description: String(eventData.description || '').trim(),
-            date: String(eventData.date || '').trim(),
-            time: String(eventData.time || '').trim(),
-            location: String(eventData.location || '').trim(),
-            coverImage: String(eventData.coverImage || '').trim(),
-            askReason: Boolean(eventData.askReason),
-            allowGuests: Boolean(eventData.allowGuests),
-            requiresMealChoice: Boolean(eventData.requiresMealChoice),
-            customQuestions: eventData.customQuestions || [],
-            eventDetails: eventData.eventDetails || {},
-            managerToken: token,
-            managerEmail: managerEmail,
-            createdBy: managerEmail,
-            createdByName: eventData.createdByName || managerEmail.split('@')[0],
-            created: eventData.created || Date.now(),
-            status: 'active'
-        };
+        id: eventData.id,
+        title: String(eventData.title || '').trim(),
+        description: String(eventData.description || '').trim().substring(0, 500),
+        date: String(eventData.date || '').trim(),
+        time: String(eventData.time || '').trim(),
+        location: String(eventData.location || '').trim().substring(0, 200),
+        coverImage: eventData.coverImage ? 'yes' : 'no',
+        askReason: Boolean(eventData.askReason),
+        allowGuests: Boolean(eventData.allowGuests),
+        requiresMealChoice: Boolean(eventData.requiresMealChoice),
+        customQuestionsCount: (eventData.customQuestions || []).length,
+        managerEmail: managerEmail,
+        createdBy: managerEmail,
+        createdByName: eventData.createdByName || managerEmail.split('@')[0],
+        created: eventData.created || Date.now(),
+        status: 'active'
+    };
 
         if (!payload.title || !payload.date || !payload.time) {
             throw new Error('Missing required event fields');
@@ -118,4 +116,5 @@ if (typeof window !== 'undefined') {
     window.BackendAPI = new BackendAPI();
     console.log('Backend API loaded (Secure)');
 }
+
 
