@@ -46,7 +46,7 @@ async triggerWorkflow(eventType, payload) {
 
     async submitRSVP(rsvpData) {
         console.log('Submitting RSVP...');
-        
+
         const sanitized = {
             eventId: String(rsvpData.eventId || '').trim(),
             name: String(rsvpData.name || '').trim(),
@@ -59,16 +59,58 @@ async triggerWorkflow(eventType, payload) {
             dietaryRestrictions: String(rsvpData.dietaryRestrictions || '').trim(),
             specialRequests: String(rsvpData.specialRequests || '').trim()
         };
-        
+
         if (!sanitized.eventId || !sanitized.name || !sanitized.email) {
             throw new Error('Missing required fields');
         }
-        
+
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitized.email)) {
             throw new Error('Invalid email');
         }
-        
+
         return await this.triggerWorkflow('submit_rsvp', sanitized);
+    }
+
+    async createEvent(eventData) {
+        console.log('Creating event via workflow...');
+
+        // Get manager token and info
+        const token = window.GITHUB_CONFIG && window.GITHUB_CONFIG.token ? window.GITHUB_CONFIG.token : null;
+        const managerEmail = window.managerAuth && window.managerAuth.getCurrentManager()
+            ? window.managerAuth.getCurrentManager().email
+            : 'unknown';
+
+        if (!token) {
+            throw new Error('Manager token required to create event');
+        }
+
+        // Prepare event payload for workflow
+        const payload = {
+            id: eventData.id,
+            title: String(eventData.title || '').trim(),
+            description: String(eventData.description || '').trim(),
+            date: String(eventData.date || '').trim(),
+            time: String(eventData.time || '').trim(),
+            location: String(eventData.location || '').trim(),
+            coverImage: String(eventData.coverImage || '').trim(),
+            askReason: Boolean(eventData.askReason),
+            allowGuests: Boolean(eventData.allowGuests),
+            requiresMealChoice: Boolean(eventData.requiresMealChoice),
+            customQuestions: eventData.customQuestions || [],
+            eventDetails: eventData.eventDetails || {},
+            managerToken: token,
+            managerEmail: managerEmail,
+            createdBy: managerEmail,
+            createdByName: eventData.createdByName || managerEmail.split('@')[0],
+            created: eventData.created || Date.now(),
+            status: 'active'
+        };
+
+        if (!payload.title || !payload.date || !payload.time) {
+            throw new Error('Missing required event fields');
+        }
+
+        return await this.triggerWorkflow('create_event', payload);
     }
 }
 

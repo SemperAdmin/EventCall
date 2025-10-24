@@ -33,32 +33,25 @@ jobs:
 
       - name: Save Event to Private Repo
         run: |
-          cat > event-data.json << EOF
-          {
-            "id": "${{ steps.generate.outputs.event_id }}",
-            "title": "${{ github.event.client_payload.title }}",
-            "description": "${{ github.event.client_payload.description }}",
-            "date": "${{ github.event.client_payload.date }}",
-            "time": "${{ github.event.client_payload.time }}",
-            "location": "${{ github.event.client_payload.location }}",
-            "createdBy": "${{ github.event.client_payload.managerEmail }}",
-            "createdAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-            "status": "active",
-            "rsvpDeadline": "${{ github.event.client_payload.rsvpDeadline }}",
-            "maxAttendees": ${{ github.event.client_payload.maxAttendees }},
-            "requiresApproval": ${{ github.event.client_payload.requiresApproval }}
-          }
+          # Create event data JSON from client payload
+          cat > event-data.json << 'EOF'
+          ${{ toJSON(github.event.client_payload) }}
           EOF
-          
+
+          # Use the ID from client payload instead of generating new one
+          EVENT_ID="${{ github.event.client_payload.id }}"
+
+          # Encode to base64
           CONTENT=$(base64 -w 0 event-data.json)
-          
+
+          # Push to EventCall-Data repository
           curl -X PUT \
             -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/events/${{ steps.generate.outputs.event_id }}.json \
+            https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/events/${EVENT_ID}.json \
             -d "{\"message\":\"Create event: ${{ github.event.client_payload.title }}\",\"content\":\"$CONTENT\"}"
-          
-          echo "Event created: ${{ steps.generate.outputs.event_id }}"
+
+          echo "Event created: ${EVENT_ID}"
 
       - name: Create Notification Issue
         run: |
@@ -66,4 +59,4 @@ jobs:
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/issues \
-            -d "{\"title\":\"Event Created: ${{ github.event.client_payload.title }}\",\"body\":\"**Event ID:** ${{ steps.generate.outputs.event_id }}\\n**Created by:** ${{ github.event.client_payload.managerEmail }}\\n**Date:** ${{ github.event.client_payload.date }}\\n**Location:** ${{ github.event.client_payload.location }}\",\"labels\":[\"event\",\"created\"]}"
+            -d "{\"title\":\"Event Created: ${{ github.event.client_payload.title }}\",\"body\":\"**Event ID:** ${{ github.event.client_payload.id }}\\n**Created by:** ${{ github.event.client_payload.managerEmail }}\\n**Date:** ${{ github.event.client_payload.date }}\\n**Location:** ${{ github.event.client_payload.location }}\",\"labels\":[\"event\",\"created\"]}"

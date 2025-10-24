@@ -174,7 +174,7 @@ getToken() {
     }
 
     /**
-     * Load all events from GitHub for current user
+     * Load all events from EventCall-Data repository for current user
      */
     async loadEvents() {
         const token = this.getToken();
@@ -184,11 +184,12 @@ getToken() {
         }
 
         try {
-            console.log('Loading events from GitHub...');
-            
-            const treeResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/git/trees/main?recursive=1`, {
+            console.log('📥 Loading events from private EventCall-Data repo...');
+
+            // Load from PRIVATE repo: EventCall-Data
+            const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
                 headers: {
-                    'Authorization': `token ${token}`,
+                    'Authorization': 'token ' + token,
                     'Accept': 'application/vnd.github.v3+json',
                     'User-Agent': 'EventCall-App'
                 }
@@ -205,17 +206,19 @@ getToken() {
             const treeData = await treeResponse.json();
             const events = {};
 
-            const eventFiles = treeData.tree.filter(item => 
-                item.path.startsWith('events/') && 
-                item.path.endsWith('.json') && 
+            const eventFiles = treeData.tree.filter(item =>
+                item.path.startsWith('events/') &&
+                item.path.endsWith('.json') &&
                 item.type === 'blob'
             );
 
+            console.log('Found ' + eventFiles.length + ' event files in private repo');
+
             for (const file of eventFiles) {
                 try {
-                    const fileResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/git/blobs/${file.sha}`, {
+                    const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
                         headers: {
-                            'Authorization': `token ${token}`,
+                            'Authorization': 'token ' + token,
                             'Accept': 'application/vnd.github.v3+json',
                             'User-Agent': 'EventCall-App'
                         }
@@ -238,15 +241,15 @@ getToken() {
                         }
                     }
                 } catch (error) {
-                    console.error(`Failed to load event file ${file.path}:`, error);
+                    console.error('Failed to load event file ' + file.path + ':', error);
                 }
             }
 
-            console.log(`✅ Loaded ${Object.keys(events).length} events from GitHub for current user`);
+            console.log(`✅ Loaded ${Object.keys(events).length} events from private repo for current user`);
             return events;
 
         } catch (error) {
-            console.error('Failed to load events from GitHub:', error);
+            console.error('Failed to load events from private repo:', error);
             return {};
         }
     }
@@ -590,7 +593,9 @@ async loadResponses() {
     }
 
     /**
-     * Save event to GitHub
+     * Save event to EventCall-Data repository
+     * DEPRECATED: Use BackendAPI.createEvent() for new events
+     * This method is kept for backward compatibility
      */
     async saveEvent(eventData) {
         const token = this.getToken();
@@ -602,11 +607,11 @@ async loadResponses() {
             const cleanEventData = this.cleanEventData(eventData);
             const path = `events/${cleanEventData.id}.json`;
             const content = this.safeBase64Encode(JSON.stringify(cleanEventData, null, 2));
-            
-            // Check if file exists
+
+            // Check if file exists in EventCall-Data repo
             let existingSha = null;
             try {
-                const existingResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
+                const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
                     headers: {
                         'Authorization': `token ${token}`,
                         'Accept': 'application/vnd.github.v3+json',
@@ -622,18 +627,18 @@ async loadResponses() {
                 // File doesn't exist, which is fine
             }
 
-            // Create or update the file
+            // Create or update the file in EventCall-Data repo
             const createData = {
                 message: `${existingSha ? 'Update' : 'Create'} event: ${cleanEventData.title}`,
                 content: content,
-                branch: this.config.branch
+                branch: 'main'
             };
 
             if (existingSha) {
                 createData.sha = existingSha;
             }
 
-            const createResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
+            const createResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `token ${token}`,
@@ -649,17 +654,17 @@ async loadResponses() {
                 throw new Error(`Failed to save event: ${createResponse.status} - ${errorText}`);
             }
 
-            console.log('✅ Event saved successfully:', cleanEventData.id);
+            console.log('✅ Event saved successfully to EventCall-Data:', cleanEventData.id);
             return await createResponse.json();
 
         } catch (error) {
-            console.error('Failed to save event to GitHub:', error);
+            console.error('Failed to save event to EventCall-Data:', error);
             throw error;
         }
     }
 
     /**
-     * Delete event from GitHub
+     * Delete event from EventCall-Data repository
      */
     async deleteEvent(eventId, eventTitle) {
         const token = this.getToken();
@@ -668,16 +673,16 @@ async loadResponses() {
         }
 
         try {
-            // Delete event file
+            // Delete event file from EventCall-Data
             const eventPath = `events/${eventId}.json`;
-            await this.deleteFile(eventPath, `Delete event: ${this.cleanText(eventTitle)}`);
+            await this.deleteFileFromDataRepo(eventPath, `Delete event: ${this.cleanText(eventTitle)}`);
 
-            // Delete associated responses file
+            // Delete associated responses file from EventCall-Data
             const responsePath = `rsvps/${eventId}.json`;
-            await this.deleteFile(responsePath, `Delete responses for event: ${this.cleanText(eventTitle)}`);
+            await this.deleteFileFromDataRepo(responsePath, `Delete responses for event: ${this.cleanText(eventTitle)}`);
 
-            console.log('✅ Event deleted successfully:', eventId);
-            
+            console.log('✅ Event deleted successfully from EventCall-Data:', eventId);
+
         } catch (error) {
             console.error('Failed to delete event:', error);
             throw error;
@@ -685,7 +690,7 @@ async loadResponses() {
     }
 
     /**
-     * Delete a file from GitHub
+     * Delete a file from GitHub main repo (deprecated)
      */
     async deleteFile(path, message) {
         const token = this.getToken();
@@ -705,7 +710,7 @@ async loadResponses() {
 
             if (fileResponse.ok) {
                 const fileData = await fileResponse.json();
-                
+
                 const deleteResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
                     method: 'DELETE',
                     headers: {
@@ -727,6 +732,54 @@ async loadResponses() {
             }
         } catch (error) {
             console.log(`File ${path} may not exist, skipping deletion`);
+        }
+    }
+
+    /**
+     * Delete a file from EventCall-Data repository
+     */
+    async deleteFileFromDataRepo(path, message) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available');
+        }
+
+        try {
+            // Get file info first from EventCall-Data
+            const fileResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
+                }
+            });
+
+            if (fileResponse.ok) {
+                const fileData = await fileResponse.json();
+
+                const deleteResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sha: fileData.sha,
+                        branch: 'main'
+                    })
+                });
+
+                if (!deleteResponse.ok) {
+                    throw new Error(`Failed to delete ${path} from EventCall-Data: ${deleteResponse.status}`);
+                }
+
+                console.log(`✅ Deleted ${path} from EventCall-Data`);
+            }
+        } catch (error) {
+            console.log(`File ${path} may not exist in EventCall-Data, skipping deletion`);
         }
     }
 
