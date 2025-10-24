@@ -1,348 +1,236 @@
 /**
- * EventCall Early Functions - Updated with Login Enforcement
- * These functions need to be available immediately when HTML loads
- * Load this file BEFORE all other scripts
+ * Manager System - Enhanced with RSVP Sync Functionality
+ * Added GitHub Issues processing and real-time sync capabilities
  */
 
-// Initialize global state
-window.events = {};
-window.responses = {};
+// Global sync state
+let syncInProgress = false;
+let pendingRSVPCount = 0;
 
-// Check authentication on page load
-document.addEventListener('DOMContentLoaded', async () => {
-    // Skip auth check for invite pages (guests don't need login)
-    const isInvitePage = window.location.hash.includes('invite/') || window.location.search.includes('data=');
-    
-    if (!isInvitePage && window.managerAuth) {
-        const isAuthenticated = await window.managerAuth.init();
-        if (!isAuthenticated) {
-            console.log('ðŸ”’ Not authenticated - showing login page');
-            window.loginUI.showLoginPage();
-        } else {
-            console.log('âœ… Authenticated - showing app');
-        }
-    }
-});
+// Add custom question function
+function addCustomQuestion(questionText = '') {
+    const container = document.getElementById('custom-questions-container');
+    if (!container) return;
 
-/**
- * Show page navigation - Updated to enforce login state
- */
-function showPage(pageId) {
-  console.log(`ðŸ§­ Attempting to navigate to: ${pageId}`);
-  
-  // Allow access to invite page without login (for guests)
-  if (pageId === 'invite') {
-    console.log('ðŸŽ¯ Guest invite access - no login required');
-    showPageContent(pageId);
-    return;
-  }
-  
-  // Check if this is an invite URL (guest access)
-  if (window.location.hash.includes('invite/') || window.location.search.includes('data=')) {
-    console.log('ðŸŽ¯ Guest invite URL detected - bypassing login');
-    showPageContent('invite');
-    return;
-  }
-  
-  // Check if user is logged in for all other pages
-  if (typeof managerAuth === 'undefined' || !managerAuth.isAuthenticated()) {
-    console.log('ðŸ”’ Access denied - user not logged in');
-    
-    // Show login screen
-    showLoginPage();
-    return;
-  }
-  
-  // User is logged in, proceed to requested page
-  console.log(`âœ… Access granted to ${pageId} for user: ${managerAuth.getCurrentManager()?.email}`);
-  showPageContent(pageId);
-}
-
-/**
- * Show login page and hide app content
- */
-function showLoginPage() {
-  // Hide all app pages
-  document.querySelectorAll('.page').forEach(page => {
-    page.classList.remove('active');
-  });
-  
-  // Show login screen
-  const loginPage = document.getElementById('login-page');
-  const appContent = document.querySelector('.app-content');
-  const nav = document.querySelector('.nav');
-  
-  if (loginPage) {
-    loginPage.style.display = 'flex';
-  }
-  if (appContent) {
-    appContent.style.display = 'none';
-  }
-  if (nav) {
-    nav.style.display = 'none';
-  }
-  
-  // Focus on email input
-  setTimeout(() => {
-    const emailInput = document.getElementById('login-email');
-    if (emailInput) {
-      emailInput.focus();
-    }
-  }, 100);
-  
-  console.log('ðŸ” Login page displayed');
-}
-
-/**
- * Show specific page content (internal function)
- */
-function showPageContent(pageId) {
-  // Hide all pages
-  document.querySelectorAll('.page').forEach(page => {
-    page.classList.remove('active');
-  });
-
-  // Show target page
-  const targetPage = document.getElementById(pageId);
-  if (targetPage) targetPage.classList.add('active');
-
-  // Update nav buttons (only if nav is visible)
-  const nav = document.querySelector('.nav');
-  if (nav && nav.style.display !== 'none') {
-    document.querySelectorAll('.nav button').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    const navButton = document.getElementById(`nav-${pageId}`);
-    if (navButton) navButton.classList.add('active');
-  }
-
-  // Show/hide nav based on page
-  if (nav) {
-    nav.style.display = pageId === 'invite' ? 'none' : 'flex';
-  }
-
-  // Update URL hash (but don't override invite URLs)
-  if (!window.location.hash.includes('invite/')) {
-    window.location.hash = pageId;
-  }
-
-  // Initialize template selector on create page
-  if (pageId === 'create' && window.eventTemplates) {
-    const container = document.getElementById('template-selector-container');
-    if (container && !container.hasChildNodes()) {
-      container.innerHTML = window.eventTemplates.generateTemplateSelectorHTML();
-    }
-  }
-
-  console.log(`ðŸ“„ Page changed to: ${pageId}`);
-
-  // Load data when switching to dashboard
-  if (pageId === 'dashboard' && typeof window.loadManagerData === 'function') {
-    window.loadManagerData();
-  }
-}
-
-/**
- * Show toast notification - Available immediately
- */
-function showToast(message, type = 'success') {
-    // Remove existing toasts
-    const existingToasts = document.querySelectorAll('.toast');
-    existingToasts.forEach(toast => toast.remove());
-    
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 1rem 1.5rem;
-        border-radius: 0.5rem;
-        color: white;
-        font-weight: 600;
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-        ${type === 'success' ? 'background: #10b981;' : 'background: #ef4444;'}
+    const questionItem = document.createElement('div');
+    questionItem.className = 'custom-question-item';
+    questionItem.innerHTML = `
+        <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${questionText}">
+        <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
     `;
-    toast.textContent = message;
-    
-    // Add animation styles if not present
-    if (!document.querySelector('#toast-styles')) {
-        const style = document.createElement('style');
-        style.id = 'toast-styles';
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.remove();
-        }
-    }, 3000);
+    container.appendChild(questionItem);
 }
 
-/**
- * Copy invite link - Available immediately for HTML onclick
- */
-async function copyInviteLink(eventId) {
-    try {
-        const event = window.events ? window.events[eventId] : null;
-        if (!event) {
-            showToast('Event not found', 'error');
-            return;
-        }
-        
-        const link = generateInviteURL(event);
-        const success = await copyToClipboard(link);
-        
-        if (success) {
-            showToast('ðŸ”— Invite link copied to clipboard!', 'success');
-        } else {
-            prompt('Copy this invite link:', link);
-        }
-    } catch (error) {
-        console.error('Failed to copy link:', error);
-        showToast('Failed to copy link', 'error');
+function removeCustomQuestion(button) {
+    const questionItem = button.closest('.custom-question-item');
+    if (questionItem) {
+        questionItem.remove();
     }
 }
 
-/**
- * Generate invite URL - Utility function
- */
-function generateInviteURL(event) {
-    const baseURL = window.location.origin + window.location.pathname;
-    const encodedData = btoa(JSON.stringify({
-        id: event.id,
-        title: event.title,
-        date: event.date,
-        time: event.time,
-        location: event.location,
-        description: event.description,
-        coverImage: event.coverImage,
-        askReason: event.askReason,
-        allowGuests: event.allowGuests,
-        customQuestions: event.customQuestions || [],
-        created: event.created
-    }));
-    return `${baseURL}?data=${encodedData}#invite/${event.id}`;
-}
-
-/**
- * Copy to clipboard - Utility function
- */
-async function copyToClipboard(text) {
-    try {
-        await navigator.clipboard.writeText(text);
-        return true;
-    } catch (error) {
-        // Fallback for older browsers
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        document.body.appendChild(textarea);
-        textarea.select();
-        const success = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        return success;
-    }
-}
-
-/**
- * Export event data - Available immediately for HTML onclick
- */
-function exportEventData(eventId) {
-    try {
-        const event = window.events ? window.events[eventId] : null;
-        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
-        
-        if (!event) {
-            showToast('Event not found', 'error');
-            return;
-        }
-        
-        const csvContent = createCSVContent(event, eventResponses);
-        const filename = `${generateSafeFilename(event.title)}_rsvps.csv`;
-        
-        downloadFile(csvContent, filename, 'text/csv');
-        showToast('ðŸ“Š Data exported successfully!', 'success');
-        
-    } catch (error) {
-        console.error('Failed to export data:', error);
-        showToast('Failed to export data', 'error');
-    }
-}
-
-/**
- * Create CSV content from RSVP data
- */
-function createCSVContent(event, responses) {
-    let csvContent = "Name,Email,Phone,Attending,";
-    
-    if (event.askReason) csvContent += "Reason,";
-    if (event.allowGuests) csvContent += "Guest Count,";
-    
-    if (event.customQuestions && event.customQuestions.length > 0) {
-        event.customQuestions.forEach(q => {
-            csvContent += `"${q.question}",`;
-        });
-    }
-    
-    csvContent += "Timestamp\n";
+function calculateEventStats(responses) {
+    const stats = {
+        total: responses.length,
+        attending: 0,
+        notAttending: 0,
+        totalGuests: 0,
+        attendingWithGuests: 0,
+        totalHeadcount: 0,
+        responseRate: 0
+    };
 
     responses.forEach(response => {
-        csvContent += `"${response.name}","${response.email}","${response.phone || ''}","${response.attending ? 'Yes' : 'No'}",`;
-        
-        if (event.askReason) csvContent += `"${response.reason || ''}",`;
-        if (event.allowGuests) csvContent += `"${response.guestCount || 0}",`;
-        
-        if (event.customQuestions && event.customQuestions.length > 0) {
-            event.customQuestions.forEach(q => {
-                const answer = response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '';
-                csvContent += `"${answer}",`;
-            });
+        if (response.attending === true) {
+            stats.attending++;
+            stats.attendingWithGuests += parseInt(response.guestCount) || 0;
+        } else if (response.attending === false) {
+            stats.notAttending++;
         }
         
-        csvContent += `"${new Date(response.timestamp).toLocaleString()}"\n`;
+        stats.totalGuests += parseInt(response.guestCount) || 0;
     });
 
-    return csvContent;
+    stats.totalHeadcount = stats.attending + stats.attendingWithGuests;
+    stats.responseRate = stats.total > 0 ? ((stats.attending + stats.notAttending) / stats.total * 100).toFixed(1) : 0;
+
+    return stats;
 }
 
 /**
- * Generate safe filename from event title
+ * Sync RSVPs from GitHub Issues
  */
-function generateSafeFilename(title) {
-    return title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+async function syncWithGitHub() {
+    if (syncInProgress) {
+        showToast('⏳ Sync already in progress...', 'error');
+        return;
+    }
+
+    if (!managerAuth.isAuthenticated()) {
+        showToast('🔒 Please login with GitHub token to sync RSVPs', 'error');
+        return;
+    }
+
+    syncInProgress = true;
+    
+    try {
+        // Update button state
+        const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
+        syncButtons.forEach(btn => {
+            btn.innerHTML = '<div class="spinner"></div> Syncing...';
+            btn.disabled = true;
+        });
+
+        showToast('🔄 Syncing RSVPs from GitHub Issues...', 'success');
+
+        // Process RSVP issues
+        const result = await window.githubAPI.processRSVPIssues();
+        
+        if (result.processed > 0) {
+            // Reload data after processing
+            await loadManagerData();
+            
+            // Show success message
+            showToast(`✅ Synced ${result.processed} new RSVPs successfully!`, 'success');
+            
+            // Update pending count
+            await updatePendingRSVPCount();
+        } else {
+            showToast('ℹ️ No new RSVPs to sync', 'success');
+        }
+
+    } catch (error) {
+        console.error('Sync failed:', error);
+        showToast('❌ Sync failed: ' + error.message, 'error');
+    } finally {
+        syncInProgress = false;
+        
+        // Reset button state
+        const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
+        syncButtons.forEach(btn => {
+            btn.innerHTML = '🔄 Sync RSVPs';
+            btn.disabled = false;
+        });
+    }
 }
 
 /**
- * Download file utility
+ * Update pending RSVP count in UI
  */
-function downloadFile(data, filename, mimeType = 'text/plain') {
-    const blob = new Blob([data], { type: mimeType });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+async function updatePendingRSVPCount() {
+    if (!managerAuth.isAuthenticated()) {
+        return;
+    }
+
+    try {
+        const count = await window.githubAPI.getPendingRSVPCount();
+        pendingRSVPCount = count;
+        
+        // Update sync button text if pending RSVPs exist
+        const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
+        syncButtons.forEach(btn => {
+            if (count > 0) {
+                btn.innerHTML = `🔄 Sync RSVPs (${count} pending)`;
+                btn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                btn.style.animation = 'pulse 2s infinite';
+            } else {
+                btn.innerHTML = '🔄 Sync RSVPs';
+                btn.style.background = '';
+                btn.style.animation = '';
+            }
+        });
+
+        // Add pending indicator to dashboard
+        updateDashboardSyncStatus(count);
+
+    } catch (error) {
+        console.error('Failed to update pending RSVP count:', error);
+    }
 }
 
 /**
- * Delete event - Available immediately for HTML onclick
+ * Update dashboard sync status
  */
+function updateDashboardSyncStatus(pendingCount) {
+    const eventsList = document.getElementById('events-list');
+    if (!eventsList) return;
+
+    // Remove existing sync status
+    const existingStatus = document.getElementById('sync-status-banner');
+    if (existingStatus) {
+        existingStatus.remove();
+    }
+
+    if (pendingCount > 0) {
+        const syncBanner = document.createElement('div');
+        syncBanner.id = 'sync-status-banner';
+        syncBanner.style.cssText = `
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #f59e0b;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            text-center: center;
+            font-weight: 600;
+            color: #92400e;
+        `;
+        syncBanner.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <span style="font-size: 1.2rem;">📬</span>
+                <span>${pendingCount} new RSVP${pendingCount > 1 ? 's' : ''} ready to sync!</span>
+                <button class="btn" onclick="syncWithGitHub()" style="margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.875rem;">
+                    🔄 Sync Now
+                </button>
+            </div>
+        `;
+        
+        // Insert at the top of events list
+        eventsList.insertBefore(syncBanner, eventsList.firstChild);
+    }
+}
+
+/**
+ * Enhanced load manager data with sync status
+ */
+async function loadManagerData() {
+    console.log('📊 Loading manager data...');
+    
+    if (!window.events) window.events = {};
+    if (!window.responses) window.responses = {};
+    
+    if (!managerAuth.isAuthenticated()) {
+        console.log('⚠️ No GitHub token available - using local events only');
+        renderDashboard();
+        return;
+    }
+    
+    if (window.githubAPI) {
+        try {
+            // Load events
+            const events = await window.githubAPI.loadEvents();
+            window.events = events || {};
+            console.log(`✅ Loaded ${Object.keys(window.events).length} events from GitHub`);
+            
+            // Load responses
+            const responses = await window.githubAPI.loadResponses();
+            window.responses = responses || {};
+            console.log(`✅ Loaded responses for ${Object.keys(window.responses).length} events from GitHub`);
+            
+            // Update pending RSVP count
+            await updatePendingRSVPCount();
+            
+        } catch (error) {
+            console.error('❌ Failed to load from GitHub:', error);
+        }
+    }
+    
+    renderDashboard();
+}
+
 async function deleteEvent(eventId) {
     try {
         const event = window.events ? window.events[eventId] : null;
         if (!event) {
+            const showToast = window.showToast || function(msg, type) { console.log(msg); };
             showToast('Event not found', 'error');
             return;
         }
@@ -351,27 +239,33 @@ async function deleteEvent(eventId) {
             return;
         }
 
-        // Delete from GitHub if available
-        if (window.githubAPI && window.githubAPI.deleteEvent) {
-            await window.githubAPI.deleteEvent(eventId, event.title);
+        const currentUser = managerAuth.getCurrentManager();
+        if (!currentUser || event.createdBy !== currentUser.email) {
+            showToast('❌ You can only delete your own events', 'error');
+            return;
+        }
+
+        if (managerAuth.isAuthenticated() && window.githubAPI) {
+            try {
+                if (window.githubAPI && window.githubAPI.deleteEvent) {
+                    await window.githubAPI.deleteEvent(eventId, event.title);
+                }
+            } catch (error) {
+                console.error('Failed to delete from GitHub:', error);
+            }
         }
         
-        // Remove from local state
         if (window.events) delete window.events[eventId];
         if (window.responses) delete window.responses[eventId];
         
-        // Refresh dashboard if function exists
-        if (window.renderDashboard) {
-            window.renderDashboard();
-        } else if (window.loadManagerData) {
-            await window.loadManagerData();
-        }
+        showToast('🗑️ Event deleted successfully', 'success');
         
-        showToast('ðŸ—‘ï¸ Event deleted successfully', 'success');
+        await loadManagerData();
         
-        // Navigate to dashboard if on manage page
         if (window.location.hash.includes('manage/')) {
-            showPage('dashboard');
+            if (window.showPage) {
+                window.showPage('dashboard');
+            }
         }
         
     } catch (error) {
@@ -380,77 +274,384 @@ async function deleteEvent(eventId) {
     }
 }
 
-/**
- * Check URL hash on page load to handle direct links
- */
-function checkURLHash() {
-    const hash = window.location.hash.substring(1);
-    const hasInviteData = window.location.search.includes('data=');
-    
-    // Handle invite URLs (guest access)
-    if (hash.startsWith('invite/') || hasInviteData) {
-        const eventId = hash.split('/')[1];
-        console.log('ðŸ”— Direct invite link accessed:', eventId);
-        
-        // Force show invite page without login requirement
-        showPageContent('invite');
-        
-        if (window.uiComponents && window.uiComponents.showInvite) {
-            window.uiComponents.showInvite(eventId);
-        } else {
-            console.log('â³ UI components not loaded yet, will handle invite later');
-        }
+function renderDashboard() {
+    const eventsList = document.getElementById('events-list');
+    if (!eventsList) return;
+
+    if (!window.events || Object.keys(window.events).length === 0) {
+        eventsList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">🎖️</div>
+                <h3>No Events Created Yet</h3>
+                <p>Start by creating your first military event</p>
+                <button class="btn" onclick="showPage('create')">➕ Create Event</button>
+            </div>
+        `;
         return;
     }
+
+    const eventArray = Object.values(window.events);
+    console.log('📊 Rendering dashboard with ' + eventArray.length + ' events');
     
-    if (hash.startsWith('manage/')) {
-        const eventId = hash.split('/')[1];
-        console.log('ðŸ“Š Direct manage link accessed:', eventId);
-        
-        // Check login first
-        if (typeof managerAuth === 'undefined' || !managerAuth.isAuthenticated()) {
-            console.log('ðŸ”’ Manage access denied - redirecting to login');
-            showLoginPage();
-            return;
-        }
-        
-        if (window.eventManager && window.eventManager.showEventManagement) {
-            window.eventManager.showEventManagement(eventId);
-        } else {
-            console.log('â³ Event manager not loaded yet, will handle later');
-        }
-        return;
+    eventsList.innerHTML = eventArray
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .map(event => {
+            const eventResponses = window.responses?.[event.id] || [];
+            const stats = calculateEventStats(eventResponses);
+            const inviteLink = `${window.location.origin}${window.location.pathname}#invite/${event.id}`;
+            const isPast = isEventInPast(event.date, event.time);
+            
+            return `
+                <div class="event-card ${isPast ? 'event-past' : ''}">
+                    ${event.coverImage ? `<img src="${event.coverImage}" alt="${event.title}" class="event-cover">` : ''}
+                    <div class="event-header">
+                        <h3>${event.title}</h3>
+                        ${isPast ? '<span class="event-status-badge event-status-past">Past Event</span>' : '<span class="event-status-badge event-status-active">Active</span>'}
+                    </div>
+                    <div class="event-meta">
+                        <span>📅 ${formatDate(event.date)}</span>
+                        <span>⏰ ${formatTime(event.time)}</span>
+                        <span>📍 ${event.location}</span>
+                    </div>
+                    
+                    <div class="rsvp-stats">
+                        <div class="stat">
+                            <span class="stat-value">${stats.attending}</span>
+                            <span class="stat-label">Attending</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${stats.notAttending}</span>
+                            <span class="stat-label">Not Attending</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${stats.totalHeadcount}</span>
+                            <span class="stat-label">Total Headcount</span>
+                        </div>
+                    </div>
+
+                    <div class="event-actions">
+                        <button class="btn btn-primary" onclick="window.eventManager.showEventManagement('${event.id}')">
+                            📊 Manage
+                        </button>
+                        <button class="btn" onclick="copyInviteLink('${inviteLink}', event)">
+                            🔗 Copy Link
+                        </button>
+                        <button class="btn" onclick="exportEventData('${event.id}')">
+                            💾 Export
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteEvent('${event.id}')">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        })
+        .join('');
+
+    console.log('✅ Dashboard rendered successfully with sync functionality');
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+}
+
+function formatTime(timeString) {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+}
+
+function formatRelativeTime(dateString, timeString = '00:00') {
+    const eventDateTime = new Date(`${dateString}T${timeString}`);
+    const now = new Date();
+    const diffInSeconds = Math.floor((eventDateTime - now) / 1000);
+
+    if (diffInSeconds < 0) {
+        return 'Past event';
     }
+
+    const days = Math.floor(diffInSeconds / 86400);
+    const hours = Math.floor((diffInSeconds % 86400) / 3600);
     
-    // Handle other hash values
-    if (hash && ['dashboard', 'create'].includes(hash)) {
-        showPage(hash);
+    if (days > 0) {
+        return `${days} day${days !== 1 ? 's' : ''} away`;
+    } else if (hours > 0) {
+        return `${hours} hour${hours !== 1 ? 's' : ''} away`;
+    } else {
+        return 'Today';
+    }
+}
+
+function isEventInPast(date, time = '00:00') {
+    const eventDateTime = new Date(`${date}T${time}`);
+    return eventDateTime < new Date();
+}
+
+function getTimeUntilEvent(date, time) {
+    const eventDateTime = new Date(`${date}T${time}`);
+    const now = new Date();
+    const diffInSeconds = Math.floor((eventDateTime - now) / 1000);
+
+    if (diffInSeconds <= 0) {
+        return 'Event has passed';
+    }
+
+    const days = Math.floor(diffInSeconds / 86400);
+    const hours = Math.floor((diffInSeconds % 86400) / 3600);
+    const minutes = Math.floor((diffInSeconds % 3600) / 60);
+
+    if (days > 0) {
+        return `${days}d ${hours}h`;
+    } else if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    } else {
+        return `${minutes}m`;
+    }
+}
+
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+function sanitizeText(text) {
+    if (!text) return '';
+    return text.trim().replace(/[<>]/g, '');
+}
+
+function getCustomQuestions() {
+    const inputs = document.querySelectorAll('.custom-question-input');
+    const questions = [];
+
+    inputs.forEach((input, index) => {
+        const text = sanitizeText(input.value);
+        if (text && text.length >= 3) {
+            questions.push({
+                id: `custom_${index}`,
+                question: text
+            });
+        }
+    });
+
+    return questions;
+}
+
+function getEventDetails() {
+    const detailFields = document.querySelectorAll('.event-detail-field');
+    const details = {};
+
+    detailFields.forEach(field => {
+        const value = sanitizeText(field.value);
+        const fieldId = field.getAttribute('data-field-id');
+        const fieldLabel = field.getAttribute('data-field-label');
+
+        if (value) {
+            details[fieldId] = {
+                label: fieldLabel,
+                value: value
+            };
+        }
+    });
+
+    return details;
+}
+
+function clearCustomQuestions() {
+    const container = document.getElementById('custom-questions-container');
+    if (container) {
+        container.innerHTML = '';
+    }
+}
+
+function clearEventDetails() {
+    const container = document.getElementById('event-details-container');
+    const section = document.getElementById('event-details-section');
+    if (container) {
+        container.innerHTML = '';
+    }
+    if (section) {
+        section.style.display = 'none';
+    }
+}
+
+function handleRSVP(e, eventId) {
+    if (window.rsvpHandler && window.rsvpHandler.handleRSVP) {
+        window.rsvpHandler.handleRSVP(e, eventId);
+    } else {
+        console.error('RSVP handler not available');
+        e.preventDefault();
+    }
+}
+
+async function handleEventSubmit(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    
+    submitBtn.innerHTML = '<div class="spinner"></div> Creating...';
+    submitBtn.disabled = true;
+
+    try {
+        if (!managerAuth.isAuthenticated()) {
+            throw new Error('Please log in to create events');
+        }
+
+        const eventData = {
+            id: generateUUID(),
+            title: sanitizeText(document.getElementById('event-title').value),
+            date: document.getElementById('event-date').value,
+            time: document.getElementById('event-time').value,
+            location: sanitizeText(document.getElementById('event-location').value),
+            description: sanitizeText(document.getElementById('event-description').value),
+            coverImage: document.getElementById('cover-preview').src || '',
+            askReason: document.getElementById('ask-reason').checked,
+            allowGuests: document.getElementById('allow-guests').checked,
+            requiresMealChoice: document.getElementById('requires-meal-choice').checked,
+            customQuestions: getCustomQuestions(),
+            eventDetails: getEventDetails(),
+            created: Date.now(),
+            status: 'active',
+            createdBy: managerAuth.getCurrentManager()?.email,
+            createdByName: managerAuth.getCurrentManager()?.email.split('@')[0]
+        };
+
+        if (!eventData.title || eventData.title.length < 3) {
+            throw new Error('Please enter a valid event title (3+ characters)');
+        }
+
+        if (!eventData.date || !eventData.time) {
+            throw new Error('Please specify both date and time for the event');
+        }
+
+        // Save directly to EventCall-Data via GitHub API
+        if (managerAuth.isAuthenticated() && window.githubAPI) {
+            await window.githubAPI.saveEvent(eventData);
+        } else {
+            throw new Error('GitHub API not available or not authenticated');
+        }
+
+        if (!window.events) window.events = {};
+        window.events[eventData.id] = eventData;
+        
+        const showToast = window.showToast || function(msg, type) { console.log(msg); };
+        showToast('🎖️ Event deployed successfully!', 'success');
+        
+        document.getElementById('event-form').reset();
+        const coverPreview = document.getElementById('cover-preview');
+        if (coverPreview) {
+            coverPreview.classList.add('hidden');
+            coverPreview.src = '';
+        }
+        clearCustomQuestions();
+        clearEventDetails();
+        
+    } catch (error) {
+        console.error('Failed to save event:', error);
+        const showToast = window.showToast || function(msg, type) { console.log(msg); };
+        showToast('Failed to save event: ' + error.message, 'error');
+    } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+        
+        setTimeout(() => {
+            // Wait longer for manager-system.js to fully load
+            if (typeof window.loadManagerData === 'function') {
+                window.loadManagerData();
+            } else {
+                // Retry after additional delay
+                setTimeout(() => {
+                    if (typeof window.loadManagerData === 'function') {
+                        window.loadManagerData();
+                    }
+                }, 500);
+            }
+            if (window.showPage) {
+                window.showPage('dashboard');
+            }
+        }, 1000); // Increased from 500ms to 1000ms
+    }
+}
+
+function setupEventForm() {
+    const eventForm = document.getElementById('event-form');
+    if (eventForm) {
+        eventForm.removeEventListener('submit', handleEventSubmit);
+        eventForm.addEventListener('submit', handleEventSubmit);
+        console.log('✅ Event form listener attached');
     }
 }
 
 /**
- * Navigate to dashboard - Available immediately for HTML onclick
+ * Initialize sync status checker
+ * Note: Automatic polling removed to reduce API calls.
+ * Pending RSVP count updates only on:
+ * - Initial dashboard load (loadManagerData)
+ * - Manual sync button click (syncWithGitHub)
  */
-
-function goToDashboard() {
-    showPage('dashboard');
+function initializeSyncChecker() {
+    // Removed automatic polling - use manual sync buttons instead
+    console.log('ℹ️ RSVP sync checker initialized (manual mode)');
 }
 
-
-// Make functions globally available immediately
-window.showPage = showPage;
-window.showLoginPage = showLoginPage;
-window.showPageContent = showPageContent;
-window.showToast = showToast;
-window.copyInviteLink = copyInviteLink;
-window.exportEventData = exportEventData;
-window.deleteEvent = deleteEvent;
-window.checkURLHash = checkURLHash;
-window.goToDashboard = goToDashboard;
-
-// Initialize hash listener when DOM is ready
+// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-    initializeHashListener();
+    setupEventForm();
+    initializeSyncChecker();
 });
 
-console.log('âœ… Early functions loaded with login enforcement and hash handling');
+// Make functions globally available
+window.addCustomQuestion = addCustomQuestion;
+window.removeCustomQuestion = removeCustomQuestion;
+window.handleEventSubmit = handleEventSubmit;
+window.generateUUID = generateUUID;
+window.sanitizeText = sanitizeText;
+window.getCustomQuestions = getCustomQuestions;
+window.clearCustomQuestions = clearCustomQuestions;
+window.getEventDetails = getEventDetails;
+window.clearEventDetails = clearEventDetails;
+window.setupEventForm = setupEventForm;
+window.calculateEventStats = calculateEventStats;
+window.formatDate = formatDate;
+window.formatTime = formatTime;
+window.formatRelativeTime = formatRelativeTime;
+window.isEventInPast = isEventInPast;
+window.getTimeUntilEvent = getTimeUntilEvent;
+window.handleRSVP = handleRSVP;
+window.loadManagerData = loadManagerData;
+window.renderDashboard = renderDashboard;
+window.deleteEvent = deleteEvent;
+window.syncWithGitHub = syncWithGitHub;
+window.updatePendingRSVPCount = updatePendingRSVPCount;
+window.initializeSyncChecker = initializeSyncChecker;
+
+window.showEventManagement = function(eventId) {
+    if (window.eventManager && window.eventManager.showEventManagement) {
+        window.eventManager.showEventManagement(eventId);
+    } else {
+        console.error('EventManager not available');
+    }
+};
+
+window.duplicateEvent = function(eventId) {
+    if (window.eventManager && window.eventManager.duplicateEvent) {
+        window.eventManager.duplicateEvent(eventId);
+    } else {
+        console.error('EventManager not available');
+    }
+};
+
+console.log('✅ Enhanced manager system loaded with RSVP sync functionality');
