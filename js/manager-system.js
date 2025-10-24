@@ -16,7 +16,7 @@ function addCustomQuestion(questionText = '') {
     questionItem.className = 'custom-question-item';
     questionItem.innerHTML = `
         <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${questionText}">
-        <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">ðŸ—‘ï¸</button>
+        <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🔒</button>
     `;
     container.appendChild(questionItem);
 }
@@ -80,7 +80,7 @@ async function syncWithGitHub() {
             btn.disabled = true;
         });
 
-        showToast('ðŸ”„ Syncing RSVPs from GitHub Issues...', 'success');
+        showToast('🔄 Syncing RSVPs from GitHub Issues...', 'success');
 
         // Process RSVP issues
         const result = await window.githubAPI.processRSVPIssues();
@@ -90,24 +90,24 @@ async function syncWithGitHub() {
             await loadManagerData();
             
             // Show success message
-            showToast(`âœ… Synced ${result.processed} new RSVPs successfully!`, 'success');
+            showToast(`❌… Synced ${result.processed} new RSVPs successfully!`, 'success');
             
             // Update pending count
             await updatePendingRSVPCount();
         } else {
-            showToast('â„¹ï¸ No new RSVPs to sync', 'success');
+            showToast('✅ No new RSVPs to sync', 'success');
         }
 
     } catch (error) {
         console.error('Sync failed:', error);
-        showToast('âŒ Sync failed: ' + error.message, 'error');
+        showToast('❌ Sync failed: ' + error.message, 'error');
     } finally {
         syncInProgress = false;
         
         // Reset button state
         const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
         syncButtons.forEach(btn => {
-            btn.innerHTML = 'ðŸ”„ Sync RSVPs';
+            btn.innerHTML = '🔄 Sync RSVPs';
             btn.disabled = false;
         });
     }
@@ -129,11 +129,11 @@ async function updatePendingRSVPCount() {
         const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
         syncButtons.forEach(btn => {
             if (count > 0) {
-                btn.innerHTML = `ðŸ”„ Sync RSVPs (${count} pending)`;
+                btn.innerHTML = `🔄 Sync RSVPs (${count} pending)`;
                 btn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
                 btn.style.animation = 'pulse 2s infinite';
             } else {
-                btn.innerHTML = 'ðŸ”„ Sync RSVPs';
+                btn.innerHTML = '🔄 Sync RSVPs';
                 btn.style.background = '';
                 btn.style.animation = '';
             }
@@ -178,7 +178,7 @@ function updateDashboardSyncStatus(pendingCount) {
                 <span style="font-size: 1.2rem;">ðŸ“¬</span>
                 <span>${pendingCount} new RSVP${pendingCount > 1 ? 's' : ''} ready to sync!</span>
                 <button class="btn" onclick="syncWithGitHub()" style="margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.875rem;">
-                    ðŸ”„ Sync Now
+                    🔄 Sync Now
                 </button>
             </div>
         `;
@@ -192,13 +192,13 @@ function updateDashboardSyncStatus(pendingCount) {
  * Enhanced load manager data with sync status
  */
 async function loadManagerData() {
-    console.log('ðŸ“Š Loading manager data...');
+    console.log('⚠️ Loading manager data...');
     
     if (!window.events) window.events = {};
     if (!window.responses) window.responses = {};
     
     if (!managerAuth.isAuthenticated()) {
-        console.log('âš ï¸ No GitHub token available - using local events only');
+        console.log('⚠️ No GitHub token available - using local events only');
         renderDashboard();
         return;
     }
@@ -208,18 +208,18 @@ async function loadManagerData() {
             // Load events
             const events = await window.githubAPI.loadEvents();
             window.events = events || {};
-            console.log(`âœ… Loaded ${Object.keys(window.events).length} events from GitHub`);
+            console.log(`❌… Loaded ${Object.keys(window.events).length} events from GitHub`);
             
             // Load responses
             const responses = await window.githubAPI.loadResponses();
             window.responses = responses || {};
-            console.log(`âœ… Loaded responses for ${Object.keys(window.responses).length} events from GitHub`);
+            console.log(`❌… Loaded responses for ${Object.keys(window.responses).length} events from GitHub`);
             
             // Update pending RSVP count
             await updatePendingRSVPCount();
             
         } catch (error) {
-            console.error('âŒ Failed to load from GitHub:', error);
+            console.error('❌ Failed to load from GitHub:', error);
         }
     }
     
@@ -240,7 +240,7 @@ async function deleteEvent(eventId) {
         }
 
         const showToast = window.showToast || function(msg, type) { console.log(msg); };
-        showToast('ðŸ—‘ï¸ Deleting event...', 'success');
+        showToast('🔒 Deleting event...', 'success');
 
         if (window.githubAPI && window.githubAPI.deleteEvent) {
             try {
@@ -253,7 +253,7 @@ async function deleteEvent(eventId) {
         if (window.events) delete window.events[eventId];
         if (window.responses) delete window.responses[eventId];
         
-        showToast('ðŸ—‘ï¸ Event deleted successfully', 'success');
+        showToast('🔒 Event deleted successfully', 'success');
         
         await loadManagerData(); // Reload everything from GitHub
         
@@ -273,7 +273,7 @@ async function deleteEvent(eventId) {
 function renderDashboard() {
     const eventsList = document.getElementById('events-list');
     if (!eventsList) {
-        console.error('âŒ Events list element not found');
+        console.error('❌ Events list element not found');
         return;
     }
 
@@ -281,7 +281,7 @@ function renderDashboard() {
     const allEvents = window.events || {};
     const eventIds = Object.keys(allEvents);
 
-    console.log(`ðŸ“Š Rendering dashboard with ${eventIds.length} events`);
+    console.log(`⚠️ Rendering dashboard with ${eventIds.length} events`);
 
     if (eventIds.length === 0) {
         eventsList.innerHTML = `
@@ -291,7 +291,7 @@ function renderDashboard() {
                 <p style="margin-bottom: 2rem; color: #6b7280; max-width: 400px; margin-left: auto; margin-right: auto;">
                     Create your first event to get started with professional military event management.
                 </p>
-                <button class="btn" onclick="showPage('create')">ðŸš€ Create First Event</button>
+                <button class="btn" onclick="showPage('create')">🚀 Create First Event</button>
                 
                 <div style="margin-top: 2rem; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; font-size: 0.875rem; color: #6b7280;">
                     <strong>ðŸ’¡ Quick Tip:</strong> EventCall automatically syncs your events to the cloud, 
@@ -332,7 +332,7 @@ function renderDashboard() {
                             ðŸ“… ${formatDate(event.date)} at ${formatTime(event.time)}<br>
                             ðŸ“ ${event.location || 'No location specified'}<br>
                             ðŸ• Created ${formatRelativeTime(event.created)}<br>
-                            ${isPast ? 'â° <span style="color: var(--error-color);">Event has passed</span>' : `â³ ${timeUntil}`}
+                            ${isPast ? '❌ <span style="color: var(--error-color);">Event has passed</span>' : ❌ ${timeUntil}`}
                         </div>
                     </div>
                     ${event.coverImage ? `
@@ -346,29 +346,29 @@ function renderDashboard() {
                 <div class="response-stats">
                     <div class="stat">
                         <div class="stat-number" style="color: var(--semper-navy); font-size: 2rem; font-weight: 900;">${stats.totalHeadcount}</div>
-                        <div class="stat-label">ðŸŽ–ï¸ TOTAL HEADCOUNT</div>
+                        <div class="stat-label">🎖️ TOTAL HEADCOUNT</div>
                     </div>
                     <div class="stat">
                         <div class="stat-number" style="color: var(--success-color);">${stats.attending}</div>
-                        <div class="stat-label">âœ… Attending</div>
+                        <div class="stat-label">❌… Attending</div>
                     </div>
                     <div class="stat">
                         <div class="stat-number" style="color: var(--error-color);">${stats.notAttending}</div>
-                        <div class="stat-label">âŒ Not Attending</div>
+                        <div class="stat-label">❌ Not Attending</div>
                     </div>
                     <div class="stat">
                         <div class="stat-number" style="color: var(--semper-navy);">${stats.total}</div>
-                        <div class="stat-label">ðŸ“Š Total RSVPs</div>
+                        <div class="stat-label">⚠️ Total RSVPs</div>
                     </div>
                 </div>
                 
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem;">
-                    <button class="btn" onclick="eventManager.showEventManagement('${event.id}')">ðŸ“Š Manage</button>
-                    <button class="btn" onclick="copyInviteLink('${event.id}')">ðŸ”— Copy Link</button>
+                    <button class="btn" onclick="eventManager.showEventManagement('${event.id}')">⚠️ Manage</button>
+                    <button class="btn" onclick="copyInviteLink('${event.id}')">📄 Copy Link</button>
                     <button class="btn btn-success" onclick="exportEventData('${event.id}')">ðŸ“¥ Export</button>
-                    <button class="btn btn-success" onclick="syncWithGitHub()">ðŸ”„ Sync</button>
+                    <button class="btn btn-success" onclick="syncWithGitHub()">🔄 Sync</button>
                     ${!isPast ? `<button class="btn" onclick="eventManager.duplicateEvent('${event.id}')">ðŸ“‹ Duplicate</button>` : ''}
-                    <button class="btn btn-danger" onclick="deleteEvent('${event.id}')">ðŸ—‘ï¸ Delete</button>
+                    <button class="btn btn-danger" onclick="deleteEvent('${event.id}')">🔒 Delete</button>
                 </div>
             </div>
         `;
@@ -389,7 +389,7 @@ function renderDashboard() {
         document.head.appendChild(style);
     }
     
-    console.log('âœ… Dashboard rendered successfully with sync functionality');
+    console.log('❌… Dashboard rendered successfully with sync functionality');
 }
 
 // Utility functions
@@ -601,7 +601,7 @@ async function handleEventSubmit(e) {
         window.events[eventData.id] = eventData;
         
         const showToast = window.showToast || function(msg, type) { console.log(msg); };
-        showToast('ðŸŽ–ï¸ Event deployed successfully!', 'success');
+        showToast('🎖️ Event deployed successfully!', 'success');
         
         document.getElementById('event-form').reset();
         const coverPreview = document.getElementById('cover-preview');
@@ -636,7 +636,7 @@ function setupEventForm() {
     if (eventForm) {
         eventForm.removeEventListener('submit', handleEventSubmit);
         eventForm.addEventListener('submit', handleEventSubmit);
-        console.log('âœ… Event form listener attached');
+        console.log('❌… Event form listener attached');
     }
 }
 
@@ -649,7 +649,7 @@ function setupEventForm() {
  */
 function initializeSyncChecker() {
     // Removed automatic polling - use manual sync buttons instead
-    console.log('â„¹ï¸ RSVP sync checker initialized (manual mode)');
+    console.log('✅ RSVP sync checker initialized (manual mode)');
 }
 
 // Initialize on DOM ready
@@ -699,4 +699,4 @@ window.duplicateEvent = function(eventId) {
     }
 };
 
-console.log('âœ… Enhanced manager system loaded with RSVP sync functionality');
+console.log('🎖️… Enhanced manager system loaded with RSVP sync functionality');
