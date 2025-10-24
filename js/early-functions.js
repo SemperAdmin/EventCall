@@ -446,14 +446,6 @@ function initializeHashListener() {
     setTimeout(checkURLHash, 100);
 }
 
-/**
- * Placeholder for functions that will be loaded later
- */
-function loadManagerData() {
-    console.log('â³ loadManagerData called before manager system loaded');
-    // This will be replaced by the actual function when manager-system.js loads
-}
-
 // Make functions globally available immediately
 window.showPage = showPage;
 window.showLoginPage = showLoginPage;
