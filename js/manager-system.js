@@ -573,6 +573,7 @@ async function handleEventSubmit(e) {
             coverImage: document.getElementById('cover-preview').src || '',
             askReason: document.getElementById('ask-reason').checked,
             allowGuests: document.getElementById('allow-guests').checked,
+            requiresMealChoice: document.getElementById('requires-meal-choice').checked,
             customQuestions: getCustomQuestions(),
             eventDetails: getEventDetails(),
             created: Date.now(),

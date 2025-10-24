@@ -20,7 +20,8 @@ class EventTemplates {
                     { id: 'promoter-name', label: 'Promoted By', placeholder: 'e.g., Col Johnson', required: false }
                 ],
                 askReason: false,
-                allowGuests: true
+                allowGuests: true,
+                requiresMealChoice: false
             },
             retirement: {
                 id: 'retirement',
@@ -36,7 +37,8 @@ class EventTemplates {
                     { id: 'reception-location', label: 'Reception Location', placeholder: 'e.g., Officers Club', required: false }
                 ],
                 askReason: false,
-                allowGuests: true
+                allowGuests: true,
+                requiresMealChoice: true
             },
             changeOfCommand: {
                 id: 'changeOfCommand',
@@ -52,7 +54,8 @@ class EventTemplates {
                     { id: 'unit-designation', label: 'Unit', placeholder: 'e.g., 2nd Battalion, 1st Marines', required: false }
                 ],
                 askReason: false,
-                allowGuests: true
+                allowGuests: true,
+                requiresMealChoice: true
             },
             marineCorpsBall: {
                 id: 'marineCorpsBall',
@@ -68,7 +71,8 @@ class EventTemplates {
                     { id: 'ticket-price', label: 'Ticket Price', placeholder: 'e.g., $75 per person', required: false }
                 ],
                 askReason: false,
-                allowGuests: true
+                allowGuests: true,
+                requiresMealChoice: true
             },
             diningIn: {
                 id: 'diningIn',
@@ -84,7 +88,8 @@ class EventTemplates {
                     { id: 'cost-per-person', label: 'Cost Per Person', placeholder: 'e.g., $50', required: false }
                 ],
                 askReason: false,
-                allowGuests: true
+                allowGuests: true,
+                requiresMealChoice: true
             },
             formation: {
                 id: 'formation',
@@ -99,7 +104,8 @@ class EventTemplates {
                     { id: 'reporting-senior', label: 'Reporting Senior', placeholder: 'e.g., 1stSgt Brown', required: false }
                 ],
                 askReason: true,
-                allowGuests: false
+                allowGuests: false,
+                requiresMealChoice: false
             },
             training: {
                 id: 'training',
@@ -115,7 +121,8 @@ class EventTemplates {
                     { id: 'equipment-bring', label: 'Equipment to Bring', placeholder: 'e.g., Notebook, pen', required: false }
                 ],
                 askReason: false,
-                allowGuests: false
+                allowGuests: false,
+                requiresMealChoice: false
             },
             familyDay: {
                 id: 'familyDay',
@@ -130,7 +137,8 @@ class EventTemplates {
                     { id: 'parking-info', label: 'Parking', placeholder: 'e.g., Main lot open', required: false }
                 ],
                 askReason: false,
-                allowGuests: true
+                allowGuests: true,
+                requiresMealChoice: true
             },
             memorial: {
                 id: 'memorial',
@@ -146,7 +154,8 @@ class EventTemplates {
                     { id: 'reception-info', label: 'Reception Details', placeholder: 'e.g., Location and time', required: false }
                 ],
                 askReason: false,
-                allowGuests: true
+                allowGuests: true,
+                requiresMealChoice: true
             },
             awards: {
                 id: 'awards',
@@ -161,7 +170,8 @@ class EventTemplates {
                     { id: 'presenting-officer', label: 'Presenting Officer', placeholder: 'e.g., CO, Col Davis', required: false }
                 ],
                 askReason: false,
-                allowGuests: true
+                allowGuests: true,
+                requiresMealChoice: false
             }
         };
     }
@@ -195,11 +205,13 @@ class EventTemplates {
         const descInput = document.getElementById('event-description');
         const askReasonCheckbox = document.getElementById('ask-reason');
         const allowGuestsCheckbox = document.getElementById('allow-guests');
+        const requiresMealCheckbox = document.getElementById('requires-meal-choice');
 
         if (titleInput) titleInput.value = template.defaultTitle;
         if (descInput) descInput.value = template.defaultDescription;
         if (askReasonCheckbox) askReasonCheckbox.checked = template.askReason;
         if (allowGuestsCheckbox) allowGuestsCheckbox.checked = template.allowGuests;
+        if (requiresMealCheckbox) requiresMealCheckbox.checked = template.requiresMealChoice || false;
 
         // Clear and populate event details fields
         const eventDetailsContainer = document.getElementById('event-details-container');

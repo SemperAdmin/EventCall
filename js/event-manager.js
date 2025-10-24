@@ -449,6 +449,7 @@ class EventManager {
         document.getElementById('event-description').value = event.description || '';
         document.getElementById('ask-reason').checked = event.askReason || false;
         document.getElementById('allow-guests').checked = event.allowGuests || false;
+        document.getElementById('requires-meal-choice').checked = event.requiresMealChoice || false;
 
         // Handle cover image
         const coverPreview = document.getElementById('cover-preview');

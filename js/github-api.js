@@ -224,14 +224,16 @@ getToken() {
                     if (fileResponse.ok) {
                         const fileData = await fileResponse.json();
                         const content = JSON.parse(this.safeBase64Decode(fileData.content));
-                        
-                        if (window.userAuth && window.userAuth.isLoggedIn()) {
-                            const currentUser = window.userAuth.getCurrentUser();
-                            if (content.createdBy === currentUser) {
+
+                        // Filter events by authenticated manager
+                        if (window.managerAuth && window.managerAuth.isAuthenticated()) {
+                            const currentManager = window.managerAuth.getCurrentManager();
+                            if (content.createdBy === currentManager?.email) {
                                 events[content.id] = content;
-                                console.log('✅ Loaded event for user:', content.title);
+                                console.log('✅ Loaded event for manager:', content.title);
                             }
                         } else {
+                            // No auth - load all events
                             events[content.id] = content;
                         }
                     }
