@@ -1,329 +1,404 @@
-// js/user-auth.js - Updated with Obfuscated Token Support
+/**
+ * EventCall User Authentication - Email-Only System
+ * Simple email-based identification for trusted users
+ * No passwords required - uses email for user identification only
+ */
 
-const userAuth = {
-  currentUser: null,
-  githubToken: null,
-
-  /**
-   * Get obfuscated token - same method as rsvp-handler.js
-   */
-  getObfuscatedToken() {
-const segments = [
-    'Z2hwX0lXWUdkWE1G',  // Base64: ghp_IWYGdXMF
-    'Y2d4eWlvSWRWekxn',  // Base64: cgxyioIdVzLg
-    'OFBPazBtMG5QdzJw',  // Base64: 8POk0m0nPw2p
-    'N2xGMw=='           // Base64: 7lF3
-];
-    return segments.map(segment => atob(segment)).join('');
-  },
-
-  init() {
-    const hasInviteData = window.location.search.includes('data=');
-    const isInviteHash = window.location.hash.includes('invite/');
-    
-    if (hasInviteData || isInviteHash) {
-      console.log('🎯 Invite URL detected - bypassing login for guest access');
-      this.hideLoginScreen();
-      setTimeout(() => {
-        if (window.checkURLHash) {
-          window.checkURLHash();
-        }
-      }, 100);
-      return;
-    }
-    
-    const saved = sessionStorage.getItem('eventcall_user');
-    if (saved) {
-      this.currentUser = saved;
-      // Use obfuscated token for returning users
-      this.githubToken = this.getObfuscatedToken();
-      this.updateDisplay();
-      this.hideLoginScreen();
-    } else {
-      this.showLoginScreen();
-    }
-  },
-
-  showLoginScreen() {
-    const loginPage = document.getElementById('login-page');
-    const appContent = document.querySelector('.app-content');
-    const nav = document.querySelector('.nav');
-    
-    if (loginPage) loginPage.style.display = 'flex';
-    if (appContent) appContent.style.display = 'none';
-    if (nav) nav.style.display = 'none';
-    
-    console.log('🔐 Login screen displayed');
-  },
-
-  hideLoginScreen() {
-    const loginPage = document.getElementById('login-page');
-    const appContent = document.querySelector('.app-content');
-    const nav = document.querySelector('.nav');
-    
-    if (loginPage) loginPage.style.display = 'none';
-    if (appContent) appContent.style.display = 'block';
-    if (nav) nav.style.display = 'flex';
-    
-    console.log('🔓 Login screen hidden, app content shown');
-  },
-
-  setupManager() {
-    const emailInput = document.getElementById('login-email');
-    const tokenInput = document.getElementById('github-token');
-    const setupBtn = document.getElementById('setup-btn');
-    
-    const email = emailInput?.value.trim().toLowerCase();
-    const token = tokenInput?.value.trim();
-    const showToast = window.showToast || function(msg, type) { console.log(msg); };
-    
-    if (!email) {
-      showToast('Please enter your manager email.', 'error');
-      emailInput?.focus();
-      return;
-    }
-
-    if (!this.isValidEmail(email)) {
-      showToast('Please enter a valid email address.', 'error');
-      emailInput?.focus();
-      return;
-    }
-
-    // If no token provided, use obfuscated token automatically
-    let finalToken = token;
-    if (!token) {
-      finalToken = this.getObfuscatedToken();
-      console.log('🔑 Using obfuscated token automatically');
-    }
-
-    if (!finalToken.startsWith('ghp_') && !finalToken.startsWith('github_pat_')) {
-      showToast('Please enter a valid GitHub token (starts with ghp_ or github_pat_)', 'error');
-      tokenInput?.focus();
-      return;
-    }
-
-    const originalText = setupBtn.textContent;
-    setupBtn.innerHTML = '<div class="spinner"></div> Connecting...';
-    setupBtn.disabled = true;
-
-    this.currentUser = email;
-    this.githubToken = finalToken;
-    sessionStorage.setItem('eventcall_user', email);
-    
-    if (window.githubAPI) {
-      window.githubAPI.config.token = finalToken;
-    }
-    if (window.GITHUB_CONFIG) {
-      window.GITHUB_CONFIG.token = finalToken;
-    }
-
-    this.testManagerConnection()
-      .then((success) => {
-        if (success) {
-          this.updateDisplay();
-          this.hideLoginScreen();
-          showToast(`✅ Welcome, ${email.split('@')[0]}! GitHub connected successfully.`, 'success');
-          
-          setTimeout(() => {
-            if (window.loadManagerData) {
-              window.loadManagerData();
-            }
-            if (window.showPage) {
-              window.showPage('dashboard');
-            }
-          }, 500);
-          
-        } else {
-          this.currentUser = null;
-          this.githubToken = null;
-          sessionStorage.removeItem('eventcall_user');
-          showToast('❌ GitHub connection failed. Please check your token.', 'error');
-        }
-      })
-      .catch((error) => {
-        console.error('Setup failed:', error);
+class UserAuth {
+    constructor() {
         this.currentUser = null;
+        this.storageKey = 'eventcall_current_user';
         this.githubToken = null;
-        sessionStorage.removeItem('eventcall_user');
-        showToast('❌ Setup failed: ' + error.message, 'error');
-      })
-      .finally(() => {
-        setupBtn.textContent = originalText;
-        setupBtn.disabled = false;
-      });
-  },
-
-  async testManagerConnection() {
-    // Use obfuscated token for connection testing
-    const testToken = this.getObfuscatedToken();
-    
-    if (!testToken) {
-      console.error('❌ No token available for connection test');
-      return false;
+        this.loadUserFromStorage();
+        this.initializeGitHubToken();
     }
-  console.log('🔑 Using token for test:', testToken ? testToken.substring(0, 8) + '...' : 'NO TOKEN');
-    try {
-      console.log('🔍 Testing GitHub connection for manager...');
 
-      console.log('🔑 Using token for test:', testToken ? testToken.substring(0, 8) + '...' : 'NO TOKEN');
-      console.log('🔑 Full token length:', testToken ? testToken.length : 0);
-  
-      // Test GitHub API connection directly
-      const response = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall`, {
-        headers: {
-          'Authorization': `token ${testToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'EventCall-App'
-        }
-      });
-      
-      if (response.ok) {
-        const repoData = await response.json();
-        console.log('✅ GitHub connection verified for manager:', this.currentUser);
-        console.log('✅ Repository access confirmed:', repoData.full_name);
-        return true;
-      } else {
-        console.error('❌ GitHub connection failed:', response.status, response.statusText);
-        const showToast = window.showToast || function(msg, type) { console.log(msg); };
+    /**
+     * Initialize GitHub token (pre-configured, hidden from user)
+     */
+    initializeGitHubToken() {
+        // Obfuscated token segments (same as before, but hidden)
+        const segments = [
+            'Z2hwX0lXWUdkWE1G',  // Base64: ghp_IWYGdXMF
+            'Y2d4eWlvSWRWekxn',  // Base64: cgxyioIdVzLg
+            'OFBPazBtMG5QdzJw',  // Base64: 8POk0m0nPw2p
+            'N2xGMw=='           // Base64: 7lF3
+        ];
         
-        if (response.status === 401) {
-          showToast('❌ Invalid GitHub token. Please check your token.', 'error');
-        } else if (response.status === 403) {
-          showToast('❌ GitHub API rate limit or insufficient permissions.', 'error');
-        } else {
-          showToast(`❌ GitHub connection failed: ${response.status}`, 'error');
+        // Reconstruct token from segments
+        const decodedParts = segments.map(segment => atob(segment));
+        this.githubToken = decodedParts.join('');
+        
+        console.log('🔑 GitHub token initialized (hidden)');
+    }
+
+    /**
+     * Get GitHub token for API calls
+     */
+    getGitHubToken() {
+        return this.githubToken;
+    }
+
+    /**
+     * Load user from localStorage
+     */
+    loadUserFromStorage() {
+        try {
+            const stored = localStorage.getItem(this.storageKey);
+            if (stored) {
+                this.currentUser = JSON.parse(stored);
+                console.log('✅ User loaded from storage:', this.currentUser.email);
+            }
+        } catch (error) {
+            console.error('Failed to load user from storage:', error);
+            this.currentUser = null;
         }
-        return false;
-      }
-    } catch (error) {
-      console.error('GitHub connection error:', error);
-      const showToast = window.showToast || function(msg, type) { console.log(msg); };
-      showToast('❌ Network error connecting to GitHub.', 'error');
-      return false;
-    }
-  },
-
-  login() {
-    console.warn('⚠️ Legacy login method called - redirecting to setupManager');
-    this.setupManager();
-  },
-
-  showUserProfile() {
-    const dropdown = document.getElementById('profile-dropdown');
-    if (!dropdown) return;
-
-    const emailDisplay = dropdown.querySelector('#dropdown-email');
-    if (emailDisplay) {
-      emailDisplay.textContent = this.currentUser || 'User';
     }
 
-    const isVisible = dropdown.style.display === 'block';
-    dropdown.style.display = isVisible ? 'none' : 'block';
-
-    if (!isVisible) {
-      setTimeout(() => {
-        document.addEventListener('click', this.handleClickOutside, true);
-      }, 10);
+    /**
+     * Save user to localStorage
+     */
+    saveUserToStorage(user) {
+        try {
+            localStorage.setItem(this.storageKey, JSON.stringify(user));
+            this.currentUser = user;
+            console.log('💾 User saved to localStorage');
+        } catch (error) {
+            console.error('Failed to save user to storage:', error);
+        }
     }
-  },
 
-  handleClickOutside(event) {
-    const dropdown = document.getElementById('profile-dropdown');
-    const profileBtn = document.querySelector('.user-profile-btn');
-    
-    if (dropdown && profileBtn && 
-        !dropdown.contains(event.target) && 
-        !profileBtn.contains(event.target)) {
-      dropdown.style.display = 'none';
-      document.removeEventListener('click', userAuth.handleClickOutside, true);
+    /**
+     * Login user with email
+     * @param {string} name - User's full name
+     * @param {string} email - User's email
+     * @param {string} unit - User's unit (optional)
+     */
+    async login(name, email, unit = '') {
+        // Validate inputs
+        if (!name || name.trim().length < 2) {
+            throw new Error('Please enter your full name (at least 2 characters)');
+        }
+
+        if (!email || !this.isValidEmail(email)) {
+            throw new Error('Please enter a valid email address');
+        }
+
+        // Clean inputs
+        const cleanName = name.trim();
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanUnit = unit.trim();
+
+        // Create user object
+        const user = {
+            id: `user-${Date.now()}`,
+            name: cleanName,
+            email: cleanEmail,
+            unit: cleanUnit,
+            role: 'manager',
+            created: Date.now(),
+            lastLogin: Date.now()
+        };
+
+        // Save to localStorage first (immediate access)
+        this.saveUserToStorage(user);
+
+        // Try to save to GitHub (background operation)
+        if (window.githubAPI) {
+            try {
+                await window.githubAPI.saveUser(user);
+                console.log('✅ User saved to GitHub');
+            } catch (error) {
+                console.warn('⚠️ Could not save user to GitHub:', error.message);
+                // Continue anyway - localStorage is sufficient for now
+            }
+        } else {
+            console.warn('⚠️ GitHub API not available yet - user saved locally only');
+        }
+
+        console.log('✅ User logged in successfully:', cleanEmail);
+        return user;
     }
-  },
 
-  logout() {
-    this.currentUser = null;
-    this.githubToken = null;
-    sessionStorage.removeItem('eventcall_user');
-    
-    if (window.githubAPI) {
-      window.githubAPI.config.token = '';
+    /**
+     * Logout current user
+     */
+    logout() {
+        const wasLoggedIn = this.currentUser !== null;
+        
+        localStorage.removeItem(this.storageKey);
+        this.currentUser = null;
+        
+        if (wasLoggedIn) {
+            console.log('✅ User logged out');
+        }
     }
-    if (window.GITHUB_CONFIG) {
-      window.GITHUB_CONFIG.token = '';
+
+    /**
+     * Check if user is authenticated
+     */
+    isAuthenticated() {
+        return this.currentUser !== null;
     }
-    
-    if (window.events) window.events = {};
-    if (window.responses) window.responses = {};
-    
-    const dropdown = document.getElementById('profile-dropdown');
-    if (dropdown) dropdown.style.display = 'none';
-    
-    document.removeEventListener('click', this.handleClickOutside, true);
 
-    const showToast = window.showToast || function(msg, type) { console.log(msg); };
-    showToast('👋 Logged out successfully.', 'success');
-    
-    setTimeout(() => {
-      this.showLoginScreen();
-      const loginInput = document.getElementById('login-email');
-      if (loginInput) {
-        loginInput.value = '';
-        loginInput.focus();
-      }
-    }, 800);
-  },
-
-  updateDisplay() {
-    const display = document.getElementById('user-email-display');
-    if (display) {
-      display.textContent = this.currentUser ? this.currentUser.split('@')[0] : 'User';
+    /**
+     * Get current user
+     */
+    getCurrentUser() {
+        return this.currentUser;
     }
-    
-    const dropdownEmail = document.getElementById('dropdown-email');
-    if (dropdownEmail) {
-      dropdownEmail.textContent = this.currentUser || 'User';
+
+    /**
+     * Get current manager (alias for compatibility)
+     */
+    getCurrentManager() {
+        return this.currentUser;
     }
-  },
 
-  isLoggedIn() {
-    return !!this.currentUser;
-  },
+    /**
+     * Update last login time
+     */
+    async updateLastLogin() {
+        if (this.currentUser) {
+            this.currentUser.lastLogin = Date.now();
+            this.saveUserToStorage(this.currentUser);
 
-  isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  },
+            // Update on GitHub (background)
+            if (window.githubAPI) {
+                try {
+                    await window.githubAPI.saveUser(this.currentUser);
+                    console.log('✅ Last login updated on GitHub');
+                } catch (error) {
+                    console.warn('⚠️ Could not update user on GitHub:', error);
+                }
+            }
+        }
+    }
 
-  getCurrentUser() {
-    return this.currentUser;
-  },
+    /**
+     * Validate email format
+     */
+    isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
 
-  hasGitHubToken() {
-    return !!(this.githubToken || this.getObfuscatedToken());
-  },
+    /**
+     * Get user display name
+     */
+    getDisplayName() {
+        if (!this.currentUser) return 'User';
+        return this.currentUser.name || this.currentUser.email.split('@')[0];
+    }
 
-  getGitHubToken() {
-    return this.githubToken || this.getObfuscatedToken();
-  }
-};
+    /**
+     * Get user initials for avatar
+     */
+    getInitials() {
+        if (!this.currentUser || !this.currentUser.name) return '?';
+        
+        const names = this.currentUser.name.trim().split(' ').filter(n => n.length > 0);
+        
+        if (names.length >= 2) {
+            // First and last name initials
+            return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+        } else if (names.length === 1) {
+            // Single name - first letter
+            return names[0][0].toUpperCase();
+        }
+        
+        return '?';
+    }
 
+    /**
+     * Get user info for display
+     */
+    getUserInfo() {
+        if (!this.currentUser) {
+            return {
+                name: 'Unknown User',
+                email: 'Not logged in',
+                unit: '',
+                initials: '?'
+            };
+        }
+
+        return {
+            name: this.currentUser.name,
+            email: this.currentUser.email,
+            unit: this.currentUser.unit || 'No unit specified',
+            initials: this.getInitials(),
+            created: this.currentUser.created,
+            lastLogin: this.currentUser.lastLogin
+        };
+    }
+}
+
+// Create global instance
+window.userAuth = new UserAuth();
+
+// Also create alias for backward compatibility with old code
+window.managerAuth = window.userAuth;
+
+// ============================================
+// LOGIN FORM HANDLER
+// ============================================
+
+/**
+ * Initialize login form when DOM is ready
+ */
 document.addEventListener('DOMContentLoaded', () => {
-  userAuth.init();
-
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-      userAuth.logout();
-    });
-  }
-
-  const cancelBtn = document.getElementById('cancel-dropdown');
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', () => {
-      document.getElementById('profile-dropdown').style.display = 'none';
-      document.removeEventListener('click', userAuth.handleClickOutside, true);
-    });
-  }
-
-  console.log('✅ User authentication system initialized with obfuscated token support');
+    const loginForm = document.getElementById('email-login-form');
+    
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = loginForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            
+            try {
+                // Disable button and show loading
+                submitBtn.textContent = '⏳ Connecting...';
+                submitBtn.disabled = true;
+                
+                // Get form values
+                const name = document.getElementById('user-name').value;
+                const email = document.getElementById('user-email').value;
+                const unit = document.getElementById('user-unit').value;
+                
+                // Attempt login
+                await window.userAuth.login(name, email, unit);
+                
+                // Show success message
+                if (window.showToast) {
+                    window.showToast(`✅ Welcome, ${name}!`, 'success');
+                }
+                
+                // Hide login page, show app
+                const loginPage = document.getElementById('login-page');
+                const appContent = document.querySelector('.app-content');
+                
+                if (loginPage) loginPage.style.display = 'none';
+                if (appContent) appContent.style.display = 'block';
+                
+                // Update user display in header
+                if (window.updateUserDisplay) {
+                    window.updateUserDisplay();
+                }
+                
+                // Load dashboard
+                if (window.showPage) {
+                    window.showPage('dashboard');
+                }
+                
+                // Load manager data
+                if (window.loadManagerData) {
+                    setTimeout(() => {
+                        window.loadManagerData();
+                    }, 500);
+                }
+                
+            } catch (error) {
+                console.error('Login failed:', error);
+                
+                // Show error message
+                if (window.showToast) {
+                    window.showToast('❌ ' + error.message, 'error');
+                } else {
+                    alert('Login Error: ' + error.message);
+                }
+                
+                // Re-enable button
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+        
+        console.log('✅ Email login form initialized');
+    }
+    
+    // Check if user already logged in
+    if (window.userAuth.isAuthenticated()) {
+        const loginPage = document.getElementById('login-page');
+        const appContent = document.querySelector('.app-content');
+        
+        if (loginPage) loginPage.style.display = 'none';
+        if (appContent) appContent.style.display = 'block';
+        
+        console.log('✅ User already authenticated:', window.userAuth.getCurrentUser().email);
+        
+        // Update user display
+        if (window.updateUserDisplay) {
+            window.updateUserDisplay();
+        }
+        
+        // Update last login timestamp
+        window.userAuth.updateLastLogin();
+    }
 });
 
-window.userAuth = userAuth;
+// ============================================
+// GLOBAL HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Update user display in header
+ */
+function updateUserDisplay() {
+    if (window.userAuth && window.userAuth.isAuthenticated()) {
+        const user = window.userAuth.getCurrentUser();
+        
+        const displayName = document.getElementById('user-display-name');
+        const avatar = document.getElementById('user-avatar');
+        
+        if (displayName) {
+            displayName.textContent = user.name || user.email.split('@')[0];
+        }
+        
+        if (avatar) {
+            avatar.textContent = window.userAuth.getInitials();
+        }
+    }
+}
+
+/**
+ * Show user menu
+ */
+function showUserMenu() {
+    if (!window.userAuth || !window.userAuth.isAuthenticated()) {
+        return;
+    }
+    
+    const user = window.userAuth.getCurrentUser();
+    
+    const message = `
+👤 ${user.name}
+📧 ${user.email}
+${user.unit ? `🎖️ ${user.unit}` : ''}
+
+Do you want to log out?
+    `.trim();
+    
+    if (confirm(message)) {
+        window.userAuth.logout();
+        location.reload();
+    }
+}
+
+/**
+ * Force logout (for debugging or manual logout)
+ */
+function forceLogout() {
+    if (window.userAuth) {
+        window.userAuth.logout();
+        location.reload();
+    }
+}
+
+// Export functions to global scope
+window.updateUserDisplay = updateUserDisplay;
+window.showUserMenu = showUserMenu;
+window.forceLogout = forceLogout;
+
+console.log('✅ User Authentication System loaded');
