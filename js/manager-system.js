@@ -628,6 +628,11 @@ async function handleEventSubmit(e) {
             coverPreview.classList.add('hidden');
             coverPreview.src = '';
         }
+        // Reset upload area text
+const uploadArea = document.getElementById('cover-upload');
+if (uploadArea) {
+    uploadArea.innerHTML = `<p>Click or drag to upload cover image</p>`;
+}
         clearCustomQuestions();
         clearEventDetails();
         
