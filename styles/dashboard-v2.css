@@ -1,0 +1,461 @@
+/**
+ * EventCall Dashboard V2 - Command Center Design
+ * Improved UI/UX with better visual hierarchy and scannable stats
+ */
+
+/* ============================================
+   DASHBOARD HEADER & QUICK ACTIONS
+   ============================================ */
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
+    border-radius: 1rem;
+    border: 2px solid #d4af37;
+}
+
+.dashboard-header h2 {
+    color: #d4af37;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.quick-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.quick-actions .btn {
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ============================================
+   EVENTS SECTIONS (Active/Past)
+   ============================================ */
+
+.events-section {
+    margin-bottom: 3rem;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #d4af37;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 3px solid #d4af37;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 1.5rem;
+}
+
+/* ============================================
+   EVENT CARD V2 - IMPROVED DESIGN
+   ============================================ */
+
+.event-card-v2 {
+    background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
+    border-radius: 1rem;
+    overflow: hidden;
+    border: 2px solid #3a4556;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.event-card-v2:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(212, 175, 55, 0.2);
+    border-color: #d4af37;
+}
+
+.event-card-v2.event-past {
+    opacity: 0.8;
+    border-color: #64748b;
+}
+
+.event-card-v2.event-past:hover {
+    border-color: #94a3b8;
+}
+
+/* Cover Image */
+.event-cover-wrapper {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+}
+
+.event-cover-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.event-cover-placeholder {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.placeholder-icon {
+    font-size: 4rem;
+    opacity: 0.3;
+}
+
+/* Event Badge */
+.event-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-weight: 700;
+    font-size: 0.875rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.badge-active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.badge-past {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    color: white;
+}
+
+/* Card Content */
+.event-card-content {
+    padding: 1.5rem;
+}
+
+.event-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #d4af37;
+    margin: 0 0 1rem 0;
+    line-height: 1.3;
+}
+
+/* Event Meta V2 */
+.event-meta-v2 {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #e2e8f0;
+    font-size: 0.95rem;
+}
+
+.meta-icon {
+    font-size: 1.25rem;
+    width: 1.5rem;
+    text-align: center;
+}
+
+.meta-text {
+    font-weight: 500;
+}
+
+/* ============================================
+   RSVP STATS V2 - BIG VISUAL BOXES
+   ============================================ */
+
+.rsvp-stats-v2 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem 0.75rem;
+    border-radius: 0.75rem;
+    border: 2px solid;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.stat-box:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.stat-attending {
+    border-color: #10b981;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+}
+
+.stat-declined {
+    border-color: #ef4444;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);
+}
+
+.stat-headcount {
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
+}
+
+.stat-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-number {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #d4af37;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+}
+
+/* ============================================
+   EVENT ACTIONS V2 - IMPROVED HIERARCHY
+   ============================================ */
+
+.event-actions-v2 {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Primary Action Button */
+.btn-primary-action {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1a1f2e;
+    background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.btn-primary-action:hover {
+    background: linear-gradient(135deg, #e6c04a 0%, #d4af37 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.4);
+}
+
+.btn-primary-action:active {
+    transform: translateY(0);
+}
+
+/* Quick Actions Row */
+.quick-actions-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-quick {
+    flex: 1;
+    padding: 0.625rem 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn-quick:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-danger-quick {
+    color: #fca5a5;
+    border-color: #ef4444;
+}
+
+.btn-danger-quick:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #dc2626;
+    color: #fecaca;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 1200px) {
+    .events-grid {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .dashboard-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .quick-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .quick-actions .btn {
+        width: 100%;
+    }
+    
+    .events-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .rsvp-stats-v2 {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-box {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+    }
+    
+    .stat-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .quick-actions-row {
+        flex-direction: column;
+    }
+    
+    .btn-quick {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .event-card-content {
+        padding: 1rem;
+    }
+    
+    .event-title {
+        font-size: 1.25rem;
+    }
+    
+    .stat-number {
+        font-size: 1.75rem;
+    }
+    
+    .btn-primary-action {
+        padding: 0.875rem;
+        font-size: 0.95rem;
+    }
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
+    border-radius: 1rem;
+    border: 2px dashed #3a4556;
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    color: #d4af37;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    color: #94a3b8;
+    font-size: 1rem;
+    margin-bottom: 2rem;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.event-card-v2 {
+    animation: fadeInUp 0.4s ease;
+}
+
+.event-card-v2:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.event-card-v2:nth-child(3) {
+    animation-delay: 0.2s;
+}
