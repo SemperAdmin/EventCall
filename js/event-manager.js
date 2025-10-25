@@ -703,11 +703,24 @@ generateAttendeeCards(eventResponses) {
         // Handle cover image
         const coverPreview = document.getElementById('cover-preview');
         if (event.coverImage) {
-            coverPreview.src = event.coverImage;
-            coverPreview.classList.remove('hidden');
-        } else {
-            coverPreview.classList.add('hidden');
-        }
+    coverPreview.src = event.coverImage;
+    coverPreview.classList.remove('hidden');
+    
+    // Update upload area to show existing image
+    const uploadArea = document.getElementById('cover-upload');
+    if (uploadArea) {
+        uploadArea.innerHTML = `
+            <p style="color: #10b981; font-weight: 600;">✅ Current image loaded</p>
+            <p style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Click to change image</p>
+        `;
+    }
+} else {
+    // Reset upload area for new image
+    const uploadArea = document.getElementById('cover-upload');
+    if (uploadArea) {
+        uploadArea.innerHTML = `<p>Click or drag to upload cover image</p>`;
+    }
+}
 
         // Populate custom questions
         this.populateCustomQuestions(event.customQuestions || []);
