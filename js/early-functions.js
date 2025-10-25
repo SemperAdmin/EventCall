@@ -231,7 +231,7 @@ function generateInviteURL(event) {
         time: event.time,
         location: event.location,
         description: event.description,
-        coverImage: event.coverImage,
+        coverImage: event.coverImage, // <-- ADDED/CONFIRMED HERE
         askReason: event.askReason,
         allowGuests: event.allowGuests,
         customQuestions: event.customQuestions || [],
@@ -373,7 +373,7 @@ async function deleteEvent(eventId) {
             await window.loadManagerData();
         }
         
-        showToast('ðŸ—‘ï¸ Event deleted successfully', 'success');
+        showToast('🗑️ Event deleted successfully', 'success');
         
         // Navigate to dashboard if on manage page
         if (window.location.hash.includes('manage/')) {
@@ -404,7 +404,7 @@ function checkURLHash() {
         if (window.uiComponents && window.uiComponents.showInvite) {
             window.uiComponents.showInvite(eventId);
         } else {
-            console.log('â³ UI components not loaded yet, will handle invite later');
+            console.log('⏳ UI components not loaded yet, will handle invite later');
         }
         return;
     }
@@ -423,7 +423,7 @@ function checkURLHash() {
         if (window.eventManager && window.eventManager.showEventManagement) {
             window.eventManager.showEventManagement(eventId);
         } else {
-            console.log('â³ Event manager not loaded yet, will handle later');
+            console.log('⏳ Event manager not loaded yet, will handle later');
         }
         return;
     }
