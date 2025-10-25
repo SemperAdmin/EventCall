@@ -782,7 +782,6 @@ async function handleEventSubmit(e) {
         // Always reset button state
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
-        }, 1000);
     }
 }
 
