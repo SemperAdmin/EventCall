@@ -34,10 +34,7 @@ const userAuth = {
             }
 
             this.hideLoginScreen();
-
-
-
-
+        } else {
             console.log('🔒 No saved user - showing login screen');
             this.showLoginScreen();
         }
