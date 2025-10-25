@@ -788,108 +788,6 @@ async function handleEventSubmit(e) {
     }
 }
 
-/**
- * Setup image upload with drag-drop and click functionality
- */
-function setupImageUpload() {
-    const uploadArea = document.getElementById('cover-upload');
-    const fileInput = document.getElementById('cover-input');
-    const preview = document.getElementById('cover-preview');
-    
-    if (!uploadArea || !fileInput || !preview) {
-        console.warn('⚠️ Image upload elements not found');
-        return;
-    }
-    
-    // Click to upload
-    uploadArea.addEventListener('click', () => {
-        fileInput.click();
-    });
-    
-    // File input change handler
-    fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            handleImageFile(file, preview, uploadArea);
-        }
-    });
-    
-    // Drag and drop handlers
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        uploadArea.style.borderColor = '#d4af37';
-        uploadArea.style.background = 'rgba(212, 175, 55, 0.1)';
-    });
-    
-    uploadArea.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        uploadArea.style.borderColor = '';
-        uploadArea.style.background = '';
-    });
-    
-    uploadArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        uploadArea.style.borderColor = '';
-        uploadArea.style.background = '';
-        
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
-            handleImageFile(file, preview, uploadArea);
-        } else {
-            showToast('❌ Please drop an image file', 'error');
-        }
-    });
-    
-    console.log('✅ Image upload initialized');
-}
-
-/**
- * Handle image file processing and preview
- */
-function handleImageFile(file, preview, uploadArea) {
-    // Validate file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-        showToast('❌ Image too large. Max size: 5MB', 'error');
-        return;
-    }
-    
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-        showToast('❌ Please select an image file', 'error');
-        return;
-    }
-    
-    // Read and convert to Base64
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-        const imageData = e.target.result;
-        
-        // Update preview
-        preview.src = imageData;
-        preview.classList.remove('hidden');
-        
-        // Update upload area to show success
-        uploadArea.innerHTML = `
-            <p style="color: #10b981; font-weight: 600;">✅ Image uploaded successfully</p>
-            <p style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Click to change image</p>
-        `;
-        
-        showToast('✅ Image uploaded successfully', 'success');
-        console.log('📸 Image processed:', file.name, `(${(file.size / 1024).toFixed(2)} KB)`);
-    };
-    
-    reader.onerror = () => {
-        showToast('❌ Failed to read image file', 'error');
-    };
-    
-    reader.readAsDataURL(file);
-}
-
 function setupEventForm() {
     const eventForm = document.getElementById('event-form');
     if (eventForm) {
@@ -897,9 +795,6 @@ function setupEventForm() {
         eventForm.addEventListener('submit', handleEventSubmit);
         console.log('✅ Event form listener attached');
     }
-    
-    // Setup image upload functionality
-    setupImageUpload();
 }
 
 /**
@@ -1104,7 +999,6 @@ function fileToBase64(file) {
 document.addEventListener('DOMContentLoaded', () => {
     setupEventForm();
     setupPhotoUpload();
-    setupImageUpload();
     initializeSyncChecker();
 });
 
@@ -1139,8 +1033,6 @@ window.deleteEvent = deleteEvent;
 window.syncWithGitHub = syncWithGitHub;
 window.updatePendingRSVPCount = updatePendingRSVPCount;
 window.initializeSyncChecker = initializeSyncChecker;
-window.setupImageUpload = setupImageUpload;
-window.handleImageFile = handleImageFile;
 window.togglePastEvents = togglePastEvents;
 window.getCurrentAuthenticatedUser = getCurrentAuthenticatedUser;
 window.isUserAuthenticated = isUserAuthenticated;
