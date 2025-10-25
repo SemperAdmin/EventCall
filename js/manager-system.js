@@ -42,16 +42,28 @@ function calculateEventStats(responses) {
     responses.forEach(response => {
         if (response.attending === true || response.attending === 'true') {
             stats.attending++;
-            stats.attendingWithGuests += parseInt(response.guestCount) || 0;
-        } else if (response.attending === false) {
+            // Parse guest count - handle both string and number formats
+            const guestCount = parseInt(response.guestCount, 10) || 0;
+            stats.attendingWithGuests += guestCount;
+        } else if (response.attending === false || response.attending === 'false') {
             stats.notAttending++;
         }
-        
-        stats.totalGuests += parseInt(response.guestCount) || 0;
+
+        // Track total guests regardless of attendance
+        stats.totalGuests += parseInt(response.guestCount, 10) || 0;
     });
 
+    // Total headcount = people attending + their guests
     stats.totalHeadcount = stats.attending + stats.attendingWithGuests;
     stats.responseRate = stats.total > 0 ? ((stats.attending + stats.notAttending) / stats.total * 100).toFixed(1) : 0;
+
+    // Debug logging
+    console.log('📊 Event Stats:', {
+        totalResponses: stats.total,
+        attending: stats.attending,
+        guests: stats.attendingWithGuests,
+        totalHeadcount: stats.totalHeadcount
+    });
 
     return stats;
 }
@@ -660,14 +672,14 @@ async function handleEventSubmit(e) {
     submitBtn.disabled = true;
 
     try {
-        // Validate authentication - check if managerAuth exists
-        if (!window.managerAuth || !window.managerAuth.isAuthenticated()) {
+        // Validate authentication using helper function
+        if (!isUserAuthenticated()) {
             throw new Error('Authentication required. Please log in to create events.');
         }
 
-        // Get current manager
-        const currentManager = window.managerAuth.getCurrentManager();
-        if (!currentManager) {
+        // Get current user using helper function
+        const currentUser = getCurrentAuthenticatedUser();
+        if (!currentUser) {
             throw new Error('Unable to get user information. Please log in again.');
         }
 
@@ -687,8 +699,8 @@ async function handleEventSubmit(e) {
             eventDetails: getEventDetails(),
             created: Date.now(),
             status: 'active',
-            createdBy: currentManager.email,
-            createdByName: currentManager.email.split('@')[0]
+            createdBy: currentUser.email,
+            createdByName: currentUser.name || currentUser.email.split('@')[0]
         };
 
         // Validate required fields
