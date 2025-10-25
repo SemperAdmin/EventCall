@@ -767,8 +767,10 @@ function setupEventForm() {
         eventForm.addEventListener('submit', handleEventSubmit);
         console.log('✅ Event form listener attached');
     }
+    
+    // Setup image upload functionality
+    setupImageUpload();
 }
-
 /**
  * ADD to manager-system.js: Toggle past events visibility
  */
@@ -806,6 +808,7 @@ function initializeSyncChecker() {
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     setupEventForm();
+    setupImageUpload(); // Initialize on page load
     initializeSyncChecker();
 });
 
@@ -833,6 +836,8 @@ window.deleteEvent = deleteEvent;
 window.syncWithGitHub = syncWithGitHub;
 window.updatePendingRSVPCount = updatePendingRSVPCount;
 window.initializeSyncChecker = initializeSyncChecker;
+window.setupImageUpload = setupImageUpload;
+window.handleImageFile = handleImageFile;
 
 window.showEventManagement = function(eventId) {
     if (window.eventManager && window.eventManager.showEventManagement) {
