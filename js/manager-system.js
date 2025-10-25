@@ -333,7 +333,7 @@ function renderDashboard() {
                         <button class="btn btn-primary" onclick="window.eventManager.showEventManagement('${event.id}')">
                             📊 Manage
                         </button>
-                        <button class="btn" onclick="copyInviteLink('${inviteLink}', event)">
+                        <button class="btn" onclick="copyInviteLink('${event.id}')">
                             🔗 Copy Link
                         </button>
                         <button class="btn" onclick="exportEventData('${event.id}')">
