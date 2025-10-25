@@ -473,7 +473,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     </div>
                     <div class="stat">
                         <div class="stat-number" style="color: var(--semper-navy);">${stats.total}</div>
-                        <div class="stat-label">ðŸ“Š Total RSVPs</div>
+                        <div class="stat-label">📊 Total RSVPs</div>
                     </div>
                 </div>
             </div>
@@ -497,7 +497,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 </div>
                 
                 <div class="search-stats" id="search-stats-${eventId}">
-                    ðŸ“Š Showing ${eventResponses.length} of ${eventResponses.length} responses
+                    📊 Showing ${eventResponses.length} of ${eventResponses.length} responses
                 </div>
             </div>
             
@@ -620,7 +620,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 statsElement.innerHTML += ' - <span style="color: var(--error-color);">No matches found</span>';
             }
         } else {
-            statsElement.innerHTML = `ðŸ“Š Showing ${totalCount} of ${totalCount} responses`;
+            statsElement.innerHTML = `📊 Showing ${totalCount} of ${totalCount} responses`;
         }
     }
 
@@ -638,7 +638,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         });
         
         const statsElement = document.getElementById(`search-stats-${eventId}`);
-        statsElement.innerHTML = `ðŸ“Š Showing ${rows.length} of ${rows.length} responses`;
+        statsElement.innerHTML = `📊 Showing ${rows.length} of ${rows.length} responses`;
         
         showToast('ðŸ§¹ Search cleared', 'success');
     }
