@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles/components.css">
     <link rel="stylesheet" href="styles/invite.css">
     <link rel="stylesheet" href="styles/responsive.css">
+    <link rel="stylesheet" href="styles/accessibility.css">
     <link rel="stylesheet" href="styles/login.css">
     <link rel="stylesheet" href="styles/dashboard-v2.css">
     <link rel="stylesheet" href="styles/event-management-v2.css">
@@ -17,6 +18,9 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
+<!-- Skip to main content link for keyboard users and screen readers -->
+<a href="#main-content" class="skip-to-main">Skip to main content</a>
+<!-- Updated Login Page HTML with Obfuscated Token -->
 
 <!-- ============================================
      EMAIL-ONLY LOGIN PAGE (NEW)
@@ -142,14 +146,15 @@
                     <span class="user-name" id="user-display-name">User</span>
                 </button>
             </div>
-          <div class="nav">
-              <button onclick="goToDashboard()" class="active" id="nav-dashboard">🏠 Dashboard</button>
-              <button onclick="showPage('create')" id="nav-create">➕ Create Event</button>
-          </div>
+          <nav class="nav" role="navigation" aria-label="Main navigation">
+              <button onclick="goToDashboard()" class="active" id="nav-dashboard" aria-label="Go to Dashboard" aria-current="page">🏠 Dashboard</button>
+              <button onclick="showPage('create')" id="nav-create" aria-label="Create New Event">➕ Create Event</button>
+          </nav>
         </div>
     </div>
 
     <div class="container">
+        <main id="main-content" role="main">
         <div id="dashboard" class="page active">
             <div class="welcome-banner">
                 <div class="welcome-title">🎖️ Welcome to EventCall</div>
@@ -182,37 +187,43 @@
 
             <form id="event-form">
                 <div class="form-group">
-                    <label for="event-title">Event Title</label>
-                    <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson">
+                    <label for="event-title" class="required">Event Title</label>
+                    <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson" aria-required="true" aria-describedby="title-help">
+                    <span id="title-help" class="sr-only">Enter a descriptive title for your event, at least 3 characters</span>
                 </div>
 
                 <div class="form-group">
-                    <label for="event-date">Date</label>
-                    <input type="date" id="event-date" required>
+                    <label for="event-date" class="required">Date</label>
+                    <input type="date" id="event-date" required aria-required="true" aria-describedby="date-help">
+                    <span id="date-help" class="sr-only">Select the date when your event will take place</span>
                 </div>
 
                 <div class="form-group">
-                    <label for="event-time">Time</label>
-                    <input type="time" id="event-time" required>
+                    <label for="event-time" class="required">Time</label>
+                    <input type="time" id="event-time" required aria-required="true" aria-describedby="time-help">
+                    <span id="time-help" class="sr-only">Select the time when your event will start</span>
                 </div>
 
                 <div class="form-group">
                     <label for="event-location">Location</label>
-                    <input type="text" id="event-location" placeholder="e.g., Base Chapel, Building 123">
+                    <input type="text" id="event-location" placeholder="e.g., Base Chapel, Building 123" aria-describedby="location-help">
+                    <span id="location-help" class="sr-only">Enter the location where the event will be held</span>
                 </div>
 
                 <div class="form-group">
                     <label for="event-description">Description</label>
-                    <textarea id="event-description" placeholder="Additional details about the event..."></textarea>
+                    <textarea id="event-description" placeholder="Additional details about the event..." aria-describedby="description-help"></textarea>
+                    <span id="description-help" class="sr-only">Provide additional details about the event</span>
                 </div>
 
                 <div class="form-group">
-                    <label>Cover Image (Optional)</label>
-                    <div class="image-upload" id="cover-upload">
+                    <label for="cover-input">Cover Image (Optional)</label>
+                    <div class="image-upload" id="cover-upload" role="button" tabindex="0" aria-label="Upload cover image by clicking or dragging a file" aria-describedby="cover-help">
                         <p>Click or drag to upload cover image</p>
-                        <input type="file" id="cover-input" accept="image/*" style="display: none;">
+                        <input type="file" id="cover-input" accept="image/*" style="display: none;" aria-label="Choose cover image file">
                     </div>
-                    <img id="cover-preview" class="image-preview hidden">
+                    <span id="cover-help" class="sr-only">Upload a cover image for your event. Maximum size 5MB. Accepted formats: JPEG, PNG, GIF, WebP</span>
+                    <img id="cover-preview" class="image-preview hidden" alt="Event cover image preview">
                 </div>
 
                 <div class="form-group">
@@ -247,6 +258,8 @@
                     <button type="button" class="btn" onclick="addCustomQuestion()">➕ Add Question</button>
                 </div>
 
+                <!-- IMPORTANT: type="submit" with no onclick handler -->
+                <button type="submit" class="btn" aria-label="Deploy event and create invitation">🚀 Deploy Event</button>
                 <button type="submit" class="btn">🚀 Deploy Event</button>
             </form>
         </div>
@@ -258,6 +271,7 @@
         <div id="invite" class="page">
             <div id="invite-content"></div>
         </div>
+        </main>
     </div>
 
     <div class="footer">
@@ -288,6 +302,61 @@
     </div>
 </div>
 
+<!-- Profile Dropdown - Updated for Manager Flow -->
+<div id="profile-dropdown" style="display: none; position: absolute; top: 3.5rem; right: 1rem; width: 300px; background: white; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000; border: 2px solid var(--semper-gold);">
+  <!-- Header Section -->
+  <div style="padding: 1rem; background: linear-gradient(135deg, var(--semper-navy), var(--primary-color)); color: white; border-radius: 1rem 1rem 0 0;">
+    <div style="font-weight: 700; font-size: 1rem; margin-bottom: 0.25rem;">👤 Event Manager</div>
+    <div style="font-size: 0.85rem; opacity: 0.9;" id="dropdown-email">User</div>
+    <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">Personal Dashboard</div>
+  </div>
+  
+  <!-- Status Section -->
+  <div style="padding: 1rem; background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+      <span id="token-status-icon">🔗</span>
+      <span id="token-status-text" style="color: #10b981; font-weight: 600;">GitHub Connected</span>
+    </div>
+    <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+      Events synced to cloud • Secure token in memory
+    </div>
+  </div>
+  
+  <!-- Actions Section -->
+  <div style="padding: 0.75rem;">
+    <!-- Change Token Button -->
+    <div style="padding: 0.75rem 1rem; border-radius: 0.5rem; color: var(--semper-navy); font-weight: 500; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent;" 
+         onmouseover="this.style.background='#f0f9ff'; this.style.borderColor='#bae6fd'"
+         onmouseout="this.style.background=''; this.style.borderColor='transparent'">
+      <span style="font-size: 1.1rem;">🔑</span> 
+      <span>Change Token</span>
+    </div>
+    
+    <!-- Logout Button -->
+    <div style="padding: 0.75rem 1rem; border-radius: 0.5rem; color: #dc2626; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent;" 
+         id="logout-btn"
+         onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fecaca'"
+         onmouseout="this.style.background=''; this.style.borderColor='transparent'">
+      <span style="font-size: 1.1rem;">🚪</span> 
+      <span>Logout</span>
+    </div>
+  </div>
+  
+  <!-- Footer Section -->
+  <div style="padding: 0.5rem; text-align: center; background: #f9fafb; border-top: 1px solid #e5e7eb; border-radius: 0 0 1rem 1rem;">
+    <button id="cancel-dropdown" style="background: none; border: none; color: #6b7280; font-size: 0.875rem; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 0.25rem; transition: all 0.2s ease;"
+            onmouseover="this.style.color='#374151'; this.style.background='#f3f4f6'"
+            onmouseout="this.style.color='#6b7280'; this.style.background=''">
+      Cancel
+    </button>
+  </div>
+</div>
+
+<!-- Service Worker Registration -->
+<script src="js/service-worker-registration.js"></script>
+
+<!-- EARLY FUNCTIONS FIRST -->
+<script src="js/error-handler.js"></script>
 <!-- ============================================
      SCRIPTS (UPDATED ORDER)
      ============================================ -->

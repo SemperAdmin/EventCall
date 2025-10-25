@@ -427,17 +427,17 @@ function renderEventCard(event, isPast) {
                 </div>
                 
                 <div class="event-actions-v2">
-                    <button class="btn-primary-action" onclick="window.eventManager.showEventManagement('${event.id}')">
+                    <button class="btn-primary-action" onclick="handleManageClick(event, '${event.id}')">
                         📊 Manage Event
                     </button>
                     <div class="quick-actions-row">
-                        <button class="btn-quick" onclick="copyInviteLink('${event.id}')" title="Copy Invite Link">
+                        <button class="btn-quick" onclick="handleActionClick(event, () => copyInviteLink('${event.id}'))" title="Copy Invite Link">
                             🔗 Copy Link
                         </button>
-                        <button class="btn-quick" onclick="exportEventData('${event.id}')" title="Export Data">
+                        <button class="btn-quick" onclick="handleActionClick(event, () => exportEventData('${event.id}'))" title="Export Data">
                             📤 Export
                         </button>
-                        <button class="btn-quick btn-danger-quick" onclick="deleteEvent('${event.id}')" title="Delete Event">
+                        <button class="btn-quick btn-danger-quick" onclick="handleActionClick(event, () => deleteEvent('${event.id}'))" title="Delete Event">
                             🗑️ Delete
                         </button>
                     </div>
@@ -522,9 +522,66 @@ function generateUUID() {
     });
 }
 
+/**
+ * Enhanced text sanitization to prevent XSS attacks
+ * @param {string} text - Text to sanitize
+ * @returns {string} Sanitized text
+ */
 function sanitizeText(text) {
     if (!text) return '';
-    return text.trim().replace(/[<>]/g, '');
+
+    // HTML entity map for escaping
+    const entityMap = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        '/': '&#x2F;'
+    };
+
+    // Trim and escape HTML entities
+    return text
+        .trim()
+        .replace(/[&<>"'\/]/g, char => entityMap[char])
+        .substring(0, 500); // Limit length to prevent abuse
+}
+
+/**
+ * Sanitize HTML content while preserving safe tags
+ * @param {string} html - HTML content to sanitize
+ * @returns {string} Sanitized HTML
+ */
+function sanitizeHTML(html) {
+    if (!html) return '';
+
+    // Create temporary div to parse HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.textContent = html;
+
+    return tempDiv.innerHTML;
+}
+
+/**
+ * Validate and sanitize URL
+ * @param {string} url - URL to validate
+ * @returns {string|null} Sanitized URL or null if invalid
+ */
+function sanitizeURL(url) {
+    if (!url) return null;
+
+    try {
+        const parsed = new URL(url);
+
+        // Only allow http and https protocols
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            return null;
+        }
+
+        return parsed.href;
+    } catch (e) {
+        return null;
+    }
 }
 
 function getCustomQuestions() {
@@ -594,14 +651,21 @@ function handleRSVP(e, eventId) {
 async function handleEventSubmit(e) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
-    
+
+    // Show loading state
     submitBtn.innerHTML = '<div class="spinner"></div> Creating...';
     submitBtn.disabled = true;
 
     try {
+        // Validate authentication
+        if (!managerAuth.isAuthenticated()) {
+            throw new Error('Authentication required. Please log in to create events.');
+        }
+
+        // Collect form data
         if (!isUserAuthenticated()) {
             throw new Error('Please log in to create events');
         }
@@ -628,33 +692,66 @@ async function handleEventSubmit(e) {
             createdById: currentUser.id
         };
 
+        // Validate required fields
         if (!eventData.title || eventData.title.length < 3) {
-            throw new Error('Please enter a valid event title (3+ characters)');
+            throw new Error('Event title must be at least 3 characters long.');
         }
 
         if (!eventData.date || !eventData.time) {
-            throw new Error('Please specify both date and time for the event');
+            throw new Error('Please specify both date and time for the event.');
         }
 
+        // Validate date is not too far in the past
+        const eventDateTime = new Date(`${eventData.date}T${eventData.time}`);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (eventDateTime < yesterday) {
+            throw new Error('Event date cannot be more than 1 day in the past.');
+        }
+
+        // Show progress update
+        submitBtn.innerHTML = '<div class="spinner"></div> Saving to GitHub...';
+
+        // Save to GitHub with retry logic
+        if (managerAuth.isAuthenticated() && window.githubAPI) {
+            if (window.errorHandler) {
+                // Use error handler's retry mechanism
+                await window.errorHandler.retryWithBackoff(
+                    () => window.githubAPI.saveEvent(eventData),
+                    3,
+                    2000
+                );
+            } else {
+                await window.githubAPI.saveEvent(eventData);
+            }
         // Save directly to EventCall-Data via GitHub API
         if (isUserAuthenticated() && window.githubAPI) {
             await window.githubAPI.saveEvent(eventData);
         } else {
-            throw new Error('GitHub API not available or not authenticated');
+            throw new Error('GitHub API not available. Please check your connection.');
         }
 
+        // Update local state
         if (!window.events) window.events = {};
         window.events[eventData.id] = eventData;
-        
-        const showToast = window.showToast || function(msg, type) { console.log(msg); };
+
         showToast('🎖️ Event deployed successfully!', 'success');
-        
+
+        // Reset form
         document.getElementById('event-form').reset();
         const coverPreview = document.getElementById('cover-preview');
         if (coverPreview) {
             coverPreview.classList.add('hidden');
             coverPreview.src = '';
         }
+
+        // Reset upload area text
+        const coverUpload = document.getElementById('cover-upload');
+        if (coverUpload) {
+            coverUpload.innerHTML = '<p>Click or drag to upload cover image</p>';
+        }
+
         // Reset upload area text
         const uploadArea = document.getElementById('cover-upload');
         if (uploadArea) {
@@ -662,30 +759,29 @@ async function handleEventSubmit(e) {
         }
         clearCustomQuestions();
         clearEventDetails();
-        
-    } catch (error) {
-        console.error('Failed to save event:', error);
-        const showToast = window.showToast || function(msg, type) { console.log(msg); };
-        showToast('Failed to save event: ' + error.message, 'error');
-    } finally {
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        
+
+        // Navigate to dashboard after successful creation
         setTimeout(() => {
-            // Wait longer for manager-system.js to fully load
             if (typeof window.loadManagerData === 'function') {
                 window.loadManagerData();
-            } else {
-                // Retry after additional delay
-                setTimeout(() => {
-                    if (typeof window.loadManagerData === 'function') {
-                        window.loadManagerData();
-                    }
-                }, 500);
             }
             if (window.showPage) {
                 window.showPage('dashboard');
             }
+        }, 500);
+
+    } catch (error) {
+        // Use error handler for better error messages
+        if (window.errorHandler) {
+            window.errorHandler.handleError(error, 'Event Creation');
+        } else {
+            console.error('Failed to save event:', error);
+            showToast(`❌ Failed to save event: ${error.message}`, 'error');
+        }
+    } finally {
+        // Always reset button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
         }, 1000);
     }
 }
@@ -836,9 +932,176 @@ function initializeSyncChecker() {
     console.log('ℹ️ RSVP sync checker initialized (manual mode)');
 }
 
+/**
+ * Handle manage event button click with proper event handling
+ * @param {Event} e - Click event
+ * @param {string} eventId - Event ID
+ */
+function handleManageClick(e, eventId) {
+    if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+    if (window.eventManager && window.eventManager.showEventManagement) {
+        window.eventManager.showEventManagement(eventId);
+    }
+}
+
+/**
+ * Handle action button clicks with proper event handling
+ * @param {Event} e - Click event
+ * @param {Function} callback - Action to perform
+ */
+function handleActionClick(e, callback) {
+    if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+    if (typeof callback === 'function') {
+        callback();
+    }
+}
+
+/**
+ * Setup photo upload handlers for cover image
+ */
+function setupPhotoUpload() {
+    const coverUpload = document.getElementById('cover-upload');
+    const coverInput = document.getElementById('cover-input');
+    const coverPreview = document.getElementById('cover-preview');
+
+    if (!coverUpload || !coverInput || !coverPreview) {
+        console.warn('⚠️ Photo upload elements not found');
+        return;
+    }
+
+    // Click handler - open file picker when upload area is clicked
+    coverUpload.addEventListener('click', () => {
+        coverInput.click();
+    });
+
+    // Keyboard handler - Enter or Space key to open file picker (accessibility)
+    coverUpload.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            coverInput.click();
+        }
+    });
+
+    // File input change handler
+    coverInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            await handleImageFile(file);
+        }
+    });
+
+    // Drag and drop handlers
+    coverUpload.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        coverUpload.classList.add('dragover');
+        coverUpload.style.borderColor = 'var(--semper-gold)';
+        coverUpload.style.background = 'rgba(255, 215, 0, 0.05)';
+        coverUpload.setAttribute('aria-label', 'Drop image file here to upload');
+    });
+
+    coverUpload.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        coverUpload.classList.remove('dragover');
+        coverUpload.style.borderColor = '';
+        coverUpload.style.background = '';
+        coverUpload.setAttribute('aria-label', 'Upload cover image by clicking or dragging a file');
+    });
+
+    coverUpload.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        coverUpload.classList.remove('dragover');
+        coverUpload.style.borderColor = '';
+        coverUpload.style.background = '';
+        coverUpload.setAttribute('aria-label', 'Upload cover image by clicking or dragging a file');
+
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            // Validate that it's an image file
+            if (file.type.startsWith('image/')) {
+                await handleImageFile(file);
+            } else {
+                showToast('❌ Please upload an image file (JPEG, PNG, GIF, WebP)', 'error');
+            }
+        }
+    });
+
+    console.log('✅ Photo upload handlers attached with keyboard support');
+}
+
+/**
+ * Handle image file upload and preview
+ * @param {File} file - Image file to process
+ */
+async function handleImageFile(file) {
+    const coverPreview = document.getElementById('cover-preview');
+    const coverUpload = document.getElementById('cover-upload');
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+        showToast('❌ Image too large. Maximum size is 5MB', 'error');
+        return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+        showToast('❌ Invalid file type. Please use JPEG, PNG, GIF, or WebP', 'error');
+        return;
+    }
+
+    try {
+        // Show loading state
+        coverUpload.innerHTML = '<div class="spinner"></div><p>Uploading...</p>';
+
+        // Convert to base64 using utility function
+        const base64Image = await fileToBase64(file);
+
+        // Display preview
+        coverPreview.src = base64Image;
+        coverPreview.classList.remove('hidden');
+
+        // Reset upload area text
+        coverUpload.innerHTML = '<p>✅ Image uploaded! Click or drag to change</p>';
+
+        showToast('📷 Cover image uploaded successfully!', 'success');
+
+    } catch (error) {
+        console.error('Image upload failed:', error);
+        showToast('❌ Failed to upload image: ' + error.message, 'error');
+
+        // Reset upload area
+        coverUpload.innerHTML = '<p>Click or drag to upload cover image</p>';
+    }
+}
+
+/**
+ * Helper function to convert file to base64
+ * @param {File} file - File to convert
+ * @returns {Promise<string>} Base64 encoded string
+ */
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+    });
+}
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     setupEventForm();
+    setupPhotoUpload();
     setupImageUpload();
     initializeSyncChecker();
 });
@@ -847,13 +1110,20 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addCustomQuestion = addCustomQuestion;
 window.removeCustomQuestion = removeCustomQuestion;
 window.handleEventSubmit = handleEventSubmit;
+window.handleManageClick = handleManageClick;
+window.handleActionClick = handleActionClick;
 window.generateUUID = generateUUID;
 window.sanitizeText = sanitizeText;
+window.sanitizeHTML = sanitizeHTML;
+window.sanitizeURL = sanitizeURL;
 window.getCustomQuestions = getCustomQuestions;
 window.clearCustomQuestions = clearCustomQuestions;
 window.getEventDetails = getEventDetails;
 window.clearEventDetails = clearEventDetails;
 window.setupEventForm = setupEventForm;
+window.setupPhotoUpload = setupPhotoUpload;
+window.handleImageFile = handleImageFile;
+window.fileToBase64 = fileToBase64;
 window.calculateEventStats = calculateEventStats;
 window.formatDate = formatDate;
 window.formatTime = formatTime;
