@@ -563,6 +563,16 @@ css.search-input:focus, .filter-select:focus {
     background: rgba(239, 68, 68, 0.2);
 }
 
+css.btn-attendee-action-email { 
+   background: rgba(59, 130, 246, 0.2); 
+   border: 1px solid #3b82f6; 
+   color: #60a5fa;
+} 
+
+.btn-attendee-action-email:hover { 
+   background: rgba(59, 130, 246, 0.3);
+}
+
 /* Empty State */
 .no-attendees {
     text-align: center;
