@@ -320,6 +320,12 @@ async loadResponses() {
                 const fileData = await fileResponse.json();
                 rsvpArray = JSON.parse(this.safeBase64Decode(fileData.content));
 
+                console.log(`🔍 DEBUG: Processing ${file.path}`);
+                console.log(`🔍 DEBUG: Is array?`, Array.isArray(rsvpArray));
+                console.log(`🔍 DEBUG: Array length:`, rsvpArray?.length);
+                console.log(`🔍 DEBUG: First item:`, rsvpArray?.[0]);
+                console.log(`🔍 DEBUG: First item eventId:`, rsvpArray?.[0]?.eventId);
+
                 // Extract eventId - either from filename or from content
                 if (file.path.startsWith('rsvps/') && !file.path.includes('rsvp-')) {
                     // Format: rsvps/{eventId}.json
