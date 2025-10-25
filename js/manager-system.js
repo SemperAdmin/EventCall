@@ -1,6 +1,6 @@
 /**
- * Manager System - Enhanced with RSVP Sync Functionality
- * Added GitHub Issues processing and real-time sync capabilities
+ * Manager System - Enhanced with RSVP Sync Functionality and Email Auth
+ * Added GitHub Issues processing, real-time sync capabilities, and userAuth support
  */
 
 // Global sync state
@@ -40,7 +40,7 @@ function calculateEventStats(responses) {
     };
 
     responses.forEach(response => {
-        if (response.attending === true) {
+        if (response.attending === true || response.attending === 'true') {
             stats.attending++;
             stats.attendingWithGuests += parseInt(response.guestCount) || 0;
         } else if (response.attending === false) {
@@ -57,6 +57,30 @@ function calculateEventStats(responses) {
 }
 
 /**
+ * Get current authenticated user (supports both old and new auth)
+ */
+function getCurrentAuthenticatedUser() {
+    // Try new userAuth first
+    if (window.userAuth && window.userAuth.isAuthenticated()) {
+        return window.userAuth.getCurrentUser();
+    }
+    
+    // Fallback to old managerAuth
+    if (window.managerAuth && window.managerAuth.isAuthenticated()) {
+        return window.managerAuth.getCurrentManager();
+    }
+    
+    return null;
+}
+
+/**
+ * Check if user is authenticated (supports both old and new auth)
+ */
+function isUserAuthenticated() {
+    return getCurrentAuthenticatedUser() !== null;
+}
+
+/**
  * Sync RSVPs from GitHub Issues
  */
 async function syncWithGitHub() {
@@ -65,8 +89,8 @@ async function syncWithGitHub() {
         return;
     }
 
-    if (!managerAuth.isAuthenticated()) {
-        showToast('🔒 Please login with GitHub token to sync RSVPs', 'error');
+    if (!isUserAuthenticated()) {
+        showToast('🔒 Please login to sync RSVPs', 'error');
         return;
     }
 
@@ -117,7 +141,7 @@ async function syncWithGitHub() {
  * Update pending RSVP count in UI
  */
 async function updatePendingRSVPCount() {
-    if (!managerAuth.isAuthenticated()) {
+    if (!isUserAuthenticated()) {
         return;
     }
 
@@ -197,8 +221,8 @@ async function loadManagerData() {
     if (!window.events) window.events = {};
     if (!window.responses) window.responses = {};
     
-    if (!managerAuth.isAuthenticated()) {
-        console.log('⚠️ No GitHub token available - using local events only');
+    if (!isUserAuthenticated()) {
+        console.log('⚠️ No authentication - using local events only');
         renderDashboard();
         return;
     }
@@ -239,13 +263,13 @@ async function deleteEvent(eventId) {
             return;
         }
 
-        const currentUser = managerAuth.getCurrentManager();
+        const currentUser = getCurrentAuthenticatedUser();
         if (!currentUser || event.createdBy !== currentUser.email) {
             showToast('❌ You can only delete your own events', 'error');
             return;
         }
 
-        if (managerAuth.isAuthenticated() && window.githubAPI) {
+        if (isUserAuthenticated() && window.githubAPI) {
             try {
                 if (window.githubAPI && window.githubAPI.deleteEvent) {
                     await window.githubAPI.deleteEvent(eventId, event.title);
@@ -642,6 +666,12 @@ async function handleEventSubmit(e) {
         }
 
         // Collect form data
+        if (!isUserAuthenticated()) {
+            throw new Error('Please log in to create events');
+        }
+
+        const currentUser = getCurrentAuthenticatedUser();
+
         const eventData = {
             id: generateUUID(),
             title: sanitizeText(document.getElementById('event-title').value),
@@ -657,8 +687,9 @@ async function handleEventSubmit(e) {
             eventDetails: getEventDetails(),
             created: Date.now(),
             status: 'active',
-            createdBy: managerAuth.getCurrentManager()?.email,
-            createdByName: managerAuth.getCurrentManager()?.email.split('@')[0]
+            createdBy: currentUser.email,
+            createdByName: currentUser.name || currentUser.email.split('@')[0],
+            createdById: currentUser.id
         };
 
         // Validate required fields
@@ -694,6 +725,9 @@ async function handleEventSubmit(e) {
             } else {
                 await window.githubAPI.saveEvent(eventData);
             }
+        // Save directly to EventCall-Data via GitHub API
+        if (isUserAuthenticated() && window.githubAPI) {
+            await window.githubAPI.saveEvent(eventData);
         } else {
             throw new Error('GitHub API not available. Please check your connection.');
         }
@@ -718,6 +752,11 @@ async function handleEventSubmit(e) {
             coverUpload.innerHTML = '<p>Click or drag to upload cover image</p>';
         }
 
+        // Reset upload area text
+        const uploadArea = document.getElementById('cover-upload');
+        if (uploadArea) {
+            uploadArea.innerHTML = `<p>Click or drag to upload cover image</p>`;
+        }
         clearCustomQuestions();
         clearEventDetails();
 
@@ -743,7 +782,110 @@ async function handleEventSubmit(e) {
         // Always reset button state
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
+        }, 1000);
     }
+}
+
+/**
+ * Setup image upload with drag-drop and click functionality
+ */
+function setupImageUpload() {
+    const uploadArea = document.getElementById('cover-upload');
+    const fileInput = document.getElementById('cover-input');
+    const preview = document.getElementById('cover-preview');
+    
+    if (!uploadArea || !fileInput || !preview) {
+        console.warn('⚠️ Image upload elements not found');
+        return;
+    }
+    
+    // Click to upload
+    uploadArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    // File input change handler
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleImageFile(file, preview, uploadArea);
+        }
+    });
+    
+    // Drag and drop handlers
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.style.borderColor = '#d4af37';
+        uploadArea.style.background = 'rgba(212, 175, 55, 0.1)';
+    });
+    
+    uploadArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.style.borderColor = '';
+        uploadArea.style.background = '';
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.style.borderColor = '';
+        uploadArea.style.background = '';
+        
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            handleImageFile(file, preview, uploadArea);
+        } else {
+            showToast('❌ Please drop an image file', 'error');
+        }
+    });
+    
+    console.log('✅ Image upload initialized');
+}
+
+/**
+ * Handle image file processing and preview
+ */
+function handleImageFile(file, preview, uploadArea) {
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+        showToast('❌ Image too large. Max size: 5MB', 'error');
+        return;
+    }
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        showToast('❌ Please select an image file', 'error');
+        return;
+    }
+    
+    // Read and convert to Base64
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        const imageData = e.target.result;
+        
+        // Update preview
+        preview.src = imageData;
+        preview.classList.remove('hidden');
+        
+        // Update upload area to show success
+        uploadArea.innerHTML = `
+            <p style="color: #10b981; font-weight: 600;">✅ Image uploaded successfully</p>
+            <p style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Click to change image</p>
+        `;
+        
+        showToast('✅ Image uploaded successfully', 'success');
+        console.log('📸 Image processed:', file.name, `(${(file.size / 1024).toFixed(2)} KB)`);
+    };
+    
+    reader.onerror = () => {
+        showToast('❌ Failed to read image file', 'error');
+    };
+    
+    reader.readAsDataURL(file);
 }
 
 function setupEventForm() {
@@ -752,6 +894,29 @@ function setupEventForm() {
         eventForm.removeEventListener('submit', handleEventSubmit);
         eventForm.addEventListener('submit', handleEventSubmit);
         console.log('✅ Event form listener attached');
+    }
+    
+    // Setup image upload functionality
+    setupImageUpload();
+}
+
+/**
+ * Toggle past events visibility
+ */
+function togglePastEvents() {
+    const pastSection = document.querySelector('.past-events-grid');
+    const toggle = document.querySelector('.past-events-toggle');
+    
+    if (pastSection && toggle) {
+        const isCollapsed = toggle.classList.contains('collapsed');
+        
+        if (isCollapsed) {
+            pastSection.style.display = 'grid';
+            toggle.classList.remove('collapsed');
+        } else {
+            pastSection.style.display = 'none';
+            toggle.classList.add('collapsed');
+        }
     }
 }
 
@@ -937,6 +1102,7 @@ function fileToBase64(file) {
 document.addEventListener('DOMContentLoaded', () => {
     setupEventForm();
     setupPhotoUpload();
+    setupImageUpload();
     initializeSyncChecker();
 });
 
@@ -971,6 +1137,11 @@ window.deleteEvent = deleteEvent;
 window.syncWithGitHub = syncWithGitHub;
 window.updatePendingRSVPCount = updatePendingRSVPCount;
 window.initializeSyncChecker = initializeSyncChecker;
+window.setupImageUpload = setupImageUpload;
+window.handleImageFile = handleImageFile;
+window.togglePastEvents = togglePastEvents;
+window.getCurrentAuthenticatedUser = getCurrentAuthenticatedUser;
+window.isUserAuthenticated = isUserAuthenticated;
 
 window.showEventManagement = function(eventId) {
     if (window.eventManager && window.eventManager.showEventManagement) {
@@ -988,4 +1159,4 @@ window.duplicateEvent = function(eventId) {
     }
 };
 
-console.log('✅ Enhanced manager system loaded with RSVP sync functionality');
+console.log('✅ Enhanced manager system loaded with RSVP sync functionality and email auth support');

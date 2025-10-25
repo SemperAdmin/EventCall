@@ -277,82 +277,76 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 }
 
 /**
- * Generate attendee cards HTML
- * Add this new function to event-manager.js
+ * Generate attendee cards HTML - UPDATED with Email button
  */
-    generateAttendeeCards(eventResponses) {
-        return `
-            <div class="attendee-cards" id="attendee-cards-container">
-                ${eventResponses.map(response => `
-                    <div class="attendee-card" data-name="${response.name?.toLowerCase() || ''}" data-status="${response.attending ? 'attending' : 'declined'}">
-                        <div class="attendee-card-header">
-                            <div class="attendee-info">
-                                <div class="attendee-name">${response.name || 'Anonymous'}</div>
-                                <span class="attendee-status ${response.attending ? 'status-attending' : 'status-declined'}">
-                                    ${response.attending ? '✅ Attending' : '❌ Declined'}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="attendee-details">
-                            ${response.email ? `
-                                <div class="attendee-detail-item">
-                                    <span class="attendee-detail-icon">📧</span>
-                                    <span>${response.email}</span>
-                                </div>
-                            ` : ''}
-                            ${response.phone ? `
-                                <div class="attendee-detail-item">
-                                    <span class="attendee-detail-icon">📱</span>
-                                    <span>${response.phone}</span>
-                                </div>
-                            ` : ''}
-                            ${response.guestCount > 0 ? `
-                                <div class="attendee-detail-item">
-                                    <span class="attendee-detail-icon">👥</span>
-                                    <span>+${response.guestCount} guest${response.guestCount > 1 ? 's' : ''}</span>
-                                </div>
-                            ` : ''}
-                            ${response.unit ? `
-                                <div class="attendee-detail-item">
-                                    <span class="attendee-detail-icon">🎖️</span>
-                                    <span>${response.unit}</span>
-                                </div>
-                            ` : ''}
-                            ${response.mealChoice ? `
-                                <div class="attendee-detail-item">
-                                    <span class="attendee-detail-icon">🍽️</span>
-                                    <span>${response.mealChoice}</span>
-                                </div>
-                            ` : ''}
-                            ${response.rank ? `
-                                <div class="attendee-detail-item">
-                                    <span class="attendee-detail-icon">⭐</span>
-                                    <span>${response.rank}</span>
-                                </div>
-                            ` : ''}
-                        </div>
-                        ${response.dietaryRestrictions || response.specialRequests || response.reason ? `
-                            <div class="attendee-detail-item" style="grid-column: 1 / -1; margin-top: 0.5rem;">
-                                <span class="attendee-detail-icon">📝</span>
-                                <span>${response.dietaryRestrictions || response.specialRequests || response.reason}</span>
-                            </div>
-                        ` : ''}
-                        <div class="attendee-actions">
-                            <button class="btn-attendee-action" onclick="alert('Edit feature coming soon!')">
-                                ✏️ Edit
-                            </button>
-                            <button class="btn-attendee-action" onclick="alert('Email feature coming soon!')">
-                                📧 Email
-                            </button>
-                            <button class="btn-attendee-action btn-danger-attendee" onclick="if(confirm('Remove this RSVP?')) alert('Remove feature coming soon!')">
-                                🗑️ Remove
-                            </button>
+generateAttendeeCards(eventResponses) {
+    return `
+        <div class="attendee-cards" id="attendee-cards-container">
+            ${eventResponses.map(response => `
+                <div class="attendee-card" data-name="${response.name?.toLowerCase() || ''}" data-status="${response.attending ? 'attending' : 'declined'}">
+                    <div class="attendee-card-header">
+                        <div class="attendee-info">
+                            <div class="attendee-name">${response.name || 'Anonymous'}</div>
+                            <span class="attendee-status ${response.attending ? 'status-attending' : 'status-declined'}">
+                                ${response.attending ? '✅ Attending' : '❌ Declined'}
+                            </span>
                         </div>
                     </div>
-                `).join('')}
-            </div>
-        `;
-    }
+                    <div class="attendee-details">
+                        ${response.email ? `
+                            <div class="attendee-detail-item">
+                                <span class="attendee-detail-icon">📧</span>
+                                <span>${response.email}</span>
+                            </div>
+                        ` : ''}
+                        ${response.phone ? `
+                            <div class="attendee-detail-item">
+                                <span class="attendee-detail-icon">📱</span>
+                                <span>${response.phone}</span>
+                            </div>
+                        ` : ''}
+                        ${response.guestCount > 0 ? `
+                            <div class="attendee-detail-item">
+                                <span class="attendee-detail-icon">👥</span>
+                                <span>+${response.guestCount} guest${response.guestCount > 1 ? 's' : ''}</span>
+                            </div>
+                        ` : ''}
+                        ${response.unit ? `
+                            <div class="attendee-detail-item">
+                                <span class="attendee-detail-icon">🎖️</span>
+                                <span>${response.unit}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- ✅ UPDATED: Actions with Email Button -->
+                    <div class="attendee-actions">
+                        <button 
+                            class="btn-attendee-action" 
+                            onclick="alert('Edit feature coming soon!')"
+                            title="Edit this RSVP">
+                            ✏️ Edit
+                        </button>
+                        
+                        <button 
+                            class="btn-attendee-action btn-attendee-action-email" 
+                            onclick="mailAttendee('${response.email || ''}', '${this.currentEvent?.title || 'Event'}')"
+                            ${!response.email ? 'disabled title="No email address available"' : 'title="Send email to attendee"'}>
+                            📧 Email
+                        </button>
+                        
+                        <button 
+                            class="btn-attendee-action btn-danger-attendee" 
+                            onclick="if(confirm('Remove this RSVP?')) alert('Remove feature coming soon!')"
+                            title="Remove this RSVP">
+                            🗑️ Remove
+                        </button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
     
     /**
      * Filter attendees based on search and filter
@@ -473,7 +467,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     </div>
                     <div class="stat">
                         <div class="stat-number" style="color: var(--semper-navy);">${stats.total}</div>
-                        <div class="stat-label">ðŸ“Š Total RSVPs</div>
+                        <div class="stat-label">📊 Total RSVPs</div>
                     </div>
                 </div>
             </div>
@@ -497,7 +491,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 </div>
                 
                 <div class="search-stats" id="search-stats-${eventId}">
-                    ðŸ“Š Showing ${eventResponses.length} of ${eventResponses.length} responses
+                    📊 Showing ${eventResponses.length} of ${eventResponses.length} responses
                 </div>
             </div>
             
@@ -620,7 +614,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 statsElement.innerHTML += ' - <span style="color: var(--error-color);">No matches found</span>';
             }
         } else {
-            statsElement.innerHTML = `ðŸ“Š Showing ${totalCount} of ${totalCount} responses`;
+            statsElement.innerHTML = `📊 Showing ${totalCount} of ${totalCount} responses`;
         }
     }
 
@@ -638,7 +632,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         });
         
         const statsElement = document.getElementById(`search-stats-${eventId}`);
-        statsElement.innerHTML = `ðŸ“Š Showing ${rows.length} of ${rows.length} responses`;
+        statsElement.innerHTML = `📊 Showing ${rows.length} of ${rows.length} responses`;
         
         showToast('ðŸ§¹ Search cleared', 'success');
     }
@@ -709,11 +703,24 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         // Handle cover image
         const coverPreview = document.getElementById('cover-preview');
         if (event.coverImage) {
-            coverPreview.src = event.coverImage;
-            coverPreview.classList.remove('hidden');
-        } else {
-            coverPreview.classList.add('hidden');
-        }
+    coverPreview.src = event.coverImage;
+    coverPreview.classList.remove('hidden');
+    
+    // Update upload area to show existing image
+    const uploadArea = document.getElementById('cover-upload');
+    if (uploadArea) {
+        uploadArea.innerHTML = `
+            <p style="color: #10b981; font-weight: 600;">✅ Current image loaded</p>
+            <p style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Click to change image</p>
+        `;
+    }
+} else {
+    // Reset upload area for new image
+    const uploadArea = document.getElementById('cover-upload');
+    if (uploadArea) {
+        uploadArea.innerHTML = `<p>Click or drag to upload cover image</p>`;
+    }
+}
 
         // Populate custom questions
         this.populateCustomQuestions(event.customQuestions || []);
