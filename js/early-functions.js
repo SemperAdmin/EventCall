@@ -16,10 +16,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isInvitePage && window.managerAuth) {
         const isAuthenticated = await window.managerAuth.init();
         if (!isAuthenticated) {
-            console.log('ðŸ”’ Not authenticated - showing login page');
+            console.log('🔒 Not authenticated - showing login page');
             window.loginUI.showLoginPage();
         } else {
-            console.log('âœ… Authenticated - showing app');
+            console.log('✅ Authenticated - showing app');
         }
     }
 });
@@ -28,25 +28,25 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Show page navigation - Updated to enforce login state
  */
 function showPage(pageId) {
-  console.log(`ðŸ§­ Attempting to navigate to: ${pageId}`);
+  console.log(`🧭 Attempting to navigate to: ${pageId}`);
   
   // Allow access to invite page without login (for guests)
   if (pageId === 'invite') {
-    console.log('ðŸŽ¯ Guest invite access - no login required');
+    console.log('🎟️ Guest invite access - no login required');
     showPageContent(pageId);
     return;
   }
   
   // Check if this is an invite URL (guest access)
   if (window.location.hash.includes('invite/') || window.location.search.includes('data=')) {
-    console.log('ðŸŽ¯ Guest invite URL detected - bypassing login');
+    console.log('🎟️ Guest invite URL detected - bypassing login');
     showPageContent('invite');
     return;
   }
   
   // Check if user is logged in for all other pages
   if (typeof managerAuth === 'undefined' || !managerAuth.isAuthenticated()) {
-    console.log('ðŸ”’ Access denied - user not logged in');
+    console.log('🔒 Access denied - user not logged in');
     
     // Show login screen
     showLoginPage();
@@ -54,7 +54,7 @@ function showPage(pageId) {
   }
   
   // User is logged in, proceed to requested page
-  console.log(`âœ… Access granted to ${pageId} for user: ${managerAuth.getCurrentManager()?.email}`);
+  console.log(`✅ Access granted to ${pageId} for user: ${managerAuth.getCurrentManager()?.email}`);
   showPageContent(pageId);
 }
 
@@ -90,7 +90,7 @@ function showLoginPage() {
     }
   }, 100);
   
-  console.log('ðŸ” Login page displayed');
+  console.log('🔑 Login page displayed');
 }
 
 /**
@@ -209,7 +209,7 @@ async function copyInviteLink(eventId) {
         const success = await copyToClipboard(link);
         
         if (success) {
-            showToast('ðŸ”— Invite link copied to clipboard!', 'success');
+            showToast('🔗 Invite link copied to clipboard!', 'success');
         } else {
             prompt('Copy this invite link:', link);
         }
@@ -276,7 +276,7 @@ function exportEventData(eventId) {
         const filename = `${generateSafeFilename(event.title)}_rsvps.csv`;
         
         downloadFile(csvContent, filename, 'text/csv');
-        showToast('ðŸ“Š Data exported successfully!', 'success');
+        showToast('📊 Data exported successfully!', 'success');
         
     } catch (error) {
         console.error('Failed to export data:', error);
@@ -396,7 +396,7 @@ function checkURLHash() {
     // Handle invite URLs (guest access)
     if (hash.startsWith('invite/') || hasInviteData) {
         const eventId = hash.split('/')[1];
-        console.log('ðŸ”— Direct invite link accessed:', eventId);
+        console.log('🔗 Direct invite link accessed:', eventId);
         
         // Force show invite page without login requirement
         showPageContent('invite');
@@ -411,11 +411,11 @@ function checkURLHash() {
     
     if (hash.startsWith('manage/')) {
         const eventId = hash.split('/')[1];
-        console.log('ðŸ“Š Direct manage link accessed:', eventId);
+        console.log('📊 Direct manage link accessed:', eventId);
         
         // Check login first
         if (typeof managerAuth === 'undefined' || !managerAuth.isAuthenticated()) {
-            console.log('ðŸ”’ Manage access denied - redirecting to login');
+            console.log('🔒 Manage access denied - redirecting to login');
             showLoginPage();
             return;
         }
@@ -469,4 +469,4 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeHashListener();
 });
 
-console.log('âœ… Early functions loaded with login enforcement and hash handling');
+console.log('✅ Early functions loaded with login enforcement and hash handling');
