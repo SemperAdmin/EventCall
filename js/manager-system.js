@@ -666,12 +666,6 @@ async function handleEventSubmit(e) {
         }
 
         // Collect form data
-        if (!isUserAuthenticated()) {
-            throw new Error('Please log in to create events');
-        }
-
-        const currentUser = getCurrentAuthenticatedUser();
-
         const eventData = {
             id: generateUUID(),
             title: sanitizeText(document.getElementById('event-title').value),
@@ -687,9 +681,8 @@ async function handleEventSubmit(e) {
             eventDetails: getEventDetails(),
             created: Date.now(),
             status: 'active',
-            createdBy: currentUser.email,
-            createdByName: currentUser.name || currentUser.email.split('@')[0],
-            createdById: currentUser.id
+            createdBy: managerAuth.getCurrentManager()?.email,
+            createdByName: managerAuth.getCurrentManager()?.email.split('@')[0]
         };
 
         // Validate required fields
@@ -725,9 +718,6 @@ async function handleEventSubmit(e) {
             } else {
                 await window.githubAPI.saveEvent(eventData);
             }
-        // Save directly to EventCall-Data via GitHub API
-        if (isUserAuthenticated() && window.githubAPI) {
-            await window.githubAPI.saveEvent(eventData);
         } else {
             throw new Error('GitHub API not available. Please check your connection.');
         }
@@ -752,11 +742,6 @@ async function handleEventSubmit(e) {
             coverUpload.innerHTML = '<p>Click or drag to upload cover image</p>';
         }
 
-        // Reset upload area text
-        const uploadArea = document.getElementById('cover-upload');
-        if (uploadArea) {
-            uploadArea.innerHTML = `<p>Click or drag to upload cover image</p>`;
-        }
         clearCustomQuestions();
         clearEventDetails();
 
@@ -782,7 +767,6 @@ async function handleEventSubmit(e) {
         // Always reset button state
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
-        }, 1000);
     }
 }
 
