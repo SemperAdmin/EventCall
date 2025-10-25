@@ -57,75 +57,330 @@ class EventManager {
      * @param {string} responseTableHTML - Response table HTML
      * @returns {string} HTML content
      */
-    generateEventDetailsHTML(event, eventId, responseTableHTML) {
-        const inviteURL = generateInviteURL(event);
-        const timeUntil = getTimeUntilEvent(event.date, event.time);
-        const isPast = isEventInPast(event.date, event.time);
-        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+    /**
+ * Generate Mission Control event details HTML - V2 Improved Design
+ * Paste this function into event-manager.js to replace the existing generateEventDetailsHTML
+ */
 
-        return `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-                <div>
-                    <h2 style="color: var(--semper-navy); font-size: 2rem; margin-bottom: 0.5rem;">${event.title}</h2>
-                    <div class="event-meta" style="margin-bottom: 1rem;">
-                        ðŸ“… ${formatDate(event.date)} at ${formatTime(event.time)}<br>
-                        ðŸ“ ${event.location || 'No location specified'}<br>
-                        ðŸ“ ${event.description || 'No description provided'}<br>
-                        ðŸ• Created ${formatRelativeTime(event.created)}<br>
-                        ${isPast ? 'â° <span style="color: var(--error-color);">Event has passed</span>' : `â³ ${timeUntil}`}
+generateEventDetailsHTML(event, eventId, responseTableHTML) {
+    const inviteURL = generateInviteURL(event);
+    const timeUntil = getTimeUntilEvent(event.date, event.time);
+    const isPast = isEventInPast(event.date, event.time);
+    const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+    const stats = calculateEventStats(eventResponses);
+    
+    // Calculate response rate
+    const responseRate = eventResponses.length > 0 
+        ? Math.round(((stats.attending + stats.notAttending) / eventResponses.length) * 100)
+        : 0;
+    
+    // Calculate pending (people who viewed but haven't responded)
+    const pending = eventResponses.length - (stats.attending + stats.notAttending);
+    
+    // Get last RSVP time
+    const lastRSVP = eventResponses.length > 0 
+        ? new Date(Math.max(...eventResponses.map(r => r.timestamp || 0)))
+        : null;
+    const lastRSVPText = lastRSVP 
+        ? formatRelativeTime(lastRSVP.getTime())
+        : 'No RSVPs yet';
+
+    return `
+        <div class="mission-control-container">
+            <!-- Header -->
+            <div class="mission-control-header">
+                <div class="mission-control-title">
+                    <h1>${event.title}</h1>
+                    <div class="mission-control-subtitle">
+                        ${isPast ? '🔴 Past Event' : '🟢 Active Event'} • Created ${formatRelativeTime(event.created)}
                     </div>
                 </div>
-                ${event.coverImage ? `
-                    <div style="max-width: 200px;">
-                        <img src="${event.coverImage}" alt="Event cover" style="width: 100%; border-radius: 0.5rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                    </div>
-                ` : ''}
+                <div class="mission-control-actions">
+                    <button class="btn-back" onclick="showPage('dashboard')">
+                        ← Back to Dashboard
+                    </button>
+                    <button class="btn-edit" onclick="eventManager.editEvent('${eventId}')">
+                        ⚙️ Edit
+                    </button>
+                </div>
             </div>
-            
-            <!-- Enhanced Sync Status Section -->
-            <div id="sync-status-section" style="margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border-left: 4px solid var(--semper-gold);">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                    <div>
-                        <strong style="color: var(--semper-navy);">ðŸ“Š RSVP Status:</strong>
-                        <span style="margin-left: 0.5rem;">${eventResponses.length} responses recorded</span>
-                        <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
-                            Last synced: <span id="last-sync-time">Just now</span>
+
+            <!-- Event Overview -->
+            <div class="event-overview-section">
+                <div class="event-overview-grid">
+                    <div class="event-details-left">
+                        <div class="event-meta-grid">
+                            <div class="meta-item-v2">
+                                <span class="meta-icon-v2">📅</span>
+                                <div class="meta-content">
+                                    <div class="meta-label">Date</div>
+                                    <div class="meta-value">${formatDate(event.date)}</div>
+                                </div>
+                            </div>
+                            <div class="meta-item-v2">
+                                <span class="meta-icon-v2">⏰</span>
+                                <div class="meta-content">
+                                    <div class="meta-label">Time</div>
+                                    <div class="meta-value">${formatTime(event.time)}</div>
+                                </div>
+                            </div>
+                            <div class="meta-item-v2">
+                                <span class="meta-icon-v2">📍</span>
+                                <div class="meta-content">
+                                    <div class="meta-label">Location</div>
+                                    <div class="meta-value">${event.location || 'Not specified'}</div>
+                                </div>
+                            </div>
+                            <div class="meta-item-v2">
+                                <span class="meta-icon-v2">${isPast ? '⏱️' : '⏳'}</span>
+                                <div class="meta-content">
+                                    <div class="meta-label">${isPast ? 'Status' : 'Time Until'}</div>
+                                    <div class="meta-value">${isPast ? 'Event Passed' : timeUntil}</div>
+                                </div>
+                            </div>
+                        </div>
+                        ${event.description ? `
+                            <div class="meta-item-v2" style="grid-column: 1 / -1;">
+                                <span class="meta-icon-v2">📝</span>
+                                <div class="meta-content">
+                                    <div class="meta-label">Description</div>
+                                    <div class="meta-value">${event.description}</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    ${event.coverImage ? `
+                        <div class="event-cover-large">
+                            <img src="${event.coverImage}" alt="${event.title}">
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+
+            <!-- RSVP Dashboard -->
+            <div class="rsvp-dashboard-section">
+                <h2 class="rsvp-dashboard-title">📊 RSVP Dashboard</h2>
+                
+                <!-- Big Stat Cards -->
+                <div class="rsvp-stats-cards">
+                    <div class="stat-card-large stat-card-headcount">
+                        <div class="stat-card-icon">👥</div>
+                        <div class="stat-card-number">${stats.totalHeadcount}</div>
+                        <div class="stat-card-label">Total Headcount</div>
+                    </div>
+                    <div class="stat-card-large stat-card-attending">
+                        <div class="stat-card-icon">✅</div>
+                        <div class="stat-card-number">${stats.attending}</div>
+                        <div class="stat-card-label">Attending</div>
+                    </div>
+                    <div class="stat-card-large stat-card-declined">
+                        <div class="stat-card-icon">❌</div>
+                        <div class="stat-card-number">${stats.notAttending}</div>
+                        <div class="stat-card-label">Declined</div>
+                    </div>
+                    <div class="stat-card-large stat-card-pending">
+                        <div class="stat-card-icon">⏳</div>
+                        <div class="stat-card-number">${pending}</div>
+                        <div class="stat-card-label">Pending</div>
+                    </div>
+                </div>
+
+                <!-- Response Rate Progress -->
+                <div class="response-rate-section">
+                    <div class="response-rate-header">
+                        <span class="response-rate-label">Response Rate</span>
+                        <span class="response-rate-value">${responseRate}%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" style="width: ${responseRate}%">
+                            ${responseRate > 10 ? `<span class="progress-bar-text">${responseRate}%</span>` : ''}
                         </div>
                     </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <button class="btn btn-success" onclick="eventManager.syncEventRSVPs('${eventId}')" id="sync-event-btn">
-                            ðŸ”„ Sync RSVPs
-                        </button>
-                        <span id="sync-indicator" style="display: none; color: var(--success-color); font-weight: 600;">
-                            âœ… Synced
-                        </span>
+                    <div class="last-rsvp-info">
+                        Last RSVP: ${lastRSVPText}
                     </div>
                 </div>
-            </div>
-            
-            <div style="margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border-left: 4px solid var(--semper-gold);">
-                <strong style="color: var(--semper-navy);">ðŸ”— Invite Link:</strong><br>
-                <input type="text" value="${inviteURL}" 
-                       style="width: 100%; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.375rem;" 
-                       readonly onclick="this.select()" id="invite-link-input">
-                <div style="margin-top: 0.5rem; font-size: 0.875rem; color: #6b7280;">
-                    Click the link above to select and copy, or use the Copy Link button below.
+
+                <!-- Dashboard Actions -->
+                <div class="dashboard-actions">
+                    <button class="btn-action btn-sync" onclick="eventManager.syncEventRSVPs('${eventId}')">
+                        🔄 Sync RSVPs
+                    </button>
+                    <button class="btn-action btn-reminder" onclick="alert('Email reminder feature coming soon!')">
+                        📧 Send Reminder
+                    </button>
+                    <button class="btn-action btn-export" onclick="exportEventData('${eventId}')">
+                        📊 Export List
+                    </button>
                 </div>
             </div>
-            
-            <div style="margin: 2rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <button class="btn" onclick="eventManager.copyInviteLink('${eventId}')">ðŸ”— Copy Invite Link</button>
-                <button class="btn" onclick="eventManager.editEvent('${eventId}')">âœï¸ Edit Event</button>
-                <button class="btn btn-success" onclick="exportEventData('${eventId}')">ðŸ“¥ Export Data</button>
-                <button class="btn btn-success" onclick="syncWithGitHub()">ðŸ”„ Sync All RSVPs</button>
-                <button class="btn" onclick="showPage('dashboard')">ðŸ  Back to Dashboard</button>
-                ${isPast ? '' : `<button class="btn" onclick="eventManager.duplicateEvent('${eventId}')">ðŸ“‹ Duplicate Event</button>`}
+
+            <!-- Invite Link -->
+            <div class="invite-link-section">
+                <h3 class="invite-link-title">🔗 Invite Link</h3>
+                <div class="invite-link-input-wrapper">
+                    <input 
+                        type="text" 
+                        class="invite-link-input" 
+                        value="${inviteURL}" 
+                        readonly 
+                        onclick="this.select()" 
+                        id="invite-link-input"
+                    >
+                </div>
+                <div class="invite-link-actions">
+                    <button class="btn-action" onclick="eventManager.copyInviteLink('${eventId}')">
+                        📋 Copy Link
+                    </button>
+                    <button class="btn-action" onclick="alert('QR Code feature coming soon!')">
+                        📱 QR Code
+                    </button>
+                    <button class="btn-action" onclick="alert('Email link feature coming soon!')">
+                        📧 Email Link
+                    </button>
+                </div>
             </div>
-            
-            <h3 style="color: var(--semper-navy); margin-bottom: 1rem;">ðŸ“Š RSVP Responses (${eventResponses.length})</h3>
-            ${responseTableHTML}
+
+            <!-- Attendee List -->
+            <div class="attendee-list-section">
+                <div class="attendee-list-header">
+                    <h3 class="attendee-list-title">📋 Attendee List (${eventResponses.length})</h3>
+                    <div class="attendee-controls">
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            placeholder="🔍 Search attendees..." 
+                            id="attendee-search"
+                            oninput="eventManager.filterAttendees()"
+                        >
+                        <select class="filter-select" id="attendee-filter" onchange="eventManager.filterAttendees()">
+                            <option value="all">All Responses</option>
+                            <option value="attending">Attending Only</option>
+                            <option value="declined">Declined Only</option>
+                        </select>
+                    </div>
+                </div>
+
+                ${eventResponses.length > 0 ? this.generateAttendeeCards(eventResponses) : `
+                    <div class="no-attendees">
+                        <div class="no-attendees-icon">📭</div>
+                        <h3>No RSVPs Yet</h3>
+                        <p>Share your invite link to start collecting responses!</p>
+                        <button class="btn-action btn-sync" onclick="eventManager.copyInviteLink('${eventId}')" style="margin-top: 1rem;">
+                            🔗 Share Invite Link
+                        </button>
+                    </div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Generate attendee cards HTML
+ * Add this new function to event-manager.js
+ */
+    generateAttendeeCards(eventResponses) {
+        return `
+            <div class="attendee-cards" id="attendee-cards-container">
+                ${eventResponses.map(response => `
+                    <div class="attendee-card" data-name="${response.name?.toLowerCase() || ''}" data-status="${response.attending ? 'attending' : 'declined'}">
+                        <div class="attendee-card-header">
+                            <div class="attendee-info">
+                                <div class="attendee-name">${response.name || 'Anonymous'}</div>
+                                <span class="attendee-status ${response.attending ? 'status-attending' : 'status-declined'}">
+                                    ${response.attending ? '✅ Attending' : '❌ Declined'}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="attendee-details">
+                            ${response.email ? `
+                                <div class="attendee-detail-item">
+                                    <span class="attendee-detail-icon">📧</span>
+                                    <span>${response.email}</span>
+                                </div>
+                            ` : ''}
+                            ${response.phone ? `
+                                <div class="attendee-detail-item">
+                                    <span class="attendee-detail-icon">📱</span>
+                                    <span>${response.phone}</span>
+                                </div>
+                            ` : ''}
+                            ${response.guestCount > 0 ? `
+                                <div class="attendee-detail-item">
+                                    <span class="attendee-detail-icon">👥</span>
+                                    <span>+${response.guestCount} guest${response.guestCount > 1 ? 's' : ''}</span>
+                                </div>
+                            ` : ''}
+                            ${response.unit ? `
+                                <div class="attendee-detail-item">
+                                    <span class="attendee-detail-icon">🎖️</span>
+                                    <span>${response.unit}</span>
+                                </div>
+                            ` : ''}
+                            ${response.mealChoice ? `
+                                <div class="attendee-detail-item">
+                                    <span class="attendee-detail-icon">🍽️</span>
+                                    <span>${response.mealChoice}</span>
+                                </div>
+                            ` : ''}
+                            ${response.rank ? `
+                                <div class="attendee-detail-item">
+                                    <span class="attendee-detail-icon">⭐</span>
+                                    <span>${response.rank}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                        ${response.dietaryRestrictions || response.specialRequests || response.reason ? `
+                            <div class="attendee-detail-item" style="grid-column: 1 / -1; margin-top: 0.5rem;">
+                                <span class="attendee-detail-icon">📝</span>
+                                <span>${response.dietaryRestrictions || response.specialRequests || response.reason}</span>
+                            </div>
+                        ` : ''}
+                        <div class="attendee-actions">
+                            <button class="btn-attendee-action" onclick="alert('Edit feature coming soon!')">
+                                ✏️ Edit
+                            </button>
+                            <button class="btn-attendee-action" onclick="alert('Email feature coming soon!')">
+                                📧 Email
+                            </button>
+                            <button class="btn-attendee-action btn-danger-attendee" onclick="if(confirm('Remove this RSVP?')) alert('Remove feature coming soon!')">
+                                🗑️ Remove
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
         `;
     }
+    
+    /**
+     * Filter attendees based on search and filter
+     * Add this new function to event-manager.js
+     */
+    filterAttendees() {
+        const searchInput = document.getElementById('attendee-search');
+        const filterSelect = document.getElementById('attendee-filter');
+        const cards = document.querySelectorAll('.attendee-card');
+        
+        const searchTerm = searchInput?.value.toLowerCase() || '';
+        const filterValue = filterSelect?.value || 'all';
+        
+        cards.forEach(card => {
+            const name = card.dataset.name || '';
+            const status = card.dataset.status || '';
+            
+            const matchesSearch = name.includes(searchTerm);
+            const matchesFilter = filterValue === 'all' || status === filterValue;
+            
+            if (matchesSearch && matchesFilter) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
 
     /**
      * Sync RSVPs for a specific event
