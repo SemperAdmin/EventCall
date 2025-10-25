@@ -96,46 +96,46 @@ function showLoginPage() {
 /**
  * Show specific page content (internal function)
  */
-function showPageContent(pageId) {
-  // Hide all pages
-  document.querySelectorAll('.page').forEach(page => {
-    page.classList.remove('active');
-  });
-
-  // Show target page
-  const targetPage = document.getElementById(pageId);
-  if (targetPage) targetPage.classList.add('active');
-
-  // Update nav buttons (only if nav is visible)
-  const nav = document.querySelector('.nav');
-  if (nav && nav.style.display !== 'none') {
-    document.querySelectorAll('.nav button').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    const navButton = document.getElementById(`nav-${pageId}`);
-    if (navButton) navButton.classList.add('active');
-  }
-
-  // Show/hide nav based on page
-  if (nav) {
-    nav.style.display = pageId === 'invite' ? 'none' : 'flex';
-  }
-
-  // Update URL hash (but don't override invite URLs)
-  if (!window.location.hash.includes('invite/')) {
-    window.location.hash = pageId;
-  }
-
-  // Initialize template selector on create page
-  if (pageId === 'create' && window.eventTemplates) {
-    const container = document.getElementById('template-selector-container');
-    if (container && !container.hasChildNodes()) {
-      container.innerHTML = window.eventTemplates.generateTemplateSelectorHTML();
-    }
-  }
-
-  console.log(`📄 Page changed to: ${pageId}`);
-
+    function showPageContent(pageId) {
+      // Hide all pages
+      document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+      });
+    
+      // Show target page
+      const targetPage = document.getElementById(pageId);
+      if (targetPage) targetPage.classList.add('active');
+    
+      // Update nav buttons (only if nav is visible)
+      const nav = document.querySelector('.nav');
+      if (nav && nav.style.display !== 'none') {
+        document.querySelectorAll('.nav button').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        const navButton = document.getElementById(`nav-${pageId}`);
+        if (navButton) navButton.classList.add('active');
+      }
+    
+      // Show/hide nav based on page
+      if (nav) {
+        nav.style.display = pageId === 'invite' ? 'none' : 'flex';
+      }
+    
+      // Update URL hash (but don't override invite URLs)
+      if (!window.location.hash.includes('invite/')) {
+        window.location.hash = pageId;
+      }
+    
+      // Initialize template selector on create page
+      if (pageId === 'create' && window.eventTemplates) {
+        const container = document.getElementById('template-selector-container');
+        if (container && !container.hasChildNodes()) {
+          container.innerHTML = window.eventTemplates.generateTemplateSelectorHTML();
+        }
+      }
+    
+      console.log(`📄 Page changed to: ${pageId}`);
+    
       // DEBUG: Check if loadManagerData exists
       if (pageId === 'dashboard') {
         console.log('🔍 Dashboard detected. Checking loadManagerData...');
@@ -147,7 +147,7 @@ function showPageContent(pageId) {
       if (pageId === 'dashboard' && typeof window.loadManagerData === 'function') {
         window.loadManagerData();
       }
-    }
+    } // <-- The function correctly closes here.
 /**
  * Show toast notification - Available immediately
  */
