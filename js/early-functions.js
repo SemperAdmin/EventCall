@@ -1,5 +1,5 @@
 /**
- * EventCall Early Functions - Updated with Login Enforcement
+ * EventCall Early Functions - Updated with Email-Only Authentication
  * These functions need to be available immediately when HTML loads
  * Load this file BEFORE all other scripts
  */
@@ -13,178 +13,222 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Skip auth check for invite pages (guests don't need login)
     const isInvitePage = window.location.hash.includes('invite/') || window.location.search.includes('data=');
     
-    if (!isInvitePage && window.managerAuth) {
-        const isAuthenticated = await window.managerAuth.init();
+    if (!isInvitePage) {
+        // Check if user is authenticated (supports both old and new auth)
+        const isAuthenticated = window.userAuth?.isAuthenticated() || window.managerAuth?.isAuthenticated();
+        
         if (!isAuthenticated) {
             console.log('🔒 Not authenticated - showing login page');
-            window.loginUI.showLoginPage();
+            enforceLogin();
         } else {
             console.log('✅ Authenticated - showing app');
+            
+            // Update user display in header
+            if (window.updateUserDisplay) {
+                window.updateUserDisplay();
+            }
+            
+            // Load manager data if available
+            if (window.loadManagerData) {
+                window.loadManagerData();
+            }
         }
     }
 });
 
 /**
- * Show page navigation - Updated to enforce login state
+ * Enforce login - show login page if not authenticated
  */
-function showPage(pageId) {
-  console.log(`🧭 Attempting to navigate to: ${pageId}`);
-  
-  // Allow access to invite page without login (for guests)
-  if (pageId === 'invite') {
-    console.log('🎟️ Guest invite access - no login required');
-    showPageContent(pageId);
-    return;
-  }
-  
-  // Check if this is an invite URL (guest access)
-  if (window.location.hash.includes('invite/') || window.location.search.includes('data=')) {
-    console.log('🎟️ Guest invite URL detected - bypassing login');
-    showPageContent('invite');
-    return;
-  }
-  
-  // Check if user is logged in for all other pages
-  if (typeof managerAuth === 'undefined' || !managerAuth.isAuthenticated()) {
-    console.log('🔒 Access denied - user not logged in');
+function enforceLogin() {
+    // Check if user is authenticated (supports both old and new auth)
+    if (!window.userAuth || !window.userAuth.isAuthenticated()) {
+        console.log('🔒 User not authenticated, showing login page');
+        
+        const loginPage = document.getElementById('login-page');
+        const appContent = document.querySelector('.app-content');
+        
+        if (loginPage) loginPage.style.display = 'flex';
+        if (appContent) appContent.style.display = 'none';
+        
+        return false;
+    }
     
-    // Show login screen
-    showLoginPage();
-    return;
-  }
-  
-  // User is logged in, proceed to requested page
-  console.log(`✅ Access granted to ${pageId} for user: ${managerAuth.getCurrentManager()?.email}`);
-  showPageContent(pageId);
+    console.log('✅ User authenticated:', window.userAuth.getCurrentUser().email);
+    
+    const loginPage = document.getElementById('login-page');
+    const appContent = document.querySelector('.app-content');
+    
+    if (loginPage) loginPage.style.display = 'none';
+    if (appContent) appContent.style.display = 'block';
+    
+    return true;
 }
 
 /**
- * Show page content with proper error handling
- * @param {string} pageId - Page ID to show
+ * Show page navigation - Updated to enforce login state
  */
-function showPageContent(pageId) {
-    console.log('📄 Page changed to: ' + pageId);
+function showPage(pageId) {
+    console.log(`🧭 Attempting to navigate to: ${pageId}`);
     
-    const pages = ['dashboard', 'create', 'manage', 'invite', 'login'];
-    
-    pages.forEach(page => {
-        const element = document.getElementById(page + '-page');
-        if (element) {
-            element.style.display = (page === pageId) ? 'block' : 'none';
-        }
-    });
-    
-    // Update active nav
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-    });
-    
-    const activeLink = document.querySelector(`[onclick*="'${pageId}'"]`);
-    if (activeLink) {
-        activeLink.classList.add('active');
+    // Allow access to invite page without login (for guests)
+    if (pageId === 'invite') {
+        console.log('🎟️ Guest invite access - no login required');
+        showPageContent(pageId);
+        return;
     }
     
-    // Page-specific initialization
-    if (pageId === 'dashboard') {
-        if (typeof loadManagerData === 'function') {
-            loadManagerData();
-        }
-    } else if (pageId === 'invite') {
-        if (typeof loadInvitePage === 'function') {
-            loadInvitePage();
-        }
+    // Check if this is an invite URL (guest access)
+    if (window.location.hash.includes('invite/') || window.location.search.includes('data=')) {
+        console.log('🎟️ Guest invite URL detected - bypassing login');
+        showPageContent('invite');
+        return;
     }
-} // ✅ Function properly closed
+    
+    // Check if user is logged in for all other pages
+    const isAuthenticated = window.userAuth?.isAuthenticated() || window.managerAuth?.isAuthenticated();
+    
+    if (!isAuthenticated) {
+        console.log('🔒 Access denied - user not logged in');
+        enforceLogin();
+        return;
+    }
+    
+    // User is logged in, proceed to requested page
+    const user = window.userAuth?.getCurrentUser() || window.managerAuth?.getCurrentManager();
+    console.log(`✅ Access granted to ${pageId} for user: ${user?.email}`);
+    showPageContent(pageId);
+}
 
 /**
  * Show login page and hide app content
  */
 function showLoginPage() {
-  // Hide all app pages
-  document.querySelectorAll('.page').forEach(page => {
-    page.classList.remove('active');
-  });
-  
-  // Show login screen
-  const loginPage = document.getElementById('login-page');
-  const appContent = document.querySelector('.app-content');
-  const nav = document.querySelector('.nav');
-  
-  if (loginPage) {
-    loginPage.style.display = 'flex';
-  }
-  if (appContent) {
-    appContent.style.display = 'none';
-  }
-  if (nav) {
-    nav.style.display = 'none';
-  }
-  
-  // Focus on email input
-  setTimeout(() => {
-    const emailInput = document.getElementById('login-email');
-    if (emailInput) {
-      emailInput.focus();
+    // Hide all app pages
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    
+    // Show login screen
+    const loginPage = document.getElementById('login-page');
+    const appContent = document.querySelector('.app-content');
+    const nav = document.querySelector('.nav');
+    
+    if (loginPage) {
+        loginPage.style.display = 'flex';
     }
-  }, 100);
-  
-  console.log('🔑 Login page displayed');
+    if (appContent) {
+        appContent.style.display = 'none';
+    }
+    if (nav) {
+        nav.style.display = 'none';
+    }
+    
+    // Focus on name input
+    setTimeout(() => {
+        const nameInput = document.getElementById('user-name');
+        if (nameInput) {
+            nameInput.focus();
+        }
+    }, 100);
+    
+    console.log('🔑 Login page displayed');
 }
 
 /**
  * Show specific page content (internal function)
  */
-    function showPageContent(pageId) {
-      // Hide all pages
-      document.querySelectorAll('.page').forEach(page => {
+function showPageContent(pageId) {
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
-      });
+    });
     
-      // Show target page
-      const targetPage = document.getElementById(pageId);
-      if (targetPage) targetPage.classList.add('active');
+    // Show target page
+    const targetPage = document.getElementById(pageId);
+    if (targetPage) targetPage.classList.add('active');
     
-      // Update nav buttons (only if nav is visible)
-      const nav = document.querySelector('.nav');
-      if (nav && nav.style.display !== 'none') {
+    // Update nav buttons (only if nav is visible)
+    const nav = document.querySelector('.nav');
+    if (nav && nav.style.display !== 'none') {
         document.querySelectorAll('.nav button').forEach(btn => {
-          btn.classList.remove('active');
+            btn.classList.remove('active');
         });
         const navButton = document.getElementById(`nav-${pageId}`);
         if (navButton) navButton.classList.add('active');
-      }
+    }
     
-      // Show/hide nav based on page
-      if (nav) {
+    // Show/hide nav based on page
+    if (nav) {
         nav.style.display = pageId === 'invite' ? 'none' : 'flex';
-      }
+    }
     
-      // Update URL hash (but don't override invite URLs)
-      if (!window.location.hash.includes('invite/')) {
+    // Update URL hash (but don't override invite URLs)
+    if (!window.location.hash.includes('invite/')) {
         window.location.hash = pageId;
-      }
+    }
     
-      // Initialize template selector on create page
-      if (pageId === 'create' && window.eventTemplates) {
+    // Initialize template selector on create page
+    if (pageId === 'create' && window.eventTemplates) {
         const container = document.getElementById('template-selector-container');
         if (container && !container.hasChildNodes()) {
-          container.innerHTML = window.eventTemplates.generateTemplateSelectorHTML();
+            container.innerHTML = window.eventTemplates.generateTemplateSelectorHTML();
         }
-      }
+    }
     
-      console.log(`📄 Page changed to: ${pageId}`);
+    console.log(`📄 Page changed to: ${pageId}`);
     
-      // DEBUG: Check if loadManagerData exists
-      if (pageId === 'dashboard') {
-        console.log('🔍 Dashboard detected. Checking loadManagerData...');
-        console.log('🔍 typeof window.loadManagerData:', typeof window.loadManagerData);
-        console.log('🔍 window.loadManagerData:', window.loadManagerData);
-      }
+    // Load data when switching to dashboard
+    if (pageId === 'dashboard' && typeof window.loadManagerData === 'function') {
+        window.loadManagerData();
+    }
+}
+
+/**
+ * Update user display in header
+ */
+function updateUserDisplay() {
+    if (window.userAuth && window.userAuth.isAuthenticated()) {
+        const user = window.userAuth.getCurrentUser();
+        
+        const displayName = document.getElementById('user-display-name');
+        const avatar = document.getElementById('user-avatar');
+        
+        if (displayName) {
+            displayName.textContent = user.name || user.email.split('@')[0];
+        }
+        
+        if (avatar) {
+            avatar.textContent = window.userAuth.getInitials();
+        }
+        
+        console.log('👤 User display updated:', user.name);
+    }
+}
+
+/**
+ * Show user menu
+ */
+function showUserMenu() {
+    if (!window.userAuth || !window.userAuth.isAuthenticated()) {
+        return;
+    }
     
-      // Load data when switching to dashboard//
-        if (pageId === 'dashboard' && typeof window.loadManagerData === 'function') { window.loadManagerData(); 
-        } 
-    } // <-- It must close with a single brace right before the next comment block.
+    const user = window.userAuth.getCurrentUser();
+    
+    const message = `
+👤 ${user.name}
+📧 ${user.email}
+${user.unit ? `🎖️ ${user.unit}` : ''}
+
+Do you want to log out?
+    `.trim();
+    
+    if (confirm(message)) {
+        window.userAuth.logout();
+        location.reload();
+    }
+}
+
 /**
  * Show toast notification - Available immediately
  */
@@ -268,7 +312,7 @@ function generateInviteURL(event) {
         time: event.time,
         location: event.location,
         description: event.description,
-        coverImage: event.coverImage, // <-- ADDED/CONFIRMED HERE
+        coverImage: event.coverImage,
         askReason: event.askReason,
         allowGuests: event.allowGuests,
         customQuestions: event.customQuestions || [],
@@ -298,8 +342,6 @@ async function copyToClipboard(text) {
 
 /**
  * Open default email client to compose message to attendee
- * @param {string} email - Attendee email address
- * @param {string} eventTitle - Event title for subject line
  */
 function mailAttendee(email, eventTitle = 'EventCall Event') {
     if (!email) {
@@ -307,20 +349,17 @@ function mailAttendee(email, eventTitle = 'EventCall Event') {
         return;
     }
     
-    // Sanitize inputs for URL
     const sanitizedEmail = encodeURIComponent(email.trim());
     const sanitizedTitle = encodeURIComponent(eventTitle);
-    
-    // Create mailto link with subject
     const subject = `RE: ${sanitizedTitle}`;
     const mailtoLink = `mailto:${sanitizedEmail}?subject=${encodeURIComponent(subject)}`;
     
-    // Open in new window/tab
     window.location.href = mailtoLink;
     
     console.log(`📧 Opening email client for: ${email}`);
     showToast(`📧 Opening email to ${email}`, 'success');
 }
+
 /**
  * Export event data - Available immediately for HTML onclick
  */
@@ -475,8 +514,10 @@ function checkURLHash() {
         const eventId = hash.split('/')[1];
         console.log('📊 Direct manage link accessed:', eventId);
         
-        // Check login first
-        if (typeof managerAuth === 'undefined' || !managerAuth.isAuthenticated()) {
+        // Check login first (supports both auth systems)
+        const isAuthenticated = window.userAuth?.isAuthenticated() || window.managerAuth?.isAuthenticated();
+        
+        if (!isAuthenticated) {
             console.log('🔒 Manage access denied - redirecting to login');
             showLoginPage();
             return;
@@ -495,11 +536,10 @@ function checkURLHash() {
         showPage(hash);
     }
 }
-    
+
 /**
  * Navigate to dashboard - Available immediately for HTML onclick
  */
-
 function goToDashboard() {
     showPage('dashboard');
 }
@@ -522,13 +562,17 @@ window.showToast = showToast;
 window.copyInviteLink = copyInviteLink;
 window.exportEventData = exportEventData;
 window.deleteEvent = deleteEvent;
-window.mailAttendee = mailAttendee; // ✅ NEW: Email attendee function
+window.mailAttendee = mailAttendee;
 window.checkURLHash = checkURLHash;
 window.initializeHashListener = initializeHashListener;
 window.goToDashboard = goToDashboard;
+window.enforceLogin = enforceLogin;
+window.updateUserDisplay = updateUserDisplay;
+window.showUserMenu = showUserMenu;
+
 // Initialize hash listener when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     initializeHashListener();
 });
 
-console.log('✅ Early functions loaded with login enforcement and hash handling');
+console.log('✅ Early functions loaded with email-only authentication support');
