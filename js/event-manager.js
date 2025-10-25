@@ -341,8 +341,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                             <button class="btn-attendee-action" onclick="alert('Edit feature coming soon!')">
                                 ✏️ Edit
                             </button>
-                            <button class="btn-attendee-action" onclick="alert('Email feature coming soon!')">
-                                📧 Email
+                            <button class="btn-attendee-action btn-attendee-action-email" onclick="mailAttendee('${response.email}')">
+                            📧 Email
                             </button>
                             <button class="btn-attendee-action btn-danger-attendee" onclick="if(confirm('Remove this RSVP?')) alert('Remove feature coming soon!')">
                                 🗑️ Remove
