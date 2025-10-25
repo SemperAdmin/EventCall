@@ -434,6 +434,13 @@ function checkURLHash() {
     }
 }
 
+/** * Open mail client for specific attendee */
+    function mailAttendee(
+        email, 
+        eventTitle = 'EventCall Event') { if (!email) { window.showToast('Email address not found.', 'error'); 
+            return; 
+        } // Use mailto: protocol to open default email client const subject = encodeURIComponent(`Regarding your RSVP for ${eventTitle}`); const body = encodeURIComponent('Hello,\n\nI am writing to you regarding your RSVP. Please let me know if you have any questions.\n\nBest,\n[Your Name]'); window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;}
+
 /**
  * Navigate to dashboard - Available immediately for HTML onclick
  */
@@ -463,6 +470,7 @@ window.deleteEvent = deleteEvent;
 window.checkURLHash = checkURLHash;
 window.initializeHashListener = initializeHashListener;
 window.goToDashboard = goToDashboard;
+window.mailAttendee = mailAttendee;
 
 // Initialize hash listener when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
