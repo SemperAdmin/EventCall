@@ -40,7 +40,7 @@ function calculateEventStats(responses) {
     };
 
     responses.forEach(response => {
-        if (response.attending === true) {
+        if (response.attending === true || response.attending === 'true') {
             stats.attending++;
             stats.attendingWithGuests += parseInt(response.guestCount) || 0;
         } else if (response.attending === false) {
