@@ -715,3 +715,88 @@ css.btn-attendee-action-email {
 .attendee-actions .btn-attendee-action-email {
     margin: 0;
 }
+
+/* ============================================
+   PAST EVENTS - IMPROVED DESIGN
+   ============================================ */
+
+.events-section.past-events {
+    opacity: 0.85;
+}
+
+.past-events-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 1rem;
+    background: rgba(100, 116, 139, 0.1);
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+}
+
+.past-events-toggle:hover {
+    background: rgba(100, 116, 139, 0.2);
+}
+
+.past-events-toggle-icon {
+    transition: transform 0.3s ease;
+}
+
+.past-events-toggle.collapsed .past-events-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.event-card-v2.event-past {
+    opacity: 0.75;
+    border-color: #64748b;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+}
+
+.event-card-v2.event-past .event-cover-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.event-card-compact {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.event-ended-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: rgba(100, 116, 139, 0.2);
+    border: 1px solid #64748b;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.btn-archive {
+    padding: 0.5rem 1rem;
+    background: rgba(100, 116, 139, 0.2);
+    border: 1px solid #64748b;
+    color: #94a3b8;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-archive:hover {
+    background: rgba(100, 116, 139, 0.3);
+    color: #cbd5e1;
+}
