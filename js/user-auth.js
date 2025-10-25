@@ -35,11 +35,9 @@ const userAuth = {
 
             this.hideLoginScreen();
 
-            // Load user's events
-            if (window.loadManagerData) {
-                await window.loadManagerData();
-            }
-        } else {
+
+
+
             console.log('🔒 No saved user - showing login screen');
             this.showLoginScreen();
         }
