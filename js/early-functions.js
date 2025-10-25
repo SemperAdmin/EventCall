@@ -12,11 +12,9 @@ window.responses = {};
 document.addEventListener('DOMContentLoaded', async () => {
     // Skip auth check for invite pages (guests don't need login)
     const isInvitePage = window.location.hash.includes('invite/') || window.location.search.includes('data=');
-    
-    if (!isInvitePage) {
-        // Check if user is authenticated (supports both old and new auth)
-        const isAuthenticated = window.userAuth?.isAuthenticated() || window.managerAuth?.isAuthenticated();
-        
+
+    if (!isInvitePage && window.managerAuth) {
+        const isAuthenticated = await window.managerAuth.init();
         if (!isAuthenticated) {
             console.log('🔒 Not authenticated - showing login page');
             window.loginUI.showLoginPage();
@@ -44,19 +42,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         console.error('❌ loadManagerData function not available after timeout');
                     }
                 }, 5000);
-            console.log('🔒 Not authenticated - showing login page');
-            enforceLogin();
-        } else {
-            console.log('✅ Authenticated - showing app');
-            
-            // Update user display in header
-            if (window.updateUserDisplay) {
-                window.updateUserDisplay();
-            }
-            
-            // Load manager data if available
-            if (window.loadManagerData) {
-                window.loadManagerData();
             }
         }
     }
