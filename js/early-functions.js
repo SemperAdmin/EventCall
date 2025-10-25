@@ -16,10 +16,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isInvitePage && window.managerAuth) {
         const isAuthenticated = await window.managerAuth.init();
         if (!isAuthenticated) {
-            console.log('ðŸ”’ Not authenticated - showing login page');
+            console.log('ðŸ"' Not authenticated - showing login page');
             window.loginUI.showLoginPage();
         } else {
             console.log('âœ… Authenticated - showing app');
+
+            // Load events on initial page load if on dashboard
+            const hash = window.location.hash.substring(1);
+            const isDefaultDashboard = !hash || hash === 'dashboard';
+
+            if (isDefaultDashboard) {
+                console.log('ðŸ"Š Initial load: Loading dashboard data...');
+                // Wait for loadManagerData to be available
+                const waitForLoad = setInterval(() => {
+                    if (typeof window.loadManagerData === 'function') {
+                        clearInterval(waitForLoad);
+                        window.loadManagerData();
+                    }
+                }, 100); // Check every 100ms
+
+                // Timeout after 5 seconds
+                setTimeout(() => {
+                    clearInterval(waitForLoad);
+                    if (typeof window.loadManagerData !== 'function') {
+                        console.error('âŒ loadManagerData function not available after timeout');
+                    }
+                }, 5000);
+            }
         }
     }
 });

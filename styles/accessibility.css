@@ -1,0 +1,314 @@
+/**
+ * EventCall - WCAG 2.1 AA Accessibility Styles
+ * Focus indicators, keyboard navigation, screen reader support
+ */
+
+/* ============================================
+   FOCUS INDICATORS
+   ============================================ */
+
+/* Remove default outline and add custom focus styles */
+*:focus {
+    outline: none;
+}
+
+/* Visible focus indicator for all interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+    outline: 3px solid #d4af37; /* Semper gold */
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2);
+}
+
+/* Enhanced focus for primary buttons */
+.btn:focus-visible,
+.btn-primary-action:focus-visible {
+    outline: 3px solid #d4af37;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px rgba(212, 175, 55, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+/* Focus for event cards */
+.event-card-v2:focus-within {
+    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.2);
+    transform: translateY(-2px);
+}
+
+/* ============================================
+   KEYBOARD NAVIGATION
+   ============================================ */
+
+/* Skip to main content link (for screen readers and keyboard users) */
+.skip-to-main {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #d4af37;
+    color: #1a1f2e;
+    padding: 0.75rem 1.5rem;
+    font-weight: 700;
+    text-decoration: none;
+    z-index: 100;
+    border-radius: 0 0 0.5rem 0;
+}
+
+.skip-to-main:focus {
+    top: 0;
+}
+
+/* Improve keyboard navigation visibility */
+.nav button:focus-visible {
+    background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+    color: #1a1f2e;
+}
+
+/* ============================================
+   HIGH CONTRAST MODE SUPPORT
+   ============================================ */
+
+@media (prefers-contrast: high) {
+    .btn {
+        border: 2px solid currentColor;
+    }
+
+    .event-card-v2 {
+        border: 2px solid #d4af37;
+    }
+
+    a {
+        text-decoration: underline;
+    }
+}
+
+/* ============================================
+   REDUCED MOTION SUPPORT
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .spinner {
+        animation: none;
+        border: 3px solid #d4af37;
+    }
+}
+
+/* ============================================
+   SCREEN READER ONLY TEXT
+   ============================================ */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Allow screen reader only element to be focusable */
+.sr-only-focusable:active,
+.sr-only-focusable:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+}
+
+/* ============================================
+   COLOR CONTRAST IMPROVEMENTS
+   ============================================ */
+
+/* Ensure sufficient contrast for text */
+.meta-text,
+.stat-label {
+    color: #475569; /* Darker for better contrast */
+}
+
+/* Button text contrast */
+.btn,
+.btn-primary-action {
+    font-weight: 600; /* Slightly bolder for readability */
+}
+
+/* Link colors with sufficient contrast */
+a {
+    color: #b91c1c; /* Darker red for better contrast */
+    text-decoration-skip-ink: auto;
+}
+
+a:hover {
+    color: #991b1b;
+    text-decoration: underline;
+}
+
+/* ============================================
+   FORM ACCESSIBILITY
+   ============================================ */
+
+/* Clear labels for form fields */
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #1e293b;
+}
+
+/* Required field indicator */
+input:required + label::after,
+label.required::after {
+    content: " *";
+    color: #dc2626;
+    font-weight: 700;
+}
+
+/* Error states */
+input:invalid:not(:focus):not(:placeholder-shown),
+.input-error {
+    border-color: #dc2626;
+    background-color: #fef2f2;
+}
+
+.error-message {
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+/* Success states */
+.input-success {
+    border-color: #16a34a;
+    background-color: #f0fdf4;
+}
+
+/* ============================================
+   LOADING STATES & SPINNERS
+   ============================================ */
+
+/* Loading spinner with accessibility label */
+.spinner {
+    border: 3px solid rgba(212, 175, 55, 0.2);
+    border-top-color: #d4af37;
+    border-radius: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    animation: spin 0.6s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Loading state for buttons */
+.btn[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn[aria-busy="true"] {
+    position: relative;
+    color: transparent;
+}
+
+.btn[aria-busy="true"]::after {
+    content: "";
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    top: 50%;
+    left: 50%;
+    margin-left: -0.5rem;
+    margin-top: -0.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+/* ============================================
+   TOUCH TARGET IMPROVEMENTS
+   ============================================ */
+
+/* Ensure all interactive elements meet minimum size */
+button,
+a,
+input[type="checkbox"],
+input[type="radio"],
+select {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* Larger tap targets for mobile */
+@media (max-width: 768px) {
+    button,
+    .btn,
+    a.btn {
+        min-height: 48px;
+        padding: 0.75rem 1.25rem;
+    }
+
+    /* Checkbox and radio larger tap area */
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 24px;
+        height: 24px;
+        margin: 10px; /* Extra space for easier tapping */
+    }
+}
+
+/* ============================================
+   DARK MODE SUPPORT (Future Enhancement)
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+    /* Dark mode styles can be added here */
+    /* Currently maintaining light theme for consistency */
+}
+
+/* ============================================
+   PRINT ACCESSIBILITY
+   ============================================ */
+
+@media print {
+    /* Ensure focus indicators don't show in print */
+    *:focus-visible {
+        outline: none;
+        box-shadow: none;
+    }
+
+    /* Print-friendly link display */
+    a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.8em;
+        color: #666;
+    }
+
+    /* Skip navigation links for print */
+    .nav,
+    .btn:not(.print-visible) {
+        display: none;
+    }
+}

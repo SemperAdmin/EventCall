@@ -166,11 +166,41 @@
         width: 100%;
     }
     
-    /* Buttons */
+    /* Buttons - Minimum touch target size for accessibility */
     .btn {
         padding: 0.5rem 1rem;
         font-size: 0.875rem;
         letter-spacing: 0.25px;
+        min-height: 44px; /* WCAG 2.1 AA touch target minimum */
+        min-width: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Event card buttons */
+    .btn-primary-action,
+    .btn-quick {
+        min-height: 48px; /* Larger touch target for primary actions */
+        min-width: 48px;
+    }
+
+    /* Dashboard cards - Better mobile stacking */
+    .events-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    /* Prevent text overflow */
+    .event-title {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+    }
+
+    /* Better card spacing on mobile */
+    .event-card-v2 {
+        margin-bottom: 1rem;
     }
     
     /* Search Controls */

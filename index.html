@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles/components.css">
     <link rel="stylesheet" href="styles/invite.css">
     <link rel="stylesheet" href="styles/responsive.css">
+    <link rel="stylesheet" href="styles/accessibility.css">
     <link rel="stylesheet" href="styles/login.css">
     <link rel="stylesheet" href="styles/dashboard-v2.css">
     <link rel="stylesheet" href="styles/event-management-v2.css">
@@ -17,6 +18,8 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
+<!-- Skip to main content link for keyboard users and screen readers -->
+<a href="#main-content" class="skip-to-main">Skip to main content</a>
 <!-- Updated Login Page HTML with Obfuscated Token -->
 
 <script>
@@ -110,14 +113,15 @@ function toggleTokenVisibility() {
                     <span class="user-email" id="user-email-display">User</span>
                 </div>
             </div>
-          <div class="nav">
-              <button onclick="goToDashboard()" class="active" id="nav-dashboard">🏠 Dashboard</button>
-              <button onclick="showPage('create')" id="nav-create">➕ Create Event</button>
-          </div>
+          <nav class="nav" role="navigation" aria-label="Main navigation">
+              <button onclick="goToDashboard()" class="active" id="nav-dashboard" aria-label="Go to Dashboard" aria-current="page">🏠 Dashboard</button>
+              <button onclick="showPage('create')" id="nav-create" aria-label="Create New Event">➕ Create Event</button>
+          </nav>
         </div>
     </div>
 
     <div class="container">
+        <main id="main-content" role="main">
         <div id="dashboard" class="page active">
             <div class="welcome-banner">
                 <div class="welcome-title">🎖️ Welcome to EventCall</div>
@@ -151,37 +155,43 @@ function toggleTokenVisibility() {
             <!-- IMPORTANT: No action attribute, no method attribute -->
             <form id="event-form">
                 <div class="form-group">
-                    <label for="event-title">Event Title</label>
-                    <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson">
+                    <label for="event-title" class="required">Event Title</label>
+                    <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson" aria-required="true" aria-describedby="title-help">
+                    <span id="title-help" class="sr-only">Enter a descriptive title for your event, at least 3 characters</span>
                 </div>
 
                 <div class="form-group">
-                    <label for="event-date">Date</label>
-                    <input type="date" id="event-date" required>
+                    <label for="event-date" class="required">Date</label>
+                    <input type="date" id="event-date" required aria-required="true" aria-describedby="date-help">
+                    <span id="date-help" class="sr-only">Select the date when your event will take place</span>
                 </div>
 
                 <div class="form-group">
-                    <label for="event-time">Time</label>
-                    <input type="time" id="event-time" required>
+                    <label for="event-time" class="required">Time</label>
+                    <input type="time" id="event-time" required aria-required="true" aria-describedby="time-help">
+                    <span id="time-help" class="sr-only">Select the time when your event will start</span>
                 </div>
 
                 <div class="form-group">
                     <label for="event-location">Location</label>
-                    <input type="text" id="event-location" placeholder="e.g., Base Chapel, Building 123">
+                    <input type="text" id="event-location" placeholder="e.g., Base Chapel, Building 123" aria-describedby="location-help">
+                    <span id="location-help" class="sr-only">Enter the location where the event will be held</span>
                 </div>
 
                 <div class="form-group">
                     <label for="event-description">Description</label>
-                    <textarea id="event-description" placeholder="Additional details about the event..."></textarea>
+                    <textarea id="event-description" placeholder="Additional details about the event..." aria-describedby="description-help"></textarea>
+                    <span id="description-help" class="sr-only">Provide additional details about the event</span>
                 </div>
 
                 <div class="form-group">
-                    <label>Cover Image (Optional)</label>
-                    <div class="image-upload" id="cover-upload">
+                    <label for="cover-input">Cover Image (Optional)</label>
+                    <div class="image-upload" id="cover-upload" role="button" tabindex="0" aria-label="Upload cover image by clicking or dragging a file" aria-describedby="cover-help">
                         <p>Click or drag to upload cover image</p>
-                        <input type="file" id="cover-input" accept="image/*" style="display: none;">
+                        <input type="file" id="cover-input" accept="image/*" style="display: none;" aria-label="Choose cover image file">
                     </div>
-                    <img id="cover-preview" class="image-preview hidden">
+                    <span id="cover-help" class="sr-only">Upload a cover image for your event. Maximum size 5MB. Accepted formats: JPEG, PNG, GIF, WebP</span>
+                    <img id="cover-preview" class="image-preview hidden" alt="Event cover image preview">
                 </div>
 
                 <div class="form-group">
@@ -221,7 +231,7 @@ function toggleTokenVisibility() {
                 </div>
 
                 <!-- IMPORTANT: type="submit" with no onclick handler -->
-                <button type="submit" class="btn">🚀 Deploy Event</button>
+                <button type="submit" class="btn" aria-label="Deploy event and create invitation">🚀 Deploy Event</button>
             </form>
         </div>
 
@@ -232,6 +242,7 @@ function toggleTokenVisibility() {
         <div id="invite" class="page">
             <div id="invite-content"></div>
         </div>
+        </main>
     </div>
 
     <div class="footer">
@@ -312,7 +323,11 @@ function toggleTokenVisibility() {
   </div>
 </div>
 
+<!-- Service Worker Registration -->
+<script src="js/service-worker-registration.js"></script>
+
 <!-- EARLY FUNCTIONS FIRST -->
+<script src="js/error-handler.js"></script>
 <script src="js/backend-api.js"></script>
 <script src="js/config.js"></script>
 <script src="js/manager-auth.js"></script>
