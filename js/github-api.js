@@ -292,19 +292,21 @@ async loadResponses() {
         console.log('🔍 RSVP-related files:', rsvpRelated.map(f => f.path));
 
         const responseFiles = treeData.tree.filter(item => 
-            item.path.startsWith('rsvps/') && 
+            (item.path.startsWith('rsvps/') || item.path.startsWith('rsvp-')) && 
             item.path.endsWith('.json') && 
             item.type === 'blob' &&
-            item.path !== 'rsvps/.gitkeep'
+            item.path !== 'rsvps/.gitkeep' &&
+            item.path !== '.gitkeep'
         );
 
         console.log('Found ' + responseFiles.length + ' RSVP files in private repo');
 
         for (const file of responseFiles) {
             try {
-                // Extract event ID from filename: rsvps/{eventId}.json
-                const eventId = file.path.replace('rsvps/', '').replace('.json', '');
-
+                let eventId;
+                let rsvpArray;
+                
+                // Fetch the file content first
                 const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
                     headers: {
                         'Authorization': 'token ' + token,
@@ -313,22 +315,34 @@ async loadResponses() {
                     }
                 });
 
-                if (fileResponse.ok) {
-                    const fileData = await fileResponse.json();
-                    const rsvpArray = JSON.parse(this.safeBase64Decode(fileData.content));
+                if (!fileResponse.ok) continue;
 
-                    // RSVP file contains an array of RSVPs for this event
-                    if (Array.isArray(rsvpArray) && eventId) {
-                        if (!responses[eventId]) {
-                            responses[eventId] = [];
-                        }
+                const fileData = await fileResponse.json();
+                rsvpArray = JSON.parse(this.safeBase64Decode(fileData.content));
 
-                        // Add all RSVPs from the array
-                        responses[eventId] = rsvpArray;
-                        console.log(`âœ… Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId}`);
-                    } else {
-                        console.warn(`âš ï¸ Unexpected RSVP format for event ${eventId}`);
+                // Extract eventId - either from filename or from content
+                if (file.path.startsWith('rsvps/') && !file.path.includes('rsvp-')) {
+                    // Format: rsvps/{eventId}.json
+                    eventId = file.path.replace('rsvps/', '').replace('.json', '');
+                } else if (Array.isArray(rsvpArray) && rsvpArray.length > 0 && rsvpArray[0].eventId) {
+                    // Format: rsvp-{timestamp}.json - get eventId from content
+                    eventId = rsvpArray[0].eventId;
+                } else {
+                    console.warn(`⚠️ Could not extract eventId from RSVP file: ${file.path}`);
+                    continue;
+                }
+
+                // RSVP file contains an array of RSVPs for this event
+                if (Array.isArray(rsvpArray) && eventId) {
+                    if (!responses[eventId]) {
+                        responses[eventId] = [];
                     }
+
+                    // Add all RSVPs from the array
+                    responses[eventId] = rsvpArray;
+                    console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId} from ${file.path}`);
+                } else {
+                    console.warn(`⚠️ Unexpected RSVP format in ${file.path}`);
                 }
             } catch (error) {
                 console.error('Failed to load response file ' + file.path + ':', error);
