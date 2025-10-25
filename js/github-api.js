@@ -989,6 +989,11 @@ class GitHubAPI {
                 question: this.cleanText(q.question)
             }));
         }
+
+        // Explicitly preserve coverImage to prevent it from being lost
+        if (eventData.coverImage) {
+            cleaned.coverImage = eventData.coverImage;
+        }
         
         return cleaned;
     }
