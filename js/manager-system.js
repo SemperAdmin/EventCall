@@ -660,9 +660,15 @@ async function handleEventSubmit(e) {
     submitBtn.disabled = true;
 
     try {
-        // Validate authentication
-        if (!managerAuth.isAuthenticated()) {
+        // Validate authentication - check if managerAuth exists
+        if (!window.managerAuth || !window.managerAuth.isAuthenticated()) {
             throw new Error('Authentication required. Please log in to create events.');
+        }
+
+        // Get current manager
+        const currentManager = window.managerAuth.getCurrentManager();
+        if (!currentManager) {
+            throw new Error('Unable to get user information. Please log in again.');
         }
 
         // Collect form data
@@ -681,8 +687,8 @@ async function handleEventSubmit(e) {
             eventDetails: getEventDetails(),
             created: Date.now(),
             status: 'active',
-            createdBy: managerAuth.getCurrentManager()?.email,
-            createdByName: managerAuth.getCurrentManager()?.email.split('@')[0]
+            createdBy: currentManager.email,
+            createdByName: currentManager.email.split('@')[0]
         };
 
         // Validate required fields
@@ -707,7 +713,7 @@ async function handleEventSubmit(e) {
         submitBtn.innerHTML = '<div class="spinner"></div> Saving to GitHub...';
 
         // Save to GitHub with retry logic
-        if (managerAuth.isAuthenticated() && window.githubAPI) {
+        if (window.githubAPI) {
             if (window.errorHandler) {
                 // Use error handler's retry mechanism
                 await window.errorHandler.retryWithBackoff(
