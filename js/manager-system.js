@@ -278,16 +278,13 @@ function renderDashboard() {
     const eventsList = document.getElementById('events-list');
     if (!eventsList) return;
 
-    console.log('🔍 DEBUG: window.responses =', window.responses);
-    console.log('🔍 DEBUG: Object.keys(window.responses) =', Object.keys(window.responses || {}));
-
     if (!window.events || Object.keys(window.events).length === 0) {
         eventsList.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">🎖️</div>
                 <h3>No Events Created Yet</h3>
                 <p>Start by creating your first military event</p>
-                <button class="btn" onclick="showPage('create')">➕ Create Event</button>
+                <button class="btn btn-primary" onclick="showPage('create')">➕ Create Event</button>
             </div>
         `;
         return;
@@ -296,63 +293,134 @@ function renderDashboard() {
     const eventArray = Object.values(window.events);
     console.log('📊 Rendering dashboard with ' + eventArray.length + ' events');
     
-    eventsList.innerHTML = eventArray
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .map(event => {
-            const eventResponses = window.responses?.[event.id] || [];
-            console.log(`🔍 DEBUG: Event ${event.title} (${event.id}) has ${eventResponses.length} responses`);
-            const stats = calculateEventStats(eventResponses);
-            const inviteLink = `${window.location.origin}${window.location.pathname}#invite/${event.id}`;
-            const isPast = isEventInPast(event.date, event.time);
-            
-            return `
-                <div class="event-card ${isPast ? 'event-past' : ''}">
-                    ${event.coverImage ? `<img src="${event.coverImage}" alt="${event.title}" class="event-cover">` : ''}
-                    <div class="event-header">
-                        <h3>${event.title}</h3>
-                        ${isPast ? '<span class="event-status-badge event-status-past">Past Event</span>' : '<span class="event-status-badge event-status-active">Active</span>'}
-                    </div>
-                    <div class="event-meta">
-                        <span>📅 ${formatDate(event.date)}</span>
-                        <span>⏰ ${formatTime(event.time)}</span>
-                        <span>📍 ${event.location}</span>
-                    </div>
-                    
-                    <div class="rsvp-stats">
-                        <div class="stat">
-                            <span class="stat-value">${stats.attending}</span>
-                            <span class="stat-label">Attending</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${stats.notAttending}</span>
-                            <span class="stat-label">Not Attending</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${stats.totalHeadcount}</span>
-                            <span class="stat-label">Total Headcount</span>
-                        </div>
-                    </div>
+    // Separate active and past events
+    const now = new Date();
+    const activeEvents = eventArray.filter(event => !isEventInPast(event.date, event.time));
+    const pastEvents = eventArray.filter(event => isEventInPast(event.date, event.time));
+    
+    // Sort: active by date ascending, past by date descending
+    activeEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+    pastEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    // Render active events section
+    let html = `
+        <div class="dashboard-header">
+            <h2>🎖️ Command Center</h2>
+            <div class="quick-actions">
+                <button class="btn btn-primary" onclick="showPage('create')">
+                    ➕ Create Event
+                </button>
+                <button class="btn" onclick="syncWithGitHub()">
+                    🔄 Sync RSVPs
+                </button>
+            </div>
+        </div>
+    `;
+    
+    if (activeEvents.length > 0) {
+        html += `
+            <div class="events-section">
+                <h3 class="section-title">🟢 Active Events</h3>
+                <div class="events-grid">
+                    ${activeEvents.map(event => renderEventCard(event, false)).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (pastEvents.length > 0) {
+        html += `
+            <div class="events-section">
+                <h3 class="section-title">🔴 Past Events</h3>
+                <div class="events-grid">
+                    ${pastEvents.map(event => renderEventCard(event, true)).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    eventsList.innerHTML = html;
+    console.log('✅ Dashboard rendered successfully with Command Center layout');
+}
 
-                    <div class="event-actions">
-                        <button class="btn btn-primary" onclick="window.eventManager.showEventManagement('${event.id}')">
-                            📊 Manage
-                        </button>
-                        <button class="btn" onclick="copyInviteLink('${event.id}')">
+function renderEventCard(event, isPast) {
+    const eventResponses = window.responses?.[event.id] || [];
+    const stats = calculateEventStats(eventResponses);
+    const inviteLink = `${window.location.origin}${window.location.pathname}#invite/${event.id}`;
+    
+    return `
+        <div class="event-card-v2 ${isPast ? 'event-past' : 'event-active'}">
+            ${event.coverImage ? `
+                <div class="event-cover-wrapper">
+                    <img src="${event.coverImage}" alt="${event.title}" class="event-cover">
+                    <div class="event-badge ${isPast ? 'badge-past' : 'badge-active'}">
+                        ${isPast ? '🔴 Past' : '🟢 Active'}
+                    </div>
+                </div>
+            ` : `
+                <div class="event-cover-placeholder">
+                    <div class="placeholder-icon">🎖️</div>
+                    <div class="event-badge ${isPast ? 'badge-past' : 'badge-active'}">
+                        ${isPast ? '🔴 Past' : '🟢 Active'}
+                    </div>
+                </div>
+            `}
+            
+            <div class="event-card-content">
+                <h3 class="event-title">${event.title}</h3>
+                
+                <div class="event-meta-v2">
+                    <div class="meta-item">
+                        <span class="meta-icon">📅</span>
+                        <span class="meta-text">${formatDate(event.date)}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-icon">⏰</span>
+                        <span class="meta-text">${formatTime(event.time)}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-icon">📍</span>
+                        <span class="meta-text">${event.location}</span>
+                    </div>
+                </div>
+                
+                <div class="rsvp-stats-v2">
+                    <div class="stat-box stat-attending">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-number">${stats.attending}</div>
+                        <div class="stat-label">Attending</div>
+                    </div>
+                    <div class="stat-box stat-declined">
+                        <div class="stat-icon">❌</div>
+                        <div class="stat-number">${stats.notAttending}</div>
+                        <div class="stat-label">Declined</div>
+                    </div>
+                    <div class="stat-box stat-headcount">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-number">${stats.totalHeadcount}</div>
+                        <div class="stat-label">Headcount</div>
+                    </div>
+                </div>
+                
+                <div class="event-actions-v2">
+                    <button class="btn-primary-action" onclick="window.eventManager.showEventManagement('${event.id}')">
+                        📊 Manage Event
+                    </button>
+                    <div class="quick-actions-row">
+                        <button class="btn-quick" onclick="copyInviteLink('${event.id}')" title="Copy Invite Link">
                             🔗 Copy Link
                         </button>
-                        <button class="btn" onclick="exportEventData('${event.id}')">
-                            💾 Export
+                        <button class="btn-quick" onclick="exportEventData('${event.id}')" title="Export Data">
+                            📤 Export
                         </button>
-                        <button class="btn btn-danger" onclick="deleteEvent('${event.id}')">
+                        <button class="btn-quick btn-danger-quick" onclick="deleteEvent('${event.id}')" title="Delete Event">
                             🗑️ Delete
                         </button>
                     </div>
                 </div>
-            `;
-        })
-        .join('');
-
-    console.log('✅ Dashboard rendered successfully with sync functionality');
+            </div>
+        </div>
+    `;
 }
 
 function formatDate(dateString) {
