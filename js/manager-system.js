@@ -1,6 +1,6 @@
 /**
- * Manager System - Enhanced with RSVP Sync Functionality
- * Added GitHub Issues processing and real-time sync capabilities
+ * Manager System - Enhanced with RSVP Sync Functionality and Email Auth
+ * Added GitHub Issues processing, real-time sync capabilities, and userAuth support
  */
 
 // Global sync state
@@ -57,6 +57,30 @@ function calculateEventStats(responses) {
 }
 
 /**
+ * Get current authenticated user (supports both old and new auth)
+ */
+function getCurrentAuthenticatedUser() {
+    // Try new userAuth first
+    if (window.userAuth && window.userAuth.isAuthenticated()) {
+        return window.userAuth.getCurrentUser();
+    }
+    
+    // Fallback to old managerAuth
+    if (window.managerAuth && window.managerAuth.isAuthenticated()) {
+        return window.managerAuth.getCurrentManager();
+    }
+    
+    return null;
+}
+
+/**
+ * Check if user is authenticated (supports both old and new auth)
+ */
+function isUserAuthenticated() {
+    return getCurrentAuthenticatedUser() !== null;
+}
+
+/**
  * Sync RSVPs from GitHub Issues
  */
 async function syncWithGitHub() {
@@ -65,8 +89,8 @@ async function syncWithGitHub() {
         return;
     }
 
-    if (!managerAuth.isAuthenticated()) {
-        showToast('🔒 Please login with GitHub token to sync RSVPs', 'error');
+    if (!isUserAuthenticated()) {
+        showToast('🔒 Please login to sync RSVPs', 'error');
         return;
     }
 
@@ -117,7 +141,7 @@ async function syncWithGitHub() {
  * Update pending RSVP count in UI
  */
 async function updatePendingRSVPCount() {
-    if (!managerAuth.isAuthenticated()) {
+    if (!isUserAuthenticated()) {
         return;
     }
 
@@ -197,8 +221,8 @@ async function loadManagerData() {
     if (!window.events) window.events = {};
     if (!window.responses) window.responses = {};
     
-    if (!managerAuth.isAuthenticated()) {
-        console.log('⚠️ No GitHub token available - using local events only');
+    if (!isUserAuthenticated()) {
+        console.log('⚠️ No authentication - using local events only');
         renderDashboard();
         return;
     }
@@ -239,13 +263,13 @@ async function deleteEvent(eventId) {
             return;
         }
 
-        const currentUser = managerAuth.getCurrentManager();
+        const currentUser = getCurrentAuthenticatedUser();
         if (!currentUser || event.createdBy !== currentUser.email) {
             showToast('❌ You can only delete your own events', 'error');
             return;
         }
 
-        if (managerAuth.isAuthenticated() && window.githubAPI) {
+        if (isUserAuthenticated() && window.githubAPI) {
             try {
                 if (window.githubAPI && window.githubAPI.deleteEvent) {
                     await window.githubAPI.deleteEvent(eventId, event.title);
@@ -578,9 +602,11 @@ async function handleEventSubmit(e) {
     submitBtn.disabled = true;
 
     try {
-        if (!managerAuth.isAuthenticated()) {
+        if (!isUserAuthenticated()) {
             throw new Error('Please log in to create events');
         }
+
+        const currentUser = getCurrentAuthenticatedUser();
 
         const eventData = {
             id: generateUUID(),
@@ -597,8 +623,9 @@ async function handleEventSubmit(e) {
             eventDetails: getEventDetails(),
             created: Date.now(),
             status: 'active',
-            createdBy: managerAuth.getCurrentManager()?.email,
-            createdByName: managerAuth.getCurrentManager()?.email.split('@')[0]
+            createdBy: currentUser.email,
+            createdByName: currentUser.name || currentUser.email.split('@')[0],
+            createdById: currentUser.id
         };
 
         if (!eventData.title || eventData.title.length < 3) {
@@ -610,7 +637,7 @@ async function handleEventSubmit(e) {
         }
 
         // Save directly to EventCall-Data via GitHub API
-        if (managerAuth.isAuthenticated() && window.githubAPI) {
+        if (isUserAuthenticated() && window.githubAPI) {
             await window.githubAPI.saveEvent(eventData);
         } else {
             throw new Error('GitHub API not available or not authenticated');
@@ -629,10 +656,10 @@ async function handleEventSubmit(e) {
             coverPreview.src = '';
         }
         // Reset upload area text
-const uploadArea = document.getElementById('cover-upload');
-if (uploadArea) {
-    uploadArea.innerHTML = `<p>Click or drag to upload cover image</p>`;
-}
+        const uploadArea = document.getElementById('cover-upload');
+        if (uploadArea) {
+            uploadArea.innerHTML = `<p>Click or drag to upload cover image</p>`;
+        }
         clearCustomQuestions();
         clearEventDetails();
         
@@ -659,7 +686,7 @@ if (uploadArea) {
             if (window.showPage) {
                 window.showPage('dashboard');
             }
-        }, 1000); // Increased from 500ms to 1000ms
+        }, 1000);
     }
 }
 
@@ -776,8 +803,9 @@ function setupEventForm() {
     // Setup image upload functionality
     setupImageUpload();
 }
+
 /**
- * ADD to manager-system.js: Toggle past events visibility
+ * Toggle past events visibility
  */
 function togglePastEvents() {
     const pastSection = document.querySelector('.past-events-grid');
@@ -796,8 +824,6 @@ function togglePastEvents() {
     }
 }
 
-// Export function
-window.togglePastEvents = togglePastEvents;
 /**
  * Initialize sync status checker
  * Note: Automatic polling removed to reduce API calls.
@@ -813,7 +839,7 @@ function initializeSyncChecker() {
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     setupEventForm();
-    setupImageUpload(); // Initialize on page load
+    setupImageUpload();
     initializeSyncChecker();
 });
 
@@ -843,6 +869,9 @@ window.updatePendingRSVPCount = updatePendingRSVPCount;
 window.initializeSyncChecker = initializeSyncChecker;
 window.setupImageUpload = setupImageUpload;
 window.handleImageFile = handleImageFile;
+window.togglePastEvents = togglePastEvents;
+window.getCurrentAuthenticatedUser = getCurrentAuthenticatedUser;
+window.isUserAuthenticated = isUserAuthenticated;
 
 window.showEventManagement = function(eventId) {
     if (window.eventManager && window.eventManager.showEventManagement) {
@@ -860,4 +889,4 @@ window.duplicateEvent = function(eventId) {
     }
 };
 
-console.log('✅ Enhanced manager system loaded with RSVP sync functionality');
+console.log('✅ Enhanced manager system loaded with RSVP sync functionality and email auth support');
