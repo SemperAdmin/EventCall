@@ -1,6 +1,6 @@
 /**
- * EventCall GitHub API Integration - Enhanced with Issue Processing
- * Added RSVP issue processing and management capabilities
+ * EventCall GitHub API Integration - Enhanced with Issue Processing and User Management
+ * Added RSVP issue processing, management capabilities, and email-based user authentication
  */
 
 class GitHubAPI {
@@ -15,16 +15,23 @@ class GitHubAPI {
     /**
      * Get token from userAuth or config
      */
-getToken() {
-    // Use token from GITHUB_CONFIG
-    if (window.GITHUB_CONFIG && window.GITHUB_CONFIG.token) {
-        return window.GITHUB_CONFIG.token;
+    getToken() {
+        // First try to get token from userAuth (new email-only system)
+        if (window.userAuth && window.userAuth.getGitHubToken) {
+            const token = window.userAuth.getGitHubToken();
+            if (token) {
+                return token;
+            }
+        }
+        
+        // Fallback to GITHUB_CONFIG
+        if (window.GITHUB_CONFIG && window.GITHUB_CONFIG.token) {
+            return window.GITHUB_CONFIG.token;
+        }
+        
+        console.error('GITHUB_CONFIG.token not found');
+        return null;
     }
-    
-    // Fallback if GITHUB_CONFIG not loaded
-    console.error('GITHUB_CONFIG.token not found');
-    return null;
-}
 
     /**
      * Check if token is available
@@ -228,12 +235,13 @@ getToken() {
                         const fileData = await fileResponse.json();
                         const content = JSON.parse(this.safeBase64Decode(fileData.content));
 
-                        // Filter events by authenticated manager
-                        if (window.managerAuth && window.managerAuth.isAuthenticated()) {
-                            const currentManager = window.managerAuth.getCurrentManager();
-                            if (content.createdBy === currentManager?.email) {
+                        // Filter events by authenticated user (works with both old and new auth)
+                        const currentUser = window.userAuth?.getCurrentUser() || window.managerAuth?.getCurrentManager();
+                        
+                        if (currentUser) {
+                            if (content.createdBy === currentUser.email) {
                                 events[content.id] = content;
-                                console.log('✅ Loaded event for manager:', content.title);
+                                console.log('✅ Loaded event for user:', content.title);
                             }
                         } else {
                             // No auth - load all events
@@ -257,122 +265,122 @@ getToken() {
     /**
      * Load all RSVP responses from GitHub
      */
-async loadResponses() {
-    const token = this.getToken();
-    if (!token) {
-        console.warn('⚠️ No GitHub token - returning empty responses');
-        return {};
-    }
-
-    try {
-        console.log('📥 Loading responses from private EventCall-Data repo...');
-        
-        // Load from PRIVATE repo: EventCall-Data
-        const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
-            headers: {
-                'Authorization': 'token ' + token,
-                'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'EventCall-App'
-            }
-        });
-
-        if (!treeResponse.ok) {
-            console.log('No responses found or repository not accessible');
+    async loadResponses() {
+        const token = this.getToken();
+        if (!token) {
+            console.warn('⚠️ No GitHub token - returning empty responses');
             return {};
         }
 
-        const treeData = await treeResponse.json();
-        const responses = {};
-
-        // Debug: log all files to see the actual structure
-        console.log('🔍 All files in tree:', treeData.tree.length);
-        const rsvpRelated = treeData.tree.filter(item => 
-            item.path.includes('rsvp') || item.path.includes('RSVP')
-        );
-        console.log('🔍 RSVP-related files:', rsvpRelated.map(f => f.path));
-
-        const responseFiles = treeData.tree.filter(item => 
-            (item.path.startsWith('rsvps/') || item.path.startsWith('rsvp-')) && 
-            item.path.endsWith('.json') && 
-            item.type === 'blob' &&
-            item.path !== 'rsvps/.gitkeep' &&
-            item.path !== '.gitkeep'
-        );
-
-        console.log('Found ' + responseFiles.length + ' RSVP files in private repo');
-
-        for (const file of responseFiles) {
-            try {
-                let eventId;
-                let rsvpArray;
-                
-                // Fetch the file content first
-                const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
-                    headers: {
-                        'Authorization': 'token ' + token,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'EventCall-App'
-                    }
-                });
-
-                if (!fileResponse.ok) continue;
-
-                const fileData = await fileResponse.json();
-                let rsvpData = JSON.parse(this.safeBase64Decode(fileData.content));
-
-                // Normalize to array format
-                if (!Array.isArray(rsvpData)) {
-                    rsvpData = [rsvpData];
+        try {
+            console.log('📥 Loading responses from private EventCall-Data repo...');
+            
+            // Load from PRIVATE repo: EventCall-Data
+            const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
+                headers: {
+                    'Authorization': 'token ' + token,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
                 }
-                rsvpArray = rsvpData;
+            });
 
-                // Extract eventId - either from filename or from content
-                if (file.path.startsWith('rsvps/') && !file.path.includes('rsvp-')) {
-                    // Format: rsvps/{eventId}.json
-                    eventId = file.path.replace('rsvps/', '').replace('.json', '');
-                } else if (Array.isArray(rsvpArray) && rsvpArray.length > 0 && rsvpArray[0].eventId) {
-                    // Format: rsvp-{timestamp}.json - get eventId from content
-                    eventId = rsvpArray[0].eventId;
-                } else {
-                    console.warn(`⚠️ Could not extract eventId from RSVP file: ${file.path}`);
-                    continue;
-                }
-
-                // RSVP file contains an array of RSVPs for this event
-                if (Array.isArray(rsvpArray) && eventId) {
-                    if (!responses[eventId]) {
-                        responses[eventId] = [];
-                    }
-
-                    // Append RSVPs to the array instead of replacing
-                    responses[eventId].push(...rsvpArray);
-                    console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId} from ${file.path}`);
-                } else {
-                    console.warn(`⚠️ Unexpected RSVP format in ${file.path}`);
-                }
-            } catch (error) {
-                console.error('Failed to load response file ' + file.path + ':', error);
+            if (!treeResponse.ok) {
+                console.log('No responses found or repository not accessible');
+                return {};
             }
+
+            const treeData = await treeResponse.json();
+            const responses = {};
+
+            // Debug: log all files to see the actual structure
+            console.log('🔍 All files in tree:', treeData.tree.length);
+            const rsvpRelated = treeData.tree.filter(item => 
+                item.path.includes('rsvp') || item.path.includes('RSVP')
+            );
+            console.log('🔍 RSVP-related files:', rsvpRelated.map(f => f.path));
+
+            const responseFiles = treeData.tree.filter(item => 
+                (item.path.startsWith('rsvps/') || item.path.startsWith('rsvp-')) && 
+                item.path.endsWith('.json') && 
+                item.type === 'blob' &&
+                item.path !== 'rsvps/.gitkeep' &&
+                item.path !== '.gitkeep'
+            );
+
+            console.log('Found ' + responseFiles.length + ' RSVP files in private repo');
+
+            for (const file of responseFiles) {
+                try {
+                    let eventId;
+                    let rsvpArray;
+                    
+                    // Fetch the file content first
+                    const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
+                        headers: {
+                            'Authorization': 'token ' + token,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    });
+
+                    if (!fileResponse.ok) continue;
+
+                    const fileData = await fileResponse.json();
+                    let rsvpData = JSON.parse(this.safeBase64Decode(fileData.content));
+
+                    // Normalize to array format
+                    if (!Array.isArray(rsvpData)) {
+                        rsvpData = [rsvpData];
+                    }
+                    rsvpArray = rsvpData;
+
+                    // Extract eventId - either from filename or from content
+                    if (file.path.startsWith('rsvps/') && !file.path.includes('rsvp-')) {
+                        // Format: rsvps/{eventId}.json
+                        eventId = file.path.replace('rsvps/', '').replace('.json', '');
+                    } else if (Array.isArray(rsvpArray) && rsvpArray.length > 0 && rsvpArray[0].eventId) {
+                        // Format: rsvp-{timestamp}.json - get eventId from content
+                        eventId = rsvpArray[0].eventId;
+                    } else {
+                        console.warn(`⚠️ Could not extract eventId from RSVP file: ${file.path}`);
+                        continue;
+                    }
+
+                    // RSVP file contains an array of RSVPs for this event
+                    if (Array.isArray(rsvpArray) && eventId) {
+                        if (!responses[eventId]) {
+                            responses[eventId] = [];
+                        }
+
+                        // Append RSVPs to the array instead of replacing
+                        responses[eventId].push(...rsvpArray);
+                        console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId} from ${file.path}`);
+                    } else {
+                        console.warn(`⚠️ Unexpected RSVP format in ${file.path}`);
+                    }
+                } catch (error) {
+                    console.error('Failed to load response file ' + file.path + ':', error);
+                }
+            }
+
+            // Log summary
+            const eventCount = Object.keys(responses).length;
+            const totalRSVPs = Object.values(responses).reduce((sum, arr) => sum + arr.length, 0);
+            console.log(`✅ Loaded responses for ${eventCount} event(s) from private repo`);
+            console.log(`📊 Total RSVPs loaded: ${totalRSVPs}`);
+            
+            // Log per-event breakdown
+            Object.entries(responses).forEach(([eventId, rsvps]) => {
+                console.log(`   Event ${eventId}: ${rsvps.length} RSVP(s)`);
+            });
+            
+            return responses;
+
+        } catch (error) {
+            console.error('Failed to load responses from private repo:', error);
+            return {};
         }
-
-        // Log summary
-        const eventCount = Object.keys(responses).length;
-        const totalRSVPs = Object.values(responses).reduce((sum, arr) => sum + arr.length, 0);
-        console.log(`✅ Loaded responses for ${eventCount} event(s) from private repo`);
-        console.log(`📊 Total RSVPs loaded: ${totalRSVPs}`);
-        
-        // Log per-event breakdown
-        Object.entries(responses).forEach(([eventId, rsvps]) => {
-            console.log(`   Event ${eventId}: ${rsvps.length} RSVP(s)`);
-        });
-        
-        return responses;
-
-    } catch (error) {
-        console.error('Failed to load responses from private repo:', error);
-        return {};
     }
-}
 
     /**
      * Load RSVP issues from GitHub
@@ -822,6 +830,149 @@ async loadResponses() {
     }
 
     /**
+     * Save user to EventCall-Data repository
+     * @param {Object} user - User object
+     */
+    async saveUser(user) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available. Cannot save user.');
+        }
+
+        try {
+            const cleanUser = this.cleanUserData(user);
+            const path = `users/${cleanUser.id}.json`;
+            const content = this.safeBase64Encode(JSON.stringify(cleanUser, null, 2));
+
+            // Check if file exists
+            let existingSha = null;
+            try {
+                const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                });
+
+                if (existingResponse.ok) {
+                    const existingData = await existingResponse.json();
+                    existingSha = existingData.sha;
+                }
+            } catch (error) {
+                // File doesn't exist, which is fine
+            }
+
+            // Create or update the file
+            const createData = {
+                message: `${existingSha ? 'Update' : 'Create'} user: ${cleanUser.email}`,
+                content: content,
+                branch: 'main'
+            };
+
+            if (existingSha) {
+                createData.sha = existingSha;
+            }
+
+            const createResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'EventCall-App'
+                },
+                body: JSON.stringify(createData)
+            });
+
+            if (!createResponse.ok) {
+                const errorText = await createResponse.text();
+                throw new Error(`Failed to save user: ${createResponse.status} - ${errorText}`);
+            }
+
+            console.log('✅ User saved successfully to EventCall-Data:', cleanUser.email);
+            return await createResponse.json();
+
+        } catch (error) {
+            console.error('Failed to save user to EventCall-Data:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Load user from EventCall-Data by email
+     * @param {string} email - User email
+     */
+    async loadUserByEmail(email) {
+        const token = this.getToken();
+        if (!token) {
+            console.warn('⚠️ No GitHub token - cannot load user');
+            return null;
+        }
+
+        try {
+            console.log('🔍 Searching for user by email:', email);
+
+            // Load user files from EventCall-Data
+            const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
+                headers: {
+                    'Authorization': 'token ' + token,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
+                }
+            });
+
+            if (!treeResponse.ok) {
+                console.log('No users found or repository not accessible');
+                return null;
+            }
+
+            const treeData = await treeResponse.json();
+
+            // Find user files
+            const userFiles = treeData.tree.filter(item =>
+                item.path.startsWith('users/') &&
+                item.path.endsWith('.json') &&
+                item.type === 'blob'
+            );
+
+            console.log(`Found ${userFiles.length} user files`);
+
+            // Search for user by email
+            for (const file of userFiles) {
+                try {
+                    const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
+                        headers: {
+                            'Authorization': 'token ' + token,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    });
+
+                    if (fileResponse.ok) {
+                        const fileData = await fileResponse.json();
+                        const userData = JSON.parse(this.safeBase64Decode(fileData.content));
+
+                        if (userData.email && userData.email.toLowerCase() === email.toLowerCase()) {
+                            console.log('✅ Found user:', userData.email);
+                            return userData;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load user file ' + file.path + ':', error);
+                }
+            }
+
+            console.log('User not found with email:', email);
+            return null;
+
+        } catch (error) {
+            console.error('Failed to load user by email:', error);
+            return null;
+        }
+    }
+
+    /**
      * Clean event data to prevent encoding issues
      */
     cleanEventData(eventData) {
@@ -838,6 +989,19 @@ async loadResponses() {
                 question: this.cleanText(q.question)
             }));
         }
+        
+        return cleaned;
+    }
+
+    /**
+     * Clean user data to prevent encoding issues
+     */
+    cleanUserData(user) {
+        const cleaned = { ...user };
+        
+        if (cleaned.name) cleaned.name = this.cleanText(cleaned.name);
+        if (cleaned.email) cleaned.email = this.cleanText(cleaned.email);
+        if (cleaned.unit) cleaned.unit = this.cleanText(cleaned.unit);
         
         return cleaned;
     }
