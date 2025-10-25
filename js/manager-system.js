@@ -668,6 +668,28 @@ function setupEventForm() {
 }
 
 /**
+ * ADD to manager-system.js: Toggle past events visibility
+ */
+function togglePastEvents() {
+    const pastSection = document.querySelector('.past-events-grid');
+    const toggle = document.querySelector('.past-events-toggle');
+    
+    if (pastSection && toggle) {
+        const isCollapsed = toggle.classList.contains('collapsed');
+        
+        if (isCollapsed) {
+            pastSection.style.display = 'grid';
+            toggle.classList.remove('collapsed');
+        } else {
+            pastSection.style.display = 'none';
+            toggle.classList.add('collapsed');
+        }
+    }
+}
+
+// Export function
+window.togglePastEvents = togglePastEvents;
+/**
  * Initialize sync status checker
  * Note: Automatic polling removed to reduce API calls.
  * Pending RSVP count updates only on:
