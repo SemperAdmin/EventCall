@@ -157,6 +157,15 @@
 }
 
 /* Event Meta V2 */
+css.meta-label { 
+   color: #aeb9c6; 
+   font-weight: 400;
+}
+
+.meta-item { 
+   font-size: 1rem;
+}
+
 .event-meta-v2 {
     display: flex;
     flex-direction: column;
@@ -188,6 +197,10 @@
 /* ============================================
    RSVP STATS V2 - BIG VISUAL BOXES
    ============================================ */
+css.stat-attending .stat-label { 
+   color: #10b981; 
+   font-weight: 700;
+}
 
 .rsvp-stats-v2 {
     display: grid;
@@ -219,7 +232,7 @@
 }
 
 .stat-declined {
-    border-color: #ef4444;
+    border-color: #ef4444;background: rgba(239, 68, 68, 0.1);
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);
 }
 
