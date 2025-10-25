@@ -344,8 +344,8 @@ async loadResponses() {
                         responses[eventId] = [];
                     }
 
-                    // Add all RSVPs from the array
-                    responses[eventId] = rsvpArray;
+                    // Append RSVPs to the array instead of replacing
+                    responses[eventId].push(...rsvpArray);
                     console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId} from ${file.path}`);
                 } else {
                     console.warn(`⚠️ Unexpected RSVP format in ${file.path}`);
@@ -355,7 +355,17 @@ async loadResponses() {
             }
         }
 
-        console.log('âœ… Loaded responses for ' + Object.keys(responses).length + ' events from private repo');
+        // Log summary
+        const eventCount = Object.keys(responses).length;
+        const totalRSVPs = Object.values(responses).reduce((sum, arr) => sum + arr.length, 0);
+        console.log(`✅ Loaded responses for ${eventCount} event(s) from private repo`);
+        console.log(`📊 Total RSVPs loaded: ${totalRSVPs}`);
+        
+        // Log per-event breakdown
+        Object.entries(responses).forEach(([eventId, rsvps]) => {
+            console.log(`   Event ${eventId}: ${rsvps.length} RSVP(s)`);
+        });
+        
         return responses;
 
     } catch (error) {
