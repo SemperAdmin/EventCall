@@ -278,6 +278,9 @@ function renderDashboard() {
     const eventsList = document.getElementById('events-list');
     if (!eventsList) return;
 
+    console.log('🔍 DEBUG: window.responses =', window.responses);
+    console.log('🔍 DEBUG: Object.keys(window.responses) =', Object.keys(window.responses || {}));
+
     if (!window.events || Object.keys(window.events).length === 0) {
         eventsList.innerHTML = `
             <div class="empty-state">
@@ -297,6 +300,7 @@ function renderDashboard() {
         .sort((a, b) => new Date(a.date) - new Date(b.date))
         .map(event => {
             const eventResponses = window.responses?.[event.id] || [];
+            console.log(`🔍 DEBUG: Event ${event.title} (${event.id}) has ${eventResponses.length} responses`);
             const stats = calculateEventStats(eventResponses);
             const inviteLink = `${window.location.origin}${window.location.pathname}#invite/${event.id}`;
             const isPast = isEventInPast(event.date, event.time);
