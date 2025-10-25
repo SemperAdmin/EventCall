@@ -59,6 +59,44 @@ function showPage(pageId) {
 }
 
 /**
+ * Show page content with proper error handling
+ * @param {string} pageId - Page ID to show
+ */
+function showPageContent(pageId) {
+    console.log('📄 Page changed to: ' + pageId);
+    
+    const pages = ['dashboard', 'create', 'manage', 'invite', 'login'];
+    
+    pages.forEach(page => {
+        const element = document.getElementById(page + '-page');
+        if (element) {
+            element.style.display = (page === pageId) ? 'block' : 'none';
+        }
+    });
+    
+    // Update active nav
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    
+    const activeLink = document.querySelector(`[onclick*="'${pageId}'"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+    
+    // Page-specific initialization
+    if (pageId === 'dashboard') {
+        if (typeof loadManagerData === 'function') {
+            loadManagerData();
+        }
+    } else if (pageId === 'invite') {
+        if (typeof loadInvitePage === 'function') {
+            loadInvitePage();
+        }
+    }
+} // ✅ Function properly closed
+
+/**
  * Show login page and hide app content
  */
 function showLoginPage() {
@@ -258,6 +296,31 @@ async function copyToClipboard(text) {
     }
 }
 
+/**
+ * Open default email client to compose message to attendee
+ * @param {string} email - Attendee email address
+ * @param {string} eventTitle - Event title for subject line
+ */
+function mailAttendee(email, eventTitle = 'EventCall Event') {
+    if (!email) {
+        showToast('❌ No email address available', 'error');
+        return;
+    }
+    
+    // Sanitize inputs for URL
+    const sanitizedEmail = encodeURIComponent(email.trim());
+    const sanitizedTitle = encodeURIComponent(eventTitle);
+    
+    // Create mailto link with subject
+    const subject = `RE: ${sanitizedTitle}`;
+    const mailtoLink = `mailto:${sanitizedEmail}?subject=${encodeURIComponent(subject)}`;
+    
+    // Open in new window/tab
+    window.location.href = mailtoLink;
+    
+    console.log(`📧 Opening email client for: ${email}`);
+    showToast(`📧 Opening email to ${email}`, 'success');
+}
 /**
  * Export event data - Available immediately for HTML onclick
  */
@@ -459,6 +522,7 @@ window.showToast = showToast;
 window.copyInviteLink = copyInviteLink;
 window.exportEventData = exportEventData;
 window.deleteEvent = deleteEvent;
+window.mailAttendee = mailAttendee; // ✅ NEW: Email attendee function
 window.checkURLHash = checkURLHash;
 window.initializeHashListener = initializeHashListener;
 window.goToDashboard = goToDashboard;
