@@ -1,404 +1,313 @@
 /**
  * EventCall User Authentication - Email-Only System
- * Simple email-based identification for trusted users
- * No passwords required - uses email for user identification only
+ * No password required - simple email-based access with automatic GitHub integration
  */
 
-class UserAuth {
-    constructor() {
-        this.currentUser = null;
-        this.storageKey = 'eventcall_current_user';
-        this.githubToken = null;
-        this.loadUserFromStorage();
-        this.initializeGitHubToken();
-    }
+const userAuth = {
+    currentUser: null,
 
     /**
-     * Initialize GitHub token (pre-configured, hidden from user)
+     * Initialize authentication system
      */
-    initializeGitHubToken() {
-        // Obfuscated token segments (same as before, but hidden)
-        const segments = [
-            'Z2hwX0lXWUdkWE1G',  // Base64: ghp_IWYGdXMF
-            'Y2d4eWlvSWRWekxn',  // Base64: cgxyioIdVzLg
-            'OFBPazBtMG5QdzJw',  // Base64: 8POk0m0nPw2p
-            'N2xGMw=='           // Base64: 7lF3
-        ];
-        
-        // Reconstruct token from segments
-        const decodedParts = segments.map(segment => atob(segment));
-        this.githubToken = decodedParts.join('');
-        
-        console.log('🔑 GitHub token initialized (hidden)');
-    }
+    async init() {
+        console.log('🔐 Initializing email-only authentication...');
 
-    /**
-     * Get GitHub token for API calls
-     */
-    getGitHubToken() {
-        return this.githubToken;
-    }
+        // Skip auth check for invite pages (guests don't need login)
+        const isInvitePage = window.location.hash.includes('invite/') || window.location.search.includes('data=');
 
-    /**
-     * Load user from localStorage
-     */
-    loadUserFromStorage() {
-        try {
-            const stored = localStorage.getItem(this.storageKey);
-            if (stored) {
-                this.currentUser = JSON.parse(stored);
-                console.log('✅ User loaded from storage:', this.currentUser.email);
-            }
-        } catch (error) {
-            console.error('Failed to load user from storage:', error);
-            this.currentUser = null;
+        if (isInvitePage) {
+            console.log('🎟️ Invite URL detected - bypassing login for guest access');
+            this.hideLoginScreen();
+            return;
         }
-    }
+
+        // Check for saved user
+        const savedUser = this.loadUserFromStorage();
+
+        if (savedUser) {
+            this.currentUser = savedUser;
+            console.log('✅ User restored from storage:', savedUser.email);
+
+            // Update UI
+            if (window.updateUserDisplay) {
+                window.updateUserDisplay();
+            }
+
+            this.hideLoginScreen();
+
+            // Load user's events
+            if (window.loadManagerData) {
+                await window.loadManagerData();
+            }
+        } else {
+            console.log('🔒 No saved user - showing login screen');
+            this.showLoginScreen();
+        }
+    },
+
+    /**
+     * Show login screen
+     */
+    showLoginScreen() {
+        const loginPage = document.getElementById('login-page');
+        const appContent = document.querySelector('.app-content');
+
+        if (loginPage) loginPage.style.display = 'flex';
+        if (appContent) appContent.style.display = 'none';
+
+        console.log('🔑 Login screen displayed');
+    },
+
+    /**
+     * Hide login screen and show app
+     */
+    hideLoginScreen() {
+        const loginPage = document.getElementById('login-page');
+        const appContent = document.querySelector('.app-content');
+
+        if (loginPage) loginPage.style.display = 'none';
+        if (appContent) appContent.style.display = 'block';
+
+        console.log('📱 App content displayed');
+    },
+
+    /**
+     * Handle email login form submission
+     */
+    async handleEmailLogin(event) {
+        event.preventDefault();
+
+        const nameInput = document.getElementById('user-name');
+        const emailInput = document.getElementById('user-email');
+        const unitInput = document.getElementById('user-unit');
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+
+        const name = nameInput?.value.trim();
+        const email = emailInput?.value.trim().toLowerCase();
+        const unit = unitInput?.value.trim();
+
+        const showToast = window.showToast || function(msg, type) { console.log(msg); };
+
+        // Validation
+        if (!name || name.length < 2) {
+            showToast('❌ Please enter your full name', 'error');
+            nameInput?.focus();
+            return;
+        }
+
+        if (!email || !this.isValidEmail(email)) {
+            showToast('❌ Please enter a valid email address', 'error');
+            emailInput?.focus();
+            return;
+        }
+
+        // Show loading state
+        const originalText = submitBtn.textContent;
+        submitBtn.innerHTML = '<div class="spinner"></div> Logging in...';
+        submitBtn.disabled = true;
+
+        try {
+            // Create user object
+            const user = {
+                id: this.generateUserId(email),
+                name: name,
+                email: email,
+                unit: unit || '',
+                createdAt: Date.now(),
+                lastLogin: Date.now()
+            };
+
+            // Save user to GitHub (if API available)
+            if (window.githubAPI && window.githubAPI.saveUser) {
+                try {
+                    await window.githubAPI.saveUser(user);
+                    console.log('✅ User saved to GitHub:', user.email);
+                } catch (error) {
+                    console.warn('⚠️ Could not save user to GitHub:', error.message);
+                    // Continue anyway - local storage is enough
+                }
+            }
+
+            // Save to local storage
+            this.currentUser = user;
+            this.saveUserToStorage(user);
+
+            showToast(`✅ Welcome, ${user.name}!`, 'success');
+
+            // Update UI
+            if (window.updateUserDisplay) {
+                window.updateUserDisplay();
+            }
+
+            // Hide login and show app
+            this.hideLoginScreen();
+
+            // Load user's events
+            if (window.loadManagerData) {
+                await window.loadManagerData();
+            }
+
+            // Navigate to dashboard
+            if (window.showPage) {
+                window.showPage('dashboard');
+            }
+
+        } catch (error) {
+            console.error('❌ Login failed:', error);
+            showToast('❌ Login failed: ' + error.message, 'error');
+        } finally {
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
+    },
+
+    /**
+     * Generate unique user ID from email
+     */
+    generateUserId(email) {
+        return 'user_' + email.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    },
+
+    /**
+     * Validate email format
+     */
+    isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    },
 
     /**
      * Save user to localStorage
      */
     saveUserToStorage(user) {
         try {
-            localStorage.setItem(this.storageKey, JSON.stringify(user));
-            this.currentUser = user;
+            localStorage.setItem('eventcall_user', JSON.stringify(user));
             console.log('💾 User saved to localStorage');
         } catch (error) {
-            console.error('Failed to save user to storage:', error);
+            console.error('Failed to save user to localStorage:', error);
         }
-    }
+    },
 
     /**
-     * Login user with email
-     * @param {string} name - User's full name
-     * @param {string} email - User's email
-     * @param {string} unit - User's unit (optional)
+     * Load user from localStorage
      */
-    async login(name, email, unit = '') {
-        // Validate inputs
-        if (!name || name.trim().length < 2) {
-            throw new Error('Please enter your full name (at least 2 characters)');
-        }
-
-        if (!email || !this.isValidEmail(email)) {
-            throw new Error('Please enter a valid email address');
-        }
-
-        // Clean inputs
-        const cleanName = name.trim();
-        const cleanEmail = email.trim().toLowerCase();
-        const cleanUnit = unit.trim();
-
-        // Create user object
-        const user = {
-            id: `user-${Date.now()}`,
-            name: cleanName,
-            email: cleanEmail,
-            unit: cleanUnit,
-            role: 'manager',
-            created: Date.now(),
-            lastLogin: Date.now()
-        };
-
-        // Save to localStorage first (immediate access)
-        this.saveUserToStorage(user);
-
-        // Try to save to GitHub (background operation)
-        if (window.githubAPI) {
-            try {
-                await window.githubAPI.saveUser(user);
-                console.log('✅ User saved to GitHub');
-            } catch (error) {
-                console.warn('⚠️ Could not save user to GitHub:', error.message);
-                // Continue anyway - localStorage is sufficient for now
+    loadUserFromStorage() {
+        try {
+            const saved = localStorage.getItem('eventcall_user');
+            if (saved) {
+                const user = JSON.parse(saved);
+                console.log('📥 User loaded from localStorage:', user.email);
+                return user;
             }
-        } else {
-            console.warn('⚠️ GitHub API not available yet - user saved locally only');
+        } catch (error) {
+            console.error('Failed to load user from localStorage:', error);
         }
-
-        console.log('✅ User logged in successfully:', cleanEmail);
-        return user;
-    }
+        return null;
+    },
 
     /**
-     * Logout current user
+     * Clear user from storage
+     */
+    clearUserFromStorage() {
+        try {
+            localStorage.removeItem('eventcall_user');
+            console.log('🗑️ User cleared from localStorage');
+        } catch (error) {
+            console.error('Failed to clear user from localStorage:', error);
+        }
+    },
+
+    /**
+     * Logout user
      */
     logout() {
-        const wasLoggedIn = this.currentUser !== null;
-        
-        localStorage.removeItem(this.storageKey);
-        this.currentUser = null;
-        
-        if (wasLoggedIn) {
-            console.log('✅ User logged out');
-        }
-    }
+        console.log('👋 Logging out user:', this.currentUser?.email);
 
-    /**
-     * Check if user is authenticated
-     */
-    isAuthenticated() {
-        return this.currentUser !== null;
-    }
+        // Clear user data
+        this.currentUser = null;
+        this.clearUserFromStorage();
+
+        // Clear events data
+        if (window.events) window.events = {};
+        if (window.responses) window.responses = {};
+
+        const showToast = window.showToast || function(msg, type) { console.log(msg); };
+        showToast('👋 Logged out successfully', 'success');
+
+        // Show login screen
+        setTimeout(() => {
+            this.showLoginScreen();
+
+            // Clear and focus name input
+            const nameInput = document.getElementById('user-name');
+            const emailInput = document.getElementById('user-email');
+            const unitInput = document.getElementById('user-unit');
+
+            if (nameInput) nameInput.value = '';
+            if (emailInput) emailInput.value = '';
+            if (unitInput) unitInput.value = '';
+            if (nameInput) nameInput.focus();
+        }, 800);
+    },
 
     /**
      * Get current user
      */
     getCurrentUser() {
         return this.currentUser;
-    }
+    },
 
     /**
-     * Get current manager (alias for compatibility)
+     * Check if user is authenticated
      */
-    getCurrentManager() {
-        return this.currentUser;
-    }
+    isAuthenticated() {
+        return this.currentUser !== null;
+    },
 
     /**
-     * Update last login time
+     * Get GitHub token for API calls
      */
-    async updateLastLogin() {
-        if (this.currentUser) {
-            this.currentUser.lastLogin = Date.now();
-            this.saveUserToStorage(this.currentUser);
-
-            // Update on GitHub (background)
-            if (window.githubAPI) {
-                try {
-                    await window.githubAPI.saveUser(this.currentUser);
-                    console.log('✅ Last login updated on GitHub');
-                } catch (error) {
-                    console.warn('⚠️ Could not update user on GitHub:', error);
-                }
-            }
+    getGitHubToken() {
+        // Return the shared GitHub token from config
+        if (window.GITHUB_CONFIG && window.GITHUB_CONFIG.token) {
+            return window.GITHUB_CONFIG.token;
         }
-    }
-
-    /**
-     * Validate email format
-     */
-    isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    }
-
-    /**
-     * Get user display name
-     */
-    getDisplayName() {
-        if (!this.currentUser) return 'User';
-        return this.currentUser.name || this.currentUser.email.split('@')[0];
-    }
+        console.error('⚠️ GitHub token not found in config');
+        return null;
+    },
 
     /**
      * Get user initials for avatar
      */
     getInitials() {
-        if (!this.currentUser || !this.currentUser.name) return '?';
-        
-        const names = this.currentUser.name.trim().split(' ').filter(n => n.length > 0);
-        
+        if (!this.currentUser || !this.currentUser.name) {
+            return '👤';
+        }
+
+        const names = this.currentUser.name.split(' ');
+
         if (names.length >= 2) {
             // First and last name initials
-            return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
-        } else if (names.length === 1) {
-            // Single name - first letter
-            return names[0][0].toUpperCase();
-        }
-        
-        return '?';
-    }
-
-    /**
-     * Get user info for display
-     */
-    getUserInfo() {
-        if (!this.currentUser) {
-            return {
-                name: 'Unknown User',
-                email: 'Not logged in',
-                unit: '',
-                initials: '?'
-            };
+            return (names[0][0] + names[names.length - 1][0]).toUpperCase();
         }
 
-        return {
-            name: this.currentUser.name,
-            email: this.currentUser.email,
-            unit: this.currentUser.unit || 'No unit specified',
-            initials: this.getInitials(),
-            created: this.currentUser.created,
-            lastLogin: this.currentUser.lastLogin
-        };
+        // Single name - first letter
+        return this.currentUser.name[0].toUpperCase();
     }
-}
+};
 
-// Create global instance
-window.userAuth = new UserAuth();
-
-// Also create alias for backward compatibility with old code
-window.managerAuth = window.userAuth;
-
-// ============================================
-// LOGIN FORM HANDLER
-// ============================================
-
-/**
- * Initialize login form when DOM is ready
- */
+// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('email-login-form');
-    
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const submitBtn = loginForm.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
-            
-            try {
-                // Disable button and show loading
-                submitBtn.textContent = '⏳ Connecting...';
-                submitBtn.disabled = true;
-                
-                // Get form values
-                const name = document.getElementById('user-name').value;
-                const email = document.getElementById('user-email').value;
-                const unit = document.getElementById('user-unit').value;
-                
-                // Attempt login
-                await window.userAuth.login(name, email, unit);
-                
-                // Show success message
-                if (window.showToast) {
-                    window.showToast(`✅ Welcome, ${name}!`, 'success');
-                }
-                
-                // Hide login page, show app
-                const loginPage = document.getElementById('login-page');
-                const appContent = document.querySelector('.app-content');
-                
-                if (loginPage) loginPage.style.display = 'none';
-                if (appContent) appContent.style.display = 'block';
-                
-                // Update user display in header
-                if (window.updateUserDisplay) {
-                    window.updateUserDisplay();
-                }
-                
-                // Load dashboard
-                if (window.showPage) {
-                    window.showPage('dashboard');
-                }
-                
-                // Load manager data
-                if (window.loadManagerData) {
-                    setTimeout(() => {
-                        window.loadManagerData();
-                    }, 500);
-                }
-                
-            } catch (error) {
-                console.error('Login failed:', error);
-                
-                // Show error message
-                if (window.showToast) {
-                    window.showToast('❌ ' + error.message, 'error');
-                } else {
-                    alert('Login Error: ' + error.message);
-                }
-                
-                // Re-enable button
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            }
-        });
-        
-        console.log('✅ Email login form initialized');
-    }
-    
-    // Check if user already logged in
-    if (window.userAuth.isAuthenticated()) {
-        const loginPage = document.getElementById('login-page');
-        const appContent = document.querySelector('.app-content');
-        
-        if (loginPage) loginPage.style.display = 'none';
-        if (appContent) appContent.style.display = 'block';
-        
-        console.log('✅ User already authenticated:', window.userAuth.getCurrentUser().email);
-        
-        // Update user display
-        if (window.updateUserDisplay) {
-            window.updateUserDisplay();
-        }
-        
-        // Update last login timestamp
-        window.userAuth.updateLastLogin();
+    userAuth.init();
+
+    // Attach form handler
+    const emailLoginForm = document.getElementById('email-login-form');
+    if (emailLoginForm) {
+        emailLoginForm.addEventListener('submit', (e) => userAuth.handleEmailLogin(e));
+        console.log('✅ Email login form attached');
     }
 });
 
-// ============================================
-// GLOBAL HELPER FUNCTIONS
-// ============================================
+// Make globally available
+window.userAuth = userAuth;
 
-/**
- * Update user display in header
- */
-function updateUserDisplay() {
-    if (window.userAuth && window.userAuth.isAuthenticated()) {
-        const user = window.userAuth.getCurrentUser();
-        
-        const displayName = document.getElementById('user-display-name');
-        const avatar = document.getElementById('user-avatar');
-        
-        if (displayName) {
-            displayName.textContent = user.name || user.email.split('@')[0];
-        }
-        
-        if (avatar) {
-            avatar.textContent = window.userAuth.getInitials();
-        }
-    }
-}
-
-/**
- * Show user menu
- */
-function showUserMenu() {
-    if (!window.userAuth || !window.userAuth.isAuthenticated()) {
-        return;
-    }
-    
-    const user = window.userAuth.getCurrentUser();
-    
-    const message = `
-👤 ${user.name}
-📧 ${user.email}
-${user.unit ? `🎖️ ${user.unit}` : ''}
-
-Do you want to log out?
-    `.trim();
-    
-    if (confirm(message)) {
-        window.userAuth.logout();
-        location.reload();
-    }
-}
-
-/**
- * Force logout (for debugging or manual logout)
- */
-function forceLogout() {
-    if (window.userAuth) {
-        window.userAuth.logout();
-        location.reload();
-    }
-}
-
-// Export functions to global scope
-window.updateUserDisplay = updateUserDisplay;
-window.showUserMenu = showUserMenu;
-window.forceLogout = forceLogout;
-
-console.log('✅ User Authentication System loaded');
+console.log('✅ Email-only user authentication system loaded');
