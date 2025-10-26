@@ -256,7 +256,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         📧 Send Reminder
                     </button>
                     <button class="btn-action btn-export" onclick="exportEventData('${eventId}')">
-                        📊 Export List
+                        📊 Export CSV
+                    </button>
+                    <button class="btn-action btn-export" onclick="copyEventData('${eventId}')">
+                        📋 Copy TSV
                     </button>
                 </div>
             </div>
