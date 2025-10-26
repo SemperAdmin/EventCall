@@ -5,60 +5,65 @@ class BackendAPI {
         this.apiBase = 'https://api.github.com';
     }
 
-async triggerWorkflow(eventType, payload) {
-    const url = this.apiBase + '/repos/' + this.owner + '/' + this.repo + '/dispatches';
+    async triggerWorkflow(eventType, payload) {
+        const url = this.apiBase + '/repos/' + this.owner + '/' + this.repo + '/dispatches';
 
-    // Get token from GITHUB_CONFIG
-    const token = window.GITHUB_CONFIG && window.GITHUB_CONFIG.token ? window.GITHUB_CONFIG.token : null;
+        // Get token from GITHUB_CONFIG
+        const token = window.GITHUB_CONFIG && window.GITHUB_CONFIG.token ? window.GITHUB_CONFIG.token : null;
 
-    if (!token) {
-        throw new Error('GitHub token not available for workflow trigger');
-    }
-
-    try {
-        console.log('Triggering workflow:', eventType);
-        console.log('Payload size:', JSON.stringify(payload).length, 'bytes');
-
-        const requestBody = {
-            event_type: eventType,
-            client_payload: payload
-        };
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': 'token ' + token,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            // Try to get error details from response
-            let errorMessage = 'Workflow dispatch failed: ' + response.status;
-            try {
-                const errorData = await response.json();
-                console.error('GitHub API Error Details:', errorData);
-                errorMessage = errorData.message || errorMessage;
-                if (errorData.errors) {
-                    console.error('Validation Errors:', errorData.errors);
-                    errorMessage += ' - ' + JSON.stringify(errorData.errors);
-                }
-            } catch (parseError) {
-                console.error('Could not parse error response');
-            }
-            throw new Error(errorMessage);
+        if (!token) {
+            throw new Error('GitHub token not available for workflow trigger');
         }
 
-        console.log('✅ Workflow triggered successfully');
-        return { success: true };
+        try {
+            console.log('Triggering workflow:', eventType);
+            console.log('Payload size:', JSON.stringify(payload).length, 'bytes');
 
-    } catch (error) {
-        console.error('Workflow trigger error:', error);
-        throw error;
+            // Wrap payload under a single key to satisfy GitHub's client_payload limits
+            const requestBody = {
+                event_type: eventType,
+                client_payload: {
+                    data: payload,            // full RSVP/event data lives here
+                    sentAt: Date.now(),       // optional meta
+                    source: 'EventCall-App'   // optional meta
+                }
+            };
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'token ' + token,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                // Try to get error details from response
+                let errorMessage = 'Workflow dispatch failed: ' + response.status;
+                try {
+                    const errorData = await response.json();
+                    console.error('GitHub API Error Details:', errorData);
+                    errorMessage = errorData.message || errorMessage;
+                    if (errorData.errors) {
+                        console.error('Validation Errors:', errorData.errors);
+                        errorMessage += ' - ' + JSON.stringify(errorData.errors);
+                    }
+                } catch (parseError) {
+                    console.error('Could not parse error response');
+                }
+                throw new Error(errorMessage);
+            }
+
+            console.log('✅ Workflow triggered successfully');
+            return { success: true };
+
+        } catch (error) {
+            console.error('Workflow trigger error:', error);
+            throw error;
+        }
     }
-}
 
     async submitRSVP(rsvpData) {
         console.log('Submitting RSVP with data:', rsvpData);
