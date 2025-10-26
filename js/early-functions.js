@@ -536,7 +536,7 @@ async function deleteEvent(eventId) {
 
         // Delete from GitHub if available
         if (window.githubAPI && window.githubAPI.deleteEvent) {
-            await window.githubAPI.deleteEvent(eventId, event.title);
+            await window.githubAPI.deleteEvent(eventId, event.title, event.coverImage);
         }
         
         // Remove from local state

@@ -284,7 +284,7 @@ async function deleteEvent(eventId) {
         if (isUserAuthenticated() && window.githubAPI) {
             try {
                 if (window.githubAPI && window.githubAPI.deleteEvent) {
-                    await window.githubAPI.deleteEvent(eventId, event.title);
+                    await window.githubAPI.deleteEvent(eventId, event.title, event.coverImage);
                 }
             } catch (error) {
                 console.error('Failed to delete from GitHub:', error);

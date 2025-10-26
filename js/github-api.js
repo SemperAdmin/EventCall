@@ -729,8 +729,11 @@ class GitHubAPI {
 
     /**
      * Delete event from EventCall-Data repository
+     * @param {string} eventId - The event ID
+     * @param {string} eventTitle - The event title
+     * @param {string} coverImageUrl - Optional cover image URL to delete
      */
-    async deleteEvent(eventId, eventTitle) {
+    async deleteEvent(eventId, eventTitle, coverImageUrl = null) {
         const token = this.getToken();
         if (!token) {
             throw new Error('GitHub token not available. Cannot delete from cloud.');
@@ -744,6 +747,25 @@ class GitHubAPI {
             // Delete associated responses file from EventCall-Data
             const responsePath = `rsvps/${eventId}.json`;
             await this.deleteFileFromDataRepo(responsePath, `Delete responses for event: ${this.cleanText(eventTitle)}`);
+
+            // Delete cover image if it exists
+            if (coverImageUrl) {
+                try {
+                    // Extract the filename from the URL
+                    // Expected format: https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/filename.ext
+                    const urlParts = coverImageUrl.split('/');
+                    const fileName = urlParts[urlParts.length - 1];
+
+                    if (fileName) {
+                        const imagePath = `images/${fileName}`;
+                        await this.deleteFileFromImageRepo(imagePath, `Delete cover image for event: ${this.cleanText(eventTitle)}`);
+                        console.log('✅ Cover image deleted:', fileName);
+                    }
+                } catch (imageError) {
+                    console.log('Could not delete cover image:', imageError.message);
+                    // Don't throw - we don't want image deletion failure to fail the entire event deletion
+                }
+            }
 
             console.log('✅ Event deleted successfully from EventCall-Data:', eventId);
 
@@ -844,6 +866,58 @@ class GitHubAPI {
             }
         } catch (error) {
             console.log(`File ${path} may not exist in EventCall-Data, skipping deletion`);
+        }
+    }
+
+    /**
+     * Delete a file from EventCall-Images repository
+     */
+    async deleteFileFromImageRepo(path, message) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available');
+        }
+
+        if (!this.config.imageRepo) {
+            throw new Error('imageRepo not defined in GITHUB_CONFIG');
+        }
+
+        try {
+            // Get file info first from EventCall-Images
+            const fileResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
+                }
+            });
+
+            if (fileResponse.ok) {
+                const fileData = await fileResponse.json();
+
+                const deleteResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sha: fileData.sha,
+                        branch: 'main'
+                    })
+                });
+
+                if (!deleteResponse.ok) {
+                    throw new Error(`Failed to delete ${path} from ${this.config.imageRepo}: ${deleteResponse.status}`);
+                }
+
+                console.log(`✅ Deleted ${path} from ${this.config.imageRepo}`);
+            }
+        } catch (error) {
+            console.log(`File ${path} may not exist in ${this.config.imageRepo}, skipping deletion`);
         }
     }
 
