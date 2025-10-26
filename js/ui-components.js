@@ -628,3 +628,25 @@ window.formatTime = formatTime;
 window.createPastEventHTML = createPastEventHTML;
 window.createInviteWithImageHTML = createInviteWithImageHTML;
 window.updateRanksForBranch = updateRanksForBranch;
+
+function createRSVPSettingsHTML(event) {
+    const badges = [];
+    if (event.askReason) {
+        badges.push(`<span style="display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .6rem;border-radius:999px;background:#e0f2fe;color:#0c4a6e;border:1px solid #7dd3fc;">💬 Ask why attending</span>`);
+    }
+    if (event.allowGuests) {
+        badges.push(`<span style="display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .6rem;border-radius:999px;background:#f0fdf4;color:#064e3b;border:1px solid #86efac;">👥 Allow additional guests</span>`);
+    }
+    if (event.requiresMealChoice) {
+        badges.push(`<span style="display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .6rem;border-radius:999px;background:#fff7ed;color:#7c2d12;border:1px solid #fdba74;">🍽️ Meal/dietary choices required</span>`);
+    }
+    if (badges.length === 0) return '';
+    return `
+        <div style="margin-top:1rem;">
+            <div style="font-weight:700;color:#1a1f2e;font-size:1rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem;">
+                <span>⚙️</span><span>RSVP Settings</span>
+            </div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;">${badges.join(' ')}</div>
+        </div>
+    `;
+}
