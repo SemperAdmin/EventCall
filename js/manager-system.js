@@ -989,12 +989,7 @@ async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInp
     }
 }
 
-// Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-    setupEventForm();
-    setupPhotoUpload();
-    initializeSyncChecker();
-});
+
 
 // Make functions globally available
 window.addCustomQuestion = addCustomQuestion;
