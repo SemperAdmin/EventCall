@@ -451,3 +451,11 @@ if (typeof window !== 'undefined') {
 }
 
 console.log('✅ Login UI Component loaded');
+
+// Escape user-facing strings (errors, prompts, etc.)
+function showLoginError(msg) {
+    const h = window.utils.escapeHTML;
+    document.getElementById('login-error').innerHTML = `
+        <div class="error">${h(msg || 'Unknown error')}</div>
+    `;
+}
