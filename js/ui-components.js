@@ -262,14 +262,72 @@ function createEventDetailsHTML(eventDetails) {
         return '';
     }
 
+    // Map field labels to appropriate icons
+    const fieldIcons = {
+        'honoree name': '🎖️',
+        'retiree name': '🎖️',
+        'recipient': '🎖️',
+        'rank': '⭐',
+        'current rank': '⭐',
+        'new rank': '⭐',
+        'retiring rank': '⭐',
+        'promoted by': '👔',
+        'promoter': '👔',
+        'years of service': '📅',
+        'service dates': '📅',
+        'outgoing': '👤',
+        'incoming': '👤',
+        'commander': '👔',
+        'officer': '👔',
+        'chaplain': '⛪',
+        'unit': '🪖',
+        'venue': '🏛️',
+        'location': '📍',
+        'reception': '🍽️',
+        'dress code': '👔',
+        'uniform': '🎖️',
+        'price': '💵',
+        'cost': '💵',
+        'ticket': '🎫',
+        'speaker': '🎤',
+        'instructor': '👨‍🏫',
+        'topic': '📚',
+        'training': '🎯',
+        'activities': '🎉',
+        'food': '🍔',
+        'parking': '🅿️',
+        'award': '🏅',
+        'formation': '📋',
+        'type': '📝'
+    };
+
+    // Get icon for field based on label keywords
+    const getIcon = (label) => {
+        const lowerLabel = label.toLowerCase();
+        for (const [keyword, icon] of Object.entries(fieldIcons)) {
+            if (lowerLabel.includes(keyword)) {
+                return icon;
+            }
+        }
+        return '📌'; // Default icon
+    };
+
     const detailsHTML = Object.values(eventDetails).map(detail => `
-        <div class="invite-detail">
-            <strong>${detail.label}:</strong> ${detail.value}
+        <div class="invite-detail" style="display: flex; align-items: start; gap: 0.75rem; padding: 0.75rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.02)); border-radius: 0.5rem; margin-bottom: 0.75rem; border-left: 3px solid #d4af37;">
+            <span style="font-size: 1.25rem; flex-shrink: 0;">${getIcon(detail.label)}</span>
+            <div style="flex: 1;">
+                <div style="font-weight: 600; color: #1a1f2e; font-size: 0.875rem; margin-bottom: 0.25rem;">${detail.label}</div>
+                <div style="color: #4b5563; font-size: 1rem;">${detail.value}</div>
+            </div>
         </div>
     `).join('');
 
     return `
-        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid #e5e7eb;">
+            <div style="font-weight: 700; color: #1a1f2e; font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span>ℹ️</span>
+                <span>Event Details</span>
+            </div>
             ${detailsHTML}
         </div>
     `;
