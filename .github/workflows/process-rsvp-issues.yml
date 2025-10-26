@@ -1,0 +1,128 @@
+name: Process RSVP Issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  process-rsvp:
+    if: contains(github.event.issue.labels.*.name, 'rsvp')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract RSVP Data
+        id: extract
+        run: |
+          # Extract JSON data from issue body
+          echo "${{ github.event.issue.body }}" > issue-body.txt
+
+          # Extract JSON block (between ```json and ```)
+          sed -n '/```json/,/```/p' issue-body.txt | sed '1d;$d' > rsvp-data.json
+
+          # Verify JSON is valid
+          if ! jq empty rsvp-data.json 2>/dev/null; then
+            echo "Invalid JSON in issue body"
+            exit 1
+          fi
+
+          # Extract event ID
+          EVENT_ID=$(jq -r '.eventId' rsvp-data.json)
+          echo "event_id=$EVENT_ID" >> $GITHUB_OUTPUT
+          echo "Event ID: $EVENT_ID"
+
+          # Extract RSVP ID
+          RSVP_ID=$(jq -r '.rsvpId' rsvp-data.json)
+          echo "rsvp_id=$RSVP_ID" >> $GITHUB_OUTPUT
+          echo "RSVP ID: $RSVP_ID"
+
+      - name: Save RSVP to Private Repo
+        env:
+          EVENT_ID: ${{ steps.extract.outputs.event_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          echo "Saving RSVP to EventCall-Data repository..."
+
+          # Load RSVP data
+          RSVP_DATA=$(cat rsvp-data.json)
+
+          # Add issue metadata
+          ENHANCED_DATA=$(echo "$RSVP_DATA" | jq \
+            --arg issue "$ISSUE_NUMBER" \
+            --arg url "${{ github.event.issue.html_url }}" \
+            '. + {issueNumber: ($issue | tonumber), issueUrl: $url, processed: true, processedAt: now}')
+
+          echo "$ENHANCED_DATA" > rsvp-enhanced.json
+
+          # Encode to base64
+          CONTENT=$(base64 -w 0 rsvp-enhanced.json)
+
+          # Check if RSVP file already exists
+          EXISTING_SHA=$(curl -s \
+            -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${EVENT_ID}.json" \
+            | jq -r '.sha // empty')
+
+          # Prepare API request
+          if [ -n "$EXISTING_SHA" ]; then
+            # Update existing file
+            echo "Updating existing RSVP file..."
+
+            # Get existing content
+            EXISTING_CONTENT=$(curl -s \
+              -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${EVENT_ID}.json" \
+              | jq -r '.content' | base64 -d)
+
+            # Parse existing RSVPs (should be an array)
+            if echo "$EXISTING_CONTENT" | jq -e 'type == "array"' > /dev/null 2>&1; then
+              EXISTING_ARRAY="$EXISTING_CONTENT"
+            else
+              EXISTING_ARRAY="[$EXISTING_CONTENT]"
+            fi
+
+            # Add new RSVP to array
+            MERGED_ARRAY=$(echo "$EXISTING_ARRAY" | jq --argjson new "$ENHANCED_DATA" '. + [$new]')
+            echo "$MERGED_ARRAY" > merged-rsvps.json
+
+            # Encode merged array
+            CONTENT=$(base64 -w 0 merged-rsvps.json)
+
+            # Update file with SHA
+            curl -X PUT \
+              -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${EVENT_ID}.json" \
+              -d "{\"message\":\"Update RSVP for event ${EVENT_ID} (Issue #${ISSUE_NUMBER})\",\"content\":\"$CONTENT\",\"sha\":\"$EXISTING_SHA\"}"
+          else
+            # Create new file (as array)
+            echo "Creating new RSVP file..."
+            ARRAY_CONTENT="[$ENHANCED_DATA]"
+            echo "$ARRAY_CONTENT" > array-rsvp.json
+            CONTENT=$(base64 -w 0 array-rsvp.json)
+
+            curl -X PUT \
+              -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${EVENT_ID}.json" \
+              -d "{\"message\":\"Add RSVP for event ${EVENT_ID} (Issue #${ISSUE_NUMBER})\",\"content\":\"$CONTENT\"}"
+          fi
+
+          echo "✅ RSVP saved successfully"
+
+      - name: Add Success Comment
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
+            -d "{\"body\":\"✅ **RSVP Processed Successfully**\\n\\nYour RSVP has been saved to the secure database.\\n\\n- Event ID: \`${{ steps.extract.outputs.event_id }}\`\\n- RSVP ID: \`${{ steps.extract.outputs.rsvp_id }}\`\\n- Processed: $(date -u +\\\"%Y-%m-%d %H:%M:%S UTC\\\")\"}"
+
+      - name: Close Issue
+        run: |
+          curl -X PATCH \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}" \
+            -d "{\"state\":\"closed\",\"labels\":[\"rsvp\",\"processed\",\"${{ github.event.issue.labels[*].name }}\"]}"
