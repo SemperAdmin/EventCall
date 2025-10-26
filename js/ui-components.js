@@ -318,7 +318,7 @@ function createEventDetailsHTML(eventDetails) {
         <div class="invite-detail" style="display: flex; align-items: start; gap: 0.75rem; padding: 0.75rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.02)); border-radius: 0.5rem; margin-bottom: 0.75rem; border-left: 3px solid #d4af37;">
             <span style="font-size: 1.25rem; flex-shrink: 0;">${getIcon(detail.label)}</span>
             <div style="flex: 1;">
-                <div style="font-weight: 600; color: #1a1f2e; font-size: 0.875rem; margin-bottom: 0.25rem;">${escapeHTML(detail.label)}</div>
+                <div style="font-weight: 600; color: #86efac; font-size: 0.875rem; margin-bottom: 0.25rem;">${escapeHTML(detail.label)}</div>
                 <div style="color: #d4af37; font-size: 1rem; font-weight: 600;">${escapeHTML(detail.value)}</div>
             </div>
         </div>
