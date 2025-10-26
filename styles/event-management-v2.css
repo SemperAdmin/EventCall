@@ -439,6 +439,7 @@ css.search-input:focus, .filter-select:focus {
     flex-wrap: wrap;
 }
 
+/* Attendee Controls */
 .search-input {
     padding: 0.75rem 1rem;
     background: rgba(255, 255, 255, 0.1);
@@ -454,11 +455,14 @@ css.search-input:focus, .filter-select:focus {
 
 .filter-select {
     padding: 0.75rem 1rem;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(17, 24, 39, 0.9); /* Dark slate for strong contrast */
+    border: 1px solid rgba(212, 175, 55, 0.35); /* Semper gold accent */
     border-radius: 0.5rem;
     color: #e2e8f0;
     cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
 }
 
 /* Attendee Cards */
