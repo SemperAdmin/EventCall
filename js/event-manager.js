@@ -77,6 +77,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     const eventResponses = window.responses ? window.responses[eventId] || [] : [];
     const stats = calculateEventStats(eventResponses);
     
+    // XSS Protection helper
+    const h = window.utils.escapeHTML;
+    
     // Calculate response rate
     const responseRate = eventResponses.length > 0 
         ? Math.round(((stats.attending + stats.notAttending) / eventResponses.length) * 100)
@@ -98,7 +101,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             <!-- Header -->
             <div class="mission-control-header">
                 <div class="mission-control-title">
-                    <h1>${event.title}</h1>
+                    <h1>${h(event.title)}</h1>
                     <div class="mission-control-subtitle">
                         ${isPast ? '🔴 Past Event' : '🟢 Active Event'} • Created ${formatRelativeTime(event.created)}
                     </div>
@@ -136,14 +139,14 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                 <span class="meta-icon-v2">📍</span>
                                 <div class="meta-content">
                                     <div class="meta-label">Location</div>
-                                    <div class="meta-value">${event.location || 'Not specified'}</div>
+                                    <div class="meta-value">${h(event.location) || 'Not specified'}</div>
                                 </div>
                             </div>
                             <div class="meta-item-v2">
                                 <span class="meta-icon-v2">${isPast ? '⏱️' : '⏳'}</span>
                                 <div class="meta-content">
                                     <div class="meta-label">${isPast ? 'Status' : 'Time Until'}</div>
-                                    <div class="meta-value">${isPast ? 'Event Passed' : timeUntil}</div>
+                                    <div class="meta-value">${isPast ? 'Event Passed' : h(timeUntil)}</div>
                                 </div>
                             </div>
                         </div>
@@ -152,7 +155,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                 <span class="meta-icon-v2">📝</span>
                                 <div class="meta-content">
                                     <div class="meta-label">Description</div>
-                                    <div class="meta-value">${event.description}</div>
+                                    <div class="meta-value">${h(event.description)}</div>
                                 </div>
                             </div>
                         ` : ''}
@@ -185,7 +188,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     </div>
                     ${event.coverImage ? `
                         <div class="event-cover-large">
-                            <img src="${event.coverImage}" alt="${event.title}">
+                            <img src="${h(event.coverImage)}" alt="${h(event.title)}">
                         </div>
                     ` : ''}
                 </div>
@@ -252,7 +255,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <button class="btn-action btn-sync" onclick="eventManager.syncEventRSVPs('${eventId}')">
                         🔄 Sync RSVPs
                     </button>
-                    <button class="btn-action btn-reminder" onclick="alert('Email reminder feature coming soon!')">
+                    <button class="btn-action btn-reminder" onclick="eventManager.sendEventReminder('${eventId}')">
                         📧 Send Reminder
                     </button>
                     <button class="btn-action btn-export" onclick="exportEventData('${eventId}')">
@@ -281,9 +284,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <button class="btn-action" onclick="eventManager.copyInviteLink('${eventId}')">
                         📋 Copy Link
                     </button>
-                    <button class="btn-action" onclick="alert('QR Code feature coming soon!')">
-                        📱 QR Code
-                    </button>
+                    <button class="btn-action" onclick="eventManager.generateEventQRCode('${eventId}')">
+                            📱 QR Code
+                        </button>
                     <button class="btn-action" onclick="alert('Email link feature coming soon!')">
                         📧 Email Link
                     </button>
@@ -325,10 +328,484 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     `;
 }
 
-/**
+    /**
+     * Send email reminder to event attendees
+     * @param {string} eventId - Event ID
+     */
+    async sendEventReminder(eventId) {
+        const event = window.events ? window.events[eventId] : null;
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+        
+        if (!event) {
+            showToast('Event not found', 'error');
+            return;
+        }
+
+        if (!window.githubAPI || !window.githubAPI.hasToken()) {
+            showToast('🔐 GitHub token required to send email reminders', 'error');
+            return;
+        }
+
+        // Show reminder options modal
+        const reminderType = await this.showReminderOptionsModal(event, eventResponses);
+        if (!reminderType) return; // User cancelled
+
+        try {
+            showToast('📧 Sending email reminders...', 'info');
+
+            // Filter attendees based on reminder type
+            let recipients = [];
+            if (reminderType === 'all') {
+                recipients = eventResponses.filter(r => r.email);
+            } else if (reminderType === 'attending') {
+                recipients = eventResponses.filter(r => r.email && r.attending);
+            } else if (reminderType === 'pending') {
+                recipients = eventResponses.filter(r => r.email && r.attending === undefined);
+            }
+
+            if (recipients.length === 0) {
+                showToast('No recipients found for the selected reminder type', 'warning');
+                return;
+            }
+
+            // Calculate days until event
+            const eventDate = new Date(`${event.date}T${event.time}`);
+            const now = new Date();
+            const daysUntil = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+            const daysText = daysUntil === 1 ? 'tomorrow' : 
+                           daysUntil === 0 ? 'today' : 
+                           daysUntil > 0 ? `in ${daysUntil} days` : 
+                           `${Math.abs(daysUntil)} days ago`;
+
+            // Send reminders via GitHub Actions
+            let successCount = 0;
+            for (const recipient of recipients) {
+                try {
+                    await this.sendIndividualReminder(event, recipient, daysText);
+                    successCount++;
+                } catch (error) {
+                    console.error(`Failed to send reminder to ${recipient.email}:`, error);
+                }
+            }
+
+            if (successCount > 0) {
+                showToast(`✅ Sent ${successCount} reminder email${successCount > 1 ? 's' : ''}`, 'success');
+            } else {
+                showToast('❌ Failed to send reminder emails', 'error');
+            }
+
+        } catch (error) {
+            console.error('Failed to send reminders:', error);
+            showToast('Failed to send reminders: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Show reminder options modal
+     * @param {Object} event - Event data
+     * @param {Array} eventResponses - Event responses
+     * @returns {Promise<string|null>} Selected reminder type or null if cancelled
+     */
+    async showReminderOptionsModal(event, eventResponses) {
+        const h = window.utils.escapeHTML;
+        const stats = calculateEventStats(eventResponses);
+        
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3>📧 Send Event Reminder</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove(); resolve(null);">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Send reminder emails for: <strong>${h(event.title)}</strong></p>
+                        <p>Event Date: <strong>${formatDate(event.date)} at ${formatTime(event.time)}</strong></p>
+                        
+                        <div style="margin: 1.5rem 0;">
+                            <h4>Who should receive reminders?</h4>
+                            <div class="reminder-options">
+                                <label class="reminder-option">
+                                    <input type="radio" name="reminderType" value="attending" checked>
+                                    <span>Attending Only (${stats.attending} people)</span>
+                                </label>
+                                <label class="reminder-option">
+                                    <input type="radio" name="reminderType" value="all">
+                                    <span>All RSVPs (${eventResponses.filter(r => r.email).length} people)</span>
+                                </label>
+                                <label class="reminder-option">
+                                    <input type="radio" name="reminderType" value="pending">
+                                    <span>Pending Responses (${eventResponses.filter(r => r.email && r.attending === undefined).length} people)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove(); resolve(null);">Cancel</button>
+                        <button class="btn btn-primary" onclick="
+                            const selected = this.closest('.modal-content').querySelector('input[name=reminderType]:checked').value;
+                            this.closest('.modal-overlay').remove();
+                            resolve(selected);
+                        ">Send Reminders</button>
+                    </div>
+                </div>
+            `;
+
+            // Add styles for reminder options
+            const style = document.createElement('style');
+            style.textContent = `
+                .reminder-options {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                }
+                .reminder-option {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.75rem;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 0.5rem;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                .reminder-option:hover {
+                    background-color: #f9fafb;
+                    border-color: #d1d5db;
+                }
+                .reminder-option input[type="radio"] {
+                    margin: 0;
+                }
+            `;
+            document.head.appendChild(style);
+
+            document.body.appendChild(modal);
+
+            // Override resolve function in modal context
+            modal.querySelector('.modal-content').resolve = resolve;
+        });
+    }
+
+    /**
+     * Send individual reminder email via GitHub Actions
+     * @param {Object} event - Event data
+     * @param {Object} recipient - Recipient data
+     * @param {string} daysText - Days until event text
+     */
+    async sendIndividualReminder(event, recipient, daysText) {
+        const h = window.utils.escapeHTML;
+        
+        // Create email content using the template structure
+        const emailSubject = `⏰ Reminder: ${event.title} - ${daysText}`;
+        const emailBody = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Event Reminder</title>
+            </head>
+            <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px;">
+                    <tr>
+                        <td align="center">
+                            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <tr>
+                                    <td style="background: linear-gradient(135deg, #0f1419, #1f2937); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                                        <h1 style="color: #ffd700; margin: 0; font-size: 28px;">EventCall</h1>
+                                        <p style="color: #ffffff; margin: 5px 0 0 0; font-size: 14px;">Where Every Event Matters</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 40px 30px;">
+                                        <h2 style="color: #0f1419; margin: 0 0 20px 0;">⏰ Event Reminder</h2>
+                                        <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                                            Hello <strong>${h(recipient.name || 'there')}</strong>,
+                                        </p>
+                                        <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                                            This is a friendly reminder that you have an upcoming event <strong>${h(daysText)}</strong>:
+                                        </p>
+                                        <table width="100%" cellpadding="15" cellspacing="0" style="background-color: #fff7ed; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 20px 0;">
+                                            <tr>
+                                                <td>
+                                                    <h3 style="color: #92400e; margin: 0 0 15px 0; font-size: 18px;">📅 Event Details</h3>
+                                                    <p style="margin: 5px 0; color: #374151;"><strong>Event:</strong> ${h(event.title)}</p>
+                                                    <p style="margin: 5px 0; color: #374151;"><strong>Date:</strong> ${formatDate(event.date)}</p>
+                                                    <p style="margin: 5px 0; color: #374151;"><strong>Time:</strong> ${formatTime(event.time)}</p>
+                                                    ${event.location ? `<p style="margin: 5px 0; color: #374151;"><strong>Location:</strong> ${h(event.location)}</p>` : ''}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        ${recipient.attending ? `
+                                            <table width="100%" cellpadding="15" cellspacing="0" style="background-color: #dcfce7; border-left: 4px solid #16a34a; border-radius: 4px; margin: 20px 0;">
+                                                <tr>
+                                                    <td>
+                                                        <h3 style="color: #166534; margin: 0 0 10px 0;">✅ Your RSVP Status</h3>
+                                                        <p style="margin: 0; color: #374151;">You are <strong>attending</strong> this event.</p>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        ` : recipient.attending === false ? `
+                                            <table width="100%" cellpadding="15" cellspacing="0" style="background-color: #fee2e2; border-left: 4px solid #dc2626; border-radius: 4px; margin: 20px 0;">
+                                                <tr>
+                                                    <td>
+                                                        <h3 style="color: #991b1b; margin: 0 0 10px 0;">❌ Your RSVP Status</h3>
+                                                        <p style="margin: 0; color: #374151;">You indicated you will <strong>not be attending</strong> this event.</p>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        ` : `
+                                            <table width="100%" cellpadding="15" cellspacing="0" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 20px 0;">
+                                                <tr>
+                                                    <td>
+                                                        <h3 style="color: #92400e; margin: 0 0 10px 0;">⏳ RSVP Needed</h3>
+                                                        <p style="margin: 0; color: #374151;">Please respond to let us know if you'll be attending.</p>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        `}
+                                        <div style="text-align: center; margin: 30px 0;">
+                                            <a href="${generateInviteURL(event)}" style="display: inline-block; background: linear-gradient(135deg, #0f1419, #1f2937); color: #ffd700; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                                                View Event Details
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="background-color: #f9fafb; padding: 20px; text-align: center; border-radius: 0 0 8px 8px;">
+                                        <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                                            Powered by <strong>EventCall</strong> - Where Every Event Matters
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+        `;
+
+        // Trigger GitHub Actions workflow
+        const payload = {
+            to: recipient.email,
+            subject: emailSubject,
+            body: emailBody.replace(/\n\s+/g, ' ').replace(/"/g, '\\"'),
+            type: 'event_reminder',
+            event_id: event.id,
+            event_title: event.title
+        };
+
+        await window.githubAPI.triggerWorkflow('send_email', payload);
+    }
+
+    /**
+     * Generate and display QR code for event invite link
+     * @param {string} eventId - Event ID
+     */
+    async generateEventQRCode(eventId) {
+        const event = window.events ? window.events[eventId] : null;
+        
+        if (!event) {
+            showToast('Event not found', 'error');
+            return;
+        }
+
+        if (!window.QRCode) {
+            showToast('QR Code library not loaded', 'error');
+            return;
+        }
+
+        try {
+            showToast('📱 Generating QR code...', 'info');
+
+            // Generate invite URL
+            const inviteURL = generateInviteURL(event);
+            
+            // Generate QR code
+            const qrDataURL = await QRCode.toDataURL(inviteURL, {
+                width: 300,
+                margin: 2,
+                color: {
+                    dark: '#0f1419',
+                    light: '#ffffff'
+                },
+                errorCorrectionLevel: 'M'
+            });
+
+            // Show QR code modal
+            this.showQRCodeModal(event, inviteURL, qrDataURL);
+
+        } catch (error) {
+            console.error('QR Code generation failed:', error);
+            showToast('Failed to generate QR code: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Show QR code modal with sharing options
+     * @param {Object} event - Event data
+     * @param {string} inviteURL - Event invite URL
+     * @param {string} qrDataURL - QR code data URL
+     */
+    showQRCodeModal(event, inviteURL, qrDataURL) {
+        const h = window.utils.escapeHTML;
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content qr-modal" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>📱 Event QR Code</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove();">×</button>
+                </div>
+                <div class="modal-body" style="text-align: center;">
+                    <h4 style="margin: 0 0 1rem 0; color: #374151;">${h(event.title)}</h4>
+                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; font-size: 14px;">
+                        Scan this QR code to quickly access the event RSVP page
+                    </p>
+                    
+                    <div class="qr-code-container" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 0 0 1.5rem 0; display: inline-block;">
+                        <img src="${qrDataURL}" alt="Event QR Code" style="display: block; max-width: 100%; height: auto;">
+                    </div>
+                    
+                    <div class="qr-actions" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <button class="btn btn-primary" onclick="eventManager.downloadQRCode('${qrDataURL}', '${h(event.title)}')">
+                            💾 Download QR Code
+                        </button>
+                        <button class="btn btn-secondary" onclick="eventManager.copyInviteLink('${h(inviteURL)}')">
+                            🔗 Copy Invite Link
+                        </button>
+                        <button class="btn btn-secondary" onclick="eventManager.shareQRCode('${h(event.title)}', '${h(inviteURL)}')">
+                            📤 Share Event
+                        </button>
+                    </div>
+                    
+                    <div class="qr-info" style="margin-top: 1.5rem; padding: 1rem; background-color: #f9fafb; border-radius: 8px; text-align: left;">
+                        <h5 style="margin: 0 0 0.5rem 0; color: #374151; font-size: 14px;">💡 How to use:</h5>
+                        <ul style="margin: 0; padding-left: 1.25rem; color: #6b7280; font-size: 13px; line-height: 1.5;">
+                            <li>Print and display at your event location</li>
+                            <li>Share digitally via social media or messaging</li>
+                            <li>Include in event flyers or promotional materials</li>
+                            <li>Guests can scan to instantly access RSVP form</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove();">Close</button>
+                </div>
+            </div>
+        `;
+
+        // Add QR modal specific styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .qr-modal .modal-body {
+                padding: 1.5rem;
+            }
+            .qr-actions .btn {
+                width: 100%;
+                justify-content: center;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            .qr-code-container {
+                transition: transform 0.2s ease;
+            }
+            .qr-code-container:hover {
+                transform: scale(1.02);
+            }
+        `;
+        document.head.appendChild(style);
+
+        document.body.appendChild(modal);
+    }
+
+    /**
+     * Download QR code as PNG image
+     * @param {string} qrDataURL - QR code data URL
+     * @param {string} eventTitle - Event title for filename
+     */
+    downloadQRCode(qrDataURL, eventTitle) {
+        try {
+            const link = document.createElement('a');
+            link.download = `${eventTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_qr_code.png`;
+            link.href = qrDataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('✅ QR code downloaded successfully', 'success');
+        } catch (error) {
+            console.error('Download failed:', error);
+            showToast('Failed to download QR code', 'error');
+        }
+    }
+
+    /**
+     * Copy invite link to clipboard
+     * @param {string} inviteURL - Event invite URL
+     */
+    async copyInviteLink(inviteURL) {
+        try {
+            await navigator.clipboard.writeText(inviteURL);
+            showToast('✅ Invite link copied to clipboard', 'success');
+        } catch (error) {
+            console.error('Copy failed:', error);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = inviteURL;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast('✅ Invite link copied to clipboard', 'success');
+            } catch (fallbackError) {
+                showToast('Failed to copy link. Please copy manually: ' + inviteURL, 'error');
+            }
+            document.body.removeChild(textArea);
+        }
+    }
+
+    /**
+     * Share event using Web Share API or fallback
+     * @param {string} eventTitle - Event title
+     * @param {string} inviteURL - Event invite URL
+     */
+    async shareQRCode(eventTitle, inviteURL) {
+        const shareData = {
+            title: `RSVP for ${eventTitle}`,
+            text: `You're invited to ${eventTitle}! Please RSVP using the link below.`,
+            url: inviteURL
+        };
+
+        try {
+            if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+                await navigator.share(shareData);
+                showToast('✅ Event shared successfully', 'success');
+            } else {
+                // Fallback: Copy to clipboard and show share options
+                await this.copyInviteLink(inviteURL);
+                showToast('📋 Link copied! You can now paste it in your preferred app', 'info');
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error('Share failed:', error);
+                // Fallback to copy
+                await this.copyInviteLink(inviteURL);
+            }
+        }
+    }
+
+    /**
      * Generate attendee cards HTML - UPDATED with Email button
      */
     generateAttendeeCards(eventResponses) {
+        // XSS Protection helper
+        const h = window.utils.escapeHTML;
+        
         return `
         <div class="attendee-cards" id="attendee-cards-container">
             ${eventResponses.map(response => `
@@ -342,7 +819,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                      data-phone="${(response.phone || '').toLowerCase()}">
                     <div class="attendee-card-header">
                         <div class="attendee-info">
-                            <div class="attendee-name">${response.name || 'Anonymous'}</div>
+                            <div class="attendee-name">${h(response.name) || 'Anonymous'}</div>
                             <span class="attendee-status ${response.attending ? 'status-attending' : 'status-declined'}">
                                 ${response.attending ? '✅ Attending' : '❌ Declined'}
                             </span>
@@ -352,49 +829,49 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         ${response.email ? `
                             <div class="attendee-detail-item">
                                 <span class="attendee-detail-icon">📧</span>
-                                <span>${response.email}</span>
+                                <span>${h(response.email)}</span>
                             </div>
                         ` : ''}
                         ${response.phone ? `
                             <div class="attendee-detail-item">
                                 <span class="attendee-detail-icon">📱</span>
-                                <span>${response.phone}</span>
+                                <span>${h(response.phone)}</span>
                             </div>
                         ` : ''}
                         ${response.guestCount > 0 ? `
                             <div class="attendee-detail-item">
                                 <span class="attendee-detail-icon">👥</span>
-                                <span>+${response.guestCount} guest${response.guestCount > 1 ? 's' : ''}</span>
+                                <span>+${parseInt(response.guestCount)} guest${response.guestCount > 1 ? 's' : ''}</span>
                             </div>
                         ` : ''}
                         ${response.reason ? `
                             <div class="attendee-detail-item">
                                 <span class="attendee-detail-icon">💬</span>
-                                <span>${response.reason}</span>
+                                <span>${h(response.reason)}</span>
                             </div>
                         ` : ''}
                         ${(response.dietaryRestrictions && response.dietaryRestrictions.length) ? `
                             <div class="attendee-detail-item">
                                 <span class="attendee-detail-icon">🍽️</span>
-                                <span>${response.dietaryRestrictions.join(', ')}</span>
+                                <span>${response.dietaryRestrictions.map(r => h(r)).join(', ')}</span>
                             </div>
                         ` : ''}
                         ${response.allergyDetails ? `
                             <div class="attendee-detail-item">
                                 <span class="attendee-detail-icon">⚠️</span>
-                                <span>${response.allergyDetails}</span>
+                                <span>${h(response.allergyDetails)}</span>
                             </div>
                         ` : ''}
                         ${response.rank ? `
                             <div class="attendee-detail-item">
                                 <span class="attendee-detail-icon">⭐</span>
-                                <span>${response.rank}</span>
+                                <span>${h(response.rank)}</span>
                             </div>
                         ` : ''}
                         ${response.unit ? `
                             <div class="attendee-detail-item">
                                 <span class="attendee-detail-icon">🎖️</span>
-                                <span>${response.unit}</span>
+                                <span>${h(response.unit)}</span>
                             </div>
                         ` : ''}
                         ${response.branch ? `
