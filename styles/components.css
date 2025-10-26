@@ -424,9 +424,14 @@
 .btn-action,
 .btn-primary,
 .btn-secondary {
-    color: #111827; /* near-black text for contrast when on light bg */
+    color: #111827; /* near-black text for light backgrounds */
 }
 
+/* Keep white text on brand/red buttons (e.g., SYNC RSVPs) */
+.btn,
+.btn-danger {
+    color: #ffffff;
+}
 .btn-primary {
     background: linear-gradient(135deg, #0f1419, #1f2937);
     color: #ffd700; /* gold on dark; strong contrast */
