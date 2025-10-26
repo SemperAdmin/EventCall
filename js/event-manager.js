@@ -215,13 +215,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         <div class="stat-card-number">${stats.attending}</div>
                         <div class="stat-card-label">Attending</div>
                     </div>
-                    ${event.allowGuests ? `
-                        <div class="stat-card-large stat-card-guests">
-                            <div class="stat-card-icon">👥+</div>
-                            <div class="stat-card-number">${stats.attendingWithGuests}</div>
-                            <div class="stat-card-label">Guests</div>
-                        </div>
-                    ` : ''}
                     <div class="stat-card-large stat-card-declined">
                         <div class="stat-card-icon">❌</div>
                         <div class="stat-card-number">${stats.notAttending}</div>
