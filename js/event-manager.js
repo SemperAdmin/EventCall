@@ -156,6 +156,32 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                 </div>
                             </div>
                         ` : ''}
+                        ${(event.askReason || event.allowGuests || event.requiresMealChoice) ? `
+                            <div class="meta-item-v2" style="grid-column: 1 / -1;">
+                                <span class="meta-icon-v2">⚙️</span>
+                                <div class="meta-content">
+                                    <div class="meta-label">RSVP Settings</div>
+                                    <div class="meta-value">
+                                        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                                            ${event.askReason ? `<span style="display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .5rem;border-radius:999px;background:#e0f2fe;color:#0c4a6e;border:1px solid #7dd3fc;">💬 Ask why attending</span>` : ''}
+                                            ${event.allowGuests ? `<span style="display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .5rem;border-radius:999px;background:#f0fdf4;color:#064e3b;border:1px solid #86efac;">👥 Allow additional guests</span>` : ''}
+                                            ${event.requiresMealChoice ? `<span style="display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .5rem;border-radius:999px;background:#fff7ed;color:#7c2d12;border:1px solid #fdba74;">🍽️ Meal/dietary choices required</span>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${event.eventDetails && Object.keys(event.eventDetails).length ? `
+                            <div class="meta-item-v2" style="grid-column: 1 / -1;">
+                                <span class="meta-icon-v2">ℹ️</span>
+                                <div class="meta-content">
+                                    <div class="meta-label">Event Details</div>
+                                    <div class="meta-value">
+                                        ${createEventDetailsHTML(event.eventDetails)}
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                     ${event.coverImage ? `
                         <div class="event-cover-large">
