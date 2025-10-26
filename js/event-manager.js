@@ -393,8 +393,8 @@ generateAttendeeCards(eventResponses) {
      * @param {string} eventId - Event ID
      */
     async syncEventRSVPs(eventId) {
-        if (!managerAuth.isAuthenticated()) {
-            showToast('ðŸ” Please login with GitHub token to sync RSVPs', 'error');
+        if (!window.githubAPI || !window.githubAPI.hasToken()) {
+            showToast('🔐 GitHub token required to sync RSVPs', 'error');
             return;
         }
 
@@ -920,7 +920,7 @@ generateAttendeeCards(eventResponses) {
             }
 
             // Update GitHub if connected
-            if (managerAuth.isAuthenticated() && window.githubAPI) {
+            if (window.githubAPI && window.githubAPI.hasToken()) {
                 try {
                     const path = `rsvps/${eventId}.json`;
                     const content = window.githubAPI.safeBase64Encode(JSON.stringify(eventResponses, null, 2));
@@ -928,7 +928,7 @@ generateAttendeeCards(eventResponses) {
                     // Get existing file info
                     const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall/contents/${path}`, {
                         headers: {
-                            'Authorization': `token ${managerAuth.getToken()}`,
+                            'Authorization': `token ${window.githubAPI.getToken()}`,
                             'Accept': 'application/vnd.github.v3+json',
                             'User-Agent': 'EventCall-App'
                         }
@@ -948,7 +948,7 @@ generateAttendeeCards(eventResponses) {
                     await fetch(`https://api.github.com/repos/SemperAdmin/EventCall/contents/${path}`, {
                         method: 'PUT',
                         headers: {
-                            'Authorization': `token ${managerAuth.getToken()}`,
+                            'Authorization': `token ${window.githubAPI.getToken()}`,
                             'Accept': 'application/vnd.github.v3+json',
                             'Content-Type': 'application/json',
                             'User-Agent': 'EventCall-App'
