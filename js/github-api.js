@@ -330,38 +330,44 @@ class GitHubAPI {
                     if (!fileResponse.ok) continue;
 
                     const fileData = await fileResponse.json();
-                    let rsvpData = JSON.parse(this.safeBase64Decode(fileData.content));
+                    const decoded = this.safeBase64Decode(fileData.content);
+                    const rawJson = JSON.parse(decoded);
 
-                    // Normalize to array format
-                    if (!Array.isArray(rsvpData)) {
-                        rsvpData = [rsvpData];
+                    // Normalize to array and flatten "data" wrapper if present
+                    if (Array.isArray(rawJson)) {
+                        rsvpArray = rawJson.map(item =>
+                            item && item.data
+                                ? { ...item.data, sentAt: item.sentAt, source: item.source }
+                                : item
+                        );
+                    } else {
+                        rsvpArray = [
+                            rawJson && rawJson.data
+                                ? { ...rawJson.data, sentAt: rawJson.sentAt, source: rawJson.source }
+                                : rawJson
+                        ];
                     }
-                    rsvpArray = rsvpData;
 
-                    // Extract eventId - either from filename or from content
+                    // Extract eventId from filename or content
                     if (file.path.startsWith('rsvps/') && !file.path.includes('rsvp-')) {
                         // Format: rsvps/{eventId}.json
                         eventId = file.path.replace('rsvps/', '').replace('.json', '');
-                    } else if (Array.isArray(rsvpArray) && rsvpArray.length > 0 && rsvpArray[0].eventId) {
-                        // Format: rsvp-{timestamp}.json - get eventId from content
-                        eventId = rsvpArray[0].eventId;
                     } else {
+                        const sample = rsvpArray[0] || {};
+                        eventId = sample.eventId || (rawJson && rawJson.data && rawJson.data.eventId) || null;
+                    }
+
+                    if (!eventId) {
                         console.warn(`⚠️ Could not extract eventId from RSVP file: ${file.path}`);
                         continue;
                     }
 
-                    // RSVP file contains an array of RSVPs for this event
-                    if (Array.isArray(rsvpArray) && eventId) {
-                        if (!responses[eventId]) {
-                            responses[eventId] = [];
-                        }
-
-                        // Append RSVPs to the array instead of replacing
-                        responses[eventId].push(...rsvpArray);
-                        console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId} from ${file.path}`);
-                    } else {
-                        console.warn(`⚠️ Unexpected RSVP format in ${file.path}`);
+                    // Append RSVPs to the event bucket
+                    if (!responses[eventId]) {
+                        responses[eventId] = [];
                     }
+                    responses[eventId].push(...rsvpArray);
+                    console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId} from ${file.path}`);
                 } catch (error) {
                     console.error('Failed to load response file ' + file.path + ':', error);
                 }
