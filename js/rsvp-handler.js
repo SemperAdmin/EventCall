@@ -398,7 +398,7 @@ class RSVPHandler {
                     <strong>✏️ Need to make changes?</strong><br>
                     <div style="margin-top: 0.5rem; font-size: 0.875rem;">
                         Save your edit link to update your RSVP later:<br>
-                        <code id="edit-link-text">${window.utils.escapeHTML(editURL)}</code>
+                        <code id="edit-link-text">${escapeHTML(editURL)}</code>
                         <button id="copy-edit-link">Copy Edit Link</button>
                     </div>
                 </div>
@@ -410,7 +410,6 @@ function generateEditURL(event, rsvpId, editToken, name, email) {
     const payload = { rsvpId, name, email, eventId: event.id };
     const encodedData = encodeURIComponent(JSON.stringify(payload));
     const currentURL = `${location.origin}${location.pathname}`.replace(/\/$/, '');
-
     return `${currentURL}?data=${encodedData}&edit=${encodeURIComponent(editToken)}&rsvpId=${encodeURIComponent(rsvpId)}#invite/${encodeURIComponent(event.id)}`;
 }
 
