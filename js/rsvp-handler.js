@@ -398,7 +398,26 @@ class RSVPHandler {
                     <div style="margin-top: 0.5rem; font-size: 0.875rem;">
                         Save your edit link to update your RSVP later:<br>
                         <code style="background: #fef3c7; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.75rem; display: inline-block; margin-top: 0.25rem; word-break: break-all;">
-                            ${this.generateEditURL(event, rsvpData.rsvpId, rsvpData.editToken)}
+                            // generateEditURL(event, rsvpId, editToken) {
+                            generateEditURL(event, rsvpId, editToken) {
+                                const currentURL = window.location.href.split('?')[0].split('#')[0];
+                                const encodedData = encodeURIComponent(JSON.stringify({
+                                    id: event.id,
+                                    title: event.title,
+                                    date: event.date,
+                                    time: event.time,
+                                    location: event.location,
+                                    description: event.description,
+                                    coverImage: event.coverImage,
+                                    askReason: event.askReason,
+                                    allowGuests: event.allowGuests,
+                                    requiresMealChoice: event.requiresMealChoice || false,
+                                    eventDetails: event.eventDetails || {},
+                                    customQuestions: event.customQuestions || [],
+                                    created: event.created
+                                }));
+                                return `${currentURL}?data=${encodedData}&edit=${editToken}&rsvpId=${rsvpId}#invite/${event.id}`;
+                            }
                         </code>
                     </div>
                 </div>
