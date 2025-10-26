@@ -45,30 +45,45 @@ async triggerWorkflow(eventType, payload) {
 }
 
     async submitRSVP(rsvpData) {
-        console.log('Submitting RSVP...');
+        console.log('Submitting RSVP with data:', rsvpData);
 
-        const sanitized = {
+        // Pass through all RSVP data - the backend/GitHub Action will handle sanitization
+        // This ensures we don't lose any fields during submission
+        const payload = {
             eventId: String(rsvpData.eventId || '').trim(),
+            rsvpId: rsvpData.rsvpId || '',
             name: String(rsvpData.name || '').trim(),
             email: String(rsvpData.email || '').trim().toLowerCase(),
             phone: String(rsvpData.phone || '').trim(),
+            attending: rsvpData.attending,
+            guestCount: parseInt(rsvpData.guestCount, 10) || 0,
+            reason: String(rsvpData.reason || '').trim(),
             rank: String(rsvpData.rank || '').trim(),
             unit: String(rsvpData.unit || '').trim(),
-            attending: String(rsvpData.attending || '').trim(),
-            guests: parseInt(rsvpData.guests) || 0,
-            dietaryRestrictions: String(rsvpData.dietaryRestrictions || '').trim(),
-            specialRequests: String(rsvpData.specialRequests || '').trim()
+            branch: String(rsvpData.branch || '').trim(),
+            dietaryRestrictions: rsvpData.dietaryRestrictions || [],
+            allergyDetails: String(rsvpData.allergyDetails || '').trim(),
+            customAnswers: rsvpData.customAnswers || {},
+            timestamp: rsvpData.timestamp || Date.now(),
+            validationHash: rsvpData.validationHash || '',
+            submissionMethod: rsvpData.submissionMethod || 'secure_backend',
+            userAgent: rsvpData.userAgent || '',
+            checkInToken: rsvpData.checkInToken || '',
+            editToken: rsvpData.editToken || '',
+            isUpdate: rsvpData.isUpdate || false,
+            lastModified: rsvpData.lastModified || null
         };
 
-        if (!sanitized.eventId || !sanitized.name || !sanitized.email) {
-            throw new Error('Missing required fields');
+        if (!payload.eventId || !payload.name || !payload.email) {
+            throw new Error('Missing required fields: eventId, name, or email');
         }
 
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitized.email)) {
-            throw new Error('Invalid email');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+            throw new Error('Invalid email format');
         }
 
-        return await this.triggerWorkflow('submit_rsvp', sanitized);
+        console.log('Submitting RSVP payload with guestCount:', payload.guestCount);
+        return await this.triggerWorkflow('submit_rsvp', payload);
     }
 
     async createEvent(eventData) {
