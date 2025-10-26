@@ -101,9 +101,10 @@ function sanitizeText(text) {
  * @param {Object} event - Event data
  * @returns {string} Invite URL
  */
+// function generateInviteURL(event) {
 function generateInviteURL(event) {
     const baseURL = window.location.origin + window.location.pathname;
-    const encodedData = btoa(JSON.stringify({
+    const encodedData = encodeURIComponent(JSON.stringify({
         id: event.id,
         title: event.title,
         date: event.date,
@@ -125,16 +126,21 @@ function generateInviteURL(event) {
  * Get event data from URL parameters
  * @returns {Object|null} Event data or null
  */
+// function getEventFromURL() {
 function getEventFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     const encodedData = urlParams.get('data');
-    
+
     if (encodedData) {
         try {
-            return JSON.parse(atob(encodedData));
-        } catch (e) {
-            console.error('Failed to decode event data from URL:', e);
-            return null;
+            return JSON.parse(decodeURIComponent(encodedData));
+        } catch (e1) {
+            try {
+                return JSON.parse(atob(encodedData));
+            } catch (e2) {
+                console.error('Failed to decode event data from URL:', e1, e2);
+                return null;
+            }
         }
     }
     return null;
@@ -443,3 +449,16 @@ function getTimeUntilEvent(date, time) {
         return 'Starting soon';
     }
 }
+
+// Add shared escaping helper
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+window.utils = window.utils || {};
+window.utils.escapeHTML = escapeHTML;
