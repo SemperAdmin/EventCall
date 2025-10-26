@@ -329,7 +329,14 @@ generateAttendeeCards(eventResponses) {
     return `
         <div class="attendee-cards" id="attendee-cards-container">
             ${eventResponses.map(response => `
-                <div class="attendee-card" data-name="${response.name?.toLowerCase() || ''}" data-status="${response.attending ? 'attending' : 'declined'}">
+                <div class="attendee-card" 
+                     data-name="${(response.name || '').toLowerCase()}" 
+                     data-status="${response.attending ? 'attending' : 'declined'}"
+                     data-branch="${(response.branch || '').toLowerCase()}"
+                     data-rank="${(response.rank || '').toLowerCase()}"
+                     data-unit="${(response.unit || '').toLowerCase()}"
+                     data-email="${(response.email || '').toLowerCase()}"
+                     data-phone="${(response.phone || '').toLowerCase()}">
                     <div class="attendee-card-header">
                         <div class="attendee-info">
                             <div class="attendee-name">${response.name || 'Anonymous'}</div>
@@ -375,10 +382,22 @@ generateAttendeeCards(eventResponses) {
                                 <span>${response.allergyDetails}</span>
                             </div>
                         ` : ''}
+                        ${response.rank ? `
+                            <div class="attendee-detail-item">
+                                <span class="attendee-detail-icon">⭐</span>
+                                <span>${response.rank}</span>
+                            </div>
+                        ` : ''}
                         ${response.unit ? `
                             <div class="attendee-detail-item">
                                 <span class="attendee-detail-icon">🎖️</span>
                                 <span>${response.unit}</span>
+                            </div>
+                        ` : ''}
+                        ${response.branch ? `
+                            <div class="attendee-detail-item">
+                                <span class="attendee-detail-icon">🪖</span>
+                                <span>${response.branch}</span>
                             </div>
                         ` : ''}
                     </div>
@@ -427,15 +446,18 @@ generateAttendeeCards(eventResponses) {
         cards.forEach(card => {
             const name = card.dataset.name || '';
             const status = card.dataset.status || '';
+            const extra = [
+                card.dataset.branch || '',
+                card.dataset.rank || '',
+                card.dataset.unit || '',
+                card.dataset.email || '',
+                card.dataset.phone || ''
+            ].join(' ');
             
-            const matchesSearch = name.includes(searchTerm);
+            const matchesSearch = searchTerm === '' || name.includes(searchTerm) || extra.includes(searchTerm);
             const matchesFilter = filterValue === 'all' || status === filterValue;
             
-            if (matchesSearch && matchesFilter) {
-                card.style.display = 'block';
-            } else {
-                card.style.display = 'none';
-            }
+            card.style.display = (matchesSearch && matchesFilter) ? 'block' : 'none';
         });
     }
 
@@ -592,7 +614,10 @@ generateAttendeeCards(eventResponses) {
                     data-reason="${(response.reason || '').toLowerCase()}" 
                     data-guest-count="${response.guestCount || 0}"
                     data-phone="${phone.toLowerCase()}" 
-                    data-email="${email.toLowerCase()}">
+                    data-email="${email.toLowerCase()}"
+                    data-branch="${(response.branch || '').toLowerCase()}"
+                    data-rank="${(response.rank || '').toLowerCase()}"
+                    data-unit="${(response.unit || '').toLowerCase()}">
                     <td><strong>${displayName}</strong></td>
                     <td><a href="mailto:${email}" style="color: var(--semper-red); text-decoration: none;">${email}</a></td>
                     <td>${phone !== 'N/A' ? `<a href="tel:${phone}" style="color: var(--semper-red); text-decoration: none;">${phone}</a>` : phone}</td>
@@ -646,13 +671,19 @@ generateAttendeeCards(eventResponses) {
             const guestCount = row.getAttribute('data-guest-count');
             const phone = row.getAttribute('data-phone');
             const email = row.getAttribute('data-email');
+            const branch = row.getAttribute('data-branch') || '';
+            const rank = row.getAttribute('data-rank') || '';
+            const unit = row.getAttribute('data-unit') || '';
 
             const matchesSearch = searchTerm === '' || 
                 name.includes(searchTerm) || 
                 reason.includes(searchTerm) ||
                 guestCount.includes(searchTerm) ||
                 phone.includes(searchTerm) ||
-                email.includes(searchTerm);
+                email.includes(searchTerm) ||
+                branch.includes(searchTerm) ||
+                rank.includes(searchTerm) ||
+                unit.includes(searchTerm);
             
             const matchesAttendance = attendanceFilter === '' ||
                 (attendanceFilter === 'attending' && attending === 'true') ||
