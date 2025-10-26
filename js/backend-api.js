@@ -7,39 +7,55 @@ class BackendAPI {
 
 async triggerWorkflow(eventType, payload) {
     const url = this.apiBase + '/repos/' + this.owner + '/' + this.repo + '/dispatches';
-    
+
     // Get token from GITHUB_CONFIG
     const token = window.GITHUB_CONFIG && window.GITHUB_CONFIG.token ? window.GITHUB_CONFIG.token : null;
-    
+
     if (!token) {
         throw new Error('GitHub token not available for workflow trigger');
     }
-    
+
     try {
-        console.log('Triggering: ' + eventType);
-        
+        console.log('Triggering workflow:', eventType);
+        console.log('Payload size:', JSON.stringify(payload).length, 'bytes');
+
+        const requestBody = {
+            event_type: eventType,
+            client_payload: payload
+        };
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Authorization': 'token ' + token,  // ← ADD TOKEN HERE
+                'Authorization': 'token ' + token,
                 'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                event_type: eventType,
-                client_payload: payload
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
-            throw new Error('Failed: ' + response.status);
+            // Try to get error details from response
+            let errorMessage = 'Workflow dispatch failed: ' + response.status;
+            try {
+                const errorData = await response.json();
+                console.error('GitHub API Error Details:', errorData);
+                errorMessage = errorData.message || errorMessage;
+                if (errorData.errors) {
+                    console.error('Validation Errors:', errorData.errors);
+                    errorMessage += ' - ' + JSON.stringify(errorData.errors);
+                }
+            } catch (parseError) {
+                console.error('Could not parse error response');
+            }
+            throw new Error(errorMessage);
         }
 
-        console.log('Workflow triggered');
+        console.log('✅ Workflow triggered successfully');
         return { success: true };
-        
+
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Workflow trigger error:', error);
         throw error;
     }
 }
@@ -83,7 +99,87 @@ async triggerWorkflow(eventType, payload) {
         }
 
         console.log('Submitting RSVP payload with guestCount:', payload.guestCount);
-        return await this.triggerWorkflow('submit_rsvp', payload);
+
+        // Try workflow dispatch first, fall back to GitHub Issues if it fails
+        try {
+            return await this.triggerWorkflow('submit_rsvp', payload);
+        } catch (workflowError) {
+            console.warn('Workflow dispatch failed, trying GitHub Issues fallback:', workflowError.message);
+            return await this.submitRSVPViaIssue(payload);
+        }
+    }
+
+    async submitRSVPViaIssue(rsvpData) {
+        console.log('Submitting RSVP via GitHub Issue...');
+
+        const token = window.GITHUB_CONFIG && window.GITHUB_CONFIG.token ? window.GITHUB_CONFIG.token : null;
+
+        if (!token) {
+            throw new Error('GitHub token not available');
+        }
+
+        // Format RSVP data for issue body
+        const issueTitle = `RSVP: ${rsvpData.name} - ${rsvpData.attending ? 'Attending' : 'Not Attending'}`;
+        const issueBody = `
+## RSVP Submission
+
+**Event ID:** ${rsvpData.eventId}
+**RSVP ID:** ${rsvpData.rsvpId}
+**Name:** ${rsvpData.name}
+**Email:** ${rsvpData.email}
+**Phone:** ${rsvpData.phone || 'Not provided'}
+**Attending:** ${rsvpData.attending ? '✅ Yes' : '❌ No'}
+**Guest Count:** ${rsvpData.guestCount}
+
+${rsvpData.rank || rsvpData.unit || rsvpData.branch ? `### Military Information
+${rsvpData.rank ? `**Rank:** ${rsvpData.rank}\n` : ''}${rsvpData.unit ? `**Unit:** ${rsvpData.unit}\n` : ''}${rsvpData.branch ? `**Branch:** ${rsvpData.branch}\n` : ''}` : ''}
+
+${rsvpData.reason ? `**Reason:** ${rsvpData.reason}\n\n` : ''}${rsvpData.allergyDetails ? `**Allergy Details:** ${rsvpData.allergyDetails}\n\n` : ''}
+---
+**Timestamp:** ${new Date(rsvpData.timestamp).toISOString()}
+**Validation Hash:** ${rsvpData.validationHash}
+**Submission Method:** github_issue_fallback
+
+\`\`\`json
+${JSON.stringify(rsvpData, null, 2)}
+\`\`\`
+`;
+
+        try {
+            const response = await fetch(`${this.apiBase}/repos/${this.owner}/${this.repo}/issues`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'token ' + token,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: issueTitle,
+                    body: issueBody,
+                    labels: ['rsvp', 'automated', rsvpData.attending ? 'attending' : 'not-attending']
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('GitHub Issue creation failed:', errorData);
+                throw new Error(`GitHub Issue creation failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
+            }
+
+            const issueData = await response.json();
+            console.log('✅ RSVP submitted via GitHub Issue:', issueData.number);
+
+            return {
+                success: true,
+                method: 'github_issue',
+                issueNumber: issueData.number,
+                issueUrl: issueData.html_url
+            };
+
+        } catch (error) {
+            console.error('Failed to submit RSVP via GitHub Issue:', error);
+            throw error;
+        }
     }
 
     async createEvent(eventData) {
