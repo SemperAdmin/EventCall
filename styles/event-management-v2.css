@@ -519,6 +519,12 @@ css.search-input:focus, .filter-select:focus {
     border: 1px solid #ef4444;
 }
 
+.status-invited {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid #f59e0b;
+}
+
 .attendee-details {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
