@@ -691,7 +691,7 @@ async function handleEventSubmit(e) {
             time: document.getElementById('event-time').value,
             location: sanitizeText(document.getElementById('event-location').value),
             description: sanitizeText(document.getElementById('event-description').value),
-            coverImage: document.getElementById('cover-preview').src || '',
+            coverImage: document.getElementById('cover-image-url').value || '',
             askReason: document.getElementById('ask-reason').checked,
             allowGuests: document.getElementById('allow-guests').checked,
             requiresMealChoice: document.getElementById('requires-meal-choice').checked,
@@ -749,9 +749,13 @@ async function handleEventSubmit(e) {
         // Reset form
         document.getElementById('event-form').reset();
         const coverPreview = document.getElementById('cover-preview');
+        const coverImageUrlInput = document.getElementById('cover-image-url');
         if (coverPreview) {
             coverPreview.classList.add('hidden');
             coverPreview.src = '';
+        }
+        if (coverImageUrlInput) {
+            coverImageUrlInput.value = '';
         }
 
         // Reset upload area text
@@ -941,6 +945,7 @@ function setupPhotoUpload() {
 async function handleImageFile(file) {
     const coverPreview = document.getElementById('cover-preview');
     const coverUpload = document.getElementById('cover-upload');
+    const coverImageUrlInput = document.getElementById('cover-image-url');
 
     // Validate file size (5MB max)
     const maxSize = 5 * 1024 * 1024; // 5MB
@@ -960,14 +965,19 @@ async function handleImageFile(file) {
         // Show loading state
         coverUpload.innerHTML = '<div class="spinner"></div><p>Uploading...</p>';
 
-        // Convert to base64 using utility function
-        const base64Image = await fileToBase64(file);
+        // Generate a unique filename
+        const fileExtension = file.name.split('.').pop();
+        const uniqueFileName = `${generateUUID()}.${fileExtension}`;
 
-        // Display preview
-        coverPreview.src = base64Image;
+        // Upload image and get public URL
+        const imageUrl = await window.githubAPI.uploadImage(file, uniqueFileName);
+
+        // Store the URL and update the preview
+        coverImageUrlInput.value = imageUrl;
+        coverPreview.src = imageUrl;
         coverPreview.classList.remove('hidden');
 
-        // Reset upload area text
+        // Update upload area text
         coverUpload.innerHTML = '<p>✅ Image uploaded! Click or drag to change</p>';
 
         showToast('📷 Cover image uploaded successfully!', 'success');
@@ -979,20 +989,6 @@ async function handleImageFile(file) {
         // Reset upload area
         coverUpload.innerHTML = '<p>Click or drag to upload cover image</p>';
     }
-}
-
-/**
- * Helper function to convert file to base64
- * @param {File} file - File to convert
- * @returns {Promise<string>} Base64 encoded string
- */
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-    });
 }
 
 // Initialize on DOM ready
