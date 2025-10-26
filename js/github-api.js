@@ -6,6 +6,9 @@
 class GitHubAPI {
     constructor() {
         this.config = GITHUB_CONFIG;
+        // Provide safe defaults if config is missing fields
+        this.config.repo = this.config.repo || 'EventCall';
+        this.config.branch = this.config.branch || 'main';
         this.baseURL = `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents`;
         this.issuesURL = `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/issues`;
         this.corsProxy = 'https://api.allorigins.win/raw?url=';
@@ -304,7 +307,8 @@ class GitHubAPI {
                 item.path.endsWith('.json') && 
                 item.type === 'blob' &&
                 item.path !== 'rsvps/.gitkeep' &&
-                item.path !== '.gitkeep'
+                item.path !== '.gitkeep' &&
+                item.path !== 'rsvps/.json' // exclude malformed filename
             );
 
             console.log('Found ' + responseFiles.length + ' RSVP files in private repo');
