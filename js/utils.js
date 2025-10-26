@@ -287,18 +287,28 @@ function calculateEventStats(responses) {
     };
 
     responses.forEach(response => {
-        if (response.attending === true) {
+        // Accept both boolean and string forms
+        const isAttending = response.attending === true || response.attending === 'true';
+        const isNotAttending = response.attending === false || response.attending === 'false';
+
+        if (isAttending) {
             stats.attending++;
-            stats.attendingWithGuests += parseInt(response.guestCount) || 0;
-        } else if (response.attending === false) {
+            // Parse guest count (string or number)
+            const guestCount = parseInt(response.guestCount, 10) || 0;
+            stats.attendingWithGuests += guestCount;
+        } else if (isNotAttending) {
             stats.notAttending++;
         }
-        
-        stats.totalGuests += parseInt(response.guestCount) || 0;
+
+        // Track total guests regardless of attendance
+        stats.totalGuests += parseInt(response.guestCount, 10) || 0;
     });
 
+    // Total headcount = attending people + their guests
     stats.totalHeadcount = stats.attending + stats.attendingWithGuests;
-    stats.responseRate = stats.total > 0 ? ((stats.attending + stats.notAttending) / stats.total * 100).toFixed(1) : 0;
+    stats.responseRate = stats.total > 0
+        ? ((stats.attending + stats.notAttending) / stats.total * 100).toFixed(1)
+        : 0;
 
     return stats;
 }
