@@ -74,10 +74,22 @@ function createInviteHTML(event, eventId) {
 /**
  * Create invite without image HTML
  */
+// Helper for escaping dynamic strings
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// function createInviteWithoutImageHTML(event, eventId) {
 function createInviteWithoutImageHTML(event, eventId) {
     return `
         <div class="invite-content">
-            <h1 class="invite-title">${event.title}</h1>
+            <h1 class="invite-title">${escapeHTML(event.title)}</h1>
             <div class="invite-details">
                 <div class="invite-detail">
                     <strong>📅 Date:</strong> ${formatDate(event.date)}
@@ -87,12 +99,12 @@ function createInviteWithoutImageHTML(event, eventId) {
                 </div>
                 ${event.location ? `
                     <div class="invite-detail">
-                        <strong>📍 Location:</strong> ${event.location}
+                        <strong>📍 Location:</strong> ${escapeHTML(event.location)}
                     </div>
                 ` : ''}
                 ${event.description ? `
                     <div class="invite-detail">
-                        <strong>📝 Details:</strong> ${event.description}
+                        <strong>📝 Details:</strong> ${escapeHTML(event.description)}
                     </div>
                 ` : ''}
                 ${createEventDetailsHTML(event.eventDetails)}
@@ -306,8 +318,8 @@ function createEventDetailsHTML(eventDetails) {
         <div class="invite-detail" style="display: flex; align-items: start; gap: 0.75rem; padding: 0.75rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.02)); border-radius: 0.5rem; margin-bottom: 0.75rem; border-left: 3px solid #d4af37;">
             <span style="font-size: 1.25rem; flex-shrink: 0;">${getIcon(detail.label)}</span>
             <div style="flex: 1;">
-                <div style="font-weight: 600; color: #1a1f2e; font-size: 0.875rem; margin-bottom: 0.25rem;">${detail.label}</div>
-                <div style="color: #4b5563; font-size: 1rem;">${detail.value}</div>
+                <div style="font-weight: 600; color: #1a1f2e; font-size: 0.875rem; margin-bottom: 0.25rem;">${escapeHTML(detail.label)}</div>
+                <div style="color: #4b5563; font-size: 1rem;">${escapeHTML(detail.value)}</div>
             </div>
         </div>
     `).join('');
@@ -384,16 +396,23 @@ async function setupRSVPForm() {
 /**
  * Get event data from URL parameters
  */
+// function getEventFromURL() {
 function getEventFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     const encodedData = urlParams.get('data');
-    
+
     if (encodedData) {
         try {
-            return JSON.parse(atob(encodedData));
-        } catch (e) {
-            console.error('Failed to decode event data from URL:', e);
-            return null;
+            // Prefer URL-encoded JSON
+            return JSON.parse(decodeURIComponent(encodedData));
+        } catch (e1) {
+            try {
+                // Fallback for legacy Base64 links
+                return JSON.parse(atob(encodedData));
+            } catch (e2) {
+                console.error('Failed to decode event data from URL:', e1, e2);
+                return null;
+            }
         }
     }
     return null;
@@ -484,7 +503,7 @@ function createInviteWithImageHTML(event, eventId) {
             <img src="${event.coverImage}" alt="Event cover" class="invite-image">
         </div>
         <div class="invite-details-section">
-            <h1 class="invite-title-main">${event.title}</h1>
+            <h1 class="invite-title-main">${escapeHTML(event.title)}</h1>
             <div class="invite-details">
                 <div class="invite-detail">
                     <strong>📅 Date:</strong> ${formatDate(event.date)}
@@ -494,7 +513,7 @@ function createInviteWithImageHTML(event, eventId) {
                 </div>
                 ${event.location ? `
                     <div class="invite-detail">
-                        <strong>📍 Location:</strong> ${event.location}
+                        <strong>📍 Location:</strong> ${escapeHTML(event.location)}
                         <div style="margin-top: 0.5rem;">
                             <a href="https://maps.google.com/?q=${encodeURIComponent(event.location)}"
                                target="_blank"
@@ -507,7 +526,7 @@ function createInviteWithImageHTML(event, eventId) {
                 ` : ''}
                 ${event.description ? `
                     <div class="invite-detail">
-                        <strong>📝 Details:</strong> ${event.description}
+                        <strong>📝 Details:</strong> ${escapeHTML(event.description)}
                     </div>
                 ` : ''}
                 ${createEventDetailsHTML(event.eventDetails)}
