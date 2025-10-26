@@ -416,53 +416,84 @@ function exportEventData(eventId) {
  * Create CSV content from RSVP data
  */
 // function createCSVContent(event, responses) {
-function createCSVContent(event, responses) {
+function createTSVContent(event, responses) {
     function csvSafe(value) {
         let v = (value ?? '').toString();
-        v = v.replace(/"/g, '""'); // escape quotes
-        if (/^[=\+\-@]/.test(v)) v = `'${v}`; // prevent formula injection
+        v = v.replace(/\t/g, ' '); // avoid breaking TSV cells
+        v = v.replace(/"/g, '""');
+        if (/^[=\+\-@]/.test(v)) v = `'${v}`;
         return v;
     }
 
-    let csvContent = "Name,Email,Phone,Attending,Rank,Unit,Branch,";
-    if (event.askReason) csvContent += "Reason,";
-    if (event.allowGuests) csvContent += "Guest Count,";
-    if (event.requiresMealChoice) csvContent += "Dietary Restrictions,Allergy Details,";
+    let tsv = "Name\tEmail\tPhone\tAttending\tRank\tUnit\tBranch\t";
+    if (event.askReason) tsv += "Reason\t";
+    if (event.allowGuests) tsv += "Guest Count\t";
+    if (event.requiresMealChoice) tsv += "Dietary Restrictions\tAllergy Details\t";
     if (event.eventDetails && Object.keys(event.eventDetails).length > 0) {
         Object.values(event.eventDetails).forEach(detail => {
-            csvContent += `"${csvSafe(detail.label)}",`;
+            tsv += `${csvSafe(detail.label)}\t`;
         });
     }
     if (event.customQuestions && event.customQuestions.length > 0) {
         event.customQuestions.forEach(q => {
-            csvContent += `"${csvSafe(q.question)}",`;
+            tsv += `${csvSafe(q.question)}\t`;
         });
     }
-    csvContent += "Timestamp\n";
+    tsv += "Timestamp\n";
 
     responses.forEach(response => {
-        csvContent += `"${csvSafe(response.name)}","${csvSafe(response.email)}","${csvSafe(response.phone || '')}","${response.attending ? 'Yes' : 'No'}","${csvSafe(response.rank || '')}","${csvSafe(response.unit || '')}","${csvSafe(response.branch || '')}",`;
-        if (event.askReason) csvContent += `"${csvSafe(response.reason || '')}",`;
-        if (event.allowGuests) csvContent += `"${csvSafe(response.guestCount || 0)}",`;
+        const diet = (response.dietaryRestrictions || []).join('; ');
+        let row = [
+            csvSafe(response.name),
+            csvSafe(response.email),
+            csvSafe(response.phone || ''),
+            response.attending ? 'Yes' : 'No',
+            csvSafe(response.rank || ''),
+            csvSafe(response.unit || ''),
+            csvSafe(response.branch || '')
+        ];
+        if (event.askReason) row.push(csvSafe(response.reason || ''));
+        if (event.allowGuests) row.push(csvSafe(response.guestCount || 0));
         if (event.requiresMealChoice) {
-            const diet = (response.dietaryRestrictions || []).join('; ');
-            csvContent += `"${csvSafe(diet)}","${csvSafe(response.allergyDetails || '')}",`;
+            row.push(csvSafe(diet), csvSafe(response.allergyDetails || ''));
         }
         if (event.eventDetails && Object.keys(event.eventDetails).length > 0) {
             Object.values(event.eventDetails).forEach(detail => {
-                csvContent += `"${csvSafe(detail.value || '')}",`;
+                row.push(csvSafe(detail.value || ''));
             });
         }
         if (event.customQuestions && event.customQuestions.length > 0) {
             event.customQuestions.forEach(q => {
                 const answer = response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '';
-                csvContent += `"${csvSafe(answer)}",`;
+                row.push(csvSafe(answer));
             });
         }
-        csvContent += `"${new Date(response.timestamp).toISOString()}"\n`;
+        row.push(new Date(response.timestamp).toISOString());
+        tsv += row.join('\t') + '\n';
     });
 
-    return csvContent;
+    return tsv;
+}
+
+function copyEventData(eventId) {
+    try {
+        const event = window.events ? window.events[eventId] : null;
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+        if (!event) {
+            showToast('Event not found', 'error');
+            return;
+        }
+        const tsv = createTSVContent(event, eventResponses);
+        copyToClipboard(tsv).then(() => {
+            showToast('📋 TSV copied to clipboard!', 'success');
+        }).catch(err => {
+            console.error('Clipboard copy failed:', err);
+            showToast('❌ Failed to copy TSV', 'error');
+        });
+    } catch (error) {
+        console.error('Failed to copy data:', error);
+        showToast('❌ Failed to copy data', 'error');
+    }
 }
 
 /**
