@@ -431,10 +431,22 @@ function renderEventCard(event, isPast) {
                         <div class="stat-number">${stats.notAttending}</div>
                         <div class="stat-label">Declined</div>
                     </div>
+                    ${event.allowGuests && stats.attendingWithGuests > 0 ? `
+                        <div class="stat-box stat-guests">
+                            <div class="stat-icon">👥+</div>
+                            <div class="stat-number">${stats.attendingWithGuests}</div>
+                            <div class="stat-label">Guests</div>
+                        </div>
+                    ` : ''}
                     <div class="stat-box stat-headcount">
                         <div class="stat-icon">👥</div>
                         <div class="stat-number">${stats.totalHeadcount}</div>
-                        <div class="stat-label">Headcount</div>
+                        <div class="stat-label">Total</div>
+                        ${event.allowGuests && stats.attendingWithGuests > 0 ? `
+                            <div class="stat-sublabel" style="font-size: 0.65rem; color: #6b7280; margin-top: 0.25rem;">
+                                ${stats.attending} + ${stats.attendingWithGuests}
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 
