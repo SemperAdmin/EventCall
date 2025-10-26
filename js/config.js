@@ -26,6 +26,8 @@ function assembleToken() {
 // **The main configuration object**
 const GITHUB_CONFIG = {
     owner: 'SemperAdmin',
+    repo: 'EventCall',
+    branch: 'main',
     imageRepo: 'EventCall-Images',
     apiBase: 'https://api.github.com/repos',
     // 💡 Call the function directly here to get the assembled value
