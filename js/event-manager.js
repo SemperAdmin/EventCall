@@ -167,7 +167,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         <div class="stat-card-icon">👥</div>
                         <div class="stat-card-number">${stats.totalHeadcount}</div>
                         <div class="stat-card-label">Total Headcount</div>
-                        ${event.allowGuests && stats.attendingWithGuests > 0 ? `
+                        ${event.allowGuests ? `
                             <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.5rem; font-weight: 500;">
                                 ${stats.attending} attendees + ${stats.attendingWithGuests} guests
                             </div>
@@ -178,7 +178,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         <div class="stat-card-number">${stats.attending}</div>
                         <div class="stat-card-label">Attending</div>
                     </div>
-                    ${event.allowGuests && stats.attendingWithGuests > 0 ? `
+                    ${event.allowGuests ? `
                         <div class="stat-card-large stat-card-guests">
                             <div class="stat-card-icon">👥+</div>
                             <div class="stat-card-number">${stats.attendingWithGuests}</div>
