@@ -795,8 +795,14 @@ async function handleEventSubmit(e) {
 function setupEventForm() {
     const eventForm = document.getElementById('event-form');
     if (eventForm) {
-        eventForm.removeEventListener('submit', handleEventSubmit);
+        // Skip if already initialized
+        if (eventForm.dataset.formInitialized === 'true') {
+            console.log('ℹ️ Event form already initialized, skipping...');
+            return;
+        }
+
         eventForm.addEventListener('submit', handleEventSubmit);
+        eventForm.dataset.formInitialized = 'true';
         console.log('✅ Event form listener attached');
     }
 }
@@ -877,6 +883,12 @@ function setupPhotoUpload() {
         return;
     }
 
+    // Skip if already initialized
+    if (coverUpload.dataset.uploadInitialized === 'true') {
+        console.log('ℹ️ Photo upload already initialized, skipping...');
+        return;
+    }
+
     // Click handler - open file picker when upload area is clicked
     coverUpload.addEventListener('click', () => {
         coverInput.click();
@@ -935,6 +947,9 @@ function setupPhotoUpload() {
             }
         }
     });
+
+    // Mark as initialized
+    coverUpload.dataset.uploadInitialized = 'true';
 
     console.log('✅ Photo upload handlers attached with keyboard support');
 }
