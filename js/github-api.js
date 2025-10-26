@@ -650,9 +650,17 @@ class GitHubAPI {
         }
 
         try {
-            const cleanEventData = this.cleanEventData(eventData);
-            const path = `events/${cleanEventData.id}.json`;
-            const content = this.safeBase64Encode(JSON.stringify(cleanEventData, null, 2));
+            // Separate coverImage to protect it from the cleaning process
+            const { coverImage, ...otherData } = eventData;
+            
+            // Clean the rest of the data
+            const cleanedData = this.cleanEventData(otherData);
+            
+            // Re-combine the data, ensuring coverImage is preserved
+            const finalEventData = { ...cleanedData, coverImage: coverImage };
+
+            const path = `events/${finalEventData.id}.json`;
+            const content = this.safeBase64Encode(JSON.stringify(finalEventData, null, 2));
 
             // Check if file exists in EventCall-Data repo
             let existingSha = null;
@@ -675,7 +683,7 @@ class GitHubAPI {
 
             // Create or update the file in EventCall-Data repo
             const createData = {
-                message: `${existingSha ? 'Update' : 'Create'} event: ${cleanEventData.title}`,
+                message: `${existingSha ? 'Update' : 'Create'} event: ${finalEventData.title}`,
                 content: content,
                 branch: 'main'
             };
@@ -988,11 +996,6 @@ class GitHubAPI {
                 ...q,
                 question: this.cleanText(q.question)
             }));
-        }
-
-        // Explicitly preserve coverImage to prevent it from being lost
-        if (eventData.coverImage) {
-            cleaned.coverImage = eventData.coverImage;
         }
         
         return cleaned;
