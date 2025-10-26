@@ -322,32 +322,42 @@ function calculateEventStats(responses) {
  * @returns {string} CSV content
  */
 function createCSVContent(event, responses) {
-    let csvContent = "Name,Email,Phone,Attending,";
+    let csvContent = "Name,Email,Phone,Attending,Rank,Unit,Branch,";
     
     if (event.askReason) csvContent += "Reason,";
     if (event.allowGuests) csvContent += "Guest Count,";
-    
+    if (event.requiresMealChoice) csvContent += "Dietary Restrictions,Allergy Details,";
+    if (event.eventDetails && Object.keys(event.eventDetails).length > 0) {
+        Object.values(event.eventDetails).forEach(detail => {
+            csvContent += `"${detail.label}",`;
+        });
+    }
     if (event.customQuestions && event.customQuestions.length > 0) {
         event.customQuestions.forEach(q => {
             csvContent += `"${q.question}",`;
         });
     }
-    
     csvContent += "Timestamp\n";
 
     responses.forEach(response => {
-        csvContent += `"${response.name}","${response.email}","${response.phone || ''}","${response.attending ? 'Yes' : 'No'}",`;
-        
+        csvContent += `"${response.name}","${response.email}","${response.phone || ''}","${response.attending ? 'Yes' : 'No'}","${response.rank || ''}","${response.unit || ''}","${response.branch || ''}",`;
         if (event.askReason) csvContent += `"${response.reason || ''}",`;
         if (event.allowGuests) csvContent += `"${response.guestCount || 0}",`;
-        
+        if (event.requiresMealChoice) {
+            const diet = (response.dietaryRestrictions || []).join('; ');
+            csvContent += `"${diet}","${response.allergyDetails || ''}",`;
+        }
+        if (event.eventDetails && Object.keys(event.eventDetails).length > 0) {
+            Object.values(event.eventDetails).forEach(detail => {
+                csvContent += `"${detail.value || ''}",`;
+            });
+        }
         if (event.customQuestions && event.customQuestions.length > 0) {
             event.customQuestions.forEach(q => {
                 const answer = response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '';
                 csvContent += `"${answer}",`;
             });
         }
-        
         csvContent += `"${new Date(response.timestamp).toLocaleString()}"\n`;
     });
 
