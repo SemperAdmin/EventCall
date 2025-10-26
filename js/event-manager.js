@@ -245,17 +245,14 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
                 <!-- Dashboard Actions -->
                 <div class="dashboard-actions">
-                    <button class="btn-action btn-sync" onclick="eventManager.syncEventRSVPs('${eventId}')">
+                    <button class="btn-action btn-sync" onclick="syncWithGitHub()">
                         🔄 Sync RSVPs
                     </button>
-                    <button class="btn-action btn-reminder" onclick="eventManager.sendEventReminder('${eventId}')">
-                        📧 Send Reminder
+                    <button class="btn-action btn-reminder" onclick="eventManager.showReminderOptionsModal('${eventId}')">
+                        ✉️ Send Reminders
                     </button>
-                    <button class="btn-action btn-export" onclick="exportEventData('${eventId}')">
-                        📊 Export CSV
-                    </button>
-                    <button class="btn-action btn-export" onclick="copyEventData('${eventId}')">
-                        📋 Copy TSV
+                    <button class="btn-action btn-export" onclick="calendarExport.exportEvent('${eventId}')">
+                        📤 Export
                     </button>
                 </div>
             </div>
