@@ -8,6 +8,22 @@ class EventManager {
         this.currentEvent = null;
         this.editMode = false;
     }
+    
+    /**
+     * Get invite roster for an event from localStorage
+     * @param {string} eventId - Event ID
+     * @returns {Array} Roster of invited people
+     */
+    getInviteRoster(eventId) {
+        const key = `eventcall_invite_roster_${eventId}`;
+        try {
+            const raw = localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            console.warn('Failed to load roster:', e);
+            return [];
+        }
+    }
 
     /**
      * Show event management page with sync functionality
@@ -76,6 +92,15 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     const isPast = isEventInPast(event.date, event.time);
     const eventResponses = window.responses ? window.responses[eventId] || [] : [];
     const stats = calculateEventStats(eventResponses);
+    
+    // Get invite roster data
+    const roster = this.getInviteRoster(eventId);
+    const rosterEmails = new Set((roster || []).map(i => i.email?.toLowerCase().trim()).filter(Boolean));
+    const respondedEmails = new Set(eventResponses.filter(r => r.email).map(r => r.email.toLowerCase().trim()));
+    const invitedTotal = roster.length;
+    const respondedFromRoster = [...respondedEmails].filter(e => rosterEmails.has(e)).length;
+    const pendingFromRoster = Math.max(invitedTotal - respondedFromRoster, 0);
+    const unlistedResponses = [...respondedEmails].filter(e => !rosterEmails.has(e)).length;
     
     // XSS Protection helper
     const h = window.utils.escapeHTML;
@@ -241,6 +266,49 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <div class="last-rsvp-info">
                         Last RSVP: ${lastRSVPText}
                     </div>
+                </div>
+
+                <!-- Invite Roster Baseline -->
+                <div class="rsvp-stats-cards">
+                    <div class="stat-card-large stat-card-headcount">
+                        <div class="stat-card-icon">📧</div>
+                        <div class="stat-card-number">${invitedTotal}</div>
+                        <div class="stat-card-label">Invited</div>
+                    </div>
+                    <div class="stat-card-large stat-card-attending">
+                        <div class="stat-card-icon">✅</div>
+                        <div class="stat-card-number">${respondedFromRoster}</div>
+                        <div class="stat-card-label">Responded</div>
+                    </div>
+                    <div class="stat-card-large stat-card-pending">
+                        <div class="stat-card-icon">⏳</div>
+                        <div class="stat-card-number">${pendingFromRoster}</div>
+                        <div class="stat-card-label">Pending</div>
+                    </div>
+                    <div class="stat-card-large stat-card-declined">
+                        <div class="stat-card-icon">🧾</div>
+                        <div class="stat-card-number">${unlistedResponses}</div>
+                        <div class="stat-card-label">Unlisted Responses</div>
+                    </div>
+                </div>
+
+                <!-- Invite Roster Import -->
+                <div class="invite-link-section">
+                    <h3 class="invite-link-title">📥 Invite Roster</h3>
+                    <div class="invite-link-actions" style="margin-bottom: 0.75rem;">
+                        <input type="file"
+                               id="roster-import-file-${eventId}"
+                               accept=".csv"
+                               style="display:none"
+                               onchange="window.csvImporter.handleRosterUpload(event, '${eventId}')">
+                        <button class="btn-action" onclick="document.getElementById('roster-import-file-${eventId}').click()">
+                            📤 Upload Roster CSV
+                        </button>
+                        <a href="#" onclick="window.csvImporter.downloadTemplate(); return false;" style="margin-left: 0.75rem; color: #60a5fa;">
+                            Download CSV Template
+                        </a>
+                    </div>
+                    <div id="roster-import-preview"></div>
                 </div>
 
                 <!-- Dashboard Actions -->
