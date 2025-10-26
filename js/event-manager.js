@@ -357,6 +357,24 @@ generateAttendeeCards(eventResponses) {
                                 <span>+${response.guestCount} guest${response.guestCount > 1 ? 's' : ''}</span>
                             </div>
                         ` : ''}
+                        ${response.reason ? `
+                            <div class="attendee-detail-item">
+                                <span class="attendee-detail-icon">💬</span>
+                                <span>${response.reason}</span>
+                            </div>
+                        ` : ''}
+                        ${(response.dietaryRestrictions && response.dietaryRestrictions.length) ? `
+                            <div class="attendee-detail-item">
+                                <span class="attendee-detail-icon">🍽️</span>
+                                <span>${response.dietaryRestrictions.join(', ')}</span>
+                            </div>
+                        ` : ''}
+                        ${response.allergyDetails ? `
+                            <div class="attendee-detail-item">
+                                <span class="attendee-detail-icon">⚠️</span>
+                                <span>${response.allergyDetails}</span>
+                            </div>
+                        ` : ''}
                         ${response.unit ? `
                             <div class="attendee-detail-item">
                                 <span class="attendee-detail-icon">🎖️</span>
