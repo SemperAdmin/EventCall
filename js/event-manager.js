@@ -351,7 +351,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             <!-- Attendee List -->
             <div class="attendee-list-section">
                 <div class="attendee-list-header">
-                    <h3 class="attendee-list-title">📋 Attendee List (${eventResponses.length})</h3>
+                    <h3 class="attendee-list-title">📋 Attendee List (${eventResponses.length + roster.filter(r => r.email && !respondedEmails.has(r.email.toLowerCase().trim())).length})</h3>
                     <div class="attendee-controls">
                         <input 
                             type="text" 
@@ -361,23 +361,15 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                             oninput="eventManager.filterAttendees()"
                         >
                         <select class="filter-select" id="attendee-filter" onchange="eventManager.filterAttendees()">
-                            <option value="all">All Responses</option>
+                            <option value="all">All People</option>
                             <option value="attending">Attending Only</option>
                             <option value="declined">Declined Only</option>
+                            <option value="invited">Invited Only</option>
                         </select>
                     </div>
                 </div>
 
-                ${eventResponses.length > 0 ? this.generateAttendeeCards(eventResponses) : `
-                    <div class="no-attendees">
-                        <div class="no-attendees-icon">📭</div>
-                        <h3>No RSVPs Yet</h3>
-                        <p>Share your invite link to start collecting responses!</p>
-                        <button class="btn-action btn-sync" onclick="eventManager.copyInviteLink('${eventId}')" style="margin-top: 1rem;">
-                            🔗 Share Invite Link
-                        </button>
-                    </div>
-                `}
+                ${this.generateAttendeeCards(eventResponses, eventId)}
             </div>
         </div>
     `;
@@ -888,18 +880,39 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     }
 
     /**
-     * Generate attendee cards HTML - UPDATED with Email button
+     * Generate attendee cards HTML - UPDATED with Email button and Roster Integration
      */
-    generateAttendeeCards(eventResponses) {
+    generateAttendeeCards(eventResponses, eventId) {
         // XSS Protection helper
         const h = window.utils.escapeHTML;
         
+        // Get invite roster
+        const roster = this.getInviteRoster(eventId);
+        const respondedEmails = new Set(eventResponses.filter(r => r.email).map(r => r.email.toLowerCase().trim()));
+        
+        // Create invited-only entries for roster members who haven't responded
+        const invitedOnly = roster.filter(invitee => 
+            invitee.email && !respondedEmails.has(invitee.email.toLowerCase().trim())
+        ).map(invitee => ({
+            name: invitee.name || 'Unknown',
+            email: invitee.email,
+            phone: invitee.phone || '',
+            guestCount: invitee.guestCount || 0,
+            attending: null, // null indicates "invited but not responded"
+            status: 'invited',
+            timestamp: null,
+            isInvitedOnly: true
+        }));
+        
+        // Combine responses and invited-only entries
+        const allAttendees = [...eventResponses, ...invitedOnly];
+        
         return `
         <div class="attendee-cards" id="attendee-cards-container">
-            ${eventResponses.map(response => `
-                <div class="attendee-card" 
+            ${allAttendees.map(response => `
+                <div class="attendee-card ${response.isInvitedOnly ? 'attendee-invited-only' : ''}" 
                      data-name="${(response.name || '').toLowerCase()}" 
-                     data-status="${response.attending ? 'attending' : 'declined'}"
+                     data-status="${response.attending === null ? 'invited' : (response.attending ? 'attending' : 'declined')}"
                      data-branch="${(response.branch || '').toLowerCase()}"
                      data-rank="${(response.rank || '').toLowerCase()}"
                      data-unit="${(response.unit || '').toLowerCase()}"
@@ -908,8 +921,12 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <div class="attendee-card-header">
                         <div class="attendee-info">
                             <div class="attendee-name">${h(response.name) || 'Anonymous'}</div>
-                            <span class="attendee-status ${response.attending ? 'status-attending' : 'status-declined'}">
-                                ${response.attending ? '✅ Attending' : '❌ Declined'}
+                            <span class="attendee-status ${
+                                response.attending === null ? 'status-invited' : 
+                                (response.attending ? 'status-attending' : 'status-declined')
+                            }">
+                                ${response.attending === null ? '📧 Invited' : 
+                                  (response.attending ? '✅ Attending' : '❌ Declined')}
                             </span>
                         </div>
                     </div>
@@ -988,8 +1005,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         
                         <button 
                             class="btn-attendee-action btn-danger-attendee" 
-                            onclick="if(confirm('Remove this RSVP?')) alert('Remove feature coming soon!')"
-                            title="Remove this RSVP">
+                            onclick="if(confirm('${response.isInvitedOnly ? 'Remove from invite roster?' : 'Remove this RSVP?'}')) alert('Remove feature coming soon!')"
+                            title="${response.isInvitedOnly ? 'Remove from invite roster' : 'Remove this RSVP'}">
                             🗑️ Remove
                         </button>
                     </div>
