@@ -417,6 +417,7 @@ function exportEventData(eventId) {
  */
 // function createCSVContent(event, responses) {
 function createTSVContent(event, responses) {
+    // Add TSV generation and clipboard copy helper
     function csvSafe(value) {
         let v = (value ?? '').toString();
         v = v.replace(/\t/g, ' '); // avoid breaking TSV cells
@@ -656,3 +657,33 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 console.log('✅ Early functions loaded with email-only authentication support');
+
+// Add TSV generation and clipboard copy helper
+async function copyEventDataAsTSV(event, responses) {
+    const tsv = createTSVContent(event, responses);
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(tsv);
+            showToast('✅ TSV copied to clipboard', 'success');
+            return;
+        }
+        throw new Error('Clipboard API unavailable');
+    } catch {
+        const textarea = document.createElement('textarea');
+        textarea.value = tsv;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            showToast('✅ TSV copied to clipboard', 'success');
+        } catch (err) {
+            console.error('Clipboard copy failed:', err);
+            showToast('⚠️ Could not copy TSV. Please copy manually.', 'error');
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    }
+}
