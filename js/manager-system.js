@@ -384,11 +384,14 @@ function renderEventCard(event, isPast) {
     const stats = calculateEventStats(eventResponses);
     const inviteLink = `${window.location.origin}${window.location.pathname}#invite/${event.id}`;
     
+    // Use sanitization for all user-generated content
+    const h = sanitizeHTML;
+    
     return `
         <div class="event-card-v2 ${isPast ? 'event-past' : 'event-active'}">
             ${event.coverImage ? `
                 <div class="event-cover-wrapper">
-                    <img src="${event.coverImage}" alt="${event.title}" class="event-cover">
+                    <img src="${sanitizeURL(event.coverImage)}" alt="${h(event.title)}" class="event-cover">
                     <div class="event-badge ${isPast ? 'badge-past' : 'badge-active'}">
                         ${isPast ? '🔴 Past' : '🟢 Active'}
                     </div>
@@ -403,7 +406,7 @@ function renderEventCard(event, isPast) {
             `}
             
             <div class="event-card-content">
-                <h3 class="event-title">${event.title}</h3>
+                <h3 class="event-title">${h(event.title)}</h3>
                 
                 <div class="event-meta-v2">
                     <div class="meta-item">
@@ -416,7 +419,7 @@ function renderEventCard(event, isPast) {
                     </div>
                     <div class="meta-item">
                         <span class="meta-icon">📍</span>
-                        <span class="meta-text">${event.location}</span>
+                        <span class="meta-text">${h(event.location)}</span>
                     </div>
                 </div>
                 
