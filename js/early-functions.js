@@ -178,20 +178,33 @@ function showPageContent(pageId) {
         window.location.hash = pageId;
     }
     
-    // Initialize template selector on create page
-    if (pageId === 'create' && window.eventTemplates) {
-        const container = document.getElementById('template-selector-container');
-        if (container && !container.hasChildNodes()) {
-            container.innerHTML = window.eventTemplates.generateTemplateSelectorHTML();
+    // Page-specific initializations
+    if (pageId === 'create') {
+        // Initialize template selector
+        if (window.eventTemplates) {
+            const container = document.getElementById('template-selector-container');
+            if (container && !container.hasChildNodes()) {
+                container.innerHTML = window.eventTemplates.generateTemplateSelectorHTML();
+            }
+        }
+
+        // Initialize photo upload handlers
+        if (window.setupPhotoUpload) {
+            window.setupPhotoUpload();
+        }
+
+        // Initialize event form handlers
+        if (window.setupEventForm) {
+            window.setupEventForm();
+        }
+    } else if (pageId === 'dashboard') {
+        // Load dashboard data
+        if (typeof window.loadManagerData === 'function') {
+            window.loadManagerData();
         }
     }
-    
+
     console.log(`📄 Page changed to: ${pageId}`);
-    
-    // Load data when switching to dashboard
-    if (pageId === 'dashboard' && typeof window.loadManagerData === 'function') {
-        window.loadManagerData();
-    }
 }
 
 /**
