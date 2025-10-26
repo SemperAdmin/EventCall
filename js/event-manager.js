@@ -47,7 +47,15 @@ class EventManager {
 
         document.getElementById('event-details').innerHTML = this.generateEventDetailsHTML(event, eventId, responseTableHTML);
         showPage('manage');
-        window.location.hash = `manage/${eventId}`;
+        
+        const targetHash = `#manage/${eventId}`;
+        if (window.location.hash !== targetHash) {
+            setTimeout(() => {
+                if (window.location.hash !== targetHash) {
+                    window.location.hash = targetHash;
+                }
+            }, 0);
+        }
     }
 
     /**
