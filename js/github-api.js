@@ -1040,6 +1040,72 @@ class GitHubAPI {
             return 0;
         }
     }
+
+    /**
+     * Upload an image to the public image repository
+     * @param {File} file - The image file to upload
+     * @param {string} fileName - The desired name for the file in the repo
+     * @returns {Promise<string>} The public URL of the uploaded image
+     */
+    async uploadImage(file, fileName) {
+        if (!this.config.imageRepo) {
+            throw new Error('imageRepo not defined in GITHUB_CONFIG');
+        }
+
+        const path = `images/${fileName}`;
+        const result = await this.uploadFile(
+            this.config.imageRepo,
+            path,
+            file,
+            `Upload image: ${fileName}`
+        );
+
+        // Return the raw content URL which is publicly accessible
+        return result.content.download_url;
+    }
+
+    /**
+     * Generic file upload utility
+     * @param {string} repo - The name of the repository
+     * @param {string} path - The full path for the new file
+     * @param {File} file - The file to upload
+     * @param {string} message - The commit message
+     * @returns {Promise<Object>} The GitHub API response
+     */
+    async uploadFile(repo, path, file, message) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available');
+        }
+
+        const content = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        const url = `https://api.github.com/repos/${this.config.owner}/${repo}/contents/${path}`;
+
+        const data = {
+            message: message,
+            content: content,
+            branch: 'main'
+        };
+
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'EventCall-App'
+            },
+            body: JSON.stringify(data)
+        });
+
+        return this.handleResponse(response);
+    }
 }
 
 // Create global instance
