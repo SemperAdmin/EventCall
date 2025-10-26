@@ -339,6 +339,8 @@ function generateInviteURL(event) {
         coverImage: event.coverImage,
         askReason: event.askReason,
         allowGuests: event.allowGuests,
+        requiresMealChoice: event.requiresMealChoice || false,
+        eventDetails: event.eventDetails || {},
         customQuestions: event.customQuestions || [],
         created: event.created
     }));
