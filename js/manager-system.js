@@ -870,9 +870,10 @@ function setupPhotoUpload() {
     const coverUpload = document.getElementById('cover-upload');
     const coverInput = document.getElementById('cover-input');
     const coverPreview = document.getElementById('cover-preview');
+    const coverImageUrlInput = document.getElementById('cover-image-url');
 
-    if (!coverUpload || !coverInput || !coverPreview) {
-        console.warn('⚠️ Photo upload elements not found');
+    if (!coverUpload || !coverInput || !coverPreview || !coverImageUrlInput) {
+        console.warn('⚠️ Photo upload elements not found. Ensure all IDs (cover-upload, cover-input, cover-preview, cover-image-url) are correct.');
         return;
     }
 
@@ -893,7 +894,7 @@ function setupPhotoUpload() {
     coverInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
-            await handleImageFile(file);
+            await handleImageFile(file, coverPreview, coverUpload, coverImageUrlInput);
         }
     });
 
@@ -928,7 +929,7 @@ function setupPhotoUpload() {
         if (file) {
             // Validate that it's an image file
             if (file.type.startsWith('image/')) {
-                await handleImageFile(file);
+                await handleImageFile(file, coverPreview, coverUpload, coverImageUrlInput);
             } else {
                 showToast('❌ Please upload an image file (JPEG, PNG, GIF, WebP)', 'error');
             }
@@ -942,10 +943,7 @@ function setupPhotoUpload() {
  * Handle image file upload and preview
  * @param {File} file - Image file to process
  */
-async function handleImageFile(file) {
-    const coverPreview = document.getElementById('cover-preview');
-    const coverUpload = document.getElementById('cover-upload');
-    const coverImageUrlInput = document.getElementById('cover-image-url');
+async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInput) {
 
     // Validate file size (5MB max)
     const maxSize = 5 * 1024 * 1024; // 5MB
