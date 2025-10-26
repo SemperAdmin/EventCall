@@ -537,16 +537,21 @@ function checkURLHash() {
     if (hash.startsWith('manage/')) {
         const eventId = hash.split('/')[1];
         console.log('📊 Direct manage link accessed:', eventId);
-        
+
         // Check login first (supports both auth systems)
         const isAuthenticated = window.userAuth?.isAuthenticated() || window.managerAuth?.isAuthenticated();
-        
         if (!isAuthenticated) {
             console.log('🔒 Manage access denied - redirecting to login');
             showLoginPage();
             return;
         }
-        
+
+        // Avoid re-entrancy if already showing this event's management page
+        if (window.eventManager?.currentEvent?.id === eventId) {
+            showPage('manage');
+            return;
+        }
+
         if (window.eventManager && window.eventManager.showEventManagement) {
             window.eventManager.showEventManagement(eventId);
         } else {
