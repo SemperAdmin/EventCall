@@ -800,3 +800,9 @@ css.btn-attendee-action-email {
     background: rgba(100, 116, 139, 0.3);
     color: #cbd5e1;
 }
+
+/* Highlight border for Guests card */
+.stat-card-guests {
+    border: 2px solid var(--semper-navy);
+    border-radius: 12px; /* matches existing card roundness */
+}
