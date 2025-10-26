@@ -403,3 +403,42 @@
 .clear-search:hover {
     background: #8b1538;
 }
+
+/* Accessible modal overlay and focus styles */
+.modal-overlay {
+    background-color: rgba(17, 24, 39, 0.65); /* high contrast overlay */
+}
+
+.modal-content:focus-visible,
+.modal-content .btn:focus-visible,
+.btn-action:focus-visible,
+.filter-select:focus-visible,
+.search-input:focus-visible {
+    outline: 3px solid #1e40af; /* navy focus ring */
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+/* Ensure button contrast and readable labels */
+.btn,
+.btn-action,
+.btn-primary,
+.btn-secondary {
+    color: #111827; /* near-black text for contrast when on light bg */
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #0f1419, #1f2937);
+    color: #ffd700; /* gold on dark; strong contrast */
+}
+
+.btn-secondary {
+    background: #e5e7eb; /* light gray */
+    color: #1f2937;      /* dark text for contrast */
+}
+
+/* Modal close button target size */
+.modal-close {
+    min-width: 40px;
+    min-height: 40px;
+}
