@@ -142,8 +142,9 @@ css.mission-control-subtitle .status-badge {
     margin-bottom: 0.25rem;
 }
 
+/* Event Overview meta values */
 .meta-value {
-    color: #e2e8f0;
+    color: #d4af37;
     font-weight: 600;
     font-size: 0.95rem;
 }
