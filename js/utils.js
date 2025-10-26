@@ -327,53 +327,36 @@ function calculateEventStats(responses) {
  * @param {Array} responses - RSVP responses
  * @returns {string} CSV content
  */
+// Update CSV generation with csvSafe + ISO timestamps
 function createCSVContent(event, responses) {
-    function csvSafe(value) {
-        let v = (value ?? '').toString();
-        v = v.replace(/"/g, '""'); // escape quotes
-        if (/^[=\+\-@]/.test(v)) v = `'${v}`; // prevent formula injection
-        return v;
-    }
+    const csvSafe = (v) => {
+        const s = String(v ?? '');
+        const needsQuote = /[",\n]/.test(s);
+        const safe = s.replace(/"/g, '""');
+        // Prevent formula injection
+        const prefixed = /^[=+\-@]/.test(s) ? `'${safe}` : safe;
+        return needsQuote ? `"${prefixed}"` : prefixed;
+    };
 
-    let csvContent = "Name,Email,Phone,Attending,Rank,Unit,Branch,";
-    if (event.askReason) csvContent += "Reason,";
-    if (event.allowGuests) csvContent += "Guest Count,";
-    if (event.requiresMealChoice) csvContent += "Dietary Restrictions,Allergy Details,";
-    if (event.eventDetails && Object.keys(event.eventDetails).length > 0) {
-        Object.values(event.eventDetails).forEach(detail => {
-            csvContent += `"${csvSafe(detail.label)}",`;
-        });
-    }
-    if (event.customQuestions && event.customQuestions.length > 0) {
-        event.customQuestions.forEach(q => {
-            csvContent += `"${csvSafe(q.question)}",`;
-        });
-    }
-    csvContent += "Timestamp\n";
+    const toISO = (ts) => new Date(ts).toISOString();
 
-    responses.forEach(response => {
-        const diet = (response.dietaryRestrictions || []).join('; ');
-        csvContent += `"${csvSafe(response.name)}","${csvSafe(response.email)}","${csvSafe(response.phone || '')}","${response.attending ? 'Yes' : 'No'}","${csvSafe(response.rank || '')}","${csvSafe(response.unit || '')}","${csvSafe(response.branch || '')}",`;
-        if (event.askReason) csvContent += `"${csvSafe(response.reason || '')}",`;
-        if (event.allowGuests) csvContent += `"${csvSafe(response.guestCount || 0)}",`;
-        if (event.requiresMealChoice) {
-            csvContent += `"${csvSafe(diet)}","${csvSafe(response.allergyDetails || '')}",`;
-        }
-        if (event.eventDetails && Object.keys(event.eventDetails).length > 0) {
-            Object.values(event.eventDetails).forEach(detail => {
-                csvContent += `"${csvSafe(detail.value || '')}",`;
-            });
-        }
-        if (event.customQuestions && event.customQuestions.length > 0) {
-            event.customQuestions.forEach(q => {
-                const answer = response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '';
-                csvContent += `"${csvSafe(answer)}",`;
-            });
-        }
-        csvContent += `"${new Date(response.timestamp).toISOString()}"\n`;
-    });
+    const headers = [
+        'RSVP ID','Name','Email','Phone','Branch','Rank','Unit',
+        'Attending','Guest Count','Dietary','Allergies',
+        'Reason','Submitted ISO','Check-In Status'
+    ];
 
-    return csvContent;
+    const rows = responses.map(r => ([
+        r.rsvpId, r.name, r.email, r.phone, r.branch, r.rank, r.unit,
+        r.attending ? 'Yes' : 'No', r.guestCount ?? 0,
+        (r.dietaryRestrictions || []).join('; '),
+        r.allergyDetails || '',
+        r.reason || '',
+        toISO(r.timestamp),
+        r.checkedIn ? 'Checked In' : 'Not Checked In'
+    ].map(csvSafe).join(',')));
+
+    return [headers.join(','), ...rows].join('\n');
 }
 
 /**
