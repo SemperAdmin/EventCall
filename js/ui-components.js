@@ -319,14 +319,14 @@ function createEventDetailsHTML(eventDetails) {
             <span style="font-size: 1.25rem; flex-shrink: 0;">${getIcon(detail.label)}</span>
             <div style="flex: 1;">
                 <div style="font-weight: 600; color: #1a1f2e; font-size: 0.875rem; margin-bottom: 0.25rem;">${escapeHTML(detail.label)}</div>
-                <div style="color: #4b5563; font-size: 1rem;">${escapeHTML(detail.value)}</div>
+                <div style="color: #d4af37; font-size: 1rem; font-weight: 600;">${escapeHTML(detail.value)}</div>
             </div>
         </div>
     `).join('');
-
+    
     return `
         <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid #e5e7eb;">
-            <div style="font-weight: 700; color: #1a1f2e; font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <div style="font-weight: 700; color: #d4af37; font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                 <span>ℹ️</span>
                 <span>Event Details</span>
             </div>
