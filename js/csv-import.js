@@ -8,6 +8,7 @@ class CSVImporter {
         this.importData = null;
         this.validRows = [];
         this.errorRows = [];
+        this.validRosterRows = [];
     }
 
     /**
@@ -362,6 +363,74 @@ Bob Johnson,bob@example.com,555-0102,No,,,Civilian,,,Personal conflict,0`;
         URL.revokeObjectURL(url);
 
         showToast('📥 Template downloaded', 'success');
+    }
+
+    async handleRosterUpload(evt, eventId) {
+        const file = evt.target.files[0];
+        if (!file) return;
+        try {
+            showToast('⏳ Parsing roster CSV...', 'info');
+            const result = await this.parseCSV(file);
+            const stats = this.validateRosterCSV(result);
+            const preview = document.getElementById('roster-import-preview');
+            if (preview) {
+                preview.innerHTML = this.generateRosterPreviewHTML(stats, eventId);
+            }
+            showToast(`✅ Roster: ${stats.valid} valid, ${stats.invalid} errors`, 'success');
+        } catch (err) {
+            console.error('Roster CSV parsing failed:', err);
+            showToast(`❌ Failed to parse roster CSV: ${err.message}`, 'error');
+        }
+        evt.target.value = '';
+    }
+
+    validateRosterCSV(data) {
+        this.validRosterRows = [];
+        this.errorRows = [];
+        data.data.forEach((row, idx) => {
+            const errors = [];
+            if (!row.Name || row.Name.trim() === '') errors.push('Name is required');
+            if (!row.Email || !this.isValidEmail(row.Email)) errors.push('Valid email is required');
+            if (errors.length) {
+                this.errorRows.push({ row: idx + 2, data: row, errors });
+            } else {
+                this.validRosterRows.push({
+                    name: row.Name.trim(),
+                    email: row.Email.trim().toLowerCase(),
+                    phone: row.Phone ? row.Phone.trim() : '',
+                    expectedGuests: parseInt(row.GuestCount || '0')
+                });
+            }
+        });
+        return { valid: this.validRosterRows.length, invalid: this.errorRows.length, total: data.data.length };
+    }
+
+    generateRosterPreviewHTML(stats, eventId) {
+        return `
+            <div style="padding: 1rem; background: #1e293b; border-radius: 0.5rem; margin: 1rem 0;">
+                <div style="color:#d4af37; font-weight:700; margin-bottom:0.5rem;">📋 Invite Roster Preview</div>
+                <div style="color:#e2e8f0; font-size:0.9rem;">${stats.valid} valid • ${stats.invalid} errors • ${stats.total} total</div>
+                ${stats.valid ? `<button class="btn-action" style="margin-top:0.75rem;" onclick="window.csvImporter.importRoster('${eventId}')">✅ Save ${stats.valid} to roster</button>` : ''}
+            </div>
+        `;
+    }
+
+    importRoster(eventId) {
+        if (!this.validRosterRows.length) {
+            showToast('❌ No valid roster entries to save', 'error');
+            return;
+        }
+        const key = `eventcall_invite_roster_${eventId}`;
+        try {
+            localStorage.setItem(key, JSON.stringify(this.validRosterRows));
+            showToast(`✅ Saved ${this.validRosterRows.length} invitees to roster`, 'success');
+        } catch (e) {
+            console.error('Failed to save roster:', e);
+            showToast('❌ Failed to save roster', 'error');
+            return;
+        }
+        const preview = document.getElementById('roster-import-preview');
+        if (preview) preview.innerHTML = '';
     }
 }
 
