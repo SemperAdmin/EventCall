@@ -327,9 +327,10 @@ async function copyInviteLink(eventId) {
 /**
  * Generate invite URL - Utility function
  */
+// function generateInviteURL(event) {
 function generateInviteURL(event) {
     const baseURL = window.location.origin + window.location.pathname;
-    const encodedData = btoa(JSON.stringify({
+    const encodedData = encodeURIComponent(JSON.stringify({
         id: event.id,
         title: event.title,
         date: event.date,
@@ -414,44 +415,51 @@ function exportEventData(eventId) {
 /**
  * Create CSV content from RSVP data
  */
+// function createCSVContent(event, responses) {
 function createCSVContent(event, responses) {
+    function csvSafe(value) {
+        let v = (value ?? '').toString();
+        v = v.replace(/"/g, '""'); // escape quotes
+        if (/^[=\+\-@]/.test(v)) v = `'${v}`; // prevent formula injection
+        return v;
+    }
+
     let csvContent = "Name,Email,Phone,Attending,Rank,Unit,Branch,";
-    
     if (event.askReason) csvContent += "Reason,";
     if (event.allowGuests) csvContent += "Guest Count,";
     if (event.requiresMealChoice) csvContent += "Dietary Restrictions,Allergy Details,";
     if (event.eventDetails && Object.keys(event.eventDetails).length > 0) {
         Object.values(event.eventDetails).forEach(detail => {
-            csvContent += `"${detail.label}",`;
+            csvContent += `"${csvSafe(detail.label)}",`;
         });
     }
     if (event.customQuestions && event.customQuestions.length > 0) {
         event.customQuestions.forEach(q => {
-            csvContent += `"${q.question}",`;
+            csvContent += `"${csvSafe(q.question)}",`;
         });
     }
     csvContent += "Timestamp\n";
 
     responses.forEach(response => {
-        csvContent += `"${response.name}","${response.email}","${response.phone || ''}","${response.attending ? 'Yes' : 'No'}","${response.rank || ''}","${response.unit || ''}","${response.branch || ''}",`;
-        if (event.askReason) csvContent += `"${response.reason || ''}",`;
-        if (event.allowGuests) csvContent += `"${response.guestCount || 0}",`;
+        csvContent += `"${csvSafe(response.name)}","${csvSafe(response.email)}","${csvSafe(response.phone || '')}","${response.attending ? 'Yes' : 'No'}","${csvSafe(response.rank || '')}","${csvSafe(response.unit || '')}","${csvSafe(response.branch || '')}",`;
+        if (event.askReason) csvContent += `"${csvSafe(response.reason || '')}",`;
+        if (event.allowGuests) csvContent += `"${csvSafe(response.guestCount || 0)}",`;
         if (event.requiresMealChoice) {
             const diet = (response.dietaryRestrictions || []).join('; ');
-            csvContent += `"${diet}","${response.allergyDetails || ''}",`;
+            csvContent += `"${csvSafe(diet)}","${csvSafe(response.allergyDetails || '')}",`;
         }
         if (event.eventDetails && Object.keys(event.eventDetails).length > 0) {
             Object.values(event.eventDetails).forEach(detail => {
-                csvContent += `"${detail.value || ''}",`;
+                csvContent += `"${csvSafe(detail.value || '')}",`;
             });
         }
         if (event.customQuestions && event.customQuestions.length > 0) {
             event.customQuestions.forEach(q => {
                 const answer = response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '';
-                csvContent += `"${answer}",`;
+                csvContent += `"${csvSafe(answer)}",`;
             });
         }
-        csvContent += `"${new Date(response.timestamp).toLocaleString()}"\n`;
+        csvContent += `"${new Date(response.timestamp).toISOString()}"\n`;
     });
 
     return csvContent;
