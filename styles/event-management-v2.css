@@ -215,6 +215,11 @@ css.mission-control-subtitle .status-badge {
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
 }
 
+.stat-card-guests {
+    border-color: #b9109d;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+}
+
 .stat-card-declined {
     border-color: #ef4444;
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);
@@ -801,8 +806,4 @@ css.btn-attendee-action-email {
     color: #cbd5e1;
 }
 
-/* Highlight border for Guests card */
-.stat-card-guests {
-    border: 2px solid var(--semper-navy);
-    border-radius: 12px; /* matches existing card roundness */
-}
+
