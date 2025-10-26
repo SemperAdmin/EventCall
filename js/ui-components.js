@@ -76,9 +76,6 @@ function createInviteHTML(event, eventId) {
  */
 function createInviteWithoutImageHTML(event, eventId) {
     return `
-        <div class="invite-header">
-            <h2 style="text-align: center;">You're Invited!</h2>
-        </div>
         <div class="invite-content">
             <h1 class="invite-title">${event.title}</h1>
             <div class="invite-details">
@@ -91,14 +88,6 @@ function createInviteWithoutImageHTML(event, eventId) {
                 ${event.location ? `
                     <div class="invite-detail">
                         <strong>📍 Location:</strong> ${event.location}
-                        <div style="margin-top: 0.5rem;">
-                            <a href="https://maps.google.com/?q=${encodeURIComponent(event.location)}"
-                               target="_blank"
-                               class="btn"
-                               style="display: inline-block; padding: 0.5rem 1rem; font-size: 0.875rem; text-decoration: none;">
-                                🗺️ Get Directions
-                            </a>
-                        </div>
                     </div>
                 ` : ''}
                 ${event.description ? `
@@ -107,6 +96,7 @@ function createInviteWithoutImageHTML(event, eventId) {
                     </div>
                 ` : ''}
                 ${createEventDetailsHTML(event.eventDetails)}
+                ${createRSVPSettingsHTML(event)}
             </div>
             <div style="margin: 1.5rem 0; text-align: center;">
                 <div style="display: inline-block;">
@@ -521,6 +511,7 @@ function createInviteWithImageHTML(event, eventId) {
                     </div>
                 ` : ''}
                 ${createEventDetailsHTML(event.eventDetails)}
+                ${createRSVPSettingsHTML(event)}
             </div>
             <div style="margin: 1.5rem 0; text-align: center;">
                 <div style="display: inline-block;">
