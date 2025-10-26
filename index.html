@@ -8,191 +8,127 @@
     <link rel="stylesheet" href="styles/components.css">
     <link rel="stylesheet" href="styles/invite.css">
     <link rel="stylesheet" href="styles/responsive.css">
+    <link rel="stylesheet" href="styles/accessibility.css">
     <link rel="stylesheet" href="styles/login.css">
+    <link rel="stylesheet" href="styles/dashboard-v2.css">
+    <link rel="stylesheet" href="styles/event-management-v2.css">
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- CSV Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
+<!-- Skip to main content link for keyboard users and screen readers -->
+<a href="#main-content" class="skip-to-main">Skip to main content</a>
 <!-- Updated Login Page HTML with Obfuscated Token -->
-<div id="login-page" style="display: none; flex-direction: column; align-items: center; justify-content: center; position: fixed; inset: 0; background: linear-gradient(135deg, #0f1419 0%, #1a1a2e 50%, #c41e3a 100%); color: white; z-index: 2000; padding: 2rem; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-  <div style="max-width: 500px; width: 100%;">
-    <!-- Logo/Header -->
-    <div style="margin-bottom: 2rem;">
-      <h1 style="font-size: 2.5rem; font-weight: 900; margin-bottom: 0.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
-        🎖️ EventCall
-      </h1>
-      <p style="font-size: 1.1rem; opacity: 0.9; font-style: italic; color: #ffd700;">
-        Where Every Event Matters
-      </p>
-      <p style="font-size: 0.875rem; opacity: 0.8; color: #ffd700; margin-top: 0.5rem;">
-        🚧 Under Construction 🚧
-      </p>
-    </div>
 
-    <!-- Setup Form -->
-    <div style="background: rgba(255, 255, 255, 0.1); padding: 2rem; border-radius: 1rem; backdrop-filter: blur(10px); border: 2px solid rgba(255, 215, 0, 0.3);">
-      <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">🔐 Manager Setup</h2>
-      <p style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 2rem;">
-        Enter your credentials to access your event management dashboard.
-      </p>
-      
-      <!-- Email Input -->
-      <div style="margin-bottom: 1.5rem; text-align: left;">
-        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #ffd700;">
-          📧 Manager Email
-        </label>
-        <input 
-          type="email" 
-          id="login-email" 
-          placeholder="john@company.com"
-          autofocus
-          style="width: 100%; padding: 0.75rem; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 0.5rem; font-size: 1rem; background: rgba(255, 255, 255, 0.1); color: white; backdrop-filter: blur(5px);" 
-          onkeydown="if(event.key==='Enter') document.getElementById('github-token').focus()" />
-      </div>
-
-      <!-- GitHub Token Input with Copy Button -->
-      <div style="margin-bottom: 1.5rem; text-align: left;">
-        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #ffd700;">
-          🔑 GitHub Access Token
-        </label>
-        <div style="position: relative; display: flex; gap: 0.5rem; align-items: center;">
-          <div style="flex: 1; position: relative;">
-            <input 
-              type="password" 
-              id="github-token" 
-              placeholder="Click Copy Token for instant setup"
-              style="width: 100%; padding: 0.75rem; padding-right: 3rem; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 0.5rem; font-size: 1rem; background: rgba(255, 255, 255, 0.1); color: white; backdrop-filter: blur(5px);" 
-              onkeydown="if(event.key==='Enter') userAuth.setupManager()" />
-            <button 
-              type="button"
-              onclick="toggleTokenVisibility()"
-              style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: #ffd700; cursor: pointer; font-size: 1.2rem;"
-              title="Show/Hide Token">
-              👁️
-            </button>
-          </div>
-          <button 
-            type="button"
-            onclick="copyDefaultToken()"
-            style="padding: 0.75rem 1rem; background: linear-gradient(135deg, #ffd700, #e6c200); color: #0f1419; border: none; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;"
-            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(255, 215, 0, 0.4)'"
-            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
-            title="Copy default EventCall token">
-            📋 COPY TOKEN
-          </button>
-        </div>
-        <div style="margin-top: 0.5rem; font-size: 0.75rem; opacity: 0.8;">
-          Your GitHub Personal Access Token with repo permissions
-          <span style="color: #ffd700; font-weight: 600;">• Click "Copy Token" for instant setup</span>
-        </div>
-      </div>
-
-      <!-- Connect Button -->
-      <button 
-        onclick="userAuth.setupManager()" 
-        id="setup-btn"
-        style="width: 100%; padding: 0.75rem; background: linear-gradient(135deg, #ffd700, #e6c200); color: #0f1419; border: none; border-radius: 0.5rem; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px;"
-        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(255, 215, 0, 0.4)'"
-        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-        🔗 CONNECT & ACCESS DASHBOARD
-      </button>
-
-      <!-- Help Text -->
-      <div style="margin-top: 1.5rem; font-size: 0.8rem; opacity: 0.7; border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 1rem;">
-        <p><strong>🚀 Quick Setup (Recommended):</strong></p>
-        <p>1. Click the "📋 COPY TOKEN" button above</p>
-        <p>2. Click "🔗 CONNECT & ACCESS DASHBOARD"</p>
-        <p>3. Start managing your events!</p>
+<!-- ============================================
+     EMAIL-ONLY LOGIN PAGE (NEW)
+     ============================================ -->
+<!-- CHANGED: Removed inline display style - let JavaScript control visibility -->
+<div id="login-page">
+    <div class="login-container" style="width: 100%; max-width: 500px; margin: 2rem auto; background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 1.5rem; padding: 3rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4); border: 2px solid #3a4556;">
         
-        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-          <p><strong>Need your own GitHub token?</strong></p>
-          <p>1. Go to GitHub.com → Settings → Developer settings → Personal access tokens</p>
-          <p>2. Generate new token with 'public_repo' permissions</p>
-          <p>3. Copy and paste it above</p>
+        <!-- Header -->
+        <div class="login-header" style="text-align: center; margin-bottom: 2.5rem;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🎖️</div>
+            <h2 style="color: #d4af37; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Welcome to EventCall</h2>
+            <p class="login-subtitle" style="color: #94a3b8; font-size: 1rem;">Enter your information to continue</p>
         </div>
-      </div>
+        
+        <!-- Email Login Form -->
+        <form id="email-login-form" class="login-form">
+            
+            <!-- Full Name -->
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="user-name" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                    Full Name
+                </label>
+                <input 
+                    type="text" 
+                    id="user-name" 
+                    name="name"
+                    placeholder="Enter your full name" 
+                    required
+                    autocomplete="name"
+                    style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease;"
+                    onfocus="this.style.borderColor='#d4af37'; this.style.background='rgba(255, 255, 255, 0.15)'"
+                    onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
+                >
+            </div>
+            
+            <!-- Email Address -->
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="user-email" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                    Email Address
+                </label>
+                <input 
+                    type="email" 
+                    id="user-email" 
+                    name="email"
+                    placeholder="your.email@example.com" 
+                    required
+                    autocomplete="email"
+                    style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease;"
+                    onfocus="this.style.borderColor='#d4af37'; this.style.background='rgba(255, 255, 255, 0.15)'"
+                    onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
+                >
+            </div>
+            
+            <!-- Unit / Organization -->
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label for="user-unit" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                    Unit / Organization <span style="color: #94a3b8; font-weight: 400;">(Optional)</span>
+                </label>
+                <input 
+                    type="text" 
+                    id="user-unit" 
+                    name="unit"
+                    placeholder="e.g., MCAS Miramar" 
+                    autocomplete="organization"
+                    style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease;"
+                    onfocus="this.style.borderColor='#d4af37'; this.style.background='rgba(255, 255, 255, 0.15)'"
+                    onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
+                >
+            </div>
+            
+            <!-- Submit Button -->
+            <button 
+                type="submit" 
+                class="btn-login"
+                style="width: 100%; padding: 1rem 2rem; background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%); border: none; border-radius: 0.5rem; color: #1a1f2e; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);"
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.4)'"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(212, 175, 55, 0.3)'"
+            >
+                🚀 Continue to Dashboard
+            </button>
+        </form>
+        
+        <!-- Info Section -->
+        <div class="login-info" style="margin-top: 2rem; padding: 1.5rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 0.75rem;">
+            <p style="color: #34d399; font-size: 0.875rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.25rem;">✅</span>
+                <span>No password required - just enter your email to get started</span>
+            </p>
+            <p style="color: #94a3b8; font-size: 0.875rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.25rem;">🔒</span>
+                <span>Your information is stored securely and used only for event management</span>
+            </p>
+        </div>
+        
+        <!-- Branding Footer -->
+        <div style="text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+            <div style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 0.5rem;">POWERED BY</div>
+            <div style="color: #d4af37; font-weight: 700; font-size: 1rem; cursor: pointer;" onclick="window.open('https://linktr.ee/semperadmin', '_blank')">
+                SEMPER ADMIN
+            </div>
+        </div>
     </div>
-
-    <!-- Footer Info -->
-    <div style="margin-top: 2rem; font-size: 0.8rem; opacity: 0.7;">
-      <p>Professional military event management system</p>
-      <p>Powered by <strong style="color: #ffd700;">SEMPER ADMIN</strong></p>
-    </div>
-  </div>
 </div>
 
-<script>
-// Secure token generation function
-function getSecureToken() {
-    // Obfuscated token segments (Base64 encoded parts)
-const segments = [
-    'Z2hwX0lXWUdkWE1G',  // Base64: ghp_IWYGdXMF
-    'Y2d4eWlvSWRWekxn',  // Base64: cgxyioIdVzLg
-    'OFBPazBtMG5QdzJw',  // Base64: 8POk0m0nPw2p
-    'N2xGMw=='           // Base64: 7lF3
-];
-    
-    // Reconstruct token from segments
-    const decodedParts = segments.map(segment => atob(segment));
-    return decodedParts.join('');
-}
-
-function copyDefaultToken() {
-    const tokenInput = document.getElementById('github-token');
-    const copyButton = event.target;
-    const originalText = copyButton.textContent;
-    
-    // Get secure token using obfuscation method
-    const secureToken = getSecureToken();
-    tokenInput.value = secureToken;
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(secureToken).then(() => {
-        // Show success feedback
-        copyButton.innerHTML = '✅ COPIED!';
-        copyButton.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-        
-        // Show toast notification
-        if (window.showToast) {
-            showToast('✅ Default token copied and auto-filled!', 'success');
-        }
-        
-        // Reset button after 2 seconds
-        setTimeout(() => {
-            copyButton.textContent = originalText;
-            copyButton.style.background = 'linear-gradient(135deg, #ffd700, #e6c200)';
-        }, 2000);
-        
-    }).catch(() => {
-        // Fallback if clipboard API fails
-        tokenInput.select();
-        copyButton.innerHTML = '👆 AUTO-FILLED!';
-        
-        if (window.showToast) {
-            showToast('✅ Token auto-filled! Click Connect to continue.', 'success');
-        }
-        
-        setTimeout(() => {
-            copyButton.textContent = originalText;
-        }, 2000);
-    });
-}
-
-function toggleTokenVisibility() {
-    const tokenInput = document.getElementById('github-token');
-    const toggleBtn = tokenInput?.nextElementSibling;
-    
-    if (tokenInput.type === 'password') {
-        tokenInput.type = 'text';
-        toggleBtn.textContent = '🙈';
-        toggleBtn.title = 'Hide Token';
-    } else {
-        tokenInput.type = 'password';
-        toggleBtn.textContent = '👁️';
-        toggleBtn.title = 'Show Token';
-    }
-}
-</script>
-
-<!-- Main App Content -->
+<!-- ============================================
+     MAIN APP CONTENT
+     ============================================ -->
 <div class="app-content" style="display: none;">
     <div class="header">
         <div class="container">
@@ -204,20 +140,21 @@ function toggleTokenVisibility() {
                 <div class="tagline">Where Every Event Matters</div>
                 <div class="tagline">🚧 Under Construction 🚧</div>
                 
-                <!-- User Profile Button -->
-                <div class="user-profile-btn" onclick="userAuth.showUserProfile()" title="User Profile & Logout">
-                    <span class="user-icon">👤</span>
-                    <span class="user-email" id="user-email-display">User</span>
-                </div>
+                <!-- User Profile Button (UPDATED) -->
+                <button class="user-btn" onclick="showUserMenu()" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; cursor: pointer; transition: all 0.2s ease;">
+                    <span class="user-avatar" id="user-avatar" style="display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; background: #d4af37; color: #1a1f2e; border-radius: 50%; font-weight: 700; font-size: 0.875rem;">👤</span>
+                    <span class="user-name" id="user-display-name">User</span>
+                </button>
             </div>
-          <div class="nav">
-              <button onclick="goToDashboard()" class="active" id="nav-dashboard">🏠 Dashboard</button>
-              <button onclick="showPage('create')" id="nav-create">➕ Create Event</button>
-          </div>
+          <nav class="nav" role="navigation" aria-label="Main navigation">
+              <button onclick="goToDashboard()" class="active" id="nav-dashboard" aria-label="Go to Dashboard" aria-current="page">🏠 Dashboard</button>
+              <button onclick="showPage('create')" id="nav-create" aria-label="Create New Event">➕ Create Event</button>
+          </nav>
         </div>
     </div>
 
     <div class="container">
+        <main id="main-content" role="main">
         <div id="dashboard" class="page active">
             <div class="welcome-banner">
                 <div class="welcome-title">🎖️ Welcome to EventCall</div>
@@ -244,41 +181,50 @@ function toggleTokenVisibility() {
                     🎯 Mission Planning
                 </div>
             </div>
-            
-            <!-- IMPORTANT: No action attribute, no method attribute -->
+
+            <!-- Event Templates Selector -->
+            <div id="template-selector-container"></div>
+
             <form id="event-form">
                 <div class="form-group">
-                    <label for="event-title">Event Title</label>
-                    <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson">
+                    <label for="event-title" class="required">Event Title</label>
+                    <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson" aria-required="true" aria-describedby="title-help">
+                    <span id="title-help" class="sr-only">Enter a descriptive title for your event, at least 3 characters</span>
                 </div>
 
                 <div class="form-group">
-                    <label for="event-date">Date</label>
-                    <input type="date" id="event-date" required>
+                    <label for="event-date" class="required">Date</label>
+                    <input type="date" id="event-date" required aria-required="true" aria-describedby="date-help">
+                    <span id="date-help" class="sr-only">Select the date when your event will take place</span>
                 </div>
 
                 <div class="form-group">
-                    <label for="event-time">Time</label>
-                    <input type="time" id="event-time" required>
+                    <label for="event-time" class="required">Time</label>
+                    <input type="time" id="event-time" required aria-required="true" aria-describedby="time-help">
+                    <span id="time-help" class="sr-only">Select the time when your event will start</span>
                 </div>
 
                 <div class="form-group">
                     <label for="event-location">Location</label>
-                    <input type="text" id="event-location" placeholder="e.g., Base Chapel, Building 123">
+                    <input type="text" id="event-location" placeholder="e.g., Base Chapel, Building 123" aria-describedby="location-help">
+                    <span id="location-help" class="sr-only">Enter the location where the event will be held</span>
                 </div>
 
                 <div class="form-group">
                     <label for="event-description">Description</label>
-                    <textarea id="event-description" placeholder="Additional details about the event..."></textarea>
+                    <textarea id="event-description" placeholder="Additional details about the event..." aria-describedby="description-help"></textarea>
+                    <span id="description-help" class="sr-only">Provide additional details about the event</span>
                 </div>
 
                 <div class="form-group">
-                    <label>Cover Image (Optional)</label>
-                    <div class="image-upload" id="cover-upload">
+                    <label for="cover-input">Cover Image (Optional)</label>
+                    <div class="image-upload" id="cover-upload" role="button" tabindex="0" aria-label="Upload cover image by clicking or dragging a file" aria-describedby="cover-help">
                         <p>Click or drag to upload cover image</p>
-                        <input type="file" id="cover-input" accept="image/*" style="display: none;">
+                        <input type="file" id="cover-input" accept="image/*" style="display: none;" aria-label="Choose cover image file">
                     </div>
-                    <img id="cover-preview" class="image-preview hidden">
+                    <span id="cover-help" class="sr-only">Upload a cover image for your event. Maximum size 5MB. Accepted formats: JPEG, PNG, GIF, WebP</span>
+                    <img id="cover-preview" class="image-preview hidden" alt="Event cover image preview">
+                    <input type="hidden" id="cover-image-url" value="">
                 </div>
 
                 <div class="form-group">
@@ -294,18 +240,27 @@ function toggleTokenVisibility() {
                 </div>
 
                 <div class="form-group">
-                    <label>Custom Questions (Optional)</label>
-                    <div id="custom-questions-container">
-                        <div class="custom-question-item">
-                            <input type="text" placeholder="Enter your question..." class="custom-question-input">
-                            <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
-                        </div>
+                    <label>
+                        <input type="checkbox" id="requires-meal-choice"> Event requires meal/dietary choices
+                    </label>
+                </div>
+
+                <!-- Event Details Section -->
+                <div id="event-details-section" style="display: none; margin: 1.5rem 0; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
+                    <div style="font-weight: 600; margin-bottom: 0.75rem; color: #1e40af;">
+                        📝 Event Details
                     </div>
+                    <div id="event-details-container"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Custom Questions (Optional)</label>
+                    <div id="custom-questions-container"></div>
                     <button type="button" class="btn" onclick="addCustomQuestion()">➕ Add Question</button>
                 </div>
 
                 <!-- IMPORTANT: type="submit" with no onclick handler -->
-                <button type="submit" class="btn">🚀 Deploy Event</button>
+                <button type="submit" class="btn" aria-label="Deploy event and create invitation">🚀 Deploy Event</button>
             </form>
         </div>
 
@@ -316,6 +271,7 @@ function toggleTokenVisibility() {
         <div id="invite" class="page">
             <div id="invite-content"></div>
         </div>
+        </main>
     </div>
 
     <div class="footer">
@@ -370,7 +326,6 @@ function toggleTokenVisibility() {
   <div style="padding: 0.75rem;">
     <!-- Change Token Button -->
     <div style="padding: 0.75rem 1rem; border-radius: 0.5rem; color: var(--semper-navy); font-weight: 500; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent;" 
-         onclick="userAuth.promptForTokenOverride()"
          onmouseover="this.style.background='#f0f9ff'; this.style.borderColor='#bae6fd'"
          onmouseout="this.style.background=''; this.style.borderColor='transparent'">
       <span style="font-size: 1.1rem;">🔑</span> 
@@ -397,10 +352,34 @@ function toggleTokenVisibility() {
   </div>
 </div>
 
+<!-- Service Worker Registration -->
+<script src="js/service-worker-registration.js"></script>
+
 <!-- EARLY FUNCTIONS FIRST -->
+<script src="js/error-handler.js"></script>
+<!-- ============================================
+     SCRIPTS (UPDATED ORDER)
+     ============================================ -->
+<script src="js/backend-api.js"></script>
 <script src="js/config.js"></script>
-<script src="js/manager-auth.js"></script>
-<script src="js/login-ui.js"></script>
+<script src="js/utils.js"></script>
+
+<!-- AUTHENTICATION - REPLACED manager-auth.js with user-auth.js -->
+<script src="js/user-auth.js"></script>
+
+<!-- GitHub and Event Management -->
+<script src="js/github-api.js"></script>
+<script src="js/calendar-export.js"></script>
+<script src="js/military-data.js"></script>
+<script src="js/event-templates.js"></script>
+<script src="js/qr-checkin.js"></script>
+<script src="js/csv-import.js"></script>
+<script src="js/recurring-events.js"></script>
+<script src="js/event-manager.js"></script>
+<script src="js/manager-system.js"></script>
+<script src="js/ui-components.js"></script>
+<script src="js/rsvp-handler.js"></script>
 <script src="js/early-functions.js"></script>
+
 </body>
 </html>
