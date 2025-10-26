@@ -454,11 +454,18 @@ css.search-input:focus, .filter-select:focus {
 }
 
 .filter-select {
-    padding: 0.75rem 1rem;
-    background: rgba(17, 24, 39, 0.9); /* Dark slate for strong contrast */
-    border: 1px solid rgba(212, 175, 55, 0.35); /* Semper gold accent */
-    border-radius: 0.5rem;
-    color: #e2e8f0;
+    /* Controls for response table (avoid white-on-white) */
+    .search-filter {
+        padding: 0.75rem 1rem;
+        background: rgba(17, 24, 39, 0.9);
+        border: 1px solid rgba(212, 175, 55, 0.35);
+        border-radius: 0.5rem;
+        color: #e2e8f0;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+    }
     cursor: pointer;
     appearance: none;
     -webkit-appearance: none;
@@ -554,20 +561,23 @@ css.search-input:focus, .filter-select:focus {
     flex-wrap: wrap;
 }
 
+/* Strengthen small attendee action buttons */
 .btn-attendee-action {
     padding: 0.5rem 1rem;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(17, 24, 39, 0.85);
+    border: 1px solid rgba(212, 175, 55, 0.35);
     border-radius: 0.375rem;
-    color: #e2e8f0;
+    color: #f1f5f9; /* brighter text */
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .btn-attendee-action:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(17, 24, 39, 0.95);
+    border-color: #d4af37;
+    color: #ffffff;
 }
 
 .btn-danger-attendee {
@@ -698,7 +708,7 @@ css.btn-attendee-action-email {
    ATTENDEE ACTION BUTTONS - EMAIL VARIANT
    ============================================ */
 
-.btn-attendee-action-email {
+.btn-attendee-action {
     padding: 0.5rem 1rem;
     background: rgba(59, 130, 246, 0.15);
     border: 1px solid #3b82f6;
@@ -710,18 +720,18 @@ css.btn-attendee-action-email {
     transition: all 0.2s ease;
 }
 
-.btn-attendee-action-email:hover {
+.btn-attendee-action:hover {
     background: rgba(59, 130, 246, 0.25);
     border-color: #2563eb;
     color: #93c5fd;
     transform: translateY(-1px);
 }
 
-.btn-attendee-action-email:active {
+.btn-attendee-action:active {
     transform: translateY(0);
 }
 
-.btn-attendee-action-email:disabled {
+.btn-attendee-action:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     background: rgba(59, 130, 246, 0.1);
