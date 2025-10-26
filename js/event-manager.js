@@ -326,10 +326,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 }
 
 /**
- * Generate attendee cards HTML - UPDATED with Email button
- */
-generateAttendeeCards(eventResponses) {
-    return `
+     * Generate attendee cards HTML - UPDATED with Email button
+     */
+    generateAttendeeCards(eventResponses) {
+        return `
         <div class="attendee-cards" id="attendee-cards-container">
             ${eventResponses.map(response => `
                 <div class="attendee-card" 
@@ -432,8 +432,22 @@ generateAttendeeCards(eventResponses) {
             `).join('')}
         </div>
     `;
-}
+    }
     
+    /**
+     * Hook a "Copy TSV" action into event actions
+     * @param {Object} event - Event data
+     * @param {Array} responses - RSVP responses
+     */
+    attachExportActions(event, responses) {
+        const copyBtn = document.getElementById('copy-tsv-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                window.earlyFunctions.copyEventDataAsTSV(event, responses);
+            });
+        }
+    }
+
     /**
      * Filter attendees based on search and filter
      * Add this new function to event-manager.js
@@ -441,27 +455,75 @@ generateAttendeeCards(eventResponses) {
     filterAttendees() {
         const searchInput = document.getElementById('attendee-search');
         const filterSelect = document.getElementById('attendee-filter');
+        const branchSelect = document.getElementById('filter-branch');
+        const rankSelect = document.getElementById('filter-rank');
+        const unitInput = document.getElementById('filter-unit');
         const cards = document.querySelectorAll('.attendee-card');
         
         const searchTerm = searchInput?.value.toLowerCase() || '';
         const filterValue = filterSelect?.value || 'all';
+        const branchValue = branchSelect?.value || '';
+        const rankValue = rankSelect?.value || '';
+        const unitValue = unitInput?.value.toLowerCase() || '';
         
         cards.forEach(card => {
             const name = card.dataset.name || '';
             const status = card.dataset.status || '';
+            const branch = card.dataset.branch || '';
+            const rank = card.dataset.rank || '';
+            const unit = card.dataset.unit || '';
             const extra = [
-                card.dataset.branch || '',
-                card.dataset.rank || '',
-                card.dataset.unit || '',
+                branch,
+                rank,
+                unit,
                 card.dataset.email || '',
                 card.dataset.phone || ''
             ].join(' ');
             
             const matchesSearch = searchTerm === '' || name.includes(searchTerm) || extra.includes(searchTerm);
             const matchesFilter = filterValue === 'all' || status === filterValue;
+            const matchesBranch = branchValue === '' || branch === branchValue;
+            const matchesRank = rankValue === '' || rank === rankValue;
+            const matchesUnit = unitValue === '' || unit.includes(unitValue);
             
-            card.style.display = (matchesSearch && matchesFilter) ? 'block' : 'none';
+            card.style.display = (matchesSearch && matchesFilter && matchesBranch && matchesRank && matchesUnit) ? 'block' : 'none';
         });
+    }
+    
+    /**
+     * Initialize filter controls with branch-rank dependency
+     */
+    initFilterControls() {
+        const branchSelect = document.getElementById('filter-branch');
+        const rankSelect = document.getElementById('filter-rank');
+        
+        if (!branchSelect || !rankSelect) return;
+        
+        const populateRanks = (branchValue) => {
+            if (!window.MilitaryData) return;
+            
+            const ranks = window.MilitaryData.getRanksForBranch(branchValue) || [];
+            rankSelect.innerHTML = '<option value="">All Ranks</option>';
+            ranks.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.value;
+                opt.textContent = r.label;
+                rankSelect.appendChild(opt);
+            });
+        };
+        
+        branchSelect.addEventListener('change', () => {
+            const val = branchSelect.value;
+            populateRanks(val);
+            this.filterAttendees();
+        });
+        
+        rankSelect.addEventListener('change', () => this.filterAttendees());
+        
+        const unitInput = document.getElementById('filter-unit');
+        if (unitInput) {
+            unitInput.addEventListener('input', () => this.filterAttendees());
+        }
     }
 
 
