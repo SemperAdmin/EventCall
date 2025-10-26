@@ -651,14 +651,14 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      */
     showQRCodeModal(event, inviteURL, qrDataURL) {
         const h = window.utils.escapeHTML;
-        
+
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.innerHTML = `
-            <div class="modal-content qr-modal" style="max-width: 500px;">
+            <div class="modal-content qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title" tabindex="0" style="max-width: 500px;">
                 <div class="modal-header">
-                    <h3>📱 Event QR Code</h3>
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove();">×</button>
+                    <h3 id="qr-modal-title">📱 Event QR Code</h3>
+                    <button id="qr-close-btn" class="modal-close" aria-label="Close QR code modal">×</button>
                 </div>
                 <div class="modal-body" style="text-align: center;">
                     <h4 style="margin: 0 0 1rem 0; color: #374151;">${h(event.title)}</h4>
@@ -671,13 +671,13 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     </div>
                     
                     <div class="qr-actions" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <button class="btn btn-primary" onclick="eventManager.downloadQRCode('${qrDataURL}', '${h(event.title)}')">
+                        <button id="qr-download-btn" class="btn btn-primary" aria-label="Download QR code image">
                             💾 Download QR Code
                         </button>
-                        <button class="btn btn-secondary" onclick="eventManager.copyInviteLink('${h(inviteURL)}')">
+                        <button id="qr-copy-link-btn" class="btn btn-secondary" aria-label="Copy event invite link">
                             🔗 Copy Invite Link
                         </button>
-                        <button class="btn btn-secondary" onclick="eventManager.shareQRCode('${h(event.title)}', '${h(inviteURL)}')">
+                        <button id="qr-share-btn" class="btn btn-secondary" aria-label="Share event invite">
                             📤 Share Event
                         </button>
                     </div>
@@ -693,34 +693,67 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove();">Close</button>
+                    <button id="qr-close-footer-btn" class="btn btn-secondary" aria-label="Close modal">Close</button>
                 </div>
             </div>
         `;
 
-        // Add QR modal specific styles
+        // Add QR modal styles
         const style = document.createElement('style');
         style.textContent = `
-            .qr-modal .modal-body {
-                padding: 1.5rem;
-            }
-            .qr-actions .btn {
-                width: 100%;
-                justify-content: center;
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-            }
-            .qr-code-container {
-                transition: transform 0.2s ease;
-            }
-            .qr-code-container:hover {
-                transform: scale(1.02);
-            }
+            .qr-modal .modal-body { padding: 1.5rem; }
+            .qr-actions .btn { width: 100%; justify-content: center; display: flex; align-items: center; gap: 0.5rem; }
+            .qr-code-container { transition: transform 0.2s ease; }
+            .qr-code-container:hover { transform: scale(1.02); }
         `;
         document.head.appendChild(style);
 
         document.body.appendChild(modal);
+
+        const dialog = modal.querySelector('.modal-content');
+        const closeBtn = modal.querySelector('#qr-close-btn');
+        const closeFooterBtn = modal.querySelector('#qr-close-footer-btn');
+        const copyBtn = modal.querySelector('#qr-copy-link-btn');
+        const downloadBtn = modal.querySelector('#qr-download-btn');
+        const shareBtn = modal.querySelector('#qr-share-btn');
+
+        // Focus trap
+        const focusableSelectors = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+        const focusable = Array.from(dialog.querySelectorAll(focusableSelectors)).filter(el => !el.disabled && el.offsetParent !== null);
+        const firstEl = focusable[0] || dialog;
+        const lastEl = focusable[focusable.length - 1] || dialog;
+
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                cleanup();
+                modal.remove();
+            } else if (e.key === 'Tab') {
+                if (focusable.length === 0) return;
+                if (e.shiftKey && document.activeElement === firstEl) {
+                    e.preventDefault();
+                    lastEl.focus();
+                } else if (!e.shiftKey && document.activeElement === lastEl) {
+                    e.preventDefault();
+                    firstEl.focus();
+                }
+            }
+        };
+
+        const cleanup = () => {
+            dialog.removeEventListener('keydown', onKeyDown, true);
+            document.head.removeChild(style);
+        };
+
+        // Attach events
+        dialog.addEventListener('keydown', onKeyDown, true);
+        closeBtn.addEventListener('click', () => { cleanup(); modal.remove(); });
+        closeFooterBtn.addEventListener('click', () => { cleanup(); modal.remove(); });
+        copyBtn.addEventListener('click', async () => { await this.copyInviteLink(inviteURL); });
+        downloadBtn.addEventListener('click', () => { this.downloadQRCode(qrDataURL, event.title); });
+        shareBtn.addEventListener('click', async () => { await this.shareQRCode(event.title, inviteURL); });
+
+        // Initial focus
+        (copyBtn || firstEl).focus();
     }
 
     /**
