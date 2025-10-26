@@ -669,3 +669,21 @@ function createRSVPSettingsHTML(event) {
         </div>
     `;
 }
+
+// In functions that render HTML (e.g., buildInviteForm, renderAttendeeRow)
+function renderAttendeeRow(att) {
+    const h = window.utils.escapeHTML;
+
+    const rowHTML = `
+        <div class="attendee-row" data-id="${h(att.rsvpId)}">
+            <div class="name">${h(att.name || '')}</div>
+            <div class="email">${h(att.email || '')}</div>
+            <div class="phone">${h(att.phone || '')}</div>
+            <div class="branch">${h(att.branch || '')}</div>
+            <div class="rank">${h(att.rank || '')}</div>
+            <div class="unit">${h(att.unit || '')}</div>
+        </div>
+    `;
+    
+    return rowHTML;
+}
