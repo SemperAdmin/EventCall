@@ -342,9 +342,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <button class="btn-action" onclick="eventManager.copyInviteLink('${eventId}')">
                         📋 Copy Link
                     </button>
-                    <button class="btn-action" onclick="eventManager.generateEventQRCode('${eventId}')">
-                            📱 QR Code
-                        </button>
                     <button class="btn-action" onclick="alert('Email link feature coming soon!')">
                         📧 Email Link
                     </button>
