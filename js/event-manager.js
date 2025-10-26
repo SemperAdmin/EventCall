@@ -51,10 +51,10 @@ class EventManager {
                     <p>No RSVPs yet. Share your invite link to start collecting responses!</p>
                     <div style="margin-top: 1rem;">
                         <button class="btn btn-success" onclick="syncWithGitHub()" style="margin-right: 0.5rem;">
-                            ðŸ”„ Check for New RSVPs
+                            🔗„ Check for New RSVPs
                         </button>
                         <button class="btn" onclick="copyInviteLink('${eventId}')">
-                            ðŸ”— Share Invite Link
+                            🔗— Share Invite Link
                         </button>
                     </div>
                 </div>
@@ -1129,7 +1129,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 syncBtn.disabled = true;
             }
 
-            showToast('ðŸ”„ Syncing RSVPs for this event...', 'success');
+            showToast('🔗„ Syncing RSVPs for this event...', 'success');
 
             // Process RSVP issues for all events (GitHub doesn't allow filtering by event easily)
             const result = await window.githubAPI.processRSVPIssues();
@@ -1208,7 +1208,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             <div class="search-controls">
                 <div class="search-row">
                     <input type="text" id="response-search" class="search-input" 
-                           placeholder="ðŸ” Search responses by name, email, phone, or any field..."
+                           placeholder="🔗 Search responses by name, email, phone, or any field..."
                            onkeyup="eventManager.filterResponses('${eventId}')">
                     
                     <select id="attendance-filter" class="search-filter" onchange="eventManager.filterResponses('${eventId}')">
@@ -1219,7 +1219,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     
                     <button class="clear-search" onclick="eventManager.clearSearch('${eventId}')">Clear</button>
                     <button class="btn btn-success" onclick="eventManager.syncEventRSVPs('${eventId}')" style="margin-left: 0.5rem;">
-                        ðŸ”„ Refresh
+                        🔗„ Refresh
                     </button>
                 </div>
                 
@@ -1252,7 +1252,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             const email = response.email || 'N/A';
             const phone = response.phone || 'N/A';
             const source = response.issueNumber ? `GitHub Issue #${response.issueNumber}` : 'Direct Entry';
-            const sourceIcon = response.issueNumber ? 'ðŸ”—' : 'ðŸ“';
+            const sourceIcon = response.issueNumber ? '🔗—' : 'ðŸ“';
 
             html += `
                 <tr class="response-row" data-response-index="${index}" 
@@ -1286,7 +1286,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                 title="Delete this RSVP">ðŸ—‘ï¸</button>
                         ${response.issueUrl ? `
                             <a href="${response.issueUrl}" target="_blank" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-left: 0.25rem;" title="View GitHub Issue">
-                                ðŸ”—
+                                🔗—
                             </a>
                         ` : ''}
                     </td>
@@ -1351,7 +1351,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         });
         
         if (searchTerm || attendanceFilter) {
-            statsElement.innerHTML = `ðŸ” Showing ${visibleCount} of ${totalCount} responses`;
+            statsElement.innerHTML = `🔗 Showing ${visibleCount} of ${totalCount} responses`;
             if (visibleCount === 0) {
                 statsElement.innerHTML += ' - <span style="color: var(--error-color);">No matches found</span>';
             }
@@ -1395,7 +1395,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             const success = await copyToClipboard(link);
             
             if (success) {
-                showToast('ðŸ”— Invite link copied to clipboard!', 'success');
+                showToast('🔗— Invite link copied to clipboard!', 'success');
                 
                 // Briefly highlight the input field
                 const input = document.getElementById('invite-link-input');
