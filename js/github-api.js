@@ -708,7 +708,7 @@ class GitHubAPI {
                 throw new Error(`Failed to save event: ${createResponse.status} - ${errorText}`);
             }
 
-            console.log('✅ Event saved successfully to EventCall-Data:', cleanEventData.id);
+            console.log('✅ Event saved successfully to EventCall-Data:', finalEventData.id);
             return await createResponse.json();
 
         } catch (error) {
