@@ -1289,7 +1289,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                 </option>`;
                                             }).join('')}
                                         </select>
-                                        <button class="assign-btn" onclick="eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}', '${h(guest.name)}', ${guest.guestCount || 0})">
+                                        <button class="assign-btn" onclick="eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}')">
                                             Assign
                                         </button>
                                     </div>
@@ -1932,15 +1932,25 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      * Assign a guest to a table
      * @param {string} eventId - Event ID
      * @param {string} rsvpId - RSVP ID
-     * @param {string} guestName - Guest name
-     * @param {number} guestCount - Guest count
      */
-    async assignGuestToTable(eventId, rsvpId, guestName, guestCount) {
+    async assignGuestToTable(eventId, rsvpId) {
         const event = window.events ? window.events[eventId] : null;
         if (!event || !event.seatingChart) {
             showToast('Event or seating chart not found', 'error');
             return;
         }
+
+        // Look up guest details from responses
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+        const guest = eventResponses.find(r => r.rsvpId === rsvpId);
+
+        if (!guest) {
+            showToast('Guest not found', 'error');
+            return;
+        }
+
+        const guestName = guest.name;
+        const guestCount = guest.guestCount || 0;
 
         // Get selected table from dropdown
         const selectElement = document.getElementById(`table-select-${rsvpId}`);
