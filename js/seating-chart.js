@@ -349,10 +349,8 @@ class SeatingChart {
             });
         });
 
-        // Add unassigned guests
+        // Add unassigned guests (with same column structure)
         if (this.seatingData.unassignedGuests.length > 0) {
-            csv += '\nUnassigned Guests\n';
-            csv += 'Guest Name,Email,Rank,Unit,Guest Count,Dietary Restrictions,Allergies\n';
             this.seatingData.unassignedGuests.forEach(rsvpId => {
                 const rsvp = rsvpMap.get(rsvpId);
                 if (rsvp) {
@@ -364,7 +362,11 @@ class SeatingChart {
                     // Get allergy details
                     const allergies = rsvp.allergyDetails || '';
 
-                    csv += `"${rsvp.name}","${rsvp.email || ''}","${rsvp.rank || ''}","${rsvp.unit || ''}",${rsvp.guestCount || 0},"${dietary}","${allergies}"\n`;
+                    // Calculate total headcount
+                    const totalHeadcount = 1 + (rsvp.guestCount || 0);
+
+                    // Use "Unassigned" for table number, maintain same column structure
+                    csv += `"Unassigned","${rsvp.name}","${rsvp.email || ''}","${rsvp.rank || ''}","${rsvp.unit || ''}",${rsvp.guestCount || 0},${totalHeadcount},"${dietary}","${allergies}"\n`;
                 }
             });
         }
