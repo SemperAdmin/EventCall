@@ -74,6 +74,15 @@
     font-size: 0.875rem;
 }
 
+.seating-config-info {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #f0f9ff;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: #1e40af;
+}
+
 /* Seating Chart Management View */
 .seating-chart-container {
     margin-top: 2rem;

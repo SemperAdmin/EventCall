@@ -4,6 +4,9 @@
  * Handles table assignment for event attendees
  */
 
+// VIP ranks for auto-assignment priority (military officer ranks)
+const VIP_RANKS = ['Col', 'LtCol', 'Maj', 'Gen', 'BGen', 'MGen', 'LtGen'];
+
 class SeatingChart {
     constructor(eventId) {
         this.eventId = eventId;
@@ -119,13 +122,14 @@ class SeatingChart {
         if (!this.seatingData) return false;
 
         let found = false;
-        this.seatingData.tables.forEach(table => {
+        for (const table of this.seatingData.tables) {
             const index = table.assignedGuests.findIndex(g => g.rsvpId === rsvpId);
             if (index !== -1) {
                 table.assignedGuests.splice(index, 1);
                 found = true;
+                break; // Exit loop once guest is found
             }
-        });
+        }
 
         if (found) {
             // Add to unassigned list if not already there
@@ -239,9 +243,9 @@ class SeatingChart {
 
         // Sort RSVPs: VIPs first, then by guest count (smaller groups first for better packing)
         const sortedRsvps = [...rsvps].sort((a, b) => {
-            // VIP check (you can customize this based on rank, etc.)
-            const aIsVip = a.rank && ['Col', 'LtCol', 'Maj', 'Gen', 'BGen', 'MGen', 'LtGen'].includes(a.rank);
-            const bIsVip = b.rank && ['Col', 'LtCol', 'Maj', 'Gen', 'BGen', 'MGen', 'LtGen'].includes(b.rank);
+            // VIP check using defined VIP ranks
+            const aIsVip = a.rank && VIP_RANKS.includes(a.rank);
+            const bIsVip = b.rank && VIP_RANKS.includes(b.rank);
 
             if (aIsVip && !bIsVip) return -1;
             if (!aIsVip && bIsVip) return 1;

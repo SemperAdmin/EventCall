@@ -844,11 +844,9 @@ function setupSeatingChartToggle() {
 
     // Toggle seating config fields visibility
     enableSeatingCheckbox.addEventListener('change', function() {
+        seatingConfigFields.classList.toggle('hidden', !this.checked);
         if (this.checked) {
-            seatingConfigFields.style.display = 'block';
             updateSeatingCapacity();
-        } else {
-            seatingConfigFields.style.display = 'none';
         }
     });
 
