@@ -1032,7 +1032,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         </button>
                     </div>
                 </div>
-            `).join('')}
+            `;
+            }).join('')}
         </div>
     `;
     }
