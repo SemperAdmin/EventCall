@@ -330,13 +330,21 @@ class SeatingChart {
         if (!this.seatingData) return '';
 
         const rsvpMap = new Map(rsvps.map(r => [r.rsvpId, r]));
-        let csv = 'Table Number,Guest Name,Email,Rank,Unit,Guest Count,Total at Table\n';
+        let csv = 'Table Number,Guest Name,Email,Rank,Unit,Guest Count,Total at Table,Dietary Restrictions,Allergies\n';
 
         this.seatingData.tables.forEach(table => {
             table.assignedGuests.forEach(guest => {
                 const rsvp = rsvpMap.get(guest.rsvpId);
                 if (rsvp) {
-                    csv += `${table.tableNumber},"${rsvp.name}","${rsvp.email || ''}","${rsvp.rank || ''}","${rsvp.unit || ''}",${guest.guestCount || 0},${1 + (guest.guestCount || 0)}\n`;
+                    // Format dietary restrictions
+                    const dietary = rsvp.dietaryRestrictions && rsvp.dietaryRestrictions.length
+                        ? rsvp.dietaryRestrictions.join('; ')
+                        : '';
+
+                    // Get allergy details
+                    const allergies = rsvp.allergyDetails || '';
+
+                    csv += `${table.tableNumber},"${rsvp.name}","${rsvp.email || ''}","${rsvp.rank || ''}","${rsvp.unit || ''}",${guest.guestCount || 0},${1 + (guest.guestCount || 0)},"${dietary}","${allergies}"\n`;
                 }
             });
         });
@@ -344,11 +352,19 @@ class SeatingChart {
         // Add unassigned guests
         if (this.seatingData.unassignedGuests.length > 0) {
             csv += '\nUnassigned Guests\n';
-            csv += 'Guest Name,Email,Rank,Unit,Guest Count\n';
+            csv += 'Guest Name,Email,Rank,Unit,Guest Count,Dietary Restrictions,Allergies\n';
             this.seatingData.unassignedGuests.forEach(rsvpId => {
                 const rsvp = rsvpMap.get(rsvpId);
                 if (rsvp) {
-                    csv += `"${rsvp.name}","${rsvp.email || ''}","${rsvp.rank || ''}","${rsvp.unit || ''}",${rsvp.guestCount || 0}\n`;
+                    // Format dietary restrictions
+                    const dietary = rsvp.dietaryRestrictions && rsvp.dietaryRestrictions.length
+                        ? rsvp.dietaryRestrictions.join('; ')
+                        : '';
+
+                    // Get allergy details
+                    const allergies = rsvp.allergyDetails || '';
+
+                    csv += `"${rsvp.name}","${rsvp.email || ''}","${rsvp.rank || ''}","${rsvp.unit || ''}",${rsvp.guestCount || 0},"${dietary}","${allergies}"\n`;
                 }
             });
         }

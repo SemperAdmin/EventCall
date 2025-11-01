@@ -348,8 +348,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 </div>
             </div>
 
-            ${event.seatingChart && event.seatingChart.enabled ? this.generateSeatingChartSection(event, eventId, eventResponses) : ''}
-
             <!-- Attendee List -->
             <div class="attendee-list-section">
                 <div class="attendee-list-header">
@@ -373,6 +371,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
                 ${this.generateAttendeeCards(eventResponses, eventId)}
             </div>
+
+            ${event.seatingChart && event.seatingChart.enabled ? this.generateSeatingChartSection(event, eventId, eventResponses) : ''}
         </div>
     `;
 }
@@ -1224,38 +1224,43 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         );
 
         return `
-            <div class="seating-chart-container" id="seating-chart-section">
+            <!-- Seating Chart Section -->
+            <div class="rsvp-dashboard-section">
                 <h2 class="rsvp-dashboard-title">🪑 Seating Chart</h2>
 
                 <!-- Seating Stats -->
-                <div class="seating-stats-grid">
-                    <div class="seating-stat-card filled">
-                        <div class="stat-value">${stats.assigned}</div>
-                        <div class="stat-label">Seated</div>
+                <div class="rsvp-stats-cards">
+                    <div class="stat-card-large stat-card-seated">
+                        <div class="stat-card-icon">🪑</div>
+                        <div class="stat-card-number">${stats.assigned}</div>
+                        <div class="stat-card-label">Seated Guests</div>
                     </div>
-                    <div class="seating-stat-card unassigned">
-                        <div class="stat-value">${stats.unassigned}</div>
-                        <div class="stat-label">Unassigned</div>
+                    <div class="stat-card-large stat-card-unassigned">
+                        <div class="stat-card-icon">📋</div>
+                        <div class="stat-card-number">${stats.unassigned}</div>
+                        <div class="stat-card-label">Unassigned</div>
                     </div>
-                    <div class="seating-stat-card available">
-                        <div class="stat-value">${stats.available}</div>
-                        <div class="stat-label">Available Seats</div>
+                    <div class="stat-card-large stat-card-available">
+                        <div class="stat-card-icon">✨</div>
+                        <div class="stat-card-number">${stats.available}</div>
+                        <div class="stat-card-label">Available Seats</div>
                     </div>
-                    <div class="seating-stat-card">
-                        <div class="stat-value">${stats.percentFilled}%</div>
-                        <div class="stat-label">Capacity Used</div>
+                    <div class="stat-card-large stat-card-capacity">
+                        <div class="stat-card-icon">📊</div>
+                        <div class="stat-card-number">${stats.percentFilled}%</div>
+                        <div class="stat-card-label">Capacity Used</div>
                     </div>
                 </div>
 
                 <!-- Seating Actions -->
-                <div class="seating-actions">
-                    <button class="btn btn-primary" onclick="eventManager.autoAssignSeats('${eventId}')">
+                <div class="invite-actions-section">
+                    <button class="btn-action" onclick="eventManager.autoAssignSeats('${eventId}')">
                         🎯 Auto-Assign All
                     </button>
-                    <button class="btn" onclick="eventManager.exportSeatingCSV('${eventId}')">
+                    <button class="btn-action" onclick="eventManager.exportSeatingCSV('${eventId}')">
                         📥 Export Seating Chart
                     </button>
-                    <button class="btn" onclick="eventManager.refreshSeatingChart('${eventId}')">
+                    <button class="btn-action" onclick="eventManager.refreshSeatingChart('${eventId}')">
                         🔄 Refresh
                     </button>
                 </div>
@@ -1324,17 +1329,36 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                     </div>
                                 </div>
                                 <div class="table-guests-list">
-                                    ${table.assignedGuests.length > 0 ? table.assignedGuests.map(guest => `
+                                    ${table.assignedGuests.length > 0 ? table.assignedGuests.map(guest => {
+                                        const guestRsvp = attendingGuests.find(r => r.rsvpId === guest.rsvpId);
+                                        const totalGuestCount = 1 + (guest.guestCount || 0);
+
+                                        return `
                                         <div class="table-guest-item">
-                                            <div>
+                                            <div class="table-guest-info">
                                                 <span class="table-guest-name">${h(guest.name)}</span>
                                                 ${guest.guestCount > 0 ? `<span class="table-guest-count">+${guest.guestCount}</span>` : ''}
                                             </div>
-                                            <button class="table-guest-remove" onclick="eventManager.unassignGuest('${eventId}', '${guest.rsvpId}')" title="Remove from table">
-                                                ✖
-                                            </button>
+                                            <div class="table-guest-actions">
+                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" onchange="eventManager.reassignGuestToTable('${eventId}', '${guest.rsvpId}', this.value)">
+                                                    <option value="">Move to...</option>
+                                                    ${event.seatingChart.tables.map(t => {
+                                                        if (t.tableNumber === table.tableNumber) return ''; // Skip current table
+                                                        const tOccupancy = seatingChart.getTableOccupancy(t.tableNumber);
+                                                        const tAvailable = t.capacity - tOccupancy;
+                                                        const canFit = tAvailable >= totalGuestCount;
+                                                        return `<option value="${t.tableNumber}" ${!canFit ? 'disabled' : ''}>
+                                                            Table ${t.tableNumber} ${t.vipTable ? '⭐' : ''} (${tAvailable}/${t.capacity} avail)
+                                                        </option>`;
+                                                    }).join('')}
+                                                </select>
+                                                <button class="table-guest-remove" onclick="eventManager.unassignGuest('${eventId}', '${guest.rsvpId}')" title="Remove from table">
+                                                    ✖
+                                                </button>
+                                            </div>
                                         </div>
-                                    `).join('') : `
+                                        `;
+                                    }).join('') : `
                                         <div class="table-empty-state">
                                             Empty table
                                         </div>
@@ -2013,6 +2037,58 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             this.refreshSeatingChart(eventId);
         } else {
             showToast('Failed to unassign guest', 'error');
+        }
+    }
+
+    /**
+     * Reassign a guest to a different table
+     * @param {string} eventId - Event ID
+     * @param {string} rsvpId - RSVP ID
+     * @param {string} newTableNumber - New table number (as string from select value)
+     */
+    async reassignGuestToTable(eventId, rsvpId, newTableNumber) {
+        if (!newTableNumber) return; // User cancelled selection
+
+        const event = window.events ? window.events[eventId] : null;
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+
+        if (!event || !event.seatingChart) {
+            showToast('Event or seating chart not found', 'error');
+            return;
+        }
+
+        // Look up guest details
+        const guest = eventResponses.find(r => r.rsvpId === rsvpId);
+        if (!guest) {
+            showToast('Guest not found', 'error');
+            return;
+        }
+
+        const tableNumber = parseInt(newTableNumber);
+        const seatingChart = new window.SeatingChart(eventId);
+        seatingChart.loadSeatingData(event);
+
+        // First unassign from current table
+        seatingChart.unassignGuest(rsvpId);
+
+        // Then assign to new table
+        const result = seatingChart.assignGuestToTable(rsvpId, tableNumber, {
+            name: guest.name,
+            guestCount: guest.guestCount || 0
+        });
+
+        if (result.success) {
+            // Update event data
+            event.seatingChart = seatingChart.exportSeatingData();
+            await this.saveEventSeatingData(event);
+            showToast(`Moved ${guest.name} to Table ${tableNumber}`, 'success');
+
+            // Refresh the seating chart display
+            this.refreshSeatingChart(eventId);
+        } else {
+            showToast(result.message, 'error');
+            // Refresh anyway to reset the dropdown
+            this.refreshSeatingChart(eventId);
         }
     }
 
