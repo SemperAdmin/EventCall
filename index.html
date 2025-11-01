@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="styles/login.css">
     <link rel="stylesheet" href="styles/dashboard-v2.css">
     <link rel="stylesheet" href="styles/event-management-v2.css">
+    <link rel="stylesheet" href="styles/seating-chart.css">
     <!-- QR Code Library -->
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -254,6 +255,36 @@
                     <div id="event-details-container"></div>
                 </div>
 
+                <!-- Seating Chart Configuration Section -->
+                <div class="seating-config-section">
+                    <h3>🪑 Seating Chart (Optional)</h3>
+
+                    <div class="seating-config-toggle">
+                        <input type="checkbox" id="enable-seating">
+                        <label for="enable-seating">Enable seating chart for this event</label>
+                    </div>
+
+                    <div id="seating-config-fields" style="display: none;">
+                        <div class="seating-config-fields">
+                            <div class="seating-config-field">
+                                <label for="number-of-tables">Number of Tables</label>
+                                <input type="number" id="number-of-tables" min="1" max="100" value="10">
+                                <small>Total number of tables at the venue</small>
+                            </div>
+
+                            <div class="seating-config-field">
+                                <label for="seats-per-table">Seats per Table</label>
+                                <input type="number" id="seats-per-table" min="2" max="20" value="8">
+                                <small>Average capacity per table</small>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: #f0f9ff; border-radius: 6px; font-size: 0.875rem; color: #1e40af;">
+                            ℹ️ Total Capacity: <strong><span id="total-seating-capacity">80</span> seats</strong>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>Custom Questions (Optional)</label>
                     <div id="custom-questions-container"></div>
@@ -376,6 +407,7 @@
 <script src="js/qr-checkin.js"></script>
 <script src="js/csv-import.js"></script>
 <script src="js/recurring-events.js"></script>
+<script src="js/seating-chart.js"></script>
 <script src="js/event-manager.js"></script>
 <script src="js/manager-system.js"></script>
 <script src="js/ui-components.js"></script>

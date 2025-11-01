@@ -711,6 +711,18 @@ async function handleEventSubmit(e) {
             createdByName: currentUser.name || currentUser.email.split('@')[0]
         };
 
+        // Add seating chart data if enabled
+        const enableSeating = document.getElementById('enable-seating');
+        if (enableSeating && enableSeating.checked) {
+            const numberOfTables = parseInt(document.getElementById('number-of-tables').value) || 10;
+            const seatsPerTable = parseInt(document.getElementById('seats-per-table').value) || 8;
+
+            // Initialize seating chart using SeatingChart class
+            const seatingChart = new window.SeatingChart(eventData.id);
+            const seatingData = seatingChart.initializeSeatingChart(numberOfTables, seatsPerTable);
+            eventData.seatingChart = seatingData;
+        }
+
         // Validate required fields
         if (!eventData.title || eventData.title.length < 3) {
             throw new Error('Event title must be at least 3 characters long.');
@@ -812,7 +824,55 @@ function setupEventForm() {
         eventForm.addEventListener('submit', handleEventSubmit);
         eventForm.dataset.formInitialized = 'true';
         console.log('✅ Event form listener attached');
+
+        // Setup seating chart toggle
+        setupSeatingChartToggle();
     }
+}
+
+/**
+ * Setup seating chart configuration toggle and capacity calculation
+ */
+function setupSeatingChartToggle() {
+    const enableSeatingCheckbox = document.getElementById('enable-seating');
+    const seatingConfigFields = document.getElementById('seating-config-fields');
+    const numberOfTablesInput = document.getElementById('number-of-tables');
+    const seatsPerTableInput = document.getElementById('seats-per-table');
+    const totalCapacitySpan = document.getElementById('total-seating-capacity');
+
+    if (!enableSeatingCheckbox || !seatingConfigFields) return;
+
+    // Toggle seating config fields visibility
+    enableSeatingCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            seatingConfigFields.style.display = 'block';
+            updateSeatingCapacity();
+        } else {
+            seatingConfigFields.style.display = 'none';
+        }
+    });
+
+    // Update total capacity when inputs change
+    function updateSeatingCapacity() {
+        const tables = parseInt(numberOfTablesInput.value) || 0;
+        const seatsPerTable = parseInt(seatsPerTableInput.value) || 0;
+        const total = tables * seatsPerTable;
+
+        if (totalCapacitySpan) {
+            totalCapacitySpan.textContent = total;
+        }
+    }
+
+    if (numberOfTablesInput) {
+        numberOfTablesInput.addEventListener('input', updateSeatingCapacity);
+    }
+
+    if (seatsPerTableInput) {
+        seatsPerTableInput.addEventListener('input', updateSeatingCapacity);
+    }
+
+    // Initialize capacity display
+    updateSeatingCapacity();
 }
 
 /**
