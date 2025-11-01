@@ -5,7 +5,7 @@
  */
 
 // VIP ranks for auto-assignment priority (military officer ranks)
-const VIP_RANKS = ['Col', 'LtCol', 'Maj', 'Gen', 'BGen', 'MGen', 'LtGen'];
+const VIP_RANKS = ['Gen', 'LtGen', 'MGen', 'BGen', 'Col', 'LtCol', 'Maj'];
 
 class SeatingChart {
     constructor(eventId) {
