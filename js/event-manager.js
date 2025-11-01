@@ -348,15 +348,17 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 </div>
             </div>
 
+            ${event.seatingChart && event.seatingChart.enabled ? this.generateSeatingChartSection(event, eventId, eventResponses) : ''}
+
             <!-- Attendee List -->
             <div class="attendee-list-section">
                 <div class="attendee-list-header">
                     <h3 class="attendee-list-title">📋 Attendee List (${eventResponses.length + roster.filter(r => r.email && !respondedEmails.has(r.email.toLowerCase().trim())).length})</h3>
                     <div class="attendee-controls">
-                        <input 
-                            type="text" 
-                            class="search-input" 
-                            placeholder="🔍 Search attendees..." 
+                        <input
+                            type="text"
+                            class="search-input"
+                            placeholder="🔍 Search attendees..."
                             id="attendee-search"
                             oninput="eventManager.filterAttendees()"
                         >
@@ -885,13 +887,21 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     generateAttendeeCards(eventResponses, eventId) {
         // XSS Protection helper
         const h = window.utils.escapeHTML;
-        
+
+        // Get event for seating chart info
+        const event = window.events ? window.events[eventId] : null;
+        let seatingChart = null;
+        if (event && event.seatingChart && event.seatingChart.enabled) {
+            seatingChart = new window.SeatingChart(eventId);
+            seatingChart.loadSeatingData(event);
+        }
+
         // Get invite roster
         const roster = this.getInviteRoster(eventId);
         const respondedEmails = new Set(eventResponses.filter(r => r.email).map(r => r.email.toLowerCase().trim()));
-        
+
         // Create invited-only entries for roster members who haven't responded
-        const invitedOnly = roster.filter(invitee => 
+        const invitedOnly = roster.filter(invitee =>
             invitee.email && !respondedEmails.has(invitee.email.toLowerCase().trim())
         ).map(invitee => ({
             name: invitee.name || 'Unknown',
@@ -903,15 +913,22 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             timestamp: null,
             isInvitedOnly: true
         }));
-        
+
         // Combine responses and invited-only entries
         const allAttendees = [...eventResponses, ...invitedOnly];
-        
+
         return `
         <div class="attendee-cards" id="attendee-cards-container">
-            ${allAttendees.map(response => `
-                <div class="attendee-card ${response.isInvitedOnly ? 'attendee-invited-only' : ''}" 
-                     data-name="${(response.name || '').toLowerCase()}" 
+            ${allAttendees.map(response => {
+                // Get table assignment if seating chart is enabled
+                let tableAssignment = null;
+                if (seatingChart && response.rsvpId) {
+                    tableAssignment = seatingChart.findGuestAssignment(response.rsvpId);
+                }
+
+                return `
+                <div class="attendee-card ${response.isInvitedOnly ? 'attendee-invited-only' : ''}"
+                     data-name="${(response.name || '').toLowerCase()}"
                      data-status="${response.attending === null ? 'invited' : (response.attending ? 'attending' : 'declined')}"
                      data-branch="${(response.branch || '').toLowerCase()}"
                      data-rank="${(response.rank || '').toLowerCase()}"
@@ -920,12 +937,16 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                      data-phone="${(response.phone || '').toLowerCase()}">
                     <div class="attendee-card-header">
                         <div class="attendee-info">
-                            <div class="attendee-name">${h(response.name) || 'Anonymous'}</div>
+                            <div class="attendee-name">
+                                ${h(response.name) || 'Anonymous'}
+                                ${tableAssignment ? `<span class="attendee-table-badge ${tableAssignment.vipTable ? 'vip' : ''}">Table ${tableAssignment.tableNumber}</span>` :
+                                  (seatingChart && response.attending ? '<span class="attendee-table-badge unassigned">No Table</span>' : '')}
+                            </div>
                             <span class="attendee-status ${
-                                response.attending === null ? 'status-invited' : 
+                                response.attending === null ? 'status-invited' :
                                 (response.attending ? 'status-attending' : 'status-declined')
                             }">
-                                ${response.attending === null ? '📧 Invited' : 
+                                ${response.attending === null ? '📧 Invited' :
                                   (response.attending ? '✅ Attending' : '❌ Declined')}
                             </span>
                         </div>
@@ -1171,6 +1192,159 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 syncBtn.disabled = false;
             }
         }
+    }
+
+    /**
+     * Generate seating chart section HTML
+     * @param {Object} event - Event data
+     * @param {string} eventId - Event ID
+     * @param {Array} eventResponses - RSVP responses
+     * @returns {string} HTML content
+     */
+    generateSeatingChartSection(event, eventId, eventResponses) {
+        if (!event.seatingChart || !event.seatingChart.enabled) return '';
+
+        const h = window.utils.escapeHTML;
+        const seatingChart = new window.SeatingChart(eventId);
+        seatingChart.loadSeatingData(event);
+
+        // Get attending guests only
+        const attendingGuests = eventResponses.filter(r => r.attending === true || r.attending === 'true');
+
+        // Sync unassigned guests
+        seatingChart.syncUnassignedGuests(attendingGuests);
+
+        // Get stats
+        const stats = seatingChart.getSeatingStats();
+
+        // Get unassigned guests with full details
+        const unassignedGuestsDetails = attendingGuests.filter(rsvp =>
+            seatingChart.seatingData.unassignedGuests.includes(rsvp.rsvpId)
+        );
+
+        return `
+            <div class="seating-chart-container" id="seating-chart-section">
+                <h2 class="rsvp-dashboard-title">🪑 Seating Chart</h2>
+
+                <!-- Seating Stats -->
+                <div class="seating-stats-grid">
+                    <div class="seating-stat-card filled">
+                        <div class="stat-value">${stats.assigned}</div>
+                        <div class="stat-label">Seated</div>
+                    </div>
+                    <div class="seating-stat-card unassigned">
+                        <div class="stat-value">${stats.unassigned}</div>
+                        <div class="stat-label">Unassigned</div>
+                    </div>
+                    <div class="seating-stat-card available">
+                        <div class="stat-value">${stats.available}</div>
+                        <div class="stat-label">Available Seats</div>
+                    </div>
+                    <div class="seating-stat-card">
+                        <div class="stat-value">${stats.percentFilled}%</div>
+                        <div class="stat-label">Capacity Used</div>
+                    </div>
+                </div>
+
+                <!-- Seating Actions -->
+                <div class="seating-actions">
+                    <button class="btn btn-primary" onclick="eventManager.autoAssignSeats('${eventId}')">
+                        🎯 Auto-Assign All
+                    </button>
+                    <button class="btn" onclick="eventManager.exportSeatingCSV('${eventId}')">
+                        📥 Export Seating Chart
+                    </button>
+                    <button class="btn" onclick="eventManager.refreshSeatingChart('${eventId}')">
+                        🔄 Refresh
+                    </button>
+                </div>
+
+                ${unassignedGuestsDetails.length > 0 ? `
+                    <!-- Unassigned Guests Section -->
+                    <div class="unassigned-section">
+                        <h3>
+                            📋 Unassigned Guests
+                            <span class="unassigned-count">${unassignedGuestsDetails.length}</span>
+                        </h3>
+                        <div class="unassigned-guests-list">
+                            ${unassignedGuestsDetails.map(guest => `
+                                <div class="unassigned-guest-item">
+                                    <div class="unassigned-guest-info">
+                                        <div class="unassigned-guest-name">${h(guest.name)}</div>
+                                        <div class="unassigned-guest-details">
+                                            ${guest.rank ? h(guest.rank) + ' • ' : ''}${guest.unit ? h(guest.unit) : ''}
+                                            ${guest.guestCount ? ` • +${guest.guestCount} guest${guest.guestCount > 1 ? 's' : ''}` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="unassigned-guest-actions">
+                                        <select class="table-select" id="table-select-${guest.rsvpId}">
+                                            <option value="">Select Table...</option>
+                                            ${event.seatingChart.tables.map(table => {
+                                                const occupancy = seatingChart.getTableOccupancy(table.tableNumber);
+                                                const available = table.capacity - occupancy;
+                                                const guestCount = 1 + (guest.guestCount || 0);
+                                                const canFit = available >= guestCount;
+                                                return `<option value="${table.tableNumber}" ${!canFit ? 'disabled' : ''}>
+                                                    Table ${table.tableNumber} ${table.vipTable ? '⭐' : ''} (${available}/${table.capacity} available)
+                                                </option>`;
+                                            }).join('')}
+                                        </select>
+                                        <button class="assign-btn" onclick="eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}', '${h(guest.name)}', ${guest.guestCount || 0})">
+                                            Assign
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : `
+                    <div class="seating-empty-state">
+                        <h3>✅ All Attending Guests Assigned</h3>
+                        <p>All guests have been assigned to tables.</p>
+                    </div>
+                `}
+
+                <!-- Tables Grid -->
+                <div class="tables-grid">
+                    ${event.seatingChart.tables.map(table => {
+                        const occupancy = seatingChart.getTableOccupancy(table.tableNumber);
+                        const percentFull = (occupancy / table.capacity) * 100;
+                        const isFull = occupancy >= table.capacity;
+                        const isAlmostFull = percentFull >= 75 && !isFull;
+
+                        return `
+                            <div class="table-card ${table.vipTable ? 'vip-table' : ''} ${isFull ? 'full' : ''}">
+                                <div class="table-header">
+                                    <div class="table-number">
+                                        ${table.vipTable ? '⭐ ' : ''}Table ${table.tableNumber}
+                                    </div>
+                                    <div class="table-capacity ${isFull ? 'full' : isAlmostFull ? 'almost-full' : ''}">
+                                        ${occupancy}/${table.capacity}
+                                    </div>
+                                </div>
+                                <div class="table-guests-list">
+                                    ${table.assignedGuests.length > 0 ? table.assignedGuests.map(guest => `
+                                        <div class="table-guest-item">
+                                            <div>
+                                                <span class="table-guest-name">${h(guest.name)}</span>
+                                                ${guest.guestCount > 0 ? `<span class="table-guest-count">+${guest.guestCount}</span>` : ''}
+                                            </div>
+                                            <button class="table-guest-remove" onclick="eventManager.unassignGuest('${eventId}', '${guest.rsvpId}')" title="Remove from table">
+                                                ✖
+                                            </button>
+                                        </div>
+                                    `).join('') : `
+                                        <div class="table-empty-state">
+                                            Empty table
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
     }
 
     /**
@@ -1752,6 +1926,196 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         }
 
         return result;
+    }
+
+    /**
+     * Assign a guest to a table
+     * @param {string} eventId - Event ID
+     * @param {string} rsvpId - RSVP ID
+     * @param {string} guestName - Guest name
+     * @param {number} guestCount - Guest count
+     */
+    async assignGuestToTable(eventId, rsvpId, guestName, guestCount) {
+        const event = window.events ? window.events[eventId] : null;
+        if (!event || !event.seatingChart) {
+            showToast('Event or seating chart not found', 'error');
+            return;
+        }
+
+        // Get selected table from dropdown
+        const selectElement = document.getElementById(`table-select-${rsvpId}`);
+        if (!selectElement) {
+            showToast('Table selection not found', 'error');
+            return;
+        }
+
+        const tableNumber = parseInt(selectElement.value);
+        if (!tableNumber) {
+            showToast('Please select a table', 'warning');
+            return;
+        }
+
+        // Create seating chart instance and assign
+        const seatingChart = new window.SeatingChart(eventId);
+        seatingChart.loadSeatingData(event);
+
+        const result = seatingChart.assignGuestToTable(rsvpId, tableNumber, {
+            name: guestName,
+            guestCount: guestCount
+        });
+
+        if (result.success) {
+            // Update event data
+            event.seatingChart = seatingChart.exportSeatingData();
+            await this.saveEventSeatingData(event);
+            showToast(result.message, 'success');
+
+            // Refresh the seating chart display
+            this.refreshSeatingChart(eventId);
+        } else {
+            showToast(result.message, 'error');
+        }
+    }
+
+    /**
+     * Unassign a guest from their table
+     * @param {string} eventId - Event ID
+     * @param {string} rsvpId - RSVP ID
+     */
+    async unassignGuest(eventId, rsvpId) {
+        const event = window.events ? window.events[eventId] : null;
+        if (!event || !event.seatingChart) {
+            showToast('Event or seating chart not found', 'error');
+            return;
+        }
+
+        const seatingChart = new window.SeatingChart(eventId);
+        seatingChart.loadSeatingData(event);
+
+        if (seatingChart.unassignGuest(rsvpId)) {
+            // Update event data
+            event.seatingChart = seatingChart.exportSeatingData();
+            await this.saveEventSeatingData(event);
+            showToast('Guest unassigned from table', 'success');
+
+            // Refresh the seating chart display
+            this.refreshSeatingChart(eventId);
+        } else {
+            showToast('Failed to unassign guest', 'error');
+        }
+    }
+
+    /**
+     * Auto-assign all unassigned guests
+     * @param {string} eventId - Event ID
+     */
+    async autoAssignSeats(eventId) {
+        const event = window.events ? window.events[eventId] : null;
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+
+        if (!event || !event.seatingChart) {
+            showToast('Event or seating chart not found', 'error');
+            return;
+        }
+
+        const seatingChart = new window.SeatingChart(eventId);
+        seatingChart.loadSeatingData(event);
+
+        // Get attending guests only
+        const attendingGuests = eventResponses.filter(r => r.attending === true || r.attending === 'true');
+
+        // Sync unassigned guests first
+        seatingChart.syncUnassignedGuests(attendingGuests);
+
+        // Get unassigned guests with details
+        const unassignedGuestsDetails = attendingGuests.filter(rsvp =>
+            seatingChart.seatingData.unassignedGuests.includes(rsvp.rsvpId)
+        );
+
+        if (unassignedGuestsDetails.length === 0) {
+            showToast('No unassigned guests to assign', 'info');
+            return;
+        }
+
+        // Auto-assign
+        const result = seatingChart.autoAssignGuests(unassignedGuestsDetails);
+
+        if (result.success) {
+            // Update event data
+            event.seatingChart = seatingChart.exportSeatingData();
+            await this.saveEventSeatingData(event);
+
+            if (result.failed > 0) {
+                showToast(`✅ Assigned ${result.assigned} guests. ⚠️ ${result.failed} could not be assigned (insufficient capacity)`, 'warning');
+            } else {
+                showToast(`✅ Successfully assigned ${result.assigned} guests to tables`, 'success');
+            }
+
+            // Refresh the seating chart display
+            this.refreshSeatingChart(eventId);
+        } else {
+            showToast('Auto-assign failed', 'error');
+        }
+    }
+
+    /**
+     * Export seating chart as CSV
+     * @param {string} eventId - Event ID
+     */
+    exportSeatingCSV(eventId) {
+        const event = window.events ? window.events[eventId] : null;
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+
+        if (!event || !event.seatingChart) {
+            showToast('Event or seating chart not found', 'error');
+            return;
+        }
+
+        const seatingChart = new window.SeatingChart(eventId);
+        seatingChart.loadSeatingData(event);
+
+        const csv = seatingChart.generateSeatingCSV(eventResponses);
+
+        // Download CSV
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `seating-chart-${event.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        showToast('📥 Seating chart exported', 'success');
+    }
+
+    /**
+     * Refresh seating chart display
+     * @param {string} eventId - Event ID
+     */
+    refreshSeatingChart(eventId) {
+        // Simply reload the event management view
+        this.showEventManagement(eventId);
+    }
+
+    /**
+     * Save event seating data to GitHub
+     * @param {Object} event - Event object with updated seating data
+     */
+    async saveEventSeatingData(event) {
+        try {
+            if (window.githubAPI) {
+                await window.githubAPI.saveEvent(event);
+                // Update local state
+                if (window.events) {
+                    window.events[event.id] = event;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to save seating data:', error);
+            showToast('Failed to save seating data', 'error');
+        }
     }
 }
 
