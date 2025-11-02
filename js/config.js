@@ -3,49 +3,19 @@
  * NO hardcoded tokens - Service token managed by GitHub Actions only
  */
 
-/**
- * Function to construct and return the full token.
- * This pattern helps to limit the scope of the sensitive string fragments.
- */
-function assembleToken() {
-  // Define the string fragments inside the function
-  const part1 = "ghp_";
-  const part2 = "n5qHUM1UUd";
-  const part3 = "95zVV58Xo48wZEX";
-  const part4 = "81mDc4X46xY";
-
-  // Create the array
-  const fragments = [part1, part2, part3, part4];
-
-  // Combine them and return the complete token
-  return fragments.join('');
-}
-
-// -------------------------------------------------------------
-
 // **The main configuration object**
 const GITHUB_CONFIG = {
     owner: 'SemperAdmin',
     repo: 'EventCall',
     branch: 'main',
     imageRepo: 'EventCall-Images',
-    apiBase: 'https://api.github.com/repos',
-    // 💡 Call the function directly here to get the assembled value
-    token: assembleToken()
+    token: null // Token provided by backend authentication
 };
-
-console.log('🔑 Token configured:', GITHUB_CONFIG.token.substring(0, 10) + '...');
-
-// For comparison, the individual parts are NOT accessible globally:
-// console.log(part1); // This would result in an error!
 
 // Application Configuration
 const APP_CONFIG = {
-    appName: 'EventCall',
-    appVersion: '2.0.0-secure',
-    maxImageSize: 5 * 1024 * 1024, // 5MB
+    maxFileSize: 5 * 1024 * 1024, // 5MB (renamed from maxImageSize to match usage in utils.js)
     allowedImageTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-    sessionTimeout: 30 * 60 * 1000, // 30 minutes
     codeWordList: [
         // Military-themed memorable words for code generation
         'ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT',
@@ -70,20 +40,9 @@ const CODE_CONFIG = {
 
 // Authentication Settings
 const AUTH_CONFIG = {
-    requireEmail: true,
-    emailDomains: [], // Empty = allow all domains
-    sessionStorage: true, // Use sessionStorage (expires on close)
+    sessionTimeout: 30 * 60 * 1000, // 30 minutes
     rememberMeOption: true, // Allow "remember me" checkbox
     rememberMeDays: 30
-};
-
-// Storage Paths in GitHub Repository
-const GITHUB_PATHS = {
-    managers: 'data/managers',
-    events: 'events',
-    rsvps: 'rsvps',
-    invites: 'data/invites',
-    logs: 'data/logs'
 };
 
 // Messages
@@ -96,18 +55,6 @@ const MESSAGES = {
         accessDenied: 'You do not have permission to access this event',
         loginSuccess: 'Welcome back! Access granted.',
         logoutSuccess: 'You have been logged out successfully'
-    },
-    manager: {
-        accountCreated: 'Manager account created! Your access code is: ',
-        codeGenerated: 'New access code generated',
-        inviteCreated: 'Invite link created successfully',
-        managerAdded: 'Manager added to event',
-        managerRemoved: 'Manager removed from event'
-    },
-    rsvp: {
-        submitSuccess: '✅ RSVP submitted successfully!',
-        submitError: 'Failed to submit RSVP. Please try again.',
-        processing: 'Processing your RSVP...'
     }
 };
 
@@ -182,14 +129,12 @@ if (typeof window !== 'undefined') {
     window.APP_CONFIG = APP_CONFIG;
     window.CODE_CONFIG = CODE_CONFIG;
     window.AUTH_CONFIG = AUTH_CONFIG;
-    window.GITHUB_PATHS = GITHUB_PATHS;
     window.MESSAGES = MESSAGES;
     window.VALIDATION = VALIDATION;
     window.CodeGenerator = CodeGenerator;
 }
 
-console.log('✅ EventCall secure configuration loaded (v2.0.0)');
-
+console.log('✅ EventCall configuration loaded');
 console.log('🔒 No tokens in client-side code - All authentication server-side');
 
 
