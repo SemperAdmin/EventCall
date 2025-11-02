@@ -353,10 +353,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 <div class="attendee-list-header">
                     <h3 class="attendee-list-title">📋 Attendee List (${eventResponses.length + roster.filter(r => r.email && !respondedEmails.has(r.email.toLowerCase().trim())).length})</h3>
                     <div class="attendee-controls">
-                        <input
-                            type="text"
-                            class="search-input"
-                            placeholder="🔍 Search attendees..."
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            placeholder="🔍 Search attendees..." 
                             id="attendee-search"
                             oninput="eventManager.filterAttendees()"
                         >
@@ -887,21 +887,13 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     generateAttendeeCards(eventResponses, eventId) {
         // XSS Protection helper
         const h = window.utils.escapeHTML;
-
-        // Get event for seating chart info
-        const event = window.events ? window.events[eventId] : null;
-        let seatingChart = null;
-        if (event && event.seatingChart && event.seatingChart.enabled) {
-            seatingChart = new window.SeatingChart(eventId);
-            seatingChart.loadSeatingData(event);
-        }
-
+        
         // Get invite roster
         const roster = this.getInviteRoster(eventId);
         const respondedEmails = new Set(eventResponses.filter(r => r.email).map(r => r.email.toLowerCase().trim()));
-
+        
         // Create invited-only entries for roster members who haven't responded
-        const invitedOnly = roster.filter(invitee =>
+        const invitedOnly = roster.filter(invitee => 
             invitee.email && !respondedEmails.has(invitee.email.toLowerCase().trim())
         ).map(invitee => ({
             name: invitee.name || 'Unknown',
@@ -913,22 +905,15 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             timestamp: null,
             isInvitedOnly: true
         }));
-
+        
         // Combine responses and invited-only entries
         const allAttendees = [...eventResponses, ...invitedOnly];
-
+        
         return `
         <div class="attendee-cards" id="attendee-cards-container">
-            ${allAttendees.map(response => {
-                // Get table assignment if seating chart is enabled
-                let tableAssignment = null;
-                if (seatingChart && response.rsvpId) {
-                    tableAssignment = seatingChart.findGuestAssignment(response.rsvpId);
-                }
-
-                return `
-                <div class="attendee-card ${response.isInvitedOnly ? 'attendee-invited-only' : ''}"
-                     data-name="${(response.name || '').toLowerCase()}"
+            ${allAttendees.map(response => `
+                <div class="attendee-card ${response.isInvitedOnly ? 'attendee-invited-only' : ''}" 
+                     data-name="${(response.name || '').toLowerCase()}" 
                      data-status="${response.attending === null ? 'invited' : (response.attending ? 'attending' : 'declined')}"
                      data-branch="${(response.branch || '').toLowerCase()}"
                      data-rank="${(response.rank || '').toLowerCase()}"
@@ -937,16 +922,12 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                      data-phone="${(response.phone || '').toLowerCase()}">
                     <div class="attendee-card-header">
                         <div class="attendee-info">
-                            <div class="attendee-name">
-                                ${h(response.name) || 'Anonymous'}
-                                ${tableAssignment ? `<span class="attendee-table-badge ${tableAssignment.vipTable ? 'vip' : ''}">Table ${tableAssignment.tableNumber}</span>` :
-                                  (seatingChart && response.attending ? '<span class="attendee-table-badge unassigned">No Table</span>' : '')}
-                            </div>
+                            <div class="attendee-name">${h(response.name) || 'Anonymous'}</div>
                             <span class="attendee-status ${
-                                response.attending === null ? 'status-invited' :
+                                response.attending === null ? 'status-invited' : 
                                 (response.attending ? 'status-attending' : 'status-declined')
                             }">
-                                ${response.attending === null ? '📧 Invited' :
+                                ${response.attending === null ? '📧 Invited' : 
                                   (response.attending ? '✅ Attending' : '❌ Declined')}
                             </span>
                         </div>
@@ -1196,6 +1177,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     }
 
     /**
+<<<<<<< HEAD
      * Generate seating chart section HTML
      * @param {Object} event - Event data
      * @param {string} eventId - Event ID
@@ -1373,6 +1355,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     }
 
     /**
+=======
+>>>>>>> parent of 0365a7d (Merge pull request #41 from SemperAdmin/claude/analyze-seating-chart-feature-011CUgYMMY3FnDKwfqXE8z9x)
      * Generate response table HTML with enhanced features
      * @param {Object} event - Event data
      * @param {Array} eventResponses - RSVP responses
@@ -1952,6 +1936,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
         return result;
     }
+<<<<<<< HEAD
 
     /**
      * Assign a guest to a table
@@ -2204,6 +2189,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             showToast('Failed to save seating data', 'error');
         }
     }
+=======
+>>>>>>> parent of 0365a7d (Merge pull request #41 from SemperAdmin/claude/analyze-seating-chart-feature-011CUgYMMY3FnDKwfqXE8z9x)
 }
 
 // Create global instance

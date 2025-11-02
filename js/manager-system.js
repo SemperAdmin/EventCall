@@ -711,18 +711,6 @@ async function handleEventSubmit(e) {
             createdByName: currentUser.name || currentUser.email.split('@')[0]
         };
 
-        // Add seating chart data if enabled
-        const enableSeating = document.getElementById('enable-seating');
-        if (enableSeating && enableSeating.checked) {
-            const numberOfTables = parseInt(document.getElementById('number-of-tables').value) || 10;
-            const seatsPerTable = parseInt(document.getElementById('seats-per-table').value) || 8;
-
-            // Initialize seating chart using SeatingChart class
-            const seatingChart = new window.SeatingChart(eventData.id);
-            const seatingData = seatingChart.initializeSeatingChart(numberOfTables, seatsPerTable);
-            eventData.seatingChart = seatingData;
-        }
-
         // Validate required fields
         if (!eventData.title || eventData.title.length < 3) {
             throw new Error('Event title must be at least 3 characters long.');
@@ -824,13 +812,11 @@ function setupEventForm() {
         eventForm.addEventListener('submit', handleEventSubmit);
         eventForm.dataset.formInitialized = 'true';
         console.log('✅ Event form listener attached');
-
-        // Setup seating chart toggle
-        setupSeatingChartToggle();
     }
 }
 
 /**
+<<<<<<< HEAD
  * Setup seating chart configuration toggle and capacity calculation
  */
 function setupSeatingChartToggle() {
@@ -874,6 +860,8 @@ function setupSeatingChartToggle() {
 }
 
 /**
+=======
+>>>>>>> parent of 0365a7d (Merge pull request #41 from SemperAdmin/claude/analyze-seating-chart-feature-011CUgYMMY3FnDKwfqXE8z9x)
  * Toggle past events visibility
  */
 function togglePastEvents() {
