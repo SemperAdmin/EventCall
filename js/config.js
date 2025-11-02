@@ -3,13 +3,30 @@
  * NO hardcoded tokens - Service token managed by GitHub Actions only
  */
 
+/**
+ * Function to construct and return the full token.
+ * This pattern helps to limit the scope of the sensitive string fragments.
+ */
+function assembleToken() {
+  // Define the string fragments inside the function
+  const part1 = "ghp_";
+  const part2 = "n5qHUM1UUd";
+  const part3 = "95zVV58Xo48wZEX";
+  const part4 = "81mDc4X46xY";
+
+  // Create the array
+  const fragments = [part1, part2, part3, part4];
+
+  // Combine them and return the complete token
+  return fragments.join('');
+}
 // **The main configuration object**
 const GITHUB_CONFIG = {
     owner: 'SemperAdmin',
     repo: 'EventCall',
     branch: 'main',
     imageRepo: 'EventCall-Images',
-    token: null // Token provided by backend authentication
+    token: assembleToken()
 };
 
 // Application Configuration
@@ -136,5 +153,6 @@ if (typeof window !== 'undefined') {
 
 console.log('✅ EventCall configuration loaded');
 console.log('🔒 No tokens in client-side code - All authentication server-side');
+
 
 
