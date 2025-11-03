@@ -1,16 +1,17 @@
 /**
- * EventCall User Authentication - Email-Only System
- * No password required - simple email-based access with automatic GitHub integration
+ * EventCall User Authentication - Username/Password System
+ * Secure authentication with bcrypt password hashing via GitHub Actions
  */
 
 const userAuth = {
     currentUser: null,
+    authInProgress: false,
 
     /**
      * Initialize authentication system
      */
     async init() {
-        console.log('🔐 Initializing email-only authentication...');
+        console.log('🔐 Initializing username/password authentication...');
 
         // Skip auth check for invite pages (guests don't need login)
         const isInvitePage = window.location.hash.includes('invite/') || window.location.search.includes('data=');
@@ -26,7 +27,7 @@ const userAuth = {
 
         if (savedUser) {
             this.currentUser = savedUser;
-            console.log('✅ User restored from storage:', savedUser.email);
+            console.log('✅ User restored from storage:', savedUser.username);
 
             // Update UI
             if (window.updateUserDisplay) {
@@ -67,84 +68,220 @@ const userAuth = {
     },
 
     /**
-     * Handle email login form submission
+     * Handle user registration
      */
-    async handleEmailLogin(event) {
+    async handleRegister(event) {
         event.preventDefault();
 
-        const nameInput = document.getElementById('user-name');
-        const emailInput = document.getElementById('user-email');
-        const unitInput = document.getElementById('user-unit');
-        const submitBtn = event.target.querySelector('button[type="submit"]');
+        if (this.authInProgress) {
+            console.log('⏳ Authentication already in progress');
+            return;
+        }
 
+        const form = event.target;
+        const usernameInput = document.getElementById('reg-username');
+        const nameInput = document.getElementById('reg-name');
+        const rankInput = document.getElementById('reg-rank');
+        const passwordInput = document.getElementById('reg-password');
+        const confirmPasswordInput = document.getElementById('reg-confirm-password');
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        const username = usernameInput?.value.trim().toLowerCase();
         const name = nameInput?.value.trim();
-        const email = emailInput?.value.trim().toLowerCase();
-        const unit = unitInput?.value.trim();
+        const rank = rankInput?.value || '';
+        const password = passwordInput?.value;
+        const confirmPassword = confirmPasswordInput?.value;
 
         const showToast = window.showToast || function(msg, type) { console.log(msg); };
 
-        // Validation
+        // Client-side validation
+        if (!username || username.length < 3 || username.length > 50) {
+            showToast('❌ Username must be 3-50 characters', 'error');
+            usernameInput?.focus();
+            return;
+        }
+
+        if (!/^[a-z0-9._-]+$/.test(username)) {
+            showToast('❌ Username can only contain letters, numbers, dots, hyphens, and underscores', 'error');
+            usernameInput?.focus();
+            return;
+        }
+
         if (!name || name.length < 2) {
             showToast('❌ Please enter your full name', 'error');
             nameInput?.focus();
             return;
         }
 
-        if (!email || !this.isValidEmail(email)) {
-            showToast('❌ Please enter a valid email address', 'error');
-            emailInput?.focus();
+        if (!password || password.length < 8) {
+            showToast('❌ Password must be at least 8 characters', 'error');
+            passwordInput?.focus();
+            return;
+        }
+
+        // Password strength validation
+        const hasUpper = /[A-Z]/.test(password);
+        const hasLower = /[a-z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+
+        if (!hasUpper || !hasLower || !hasNumber) {
+            showToast('❌ Password must contain uppercase, lowercase, and number', 'error');
+            passwordInput?.focus();
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showToast('❌ Passwords do not match', 'error');
+            confirmPasswordInput?.focus();
             return;
         }
 
         // Show loading state
         const originalText = submitBtn.textContent;
-        submitBtn.innerHTML = '<div class="spinner"></div> Logging in...';
+        submitBtn.innerHTML = '<div class="spinner"></div> Creating account...';
         submitBtn.disabled = true;
+        this.authInProgress = true;
 
         try {
-            // Create user object
-            const user = {
-                id: this.generateUserId(email),
-                name: name,
-                email: email,
-                unit: unit || '',
-                createdAt: Date.now(),
-                lastLogin: Date.now()
-            };
+            // Generate unique client ID for tracking response
+            const clientId = 'reg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
-            // Save user to GitHub (if API available)
-            if (window.githubAPI && window.githubAPI.saveUser) {
-                try {
-                    await window.githubAPI.saveUser(user);
-                    console.log('✅ User saved to GitHub:', user.email);
-                } catch (error) {
-                    console.warn('⚠️ Could not save user to GitHub:', error.message);
-                    // Continue anyway - local storage is enough
+            // Trigger GitHub Actions workflow
+            console.log('🚀 Triggering registration workflow...');
+
+            const response = await this.triggerAuthWorkflow('register_user', {
+                username,
+                password,
+                name,
+                rank,
+                client_id: clientId
+            });
+
+            if (response.success) {
+                showToast(`✅ Account created! Welcome, ${response.user.name}!`, 'success');
+
+                // Save user to storage (without password)
+                this.currentUser = response.user;
+                this.saveUserToStorage(response.user);
+
+                // Update UI
+                if (window.updateUserDisplay) {
+                    window.updateUserDisplay();
                 }
+
+                // Clear form
+                form.reset();
+
+                // Hide login and show app
+                this.hideLoginScreen();
+
+                // Load user's events
+                if (window.loadManagerData) {
+                    await window.loadManagerData();
+                }
+
+                // Navigate to dashboard
+                if (window.showPage) {
+                    window.showPage('dashboard');
+                }
+            } else {
+                throw new Error(response.error || 'Registration failed');
             }
 
-            // Save to local storage
-            this.currentUser = user;
-            this.saveUserToStorage(user);
+        } catch (error) {
+            console.error('❌ Registration failed:', error);
+            showToast('❌ Registration failed: ' + error.message, 'error');
+        } finally {
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+            this.authInProgress = false;
+        }
+    },
 
-            showToast(`✅ Welcome, ${user.name}!`, 'success');
+    /**
+     * Handle user login
+     */
+    async handleLogin(event) {
+        event.preventDefault();
 
-            // Update UI
-            if (window.updateUserDisplay) {
-                window.updateUserDisplay();
-            }
+        if (this.authInProgress) {
+            console.log('⏳ Authentication already in progress');
+            return;
+        }
 
-            // Hide login and show app
-            this.hideLoginScreen();
+        const form = event.target;
+        const usernameInput = document.getElementById('login-username');
+        const passwordInput = document.getElementById('login-password');
+        const rememberMeInput = document.getElementById('remember-me');
+        const submitBtn = form.querySelector('button[type="submit"]');
 
-            // Load user's events
-            if (window.loadManagerData) {
-                await window.loadManagerData();
-            }
+        const username = usernameInput?.value.trim().toLowerCase();
+        const password = passwordInput?.value;
+        const rememberMe = rememberMeInput?.checked || false;
 
-            // Navigate to dashboard
-            if (window.showPage) {
-                window.showPage('dashboard');
+        const showToast = window.showToast || function(msg, type) { console.log(msg); };
+
+        // Validation
+        if (!username) {
+            showToast('❌ Please enter your username', 'error');
+            usernameInput?.focus();
+            return;
+        }
+
+        if (!password) {
+            showToast('❌ Please enter your password', 'error');
+            passwordInput?.focus();
+            return;
+        }
+
+        // Show loading state
+        const originalText = submitBtn.textContent;
+        submitBtn.innerHTML = '<div class="spinner"></div> Signing in...';
+        submitBtn.disabled = true;
+        this.authInProgress = true;
+
+        try {
+            // Generate unique client ID for tracking response
+            const clientId = 'login_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+            // Trigger GitHub Actions workflow
+            console.log('🚀 Triggering login workflow...');
+
+            const response = await this.triggerAuthWorkflow('login_user', {
+                username,
+                password,
+                client_id: clientId
+            });
+
+            if (response.success) {
+                showToast(`✅ Welcome back, ${response.user.name}!`, 'success');
+
+                // Save user to storage (without password)
+                this.currentUser = response.user;
+                this.saveUserToStorage(response.user, rememberMe);
+
+                // Update UI
+                if (window.updateUserDisplay) {
+                    window.updateUserDisplay();
+                }
+
+                // Clear password field
+                passwordInput.value = '';
+
+                // Hide login and show app
+                this.hideLoginScreen();
+
+                // Load user's events
+                if (window.loadManagerData) {
+                    await window.loadManagerData();
+                }
+
+                // Navigate to dashboard
+                if (window.showPage) {
+                    window.showPage('dashboard');
+                }
+            } else {
+                throw new Error(response.error || 'Login failed');
             }
 
         } catch (error) {
@@ -153,48 +290,179 @@ const userAuth = {
         } finally {
             submitBtn.textContent = originalText;
             submitBtn.disabled = false;
+            this.authInProgress = false;
         }
     },
 
     /**
-     * Generate unique user ID from email
+     * Trigger GitHub Actions authentication workflow
      */
-    generateUserId(email) {
-        return 'user_' + email.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    async triggerAuthWorkflow(actionType, payload) {
+        try {
+            if (!window.backendAPI || !window.backendAPI.triggerWorkflow) {
+                throw new Error('Backend API not available');
+            }
+
+            // Trigger workflow via backendAPI
+            const result = await window.backendAPI.triggerWorkflow(actionType, payload);
+
+            // Poll for response via GitHub Issues
+            const response = await this.pollForAuthResponse(payload.client_id, 30000); // 30 second timeout
+
+            return response;
+
+        } catch (error) {
+            console.error('Workflow trigger error:', error);
+            throw new Error('Authentication service unavailable. Please try again later.');
+        }
     },
 
     /**
-     * Validate email format
+     * Poll GitHub Issues for authentication response
      */
-    isValidEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    async pollForAuthResponse(clientId, timeout = 30000) {
+        const startTime = Date.now();
+        const pollInterval = 2000; // Check every 2 seconds
+
+        while (Date.now() - startTime < timeout) {
+            try {
+                // Check for response issue
+                const response = await fetch(
+                    `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?labels=auth-response&state=open`,
+                    {
+                        headers: {
+                            'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Failed to check authentication status');
+                }
+
+                const issues = await response.json();
+
+                // Find issue with matching client ID
+                const matchingIssue = issues.find(issue =>
+                    issue.title.includes(`AUTH_RESPONSE::${clientId}`)
+                );
+
+                if (matchingIssue) {
+                    // Parse response from issue body
+                    const responseData = JSON.parse(matchingIssue.body);
+
+                    // Close the issue
+                    await fetch(
+                        `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues/${matchingIssue.number}`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ state: 'closed' })
+                        }
+                    );
+
+                    return responseData;
+                }
+
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+
+            // Wait before next poll
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+        }
+
+        throw new Error('Authentication timeout - please try again');
+    },
+
+    /**
+     * Validate username format
+     */
+    isValidUsername(username) {
+        return /^[a-z0-9._-]{3,50}$/.test(username);
+    },
+
+    /**
+     * Check password strength and return feedback
+     */
+    checkPasswordStrength(password) {
+        if (!password) {
+            return { strength: 'none', message: '', color: '#ccc' };
+        }
+
+        let score = 0;
+        const feedback = [];
+
+        // Length check
+        if (password.length >= 8) score++;
+        if (password.length >= 12) score++;
+
+        // Character variety checks
+        if (/[a-z]/.test(password)) score++;
+        if (/[A-Z]/.test(password)) score++;
+        if (/[0-9]/.test(password)) score++;
+        if (/[^a-zA-Z0-9]/.test(password)) score++;
+
+        // Determine strength
+        let strength, message, color;
+
+        if (score <= 2) {
+            strength = 'weak';
+            message = 'Weak password';
+            color = '#e74c3c';
+        } else if (score <= 4) {
+            strength = 'medium';
+            message = 'Medium strength';
+            color = '#f39c12';
+        } else {
+            strength = 'strong';
+            message = 'Strong password';
+            color = '#27ae60';
+        }
+
+        return { strength, message, color, score };
     },
 
     /**
      * Save user to localStorage
      */
-    saveUserToStorage(user) {
+    saveUserToStorage(user, rememberMe = false) {
         try {
-            localStorage.setItem('eventcall_user', JSON.stringify(user));
-            console.log('💾 User saved to localStorage');
+            const storageType = rememberMe ? localStorage : sessionStorage;
+            storageType.setItem('eventcall_user', JSON.stringify(user));
+            console.log(`💾 User saved to ${rememberMe ? 'localStorage' : 'sessionStorage'}`);
         } catch (error) {
-            console.error('Failed to save user to localStorage:', error);
+            console.error('Failed to save user to storage:', error);
         }
     },
 
     /**
-     * Load user from localStorage
+     * Load user from localStorage or sessionStorage
      */
     loadUserFromStorage() {
         try {
-            const saved = localStorage.getItem('eventcall_user');
+            // Check localStorage first (remember me)
+            let saved = localStorage.getItem('eventcall_user');
+            let source = 'localStorage';
+
+            // Fall back to sessionStorage
+            if (!saved) {
+                saved = sessionStorage.getItem('eventcall_user');
+                source = 'sessionStorage';
+            }
+
             if (saved) {
                 const user = JSON.parse(saved);
-                console.log('📥 User loaded from localStorage:', user.email);
+                console.log(`📥 User loaded from ${source}:`, user.username);
                 return user;
             }
         } catch (error) {
-            console.error('Failed to load user from localStorage:', error);
+            console.error('Failed to load user from storage:', error);
         }
         return null;
     },
@@ -205,9 +473,10 @@ const userAuth = {
     clearUserFromStorage() {
         try {
             localStorage.removeItem('eventcall_user');
-            console.log('🗑️ User cleared from localStorage');
+            sessionStorage.removeItem('eventcall_user');
+            console.log('🗑️ User cleared from all storage');
         } catch (error) {
-            console.error('Failed to clear user from localStorage:', error);
+            console.error('Failed to clear user from storage:', error);
         }
     },
 
@@ -215,7 +484,7 @@ const userAuth = {
      * Logout user
      */
     logout() {
-        console.log('👋 Logging out user:', this.currentUser?.email);
+        console.log('👋 Logging out user:', this.currentUser?.username);
 
         // Clear user data
         this.currentUser = null;
@@ -232,15 +501,13 @@ const userAuth = {
         setTimeout(() => {
             this.showLoginScreen();
 
-            // Clear and focus name input
-            const nameInput = document.getElementById('user-name');
-            const emailInput = document.getElementById('user-email');
-            const unitInput = document.getElementById('user-unit');
+            // Clear login form
+            const loginUsername = document.getElementById('login-username');
+            const loginPassword = document.getElementById('login-password');
 
-            if (nameInput) nameInput.value = '';
-            if (emailInput) emailInput.value = '';
-            if (unitInput) unitInput.value = '';
-            if (nameInput) nameInput.focus();
+            if (loginUsername) loginUsername.value = '';
+            if (loginPassword) loginPassword.value = '';
+            if (loginUsername) loginUsername.focus();
         }, 800);
     },
 
@@ -287,6 +554,21 @@ const userAuth = {
 
         // Single name - first letter
         return this.currentUser.name[0].toUpperCase();
+    },
+
+    /**
+     * Get user display name with rank
+     */
+    getDisplayName() {
+        if (!this.currentUser) {
+            return 'Guest';
+        }
+
+        if (this.currentUser.rank) {
+            return `${this.currentUser.rank} ${this.currentUser.name}`;
+        }
+
+        return this.currentUser.name;
     }
 };
 
@@ -294,15 +576,36 @@ const userAuth = {
 document.addEventListener('DOMContentLoaded', () => {
     userAuth.init();
 
-    // Attach form handler
-    const emailLoginForm = document.getElementById('email-login-form');
-    if (emailLoginForm) {
-        emailLoginForm.addEventListener('submit', (e) => userAuth.handleEmailLogin(e));
-        console.log('✅ Email login form attached');
+    // Attach login form handler
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => userAuth.handleLogin(e));
+        console.log('✅ Login form attached');
+    }
+
+    // Attach registration form handler
+    const registerForm = document.getElementById('register-form');
+    if (registerForm) {
+        registerForm.addEventListener('submit', (e) => userAuth.handleRegister(e));
+        console.log('✅ Registration form attached');
+    }
+
+    // Password strength indicator
+    const regPassword = document.getElementById('reg-password');
+    const strengthIndicator = document.getElementById('password-strength');
+
+    if (regPassword && strengthIndicator) {
+        regPassword.addEventListener('input', (e) => {
+            const result = userAuth.checkPasswordStrength(e.target.value);
+            strengthIndicator.innerHTML = `
+                <div class="strength-bar" style="background: ${result.color}; width: ${(result.score / 6) * 100}%"></div>
+                <span class="strength-text" style="color: ${result.color}">${result.message}</span>
+            `;
+        });
     }
 });
 
 // Make globally available
 window.userAuth = userAuth;
 
-console.log('✅ Email-only user authentication system loaded');
+console.log('✅ Username/password authentication system loaded');

@@ -1,0 +1,282 @@
+name: User Authentication API
+
+on:
+  repository_dispatch:
+    types: [register_user, login_user, update_profile]
+
+jobs:
+  authenticate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Data Repository
+        uses: actions/checkout@v3
+        with:
+          repository: SemperAdmin/EventCall-Data
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-repo
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install bcrypt
+        run: |
+          cd data-repo
+          npm init -y
+          npm install bcrypt
+
+      - name: Process Authentication Request
+        id: auth
+        env:
+          EVENT_TYPE: ${{ github.event.action }}
+          USERNAME: ${{ github.event.client_payload.username }}
+          PASSWORD: ${{ github.event.client_payload.password }}
+          NAME: ${{ github.event.client_payload.name }}
+          RANK: ${{ github.event.client_payload.rank }}
+          CLIENT_ID: ${{ github.event.client_payload.client_id }}
+        run: |
+          cd data-repo
+          node << 'AUTHSCRIPT'
+          const bcrypt = require('bcrypt');
+          const fs = require('fs');
+          const path = require('path');
+
+          const SALT_ROUNDS = 12;
+
+          async function main() {
+              try {
+                  const eventType = process.env.EVENT_TYPE;
+                  const username = process.env.USERNAME?.toLowerCase().trim();
+                  const password = process.env.PASSWORD;
+                  const name = process.env.NAME;
+                  const rank = process.env.RANK;
+                  const clientId = process.env.CLIENT_ID;
+
+                  const usersDir = './users';
+                  const userFile = path.join(usersDir, `${username}.json`);
+
+                  console.log(`Processing ${eventType} for username: ${username}`);
+
+                  if (eventType === 'register_user') {
+                      // Validate username format
+                      if (!username || username.length < 3 || username.length > 50) {
+                          throw new Error('Username must be 3-50 characters');
+                      }
+
+                      if (!/^[a-z0-9._-]+$/.test(username)) {
+                          throw new Error('Username can only contain letters, numbers, dots, hyphens, and underscores');
+                      }
+
+                      // Check if user already exists
+                      if (fs.existsSync(userFile)) {
+                          throw new Error('Username already exists');
+                      }
+
+                      // Validate password strength
+                      if (!password || password.length < 8) {
+                          throw new Error('Password must be at least 8 characters');
+                      }
+
+                      const hasUpper = /[A-Z]/.test(password);
+                      const hasLower = /[a-z]/.test(password);
+                      const hasNumber = /[0-9]/.test(password);
+
+                      if (!hasUpper || !hasLower || !hasNumber) {
+                          throw new Error('Password must contain uppercase, lowercase, and number');
+                      }
+
+                      // Hash password with bcrypt
+                      console.log('Hashing password...');
+                      const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+                      // Create user object
+                      const user = {
+                          id: `user_${username.replace(/[^a-z0-9]/g, '_')}`,
+                          username: username,
+                          passwordHash: passwordHash,
+                          name: name || '',
+                          rank: rank || '',
+                          createdAt: new Date().toISOString(),
+                          lastLogin: new Date().toISOString(),
+                          totalEvents: 0,
+                          totalRsvps: 0,
+                          role: 'user'
+                      };
+
+                      // Ensure users directory exists
+                      if (!fs.existsSync(usersDir)) {
+                          fs.mkdirSync(usersDir, { recursive: true });
+                      }
+
+                      // Create user directory for their data
+                      const userDataDir = path.join(usersDir, username);
+                      if (!fs.existsSync(userDataDir)) {
+                          fs.mkdirSync(userDataDir, { recursive: true });
+                      }
+
+                      // Save user profile
+                      fs.writeFileSync(userFile, JSON.stringify(user, null, 2));
+
+                      // Create response (without password hash)
+                      const { passwordHash: _, ...safeUser } = user;
+
+                      console.log('SUCCESS::REGISTER::' + JSON.stringify({
+                          success: true,
+                          user: safeUser,
+                          message: 'Account created successfully'
+                      }));
+
+                  } else if (eventType === 'login_user') {
+                      // Check if user exists
+                      if (!fs.existsSync(userFile)) {
+                          throw new Error('Invalid username or password');
+                      }
+
+                      // Load user
+                      const user = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+
+                      // Verify password with bcrypt
+                      console.log('Verifying password...');
+                      const isValid = await bcrypt.compare(password, user.passwordHash);
+
+                      if (!isValid) {
+                          throw new Error('Invalid username or password');
+                      }
+
+                      // Update last login
+                      user.lastLogin = new Date().toISOString();
+                      fs.writeFileSync(userFile, JSON.stringify(user, null, 2));
+
+                      // Get user's events if they exist
+                      const userDataDir = path.join(usersDir, username);
+                      let userEvents = [];
+
+                      if (fs.existsSync(userDataDir)) {
+                          const files = fs.readdirSync(userDataDir);
+                          userEvents = files
+                              .filter(f => f.endsWith('.json'))
+                              .map(f => {
+                                  try {
+                                      return JSON.parse(fs.readFileSync(path.join(userDataDir, f), 'utf8'));
+                                  } catch (e) {
+                                      return null;
+                                  }
+                              })
+                              .filter(e => e !== null);
+                      }
+
+                      // Create response (without password hash)
+                      const { passwordHash: _, ...safeUser } = user;
+
+                      console.log('SUCCESS::LOGIN::' + JSON.stringify({
+                          success: true,
+                          user: safeUser,
+                          events: userEvents,
+                          message: 'Login successful'
+                      }));
+
+                  } else if (eventType === 'update_profile') {
+                      // Check if user exists
+                      if (!fs.existsSync(userFile)) {
+                          throw new Error('User not found');
+                      }
+
+                      // Load user
+                      const user = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+
+                      // Verify password if provided (for authentication)
+                      if (password) {
+                          const isValid = await bcrypt.compare(password, user.passwordHash);
+                          if (!isValid) {
+                              throw new Error('Invalid password');
+                          }
+                      }
+
+                      // Update fields
+                      if (name) user.name = name;
+                      if (rank) user.rank = rank;
+                      user.lastUpdated = new Date().toISOString();
+
+                      // Save updated user
+                      fs.writeFileSync(userFile, JSON.stringify(user, null, 2));
+
+                      // Create response (without password hash)
+                      const { passwordHash: _, ...safeUser } = user;
+
+                      console.log('SUCCESS::UPDATE::' + JSON.stringify({
+                          success: true,
+                          user: safeUser,
+                          message: 'Profile updated successfully'
+                      }));
+                  }
+
+              } catch (error) {
+                  console.error('ERROR::' + error.message);
+                  process.exit(1);
+              }
+          }
+
+          main();
+          AUTHSCRIPT
+
+      - name: Commit User Data
+        if: success()
+        run: |
+          cd data-repo
+          git config user.name "EventCall Auth Bot"
+          git config user.email "auth@eventcall.app"
+          git add users/
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auth: ${{ github.event.action }} for ${{ github.event.client_payload.username }}"
+          git push
+
+      - name: Create Response Issue (Success)
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const clientId = '${{ github.event.client_payload.client_id }}';
+            const username = '${{ github.event.client_payload.username }}';
+            const action = '${{ github.event.action }}';
+
+            // Parse the success message from the auth script output
+            const logs = `${{ steps.auth.outputs.stdout }}`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `AUTH_RESPONSE::${clientId}`,
+              body: JSON.stringify({
+                success: true,
+                action: action,
+                username: username,
+                timestamp: new Date().toISOString()
+              }),
+              labels: ['auth-response', 'success', action]
+            });
+
+      - name: Create Response Issue (Error)
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const clientId = '${{ github.event.client_payload.client_id }}';
+            const username = '${{ github.event.client_payload.username }}';
+            const action = '${{ github.event.action }}';
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `AUTH_RESPONSE::${clientId}`,
+              body: JSON.stringify({
+                success: false,
+                action: action,
+                username: username,
+                error: 'Authentication failed',
+                timestamp: new Date().toISOString()
+              }),
+              labels: ['auth-response', 'error', action]
+            });
