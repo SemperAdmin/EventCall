@@ -114,13 +114,13 @@
                     required
                     minlength="3"
                     maxlength="50"
-                    pattern="[a-z0-9._-]+"
                     autocomplete="username"
+                    oninput="this.value = this.value.toLowerCase();"
                     style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease;"
                     onfocus="this.style.borderColor='#d4af37'; this.style.background='rgba(255, 255, 255, 0.15)'"
                     onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
                 >
-                <small style="color: #94a3b8; font-size: 0.8rem; display: block; margin-top: 0.25rem;">Letters, numbers, dots, hyphens only</small>
+                <small style="color: #94a3b8; font-size: 0.8rem; display: block; margin-top: 0.25rem;">Letters, numbers, dots, hyphens, underscores only (auto-converted to lowercase)</small>
             </div>
 
             <div class="form-group" style="margin-bottom: 1.5rem;">
