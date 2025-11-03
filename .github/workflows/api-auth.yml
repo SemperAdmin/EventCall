@@ -4,6 +4,10 @@ on:
   repository_dispatch:
     types: [register_user, login_user, update_profile]
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   authenticate:
     runs-on: ubuntu-latest

@@ -299,21 +299,47 @@ const userAuth = {
      */
     async triggerAuthWorkflow(actionType, payload) {
         try {
-            if (!window.BackendAPI || !window.BackendAPI.triggerWorkflow) {
-                throw new Error('Backend API not available');
+            console.log('🔍 Checking BackendAPI availability...');
+
+            if (!window.BackendAPI) {
+                console.error('❌ window.BackendAPI is undefined');
+                throw new Error('Backend API not loaded');
             }
+
+            if (!window.BackendAPI.triggerWorkflow) {
+                console.error('❌ BackendAPI.triggerWorkflow is undefined');
+                throw new Error('Backend API triggerWorkflow method not available');
+            }
+
+            console.log('✅ BackendAPI available');
+            console.log('🚀 Triggering workflow:', actionType);
+            console.log('📦 Payload:', { ...payload, password: '[REDACTED]' });
 
             // Trigger workflow via BackendAPI
             const result = await window.BackendAPI.triggerWorkflow(actionType, payload);
+            console.log('✅ Workflow dispatch result:', result);
 
+            console.log('⏳ Polling for authentication response...');
             // Poll for response via GitHub Issues
             const response = await this.pollForAuthResponse(payload.client_id, 30000); // 30 second timeout
 
+            console.log('✅ Authentication response received:', response);
             return response;
 
         } catch (error) {
-            console.error('Workflow trigger error:', error);
-            throw new Error('Authentication service unavailable. Please try again later.');
+            console.error('❌ Authentication workflow error:', error);
+            console.error('Error type:', error.constructor.name);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+
+            // Re-throw with more specific error message
+            if (error.message.includes('timeout')) {
+                throw new Error('Authentication timed out. The server took too long to respond.');
+            } else if (error.message.includes('not available') || error.message.includes('not loaded')) {
+                throw new Error('Backend API not available. Please refresh the page and try again.');
+            } else {
+                throw new Error(`Authentication failed: ${error.message}`);
+            }
         }
     },
 
@@ -323,60 +349,96 @@ const userAuth = {
     async pollForAuthResponse(clientId, timeout = 30000) {
         const startTime = Date.now();
         const pollInterval = 2000; // Check every 2 seconds
+        let pollCount = 0;
+
+        console.log(`🔄 Starting to poll for client_id: ${clientId}`);
+        console.log(`⏰ Timeout: ${timeout}ms, Poll interval: ${pollInterval}ms`);
 
         while (Date.now() - startTime < timeout) {
+            pollCount++;
+            const elapsed = Date.now() - startTime;
+
             try {
+                console.log(`📡 Poll attempt #${pollCount} (${(elapsed / 1000).toFixed(1)}s elapsed)`);
+
                 // Check for response issue
-                const response = await fetch(
-                    `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?labels=auth-response&state=open`,
-                    {
-                        headers: {
-                            'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
+                const url = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?labels=auth-response&state=open`;
+                console.log(`🌐 Fetching: ${url}`);
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
                     }
-                );
+                });
+
+                console.log(`📥 Response status: ${response.status}`);
 
                 if (!response.ok) {
-                    throw new Error('Failed to check authentication status');
+                    console.error(`❌ Failed to fetch issues: ${response.status} ${response.statusText}`);
+                    throw new Error(`Failed to check authentication status: ${response.status}`);
                 }
 
                 const issues = await response.json();
+                console.log(`📋 Found ${issues.length} open auth-response issues`);
+
+                if (issues.length > 0) {
+                    console.log('📝 Issue titles:', issues.map(i => i.title));
+                }
 
                 // Find issue with matching client ID
+                const searchTitle = `AUTH_RESPONSE::${clientId}`;
+                console.log(`🔍 Searching for: "${searchTitle}"`);
+
                 const matchingIssue = issues.find(issue =>
-                    issue.title.includes(`AUTH_RESPONSE::${clientId}`)
+                    issue.title.includes(searchTitle)
                 );
 
                 if (matchingIssue) {
-                    // Parse response from issue body
-                    const responseData = JSON.parse(matchingIssue.body);
+                    console.log(`✅ Found matching issue #${matchingIssue.number}`);
+                    console.log(`📄 Issue body:`, matchingIssue.body);
 
-                    // Close the issue
-                    await fetch(
-                        `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues/${matchingIssue.number}`,
-                        {
-                            method: 'PATCH',
-                            headers: {
-                                'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                                'Accept': 'application/vnd.github.v3+json',
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ state: 'closed' })
-                        }
-                    );
+                    try {
+                        // Parse response from issue body
+                        const responseData = JSON.parse(matchingIssue.body);
+                        console.log(`✅ Parsed response data:`, responseData);
 
-                    return responseData;
+                        // Close the issue
+                        console.log(`🔒 Closing issue #${matchingIssue.number}...`);
+                        await fetch(
+                            `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues/${matchingIssue.number}`,
+                            {
+                                method: 'PATCH',
+                                headers: {
+                                    'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                    'Accept': 'application/vnd.github.v3+json',
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ state: 'closed' })
+                            }
+                        );
+
+                        console.log(`✅ Issue closed successfully`);
+                        return responseData;
+
+                    } catch (parseError) {
+                        console.error('❌ Failed to parse issue body:', parseError);
+                        console.error('Raw body:', matchingIssue.body);
+                        throw new Error(`Failed to parse authentication response: ${parseError.message}`);
+                    }
+                } else {
+                    console.log(`⏳ No matching issue found yet, waiting ${pollInterval}ms...`);
                 }
 
             } catch (error) {
-                console.error('Polling error:', error);
+                console.error(`❌ Polling error on attempt #${pollCount}:`, error);
             }
 
             // Wait before next poll
             await new Promise(resolve => setTimeout(resolve, pollInterval));
         }
 
+        console.error(`⏰ Timeout reached after ${pollCount} polling attempts`);
         throw new Error('Authentication timeout - please try again');
     },
 
