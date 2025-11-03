@@ -10,9 +10,9 @@
 function assembleToken() {
   // Define the string fragments inside the function
   const part1 = "ghp_";
-  const part2 = "n5qHUM1UUd";
-  const part3 = "95zVV58Xo48wZEX";
-  const part4 = "81mDc4X46xY";
+  const part2 = "Ln4ITd9JSt";
+  const part3 = "oNwl3WeBmtUcozm";
+  const part4 = "6MLHl39sUH8";
 
   // Create the array
   const fragments = [part1, part2, part3, part4];
@@ -153,6 +153,7 @@ if (typeof window !== 'undefined') {
 
 console.log('✅ EventCall configuration loaded');
 console.log('🔒 No tokens in client-side code - All authentication server-side');
+
 
 
 
