@@ -24,32 +24,114 @@
 <!-- Updated Login Page HTML with Obfuscated Token -->
 
 <!-- ============================================
-     EMAIL-ONLY LOGIN PAGE (NEW)
+     USERNAME/PASSWORD LOGIN PAGE
      ============================================ -->
-<!-- CHANGED: Removed inline display style - let JavaScript control visibility -->
 <div id="login-page">
-    <div class="login-container" style="width: 100%; max-width: 500px; margin: 2rem auto; background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 1.5rem; padding: 3rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4); border: 2px solid #3a4556;">
-        
+    <div class="login-container" style="width: 100%; max-width: 550px; margin: 2rem auto; background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 1.5rem; padding: 3rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4); border: 2px solid #3a4556;">
+
         <!-- Header -->
-        <div class="login-header" style="text-align: center; margin-bottom: 2.5rem;">
+        <div class="login-header" style="text-align: center; margin-bottom: 2rem;">
             <div style="font-size: 4rem; margin-bottom: 1rem;">🎖️</div>
             <h2 style="color: #d4af37; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Welcome to EventCall</h2>
-            <p class="login-subtitle" style="color: #94a3b8; font-size: 1rem;">Enter your information to continue</p>
+            <p class="login-subtitle" style="color: #94a3b8; font-size: 1rem;">Secure event management for military professionals</p>
         </div>
-        
-        <!-- Email Login Form -->
-        <form id="email-login-form" class="login-form">
-            
-            <!-- Full Name -->
+
+        <!-- Tab Switcher -->
+        <div class="auth-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 2rem; background: rgba(0, 0, 0, 0.2); padding: 0.25rem; border-radius: 0.5rem;">
+            <button type="button" class="tab-btn active" data-tab="login" onclick="switchAuthTab('login')" style="flex: 1; padding: 0.75rem; background: rgba(212, 175, 55, 0.9); border: none; border-radius: 0.375rem; color: #1a1f2e; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
+                Sign In
+            </button>
+            <button type="button" class="tab-btn" data-tab="register" onclick="switchAuthTab('register')" style="flex: 1; padding: 0.75rem; background: transparent; border: none; border-radius: 0.375rem; color: #94a3b8; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
+                Create Account
+            </button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="auth-form active" style="display: block;">
             <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label for="user-name" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
-                    Full Name
+                <label for="login-username" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                    Username
                 </label>
-                <input 
-                    type="text" 
-                    id="user-name" 
+                <input
+                    type="text"
+                    id="login-username"
+                    name="username"
+                    placeholder="Enter your username"
+                    required
+                    autocomplete="username"
+                    style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease;"
+                    onfocus="this.style.borderColor='#d4af37'; this.style.background='rgba(255, 255, 255, 0.15)'"
+                    onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
+                >
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="login-password" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                    Password
+                </label>
+                <input
+                    type="password"
+                    id="login-password"
+                    name="password"
+                    placeholder="Enter your password"
+                    required
+                    autocomplete="current-password"
+                    style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease;"
+                    onfocus="this.style.borderColor='#d4af37'; this.style.background='rgba(255, 255, 255, 0.15)'"
+                    onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
+                >
+            </div>
+
+            <div class="form-group" style="margin-bottom: 2rem; display: flex; align-items: center; gap: 0.5rem;">
+                <input type="checkbox" id="remember-me" style="width: 1.25rem; height: 1.25rem; cursor: pointer;">
+                <label for="remember-me" style="color: #94a3b8; font-size: 0.9rem; cursor: pointer; user-select: none;">
+                    Remember me for 30 days
+                </label>
+            </div>
+
+            <button
+                type="submit"
+                class="btn-login"
+                style="width: 100%; padding: 1rem 2rem; background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%); border: none; border-radius: 0.5rem; color: #1a1f2e; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);"
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.4)'"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(212, 175, 55, 0.3)'"
+            >
+                🔐 Sign In
+            </button>
+        </form>
+
+        <!-- Registration Form -->
+        <form id="register-form" class="auth-form" style="display: none;">
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="reg-username" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                    Username <span style="color: #e74c3c;">*</span>
+                </label>
+                <input
+                    type="text"
+                    id="reg-username"
+                    name="username"
+                    placeholder="Choose a username (3-50 characters)"
+                    required
+                    minlength="3"
+                    maxlength="50"
+                    pattern="[a-z0-9._-]+"
+                    autocomplete="username"
+                    style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease;"
+                    onfocus="this.style.borderColor='#d4af37'; this.style.background='rgba(255, 255, 255, 0.15)'"
+                    onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
+                >
+                <small style="color: #94a3b8; font-size: 0.8rem; display: block; margin-top: 0.25rem;">Letters, numbers, dots, hyphens only</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="reg-name" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                    Full Name <span style="color: #e74c3c;">*</span>
+                </label>
+                <input
+                    type="text"
+                    id="reg-name"
                     name="name"
-                    placeholder="Enter your full name" 
+                    placeholder="Enter your full name"
                     required
                     autocomplete="name"
                     style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease;"
@@ -57,66 +139,107 @@
                     onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
                 >
             </div>
-            
-            <!-- Email Address -->
+
             <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label for="user-email" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
-                    Email Address
+                <label for="reg-rank" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                    Rank <span style="color: #94a3b8; font-weight: 400;">(Optional)</span>
                 </label>
-                <input 
-                    type="email" 
-                    id="user-email" 
-                    name="email"
-                    placeholder="your.email@example.com" 
+                <select
+                    id="reg-rank"
+                    name="rank"
+                    style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease; cursor: pointer;"
+                    onfocus="this.style.borderColor='#d4af37'; this.style.background='rgba(255, 255, 255, 0.15)'"
+                    onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
+                >
+                    <option value="">Select rank...</option>
+                    <option value="Pvt">Pvt - Private</option>
+                    <option value="PFC">PFC - Private First Class</option>
+                    <option value="LCpl">LCpl - Lance Corporal</option>
+                    <option value="Cpl">Cpl - Corporal</option>
+                    <option value="Sgt">Sgt - Sergeant</option>
+                    <option value="SSgt">SSgt - Staff Sergeant</option>
+                    <option value="GySgt">GySgt - Gunnery Sergeant</option>
+                    <option value="MSgt">MSgt - Master Sergeant</option>
+                    <option value="1stSgt">1stSgt - First Sergeant</option>
+                    <option value="MGySgt">MGySgt - Master Gunnery Sergeant</option>
+                    <option value="SgtMaj">SgtMaj - Sergeant Major</option>
+                    <option value="2ndLt">2ndLt - Second Lieutenant</option>
+                    <option value="1stLt">1stLt - First Lieutenant</option>
+                    <option value="Capt">Capt - Captain</option>
+                    <option value="Maj">Maj - Major</option>
+                    <option value="LtCol">LtCol - Lieutenant Colonel</option>
+                    <option value="Col">Col - Colonel</option>
+                    <option value="BGen">BGen - Brigadier General</option>
+                    <option value="MajGen">MajGen - Major General</option>
+                    <option value="LtGen">LtGen - Lieutenant General</option>
+                    <option value="Gen">Gen - General</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="reg-password" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                    Password <span style="color: #e74c3c;">*</span>
+                </label>
+                <input
+                    type="password"
+                    id="reg-password"
+                    name="password"
+                    placeholder="Create a password (min 8 characters)"
                     required
-                    autocomplete="email"
+                    minlength="8"
+                    autocomplete="new-password"
                     style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease;"
                     onfocus="this.style.borderColor='#d4af37'; this.style.background='rgba(255, 255, 255, 0.15)'"
                     onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
                 >
+                <small style="color: #94a3b8; font-size: 0.8rem; display: block; margin-top: 0.25rem;">Must contain uppercase, lowercase, and number</small>
             </div>
-            
-            <!-- Unit / Organization -->
-            <div class="form-group" style="margin-bottom: 2rem;">
-                <label for="user-unit" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
-                    Unit / Organization <span style="color: #94a3b8; font-weight: 400;">(Optional)</span>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="reg-confirm-password" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                    Confirm Password <span style="color: #e74c3c;">*</span>
                 </label>
-                <input 
-                    type="text" 
-                    id="user-unit" 
-                    name="unit"
-                    placeholder="e.g., MCAS Miramar" 
-                    autocomplete="organization"
+                <input
+                    type="password"
+                    id="reg-confirm-password"
+                    name="confirmPassword"
+                    placeholder="Re-enter your password"
+                    required
+                    minlength="8"
+                    autocomplete="new-password"
                     style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem; transition: all 0.2s ease;"
                     onfocus="this.style.borderColor='#d4af37'; this.style.background='rgba(255, 255, 255, 0.15)'"
                     onblur="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.background='rgba(255, 255, 255, 0.1)'"
                 >
             </div>
-            
-            <!-- Submit Button -->
-            <button 
-                type="submit" 
-                class="btn-login"
+
+            <div id="password-strength" style="margin-bottom: 2rem; min-height: 1.5rem;">
+                <!-- Password strength indicator inserted by JS -->
+            </div>
+
+            <button
+                type="submit"
+                class="btn-register"
                 style="width: 100%; padding: 1rem 2rem; background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%); border: none; border-radius: 0.5rem; color: #1a1f2e; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);"
                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.4)'"
                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(212, 175, 55, 0.3)'"
             >
-                🚀 Continue to Dashboard
+                🚀 Create Account
             </button>
         </form>
-        
+
         <!-- Info Section -->
         <div class="login-info" style="margin-top: 2rem; padding: 1.5rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 0.75rem;">
             <p style="color: #34d399; font-size: 0.875rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span style="font-size: 1.25rem;">✅</span>
-                <span>No password required - just enter your email to get started</span>
+                <span style="font-size: 1.25rem;">🔒</span>
+                <span>Passwords are hashed with bcrypt (12 rounds) for maximum security</span>
             </p>
             <p style="color: #94a3b8; font-size: 0.875rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                <span style="font-size: 1.25rem;">🔒</span>
-                <span>Your information is stored securely and used only for event management</span>
+                <span style="font-size: 1.25rem;">✅</span>
+                <span>Your data is stored securely and used only for event management</span>
             </p>
         </div>
-        
+
         <!-- Branding Footer -->
         <div style="text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
             <div style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 0.5rem;">POWERED BY</div>
@@ -126,6 +249,33 @@
         </div>
     </div>
 </div>
+
+<script>
+// Tab switching functionality
+function switchAuthTab(tab) {
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const tabs = document.querySelectorAll('.tab-btn');
+
+    tabs.forEach(btn => {
+        if (btn.getAttribute('data-tab') === tab) {
+            btn.style.background = 'rgba(212, 175, 55, 0.9)';
+            btn.style.color = '#1a1f2e';
+        } else {
+            btn.style.background = 'transparent';
+            btn.style.color = '#94a3b8';
+        }
+    });
+
+    if (tab === 'login') {
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+    } else {
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+    }
+}
+</script>
 
 <!-- ============================================
      MAIN APP CONTENT
