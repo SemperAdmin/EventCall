@@ -231,29 +231,81 @@ jobs:
           git diff --quiet && git diff --staged --quiet || git commit -m "Auth: ${{ github.event.action }} for ${{ github.event.client_payload.data.username }}"
           git push
 
+      - name: Capture Script Output
+        if: success()
+        id: capture
+        run: |
+          cd data-repo
+          # The script output contains SUCCESS::ACTION::JSON_DATA
+          # We need to extract and save it for the next step
+          echo "Script completed successfully"
+
       - name: Create Response Issue (Success)
         if: success()
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const fs = require('fs');
             const clientId = '${{ github.event.client_payload.data.client_id }}';
             const username = '${{ github.event.client_payload.data.username }}';
             const action = '${{ github.event.action }}';
 
-            // Parse the success message from the auth script output
-            const logs = `${{ steps.auth.outputs.stdout }}`;
+            // Read the user file that was just created/updated
+            let userData = null;
+            let userEvents = [];
+
+            try {
+              const userFilePath = `data-repo/users/${username}.json`;
+              if (fs.existsSync(userFilePath)) {
+                const userFileContent = fs.readFileSync(userFilePath, 'utf8');
+                const fullUser = JSON.parse(userFileContent);
+
+                // Remove password hash before sending to client
+                const { passwordHash, ...safeUser } = fullUser;
+                userData = safeUser;
+
+                // For login, also fetch user's events
+                if (action === 'login_user') {
+                  const userDataDir = `data-repo/users/${username}`;
+                  if (fs.existsSync(userDataDir)) {
+                    const files = fs.readdirSync(userDataDir);
+                    userEvents = files
+                      .filter(f => f.endsWith('.json'))
+                      .map(f => {
+                        try {
+                          const eventContent = fs.readFileSync(`${userDataDir}/${f}`, 'utf8');
+                          return JSON.parse(eventContent);
+                        } catch (e) {
+                          return null;
+                        }
+                      })
+                      .filter(e => e !== null);
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error reading user file:', error);
+            }
+
+            // Create response with user data
+            const responseBody = {
+              success: true,
+              action: action,
+              user: userData || {
+                username: username,
+                name: '${{ github.event.client_payload.data.name }}',
+                rank: '${{ github.event.client_payload.data.rank }}'
+              },
+              events: userEvents,
+              timestamp: new Date().toISOString()
+            };
 
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `AUTH_RESPONSE::${clientId}`,
-              body: JSON.stringify({
-                success: true,
-                action: action,
-                username: username,
-                timestamp: new Date().toISOString()
-              }),
+              body: JSON.stringify(responseBody),
               labels: ['auth-response', 'success', action]
             });
 
@@ -267,6 +319,14 @@ jobs:
             const username = '${{ github.event.client_payload.data.username }}';
             const action = '${{ github.event.action }}';
 
+            // Determine error message based on action
+            let errorMessage = 'Authentication failed';
+            if (action === 'register_user') {
+              errorMessage = 'Username already exists or registration failed';
+            } else if (action === 'login_user') {
+              errorMessage = 'Invalid username or password';
+            }
+
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -275,7 +335,7 @@ jobs:
                 success: false,
                 action: action,
                 username: username,
-                error: 'Authentication failed',
+                error: errorMessage,
                 timestamp: new Date().toISOString()
               }),
               labels: ['auth-response', 'error', action]
