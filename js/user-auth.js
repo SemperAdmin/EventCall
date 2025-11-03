@@ -362,7 +362,8 @@ const userAuth = {
                 console.log(`📡 Poll attempt #${pollCount} (${(elapsed / 1000).toFixed(1)}s elapsed)`);
 
                 // Check for response issue
-                const url = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?labels=auth-response&state=open`;
+                // Note: Not filtering by labels since label application may be delayed
+                const url = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?state=open&per_page=100`;
                 console.log(`🌐 Fetching: ${url}`);
 
                 const response = await fetch(url, {
@@ -380,10 +381,14 @@ const userAuth = {
                 }
 
                 const issues = await response.json();
-                console.log(`📋 Found ${issues.length} open auth-response issues`);
+                console.log(`📋 Found ${issues.length} open issues total`);
 
-                if (issues.length > 0) {
-                    console.log('📝 Issue titles:', issues.map(i => i.title));
+                // Filter for AUTH_RESPONSE issues only
+                const authIssues = issues.filter(i => i.title && i.title.startsWith('AUTH_RESPONSE::'));
+                console.log(`🔐 Found ${authIssues.length} auth response issues`);
+
+                if (authIssues.length > 0) {
+                    console.log('📝 Auth issue titles:', authIssues.map(i => i.title));
                 }
 
                 // Find issue with matching client ID
