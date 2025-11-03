@@ -1,0 +1,39 @@
+[
+  [],
+  {
+    "id": "3949a69c-1184-430f-a34a-4f2f759efe30",
+    "title": "Unit Formation",
+    "date": "2025-10-27",
+    "time": "08:00",
+    "location": "Bldg 4009",
+    "description": "Mandatory unit formation. All personnel are required to attend unless on approved leave or TDY.",
+    "askReason": true,
+    "allowGuests": false,
+    "requiresMealChoice": false,
+    "customQuestions": [
+      {
+        "id": "custom_0",
+        "question": "How long should your MCMAP belt be?"
+      }
+    ],
+    "eventDetails": {
+      "formation-type": {
+        "label": "Formation Type",
+        "value": "Inspection"
+      },
+      "uniform": {
+        "label": "Uniform",
+        "value": "Cammies"
+      },
+      "reporting-senior": {
+        "label": "Reporting Senior",
+        "value": "MSgt Shorter"
+      }
+    },
+    "created": 1761464342525,
+    "status": "active",
+    "createdBy": "tmmaness5@gmail.com",
+    "createdByName": "Tomas Maness",
+    "coverImage": ""
+  }
+]
