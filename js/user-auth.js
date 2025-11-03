@@ -299,12 +299,12 @@ const userAuth = {
      */
     async triggerAuthWorkflow(actionType, payload) {
         try {
-            if (!window.backendAPI || !window.backendAPI.triggerWorkflow) {
+            if (!window.BackendAPI || !window.BackendAPI.triggerWorkflow) {
                 throw new Error('Backend API not available');
             }
 
-            // Trigger workflow via backendAPI
-            const result = await window.backendAPI.triggerWorkflow(actionType, payload);
+            // Trigger workflow via BackendAPI
+            const result = await window.BackendAPI.triggerWorkflow(actionType, payload);
 
             // Poll for response via GitHub Issues
             const response = await this.pollForAuthResponse(payload.client_id, 30000); // 30 second timeout

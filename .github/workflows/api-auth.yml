@@ -31,11 +31,11 @@ jobs:
         id: auth
         env:
           EVENT_TYPE: ${{ github.event.action }}
-          USERNAME: ${{ github.event.client_payload.username }}
-          PASSWORD: ${{ github.event.client_payload.password }}
-          NAME: ${{ github.event.client_payload.name }}
-          RANK: ${{ github.event.client_payload.rank }}
-          CLIENT_ID: ${{ github.event.client_payload.client_id }}
+          USERNAME: ${{ github.event.client_payload.data.username }}
+          PASSWORD: ${{ github.event.client_payload.data.password }}
+          NAME: ${{ github.event.client_payload.data.name }}
+          RANK: ${{ github.event.client_payload.data.rank }}
+          CLIENT_ID: ${{ github.event.client_payload.data.client_id }}
         run: |
           cd data-repo
           node << 'AUTHSCRIPT'
@@ -228,7 +228,7 @@ jobs:
           git config user.name "EventCall Auth Bot"
           git config user.email "auth@eventcall.app"
           git add users/
-          git diff --quiet && git diff --staged --quiet || git commit -m "Auth: ${{ github.event.action }} for ${{ github.event.client_payload.username }}"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auth: ${{ github.event.action }} for ${{ github.event.client_payload.data.username }}"
           git push
 
       - name: Create Response Issue (Success)
@@ -237,8 +237,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const clientId = '${{ github.event.client_payload.client_id }}';
-            const username = '${{ github.event.client_payload.username }}';
+            const clientId = '${{ github.event.client_payload.data.client_id }}';
+            const username = '${{ github.event.client_payload.data.username }}';
             const action = '${{ github.event.action }}';
 
             // Parse the success message from the auth script output
@@ -263,8 +263,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const clientId = '${{ github.event.client_payload.client_id }}';
-            const username = '${{ github.event.client_payload.username }}';
+            const clientId = '${{ github.event.client_payload.data.client_id }}';
+            const username = '${{ github.event.client_payload.data.username }}';
             const action = '${{ github.event.action }}';
 
             await github.rest.issues.create({
