@@ -37,20 +37,95 @@
     "coverImage": ""
   },
   {
-    "id": "dbbba890-bc8b-4bdc-ac5a-d68fe8508984",
-    "title": "Dining In",
-    "date": "2025-11-15",
-    "time": "17:56",
-    "location": "MCB HAWAII",
-    "description": "You are cordially invited to attend our formal dining event, a time-honored military tradition.",
+    "id": "789bd66e-22c3-46a8-96b7-28b7e71579eb",
+    "title": "Marine Corps Birthday Ball",
+    "date": "2025-11-22",
+    "time": "18:46",
+    "location": "MCBH",
+    "description": "Join us in celebrating the founding of the United States Marine Corps with tradition, camaraderie, and honor.",
     "askReason": false,
     "allowGuests": true,
     "requiresMealChoice": true,
     "customQuestions": [],
-    "eventDetails": {},
-    "created": 1762228625655,
+    "eventDetails": {
+      "ball-year": {
+        "label": "Birthday Year",
+        "value": "250"
+      }
+    },
+    "created": 1762231602133,
     "status": "active",
     "createdByName": "furby203824",
-    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/f39fc460-4576-49b5-b5aa-7b6e61b32702.jpg"
+    "seatingChart": {
+      "enabled": true,
+      "numberOfTables": 10,
+      "seatsPerTable": 8,
+      "totalCapacity": 80,
+      "tables": [
+        {
+          "tableNumber": 1,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": true
+        },
+        {
+          "tableNumber": 2,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 3,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 4,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 5,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 6,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 7,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 8,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 9,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 10,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        }
+      ],
+      "unassignedGuests": [],
+      "lastModified": 1762231602134
+    },
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/d92c9c38-3b32-4fbb-be35-462301288b08.png"
   }
 ]
