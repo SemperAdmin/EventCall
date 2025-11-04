@@ -392,8 +392,10 @@ const userAuth = {
             console.log('✅ Workflow dispatch result:', result);
 
             console.log('⏳ Polling for authentication response...');
-            // Poll for response via GitHub Issues
-            const response = await this.pollForAuthResponse(payload.client_id, 30000); // 30 second timeout
+            // Poll for response via GitHub Issues using configurable timeouts
+            const timeoutMs = (window.AUTH_CONFIG && window.AUTH_CONFIG.authTimeoutMs) || 30000;
+            const intervalMs = (window.AUTH_CONFIG && window.AUTH_CONFIG.pollIntervalMs) || 2000;
+            const response = await this.pollForAuthResponse(payload.client_id, timeoutMs, intervalMs);
 
             console.log('✅ Authentication response received:', response);
             return response;
@@ -418,9 +420,8 @@ const userAuth = {
     /**
      * Poll GitHub Issues for authentication response
      */
-    async pollForAuthResponse(clientId, timeout = 30000) {
+    async pollForAuthResponse(clientId, timeout = 30000, pollInterval = 2000) {
         const startTime = Date.now();
-        const pollInterval = 2000; // Check every 2 seconds
         let pollCount = 0;
 
         console.log(`🔄 Starting to poll for client_id: ${clientId}`);

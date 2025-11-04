@@ -63,6 +63,11 @@ const AUTH_CONFIG = {
     // Simple client-side authentication mode (no GitHub workflow/polling)
     // When enabled, login validates locally and grants access on success.
     simpleAuth: true,
+    // Polling configuration for server-driven authentication workflows
+    // Increase timeout to accommodate GitHub Actions queuing delays
+    authTimeoutMs: 60000,
+    // Slightly faster polling for quicker detection without spamming
+    pollIntervalMs: 1500,
     // Optional static users for simple auth. If empty, any non-empty
     // username/password pair will be accepted for demo purposes.
     users: [
