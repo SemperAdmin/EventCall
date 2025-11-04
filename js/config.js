@@ -69,7 +69,7 @@ const AUTH_CONFIG = {
     forceBackendInDev: true,
     // Polling configuration for server-driven authentication workflows
     // Increase timeout to accommodate GitHub Actions queuing delays
-    authTimeoutMs: 60000,
+    authTimeoutMs: 120000,
     // Slightly faster polling for quicker detection without spamming
     pollIntervalMs: 1500,
     // Optional static users for simple auth. If empty, any non-empty

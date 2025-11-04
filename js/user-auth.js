@@ -440,13 +440,14 @@ const userAuth = {
 
                 // Check for response issue
                 // Note: Not filtering by labels since label application may be delayed
-                const url = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?state=open&per_page=100`;
+                const url = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?state=open&per_page=100&sort=created&direction=desc&t=${Date.now()}`;
                 console.log(`🌐 Fetching: ${url}`);
 
                 const response = await fetch(url, {
                     headers: {
                         'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                        'Accept': 'application/vnd.github.v3+json'
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Cache-Control': 'no-cache'
                     }
                 });
 
@@ -509,6 +510,47 @@ const userAuth = {
                         throw new Error(`Failed to parse authentication response: ${parseError.message}`);
                     }
                 } else {
+                    // Fallback: check across all states in case client closed or visibility lag
+                    try {
+                        const fallbackUrl = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?state=all&per_page=100&sort=created&direction=desc&t=${Date.now()}`;
+                        console.log(`🔎 Fallback fetching: ${fallbackUrl}`);
+                        const fallbackResp = await fetch(fallbackUrl, {
+                            headers: {
+                                'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'Cache-Control': 'no-cache'
+                            }
+                        });
+
+                        if (fallbackResp.ok) {
+                            const allIssues = await fallbackResp.json();
+                            const fallbackMatch = allIssues.find(issue => issue.title && issue.title.includes(searchTitle));
+                            if (fallbackMatch) {
+                                console.log(`✅ Found matching issue in fallback #${fallbackMatch.number}`);
+                                const responseData = JSON.parse(fallbackMatch.body);
+                                // Close the issue to keep the queue clean
+                                await fetch(
+                                    `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues/${fallbackMatch.number}`,
+                                    {
+                                        method: 'PATCH',
+                                        headers: {
+                                            'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                            'Accept': 'application/vnd.github.v3+json',
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({ state: 'closed' })
+                                    }
+                                );
+                                console.log(`✅ Fallback issue closed successfully`);
+                                return responseData;
+                            }
+                        } else {
+                            console.warn(`⚠️ Fallback fetch failed: ${fallbackResp.status}`);
+                        }
+                    } catch (fallbackError) {
+                        console.warn('⚠️ Fallback check error:', fallbackError);
+                    }
+
                     console.log(`⏳ No matching issue found yet, waiting ${pollInterval}ms...`);
                 }
 
