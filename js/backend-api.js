@@ -8,6 +8,13 @@ class BackendAPI {
     async triggerWorkflow(eventType, payload) {
         const url = this.apiBase + '/repos/' + this.owner + '/' + this.repo + '/dispatches';
 
+        // Skip external dispatch in local development
+        const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        if (isLocalDev) {
+            console.warn('🧪 Local dev detected: skipping GitHub workflow dispatch');
+            return { success: true, local: true };
+        }
+
         // Get token from GITHUB_CONFIG
         const token = window.GITHUB_CONFIG && window.GITHUB_CONFIG.token ? window.GITHUB_CONFIG.token : null;
 

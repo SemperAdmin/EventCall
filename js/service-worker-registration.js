@@ -7,9 +7,20 @@
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
         try {
-            // Register service worker
-            const registration = await navigator.serviceWorker.register('/EventCall/service-worker.js', {
-                scope: '/EventCall/'
+            // Skip service worker in local development to avoid caching/register issues
+            const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            if (isLocalDev) {
+                console.log('🧪 Local dev detected: skipping Service Worker registration');
+                return;
+            }
+
+            // Determine base path dynamically for local vs GitHub Pages
+            const isGitHubPages = window.location.pathname.includes('/EventCall/');
+            const basePath = isGitHubPages ? '/EventCall/' : '/';
+
+            // Register service worker with environment-aware path and scope
+            const registration = await navigator.serviceWorker.register(basePath + 'service-worker.js', {
+                scope: basePath
             });
 
             console.log('✅ Service Worker registered:', registration.scope);

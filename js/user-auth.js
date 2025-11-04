@@ -299,6 +299,19 @@ const userAuth = {
      */
     async triggerAuthWorkflow(actionType, payload) {
         try {
+            // In local development, bypass GitHub dispatch and simulate success
+            const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            if (isLocalDev) {
+                console.log('🧪 Local dev detected: skipping GitHub workflow dispatch and polling');
+                return {
+                    success: true,
+                    user: {
+                        name: payload?.username || 'Local User',
+                        role: 'manager'
+                    }
+                };
+            }
+
             console.log('🔍 Checking BackendAPI availability...');
 
             if (!window.BackendAPI) {
