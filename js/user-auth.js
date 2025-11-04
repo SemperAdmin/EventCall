@@ -68,6 +68,54 @@ const userAuth = {
     },
 
     /**
+     * Simple local validation for username/password
+     * - If AUTH_CONFIG.users is provided, validates against that list
+     * - Otherwise, accepts any non-empty username/password for demo access
+     */
+    simpleValidate(username, password) {
+        const users = (window.AUTH_CONFIG && Array.isArray(window.AUTH_CONFIG.users)) ? window.AUTH_CONFIG.users : [];
+
+        const uname = (username || '').trim().toLowerCase();
+        const pass = (password || '').trim();
+
+        // Require non-empty credentials
+        if (!uname || !pass) {
+            return null;
+        }
+
+        if (users.length > 0) {
+            const match = users.find(u => (u.username || '').toLowerCase() === uname);
+            if (!match) return null;
+
+            // Support either plaintext demo password or precomputed hash field in future
+            if (typeof match.password === 'string') {
+                if (pass !== match.password) return null;
+            } else {
+                // No password to check; treat as invalid
+                return null;
+            }
+
+            // Build user object from match
+            return {
+                id: 'user_' + uname,
+                username: uname,
+                name: match.name || uname,
+                rank: match.rank || '',
+                role: match.role || 'user'
+            };
+        }
+
+        // Demo fallback: accept any non-empty credentials
+        return {
+            id: 'user_' + uname,
+            username: uname,
+            name: uname,
+            rank: '',
+            role: 'user'
+        };
+    },
+
+    /**
      * Handle user registration
      */
     async handleRegister(event) {
@@ -299,6 +347,17 @@ const userAuth = {
      */
     async triggerAuthWorkflow(actionType, payload) {
         try {
+            // In simple auth mode, validate locally (works on GitHub Pages too)
+            const simpleMode = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.simpleAuth);
+            if (simpleMode) {
+                console.log('🔓 Simple auth enabled: validating locally without GitHub');
+                const user = this.simpleValidate(payload?.username, payload?.password);
+                if (!user) {
+                    throw new Error('Invalid username or password');
+                }
+                return { success: true, user };
+            }
+
             // In local development, bypass GitHub dispatch and simulate success
             const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
             if (isLocalDev) {
