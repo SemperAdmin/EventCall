@@ -35,5 +35,22 @@
     "createdBy": "tmmaness5@gmail.com",
     "createdByName": "Tomas Maness",
     "coverImage": ""
+  },
+  {
+    "id": "dbbba890-bc8b-4bdc-ac5a-d68fe8508984",
+    "title": "Dining In",
+    "date": "2025-11-15",
+    "time": "17:56",
+    "location": "MCB HAWAII",
+    "description": "You are cordially invited to attend our formal dining event, a time-honored military tradition.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {},
+    "created": 1762228625655,
+    "status": "active",
+    "createdByName": "furby203824",
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/f39fc460-4576-49b5-b5aa-7b6e61b32702.jpg"
   }
 ]
