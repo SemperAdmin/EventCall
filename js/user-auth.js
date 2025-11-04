@@ -358,14 +358,18 @@ const userAuth = {
                 return { success: true, user };
             }
 
-            // In local development, bypass GitHub dispatch and simulate success
+            // In local development, bypass GitHub dispatch unless forced via config
             const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            if (isLocalDev) {
-                console.log('🧪 Local dev detected: skipping GitHub workflow dispatch and polling');
+            const forceBackendInDev = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.forceBackendInDev);
+            if (isLocalDev && !forceBackendInDev) {
+                console.log('🧪 Local dev detected: skipping GitHub workflow dispatch and polling (set AUTH_CONFIG.forceBackendInDev=true to enable)');
                 return {
                     success: true,
                     user: {
-                        name: payload?.username || 'Local User',
+                        id: 'user_' + (payload?.username || 'local'),
+                        username: payload?.username || 'local_user',
+                        name: payload?.name || payload?.username || 'Local User',
+                        rank: payload?.rank || '',
                         role: 'manager'
                     }
                 };

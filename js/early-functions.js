@@ -218,7 +218,7 @@ function updateUserDisplay() {
         const avatar = document.getElementById('user-avatar');
         
         if (displayName) {
-            displayName.textContent = user.name || user.email.split('@')[0];
+            displayName.textContent = user.name || user.username || 'User';
         }
         
         if (avatar) {
@@ -240,8 +240,7 @@ function showUserMenu() {
     const user = window.userAuth.getCurrentUser();
     
     const message = `
-👤 ${user.name}
-📧 ${user.email}
+👤 ${user.name || user.username}
 ${user.unit ? `🎖️ ${user.unit}` : ''}
 
 Do you want to log out?
@@ -656,7 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeHashListener();
 });
 
-console.log('✅ Early functions loaded with email-only authentication support');
+console.log('✅ Early functions loaded with username-only authentication support');
 
 // Add TSV generation and clipboard copy helper
 async function copyEventDataAsTSV(event, responses) {

@@ -8,10 +8,11 @@ class BackendAPI {
     async triggerWorkflow(eventType, payload) {
         const url = this.apiBase + '/repos/' + this.owner + '/' + this.repo + '/dispatches';
 
-        // Skip external dispatch in local development
+        // Skip external dispatch in local development unless forced via config
         const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-        if (isLocalDev) {
-            console.warn('🧪 Local dev detected: skipping GitHub workflow dispatch');
+        const forceBackendInDev = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.forceBackendInDev);
+        if (isLocalDev && !forceBackendInDev) {
+            console.warn('🧪 Local dev detected: skipping GitHub workflow dispatch (set AUTH_CONFIG.forceBackendInDev=true to enable)');
             return { success: true, local: true };
         }
 
@@ -201,7 +202,12 @@ ${JSON.stringify(rsvpData, null, 2)}
         const token = window.GITHUB_CONFIG && window.GITHUB_CONFIG.token ? window.GITHUB_CONFIG.token : null;
         const managerEmail = window.managerAuth && window.managerAuth.getCurrentManager()
             ? window.managerAuth.getCurrentManager().email
-            : 'unknown';
+            : '';
+
+        // Prefer username from new auth
+        const user = window.userAuth && window.userAuth.isAuthenticated() ? window.userAuth.getCurrentUser() : null;
+        const creatorUsername = user?.username || (eventData.createdBy ? String(eventData.createdBy).trim() : '');
+        const creatorName = eventData.createdByName || user?.name || user?.username || 'unknown';
 
         if (!token) {
             throw new Error('Manager token required to create event');
@@ -220,9 +226,10 @@ ${JSON.stringify(rsvpData, null, 2)}
         allowGuests: Boolean(eventData.allowGuests),
         requiresMealChoice: Boolean(eventData.requiresMealChoice),
         customQuestionsCount: (eventData.customQuestions || []).length,
-        managerEmail: managerEmail,
-        createdBy: managerEmail,
-        createdByName: eventData.createdByName || managerEmail.split('@')[0],
+        managerEmail: managerEmail || 'unknown',
+        createdBy: creatorUsername || managerEmail || 'unknown',
+        createdByUsername: creatorUsername || '',
+        createdByName: creatorName,
         created: eventData.created || Date.now(),
         status: 'active'
     };
@@ -239,5 +246,3 @@ if (typeof window !== 'undefined') {
     window.BackendAPI = new BackendAPI();
     console.log('Backend API loaded (Secure)');
 }
-
-

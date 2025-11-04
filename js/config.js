@@ -62,7 +62,11 @@ const AUTH_CONFIG = {
     rememberMeDays: 30,
     // Simple client-side authentication mode (no GitHub workflow/polling)
     // When enabled, login validates locally and grants access on success.
-    simpleAuth: true,
+    // Set to false to use server-side GitHub Actions for auth and persistence.
+    simpleAuth: false,
+    // Force backend workflow dispatch and issue polling even on localhost.
+    // Enable this in local dev to test real saving to EventCall-Data.
+    forceBackendInDev: true,
     // Polling configuration for server-driven authentication workflows
     // Increase timeout to accommodate GitHub Actions queuing delays
     authTimeoutMs: 60000,

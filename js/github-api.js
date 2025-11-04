@@ -238,17 +238,25 @@ class GitHubAPI {
                         const fileData = await fileResponse.json();
                         const content = JSON.parse(this.safeBase64Decode(fileData.content));
 
-                        // Filter events by authenticated user (works with both old and new auth)
+                        // Filter events by authenticated user (supports username-first, email fallback)
                         const currentUser = window.userAuth?.getCurrentUser() || window.managerAuth?.getCurrentManager();
-                        
-                        if (currentUser) {
-                            if (content.createdBy === currentUser.email) {
-                                events[content.id] = content;
-                                console.log('✅ Loaded event for user:', content.title);
-                            }
-                        } else {
-                            // No auth - load all events
+                        if (!currentUser) {
+                            console.warn('🔒 Skipping event load: no authenticated user');
+                            continue;
+                        }
+
+                        const userUsername = (currentUser.username || '').toLowerCase();
+                        const userEmail = (currentUser.email || '').toLowerCase();
+
+                        const createdBy = (content.createdBy || '').toLowerCase();
+                        const createdByUsername = (content.createdByUsername || '').toLowerCase();
+
+                        const matchesUsername = userUsername && (createdBy === userUsername || createdByUsername === userUsername);
+                        const matchesEmail = userEmail && createdBy === userEmail; // Backward-compat for older events
+
+                        if (matchesUsername || matchesEmail) {
                             events[content.id] = content;
+                            console.log('✅ Loaded event for owner:', content.title);
                         }
                     }
                 } catch (error) {
@@ -957,7 +965,7 @@ class GitHubAPI {
 
             // Create or update the file
             const createData = {
-                message: `${existingSha ? 'Update' : 'Create'} user: ${cleanUser.email}`,
+                message: `${existingSha ? 'Update' : 'Create'} user: ${cleanUser.username || cleanUser.name || cleanUser.id}`,
                 content: content,
                 branch: 'main'
             };
@@ -982,7 +990,7 @@ class GitHubAPI {
                 throw new Error(`Failed to save user: ${createResponse.status} - ${errorText}`);
             }
 
-            console.log('✅ User saved successfully to EventCall-Data:', cleanUser.email);
+            console.log('✅ User saved successfully to EventCall-Data:', cleanUser.username || cleanUser.name || cleanUser.id);
             return await createResponse.json();
 
         } catch (error) {

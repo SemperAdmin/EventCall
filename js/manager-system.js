@@ -276,7 +276,9 @@ async function deleteEvent(eventId) {
         }
 
         const currentUser = getCurrentAuthenticatedUser();
-        if (!currentUser || event.createdBy !== currentUser.email) {
+        const ownerUsername = currentUser && currentUser.username;
+        const eventOwnerMatches = ownerUsername && (event.createdBy === ownerUsername || event.createdByUsername === ownerUsername);
+        if (!currentUser || !eventOwnerMatches) {
             showToast('❌ You can only delete your own events', 'error');
             return;
         }
@@ -736,8 +738,8 @@ async function handleEventSubmit(e) {
             eventDetails: getEventDetails(),
             created: Date.now(),
             status: 'active',
-            createdBy: currentUser.email,
-            createdByName: currentUser.name || currentUser.email.split('@')[0]
+            createdBy: (currentUser.username || 'unknown'),
+            createdByName: currentUser.name || currentUser.username || 'unknown'
         };
 
         // Seating Chart: initialize and persist if enabled
@@ -1155,4 +1157,4 @@ window.duplicateEvent = function(eventId) {
     }
 };
 
-console.log('✅ Enhanced manager system loaded with RSVP sync functionality and email auth support');
+console.log('✅ Enhanced manager system loaded with RSVP sync functionality and username auth support');
