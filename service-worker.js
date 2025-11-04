@@ -3,7 +3,7 @@
  * Provides offline support, caching, and performance optimization
  */
 
-const CACHE_NAME = 'eventcall-v1';
+const CACHE_NAME = 'eventcall-v2';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Assets to cache on install
@@ -81,9 +81,10 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // GitHub API requests - network first, cache fallback
-    if (url.hostname === 'api.github.com') {
-        event.respondWith(networkFirstStrategy(request));
+    // Always fetch JS from network to avoid stale code
+    const isScript = request.destination === 'script' || url.pathname.endsWith('.js');
+    if (isScript && request.method === 'GET') {
+        event.respondWith(fetch(request));
         return;
     }
 
