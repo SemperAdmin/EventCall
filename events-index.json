@@ -37,20 +37,20 @@
     "coverImage": ""
   },
   {
-    "id": "dbbba890-bc8b-4bdc-ac5a-d68fe8508984",
-    "title": "Dining In",
-    "date": "2025-11-15",
-    "time": "17:56",
-    "location": "MCB HAWAII",
-    "description": "You are cordially invited to attend our formal dining event, a time-honored military tradition.",
+    "id": "dde8d435-03b3-44ad-b471-588ba5c43659",
+    "title": "Marine Corps Birthday Ball",
+    "date": "2025-11-29",
+    "time": "18:37",
+    "location": "MCBH",
+    "description": "Join us in celebrating the founding of the United States Marine Corps with tradition, camaraderie, and honor.",
     "askReason": false,
     "allowGuests": true,
     "requiresMealChoice": true,
     "customQuestions": [],
     "eventDetails": {},
-    "created": 1762228625655,
+    "created": 1762231035947,
     "status": "active",
     "createdByName": "furby203824",
-    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/f39fc460-4576-49b5-b5aa-7b6e61b32702.jpg"
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/dcbf0ec0-f7a8-4a56-9625-363014da50f7.png"
   }
 ]
