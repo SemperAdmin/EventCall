@@ -1666,9 +1666,29 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         // Populate custom questions
         this.populateCustomQuestions(event.customQuestions || []);
 
+        // Seating configuration UI: reflect existing event seating settings
+        const enableSeating = document.getElementById('enable-seating');
+        const seatingConfigFields = document.getElementById('seating-config-fields');
+        const tablesInput = document.getElementById('number-of-tables');
+        const seatsInput = document.getElementById('seats-per-table');
+        const totalCapacitySpan = document.getElementById('total-seating-capacity');
+
+        if (enableSeating) {
+            const hasSeating = !!(event.seatingChart && event.seatingChart.enabled);
+            enableSeating.checked = hasSeating;
+            if (seatingConfigFields) seatingConfigFields.classList.toggle('hidden', !hasSeating);
+            if (hasSeating) {
+                const nTables = event.seatingChart.numberOfTables || 0;
+                const seatsPer = event.seatingChart.seatsPerTable || 0;
+                if (tablesInput) tablesInput.value = nTables;
+                if (seatsInput) seatsInput.value = seatsPer;
+                if (totalCapacitySpan) totalCapacitySpan.textContent = (nTables * seatsPer) || 0;
+            }
+        }
+
         // Change form submission behavior
         const submitBtn = document.querySelector('#event-form button[type="submit"]');
-        submitBtn.textContent = 'ðŸ’¾ Update Event';
+        submitBtn.textContent = '🛠️ Update Event';
         submitBtn.style.background = 'linear-gradient(135deg, var(--success-color) 0%, #059669 100%)';
 
         // Add cancel button
@@ -1906,16 +1926,21 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      * @returns {Object} Event data from form
      */
     getFormData() {
+        const coverPreviewEl = document.getElementById('cover-preview');
+        const coverUrlEl = document.getElementById('cover-image-url');
+
         return {
             title: sanitizeText(document.getElementById('event-title').value),
             date: document.getElementById('event-date').value,
             time: document.getElementById('event-time').value,
             location: sanitizeText(document.getElementById('event-location').value),
             description: sanitizeText(document.getElementById('event-description').value),
-            coverImage: document.getElementById('cover-preview').src || '',
+            coverImage: (coverPreviewEl && coverPreviewEl.src) || (coverUrlEl && coverUrlEl.value) || '',
             askReason: document.getElementById('ask-reason').checked,
             allowGuests: document.getElementById('allow-guests').checked,
-            customQuestions: getCustomQuestions()
+            requiresMealChoice: document.getElementById('requires-meal-choice')?.checked || false,
+            customQuestions: getCustomQuestions(),
+            eventDetails: typeof getEventDetails === 'function' ? getEventDetails() : undefined
         };
     }
 

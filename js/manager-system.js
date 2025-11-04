@@ -676,7 +676,7 @@ async function handleEventSubmit(e) {
     const originalText = submitBtn.textContent;
 
     // Show loading state
-    submitBtn.innerHTML = '<div class="spinner"></div> Creating...';
+    submitBtn.innerHTML = '<div class="spinner"></div> Processing...';
     submitBtn.disabled = true;
 
     try {
@@ -689,6 +689,35 @@ async function handleEventSubmit(e) {
         const currentUser = getCurrentAuthenticatedUser();
         if (!currentUser) {
             throw new Error('Unable to get user information. Please log in again.');
+        }
+
+        // If in edit mode, route to update flow
+        if (window.eventManager && window.eventManager.editMode) {
+            const baseData = window.eventManager.getFormData ? window.eventManager.getFormData() : {};
+
+            // Preserve or initialize seating chart based on toggle
+            const enableSeatingEl = document.getElementById('enable-seating');
+            const currentEvent = window.eventManager.currentEvent;
+
+            if (enableSeatingEl && enableSeatingEl.checked) {
+                if (currentEvent && currentEvent.seatingChart) {
+                    baseData.seatingChart = currentEvent.seatingChart; // preserve assignments
+                } else if (typeof window.SeatingChart === 'function') {
+                    const tables = parseInt(document.getElementById('number-of-tables')?.value) || 0;
+                    const seats = parseInt(document.getElementById('seats-per-table')?.value) || 0;
+                    if (tables > 0 && seats > 0) {
+                        const sc = new window.SeatingChart(currentEvent?.id || generateUUID());
+                        baseData.seatingChart = sc.initializeSeatingChart(tables, seats);
+                    }
+                }
+            } else if (currentEvent && currentEvent.seatingChart) {
+                baseData.seatingChart = { ...currentEvent.seatingChart, enabled: false, lastModified: Date.now() };
+            }
+
+            // Show progress update
+            submitBtn.innerHTML = '<div class="spinner"></div> Updating...';
+            await window.eventManager.updateEvent(baseData);
+            return; // Skip create logic
         }
 
         // Collect form data
@@ -710,6 +739,20 @@ async function handleEventSubmit(e) {
             createdBy: currentUser.email,
             createdByName: currentUser.name || currentUser.email.split('@')[0]
         };
+
+        // Seating Chart: initialize and persist if enabled
+        const enableSeating = document.getElementById('enable-seating');
+        if (enableSeating && enableSeating.checked && typeof window.SeatingChart === 'function') {
+            const tablesInput = document.getElementById('number-of-tables');
+            const seatsInput = document.getElementById('seats-per-table');
+            const numberOfTables = parseInt(tablesInput && tablesInput.value) || 0;
+            const seatsPerTable = parseInt(seatsInput && seatsInput.value) || 0;
+
+            if (numberOfTables > 0 && seatsPerTable > 0) {
+                const seatingChart = new window.SeatingChart(eventData.id);
+                eventData.seatingChart = seatingChart.initializeSeatingChart(numberOfTables, seatsPerTable);
+            }
+        }
 
         // Validate required fields
         if (!eventData.title || eventData.title.length < 3) {
@@ -810,13 +853,16 @@ function setupEventForm() {
         }
 
         eventForm.addEventListener('submit', handleEventSubmit);
+        // Initialize seating chart toggle/fields when the form is set up
+        if (typeof setupSeatingChartToggle === 'function') {
+            setupSeatingChartToggle();
+        }
         eventForm.dataset.formInitialized = 'true';
         console.log('✅ Event form listener attached');
     }
 }
 
 /**
-<<<<<<< HEAD
  * Setup seating chart configuration toggle and capacity calculation
  */
 function setupSeatingChartToggle() {
@@ -860,8 +906,6 @@ function setupSeatingChartToggle() {
 }
 
 /**
-=======
->>>>>>> parent of 0365a7d (Merge pull request #41 from SemperAdmin/claude/analyze-seating-chart-feature-011CUgYMMY3FnDKwfqXE8z9x)
  * Toggle past events visibility
  */
 function togglePastEvents() {
