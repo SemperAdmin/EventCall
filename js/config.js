@@ -59,7 +59,16 @@ const CODE_CONFIG = {
 const AUTH_CONFIG = {
     sessionTimeout: 30 * 60 * 1000, // 30 minutes
     rememberMeOption: true, // Allow "remember me" checkbox
-    rememberMeDays: 30
+    rememberMeDays: 30,
+    // Simple client-side authentication mode (no GitHub workflow/polling)
+    // When enabled, login validates locally and grants access on success.
+    simpleAuth: true,
+    // Optional static users for simple auth. If empty, any non-empty
+    // username/password pair will be accepted for demo purposes.
+    users: [
+        // Example user (uncomment and customize as needed):
+        // { username: 'demo', password: 'demo123', name: 'Demo User', rank: 'Guest', role: 'user' }
+    ]
 };
 
 // Messages
