@@ -88,8 +88,10 @@
           "vipTable": false
         }
       ],
-      "unassignedGuests": [],
-      "lastModified": 1762238979226
+      "unassignedGuests": [
+        "7721449c-9819-44b8-a851-9589192dbc7a"
+      ],
+      "lastModified": 1762293950280
     },
     "coverImage": ""
   }
