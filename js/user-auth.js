@@ -446,8 +446,7 @@ const userAuth = {
                 const response = await fetch(url, {
                     headers: {
                         'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Cache-Control': 'no-cache'
+                        'Accept': 'application/vnd.github.v3+json'
                     }
                 });
 
@@ -517,8 +516,7 @@ const userAuth = {
                         const fallbackResp = await fetch(fallbackUrl, {
                             headers: {
                                 'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                                'Accept': 'application/vnd.github.v3+json',
-                                'Cache-Control': 'no-cache'
+                                'Accept': 'application/vnd.github.v3+json'
                             }
                         });
 

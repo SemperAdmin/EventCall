@@ -66,7 +66,7 @@ const AUTH_CONFIG = {
     simpleAuth: false,
     // Force backend workflow dispatch and issue polling even on localhost.
     // Enable this in local dev to test real saving to EventCall-Data.
-    forceBackendInDev: true,
+    forceBackendInDev: false,
     // Polling configuration for server-driven authentication workflows
     // Increase timeout to accommodate GitHub Actions queuing delays
     authTimeoutMs: 120000,
