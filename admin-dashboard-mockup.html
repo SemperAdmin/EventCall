@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventCall Admin Dashboard - Visual Mockup</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .admin-header {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-bottom: 2px solid #d4af37;
+            padding: 1.25rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .admin-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #d4af37;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .admin-badge {
+            background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+            color: #1a1f2e;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .last-updated {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+            color: #1a1f2e;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .notification-bell {
+            position: relative;
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: background 0.2s;
+        }
+
+        .notification-bell:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 0.25rem;
+            right: 0.25rem;
+            background: #dc2626;
+            color: white;
+            border-radius: 50%;
+            width: 1.25rem;
+            height: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.625rem;
+            font-weight: 700;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .user-menu:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .user-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #1a1f2e;
+            font-size: 1rem;
+        }
+
+        /* Main Content */
+        .admin-content {
+            padding: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border: 2px solid rgba(212, 175, 55, 0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(212, 175, 55, 0.3);
+            border-color: rgba(212, 175, 55, 0.4);
+        }
+
+        .kpi-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .kpi-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #d4af37;
+            margin-bottom: 0.5rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .kpi-trend {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .trend-up {
+            color: #22c55e;
+        }
+
+        .trend-down {
+            color: #ef4444;
+        }
+
+        .trend-neutral {
+            color: #94a3b8;
+        }
+
+        /* Insights Section */
+        .insights-section {
+            background: linear-gradient(135deg, #4a5d3f 0%, #3a4a32 100%);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border-left: 4px solid #d4af37;
+        }
+
+        .insights-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #d4af37;
+        }
+
+        .insight-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            color: #e2e8f0;
+            font-size: 0.9375rem;
+            line-height: 1.6;
+        }
+
+        /* Chart Grid */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border: 2px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #d4af37;
+        }
+
+        .chart-filter {
+            padding: 0.375rem 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.375rem;
+            color: #e2e8f0;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Data Table */
+        .table-section {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border: 2px solid rgba(212, 175, 55, 0.2);
+            margin-bottom: 2rem;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .table-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #d4af37;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .search-box {
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.5rem;
+            color: #e2e8f0;
+            font-size: 0.875rem;
+            width: 250px;
+        }
+
+        .search-box::placeholder {
+            color: #94a3b8;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow-x: auto;
+        }
+
+        .data-table thead {
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        .data-table th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 700;
+            color: #d4af37;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .data-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            font-size: 0.875rem;
+        }
+
+        .data-table tbody tr {
+            transition: background 0.2s;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .status-archived {
+            background: rgba(148, 163, 184, 0.2);
+            color: #94a3b8;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: #d4af37;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0.25rem 0.5rem;
+            transition: color 0.2s;
+        }
+
+        .action-btn:hover {
+            color: #b8941f;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pagination-info {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Bottom Grid */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .admin-header {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .admin-content {
+                padding: 1rem;
+            }
+
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            .data-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 2rem;
+            color: #94a3b8;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 3px solid rgba(212, 175, 55, 0.2);
+            border-top-color: #d4af37;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="admin-header">
+        <div class="header-left">
+            <div class="admin-title">
+                🎖️ EventCall Admin Dashboard
+                <span class="admin-badge">Admin</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="last-updated">
+                <span>🕐</span>
+                <span>Last Updated: 2 minutes ago</span>
+            </div>
+            <button class="btn btn-primary">
+                🔄 Refresh
+            </button>
+            <button class="btn btn-secondary">
+                📅 Last 30 Days ▼
+            </button>
+            <div class="notification-bell">
+                🔔
+                <span class="notification-badge">3</span>
+            </div>
+            <div class="user-menu">
+                <div class="user-avatar">SA</div>
+                <span style="font-weight: 600;">semperadmin</span>
+                <span style="color: #94a3b8;">▼</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="admin-content">
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-icon">📅</span>
+                <div class="kpi-label">Total Events</div>
+                <div class="kpi-value">247</div>
+                <div class="kpi-trend trend-up">
+                    ↗ +12% <span style="color: #94a3b8; margin-left: 0.5rem;">vs last month</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-icon">✉️</span>
+                <div class="kpi-label">Total RSVPs</div>
+                <div class="kpi-value">1,843</div>
+                <div class="kpi-trend trend-up">
+                    ↗ +18% <span style="color: #94a3b8; margin-left: 0.5rem;">vs last month</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-icon">👥</span>
+                <div class="kpi-label">Active Users</div>
+                <div class="kpi-value">89</div>
+                <div class="kpi-trend trend-up">
+                    ↗ +5% <span style="color: #94a3b8; margin-left: 0.5rem;">vs last month</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-icon">📊</span>
+                <div class="kpi-label">Engagement Rate</div>
+                <div class="kpi-value">74%</div>
+                <div class="kpi-trend trend-up">
+                    ↗ +3% <span style="color: #94a3b8; margin-left: 0.5rem;">vs last month</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insights Section -->
+        <div class="insights-section">
+            <div class="insights-header">
+                💡 Key Insights
+            </div>
+            <div class="insight-item">
+                <span>•</span>
+                <span><strong>Events created on Fridays</strong> get 35% more RSVPs on average compared to other weekdays</span>
+            </div>
+            <div class="insight-item">
+                <span>•</span>
+                <span><strong>Response rates drop by 15%</strong> for events created less than 2 weeks in advance</span>
+            </div>
+            <div class="insight-item">
+                <span>•</span>
+                <span><strong>Marine Corps Ball events</strong> have the highest attendance rate (78%) across all event types</span>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="chart-grid">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">Event Creation Trend</div>
+                    <select class="chart-filter">
+                        <option>Last 30 Days</option>
+                        <option>Last 90 Days</option>
+                        <option>This Year</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="eventTrendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">RSVP Trends</div>
+                    <select class="chart-filter">
+                        <option>Last 30 Days</option>
+                        <option>Last 90 Days</option>
+                        <option>This Year</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="rsvpTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events Table -->
+        <div class="table-section">
+            <div class="table-header">
+                <div class="table-title">Recent Events</div>
+                <div class="table-actions">
+                    <input type="text" class="search-box" placeholder="🔍 Search events...">
+                    <button class="btn btn-secondary">⚙️ Filter</button>
+                    <button class="btn btn-primary">📥 Export CSV</button>
+                </div>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Date</th>
+                            <th>Location</th>
+                            <th>Creator</th>
+                            <th>RSVPs</th>
+                            <th>Rate</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Marine Corps Ball 2025</strong></td>
+                            <td>Nov 10, 2025</td>
+                            <td>Base Officers Club</td>
+                            <td>john.doe</td>
+                            <td>45/60</td>
+                            <td><strong style="color: #22c55e;">75%</strong></td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                            <td>
+                                <button class="action-btn" title="View Details">👁️</button>
+                                <button class="action-btn" title="Edit">✏️</button>
+                                <button class="action-btn" title="Archive">📦</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Promotion Ceremony - Sgt Smith</strong></td>
+                            <td>Nov 15, 2025</td>
+                            <td>Building 13, Room 201</td>
+                            <td>jane.smith</td>
+                            <td>12/30</td>
+                            <td><strong style="color: #f59e0b;">40%</strong></td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                            <td>
+                                <button class="action-btn" title="View Details">👁️</button>
+                                <button class="action-btn" title="Edit">✏️</button>
+                                <button class="action-btn" title="Archive">📦</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Retirement Ceremony - Col. Johnson</strong></td>
+                            <td>Nov 20, 2025</td>
+                            <td>Parade Grounds</td>
+                            <td>bob.jones</td>
+                            <td>89/100</td>
+                            <td><strong style="color: #22c55e;">89%</strong></td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                            <td>
+                                <button class="action-btn" title="View Details">👁️</button>
+                                <button class="action-btn" title="Edit">✏️</button>
+                                <button class="action-btn" title="Archive">📦</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Change of Command Ceremony</strong></td>
+                            <td>Nov 25, 2025</td>
+                            <td>Headquarters Building</td>
+                            <td>alice.miller</td>
+                            <td>67/80</td>
+                            <td><strong style="color: #22c55e;">84%</strong></td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                            <td>
+                                <button class="action-btn" title="View Details">👁️</button>
+                                <button class="action-btn" title="Edit">✏️</button>
+                                <button class="action-btn" title="Archive">📦</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Unit Formation - November</strong></td>
+                            <td>Nov 30, 2025</td>
+                            <td>Training Grounds</td>
+                            <td>mike.davis</td>
+                            <td>234/250</td>
+                            <td><strong style="color: #22c55e;">94%</strong></td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                            <td>
+                                <button class="action-btn" title="View Details">👁️</button>
+                                <button class="action-btn" title="Edit">✏️</button>
+                                <button class="action-btn" title="Archive">📦</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dining In - Officers Mess</strong></td>
+                            <td>Oct 15, 2025</td>
+                            <td>Officers Club</td>
+                            <td>sarah.wilson</td>
+                            <td>42/50</td>
+                            <td><strong style="color: #22c55e;">84%</strong></td>
+                            <td><span class="status-badge status-archived">Archived</span></td>
+                            <td>
+                                <button class="action-btn" title="View Details">👁️</button>
+                                <button class="action-btn" title="Edit">✏️</button>
+                                <button class="action-btn" title="Archive">📦</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <div class="pagination-info">Showing 1-6 of 247 events</div>
+                <div class="pagination-controls">
+                    <button class="btn btn-secondary">← Previous</button>
+                    <button class="btn btn-secondary" style="background: rgba(212, 175, 55, 0.2); color: #d4af37;">1</button>
+                    <button class="btn btn-secondary">2</button>
+                    <button class="btn btn-secondary">3</button>
+                    <button class="btn btn-secondary">...</button>
+                    <button class="btn btn-secondary">42</button>
+                    <button class="btn btn-secondary">Next →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Grid - Additional Charts -->
+        <div class="bottom-grid">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">Event Types Distribution</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="eventTypesChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">User Growth</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="userGrowthChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">Check-in Performance</div>
+                </div>
+                <div class="chart-container" style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1rem;">
+                    <canvas id="checkinGaugeChart" style="max-height: 200px;"></canvas>
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; font-weight: 700; color: #d4af37; font-family: 'Courier New', monospace;">68%</div>
+                        <div style="color: #94a3b8; font-size: 0.875rem;">Average Check-in Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Chart.js Configuration
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+        Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif';
+
+        // Event Creation Trend Chart
+        const eventTrendCtx = document.getElementById('eventTrendChart').getContext('2d');
+        new Chart(eventTrendCtx, {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [{
+                    label: 'Events Created',
+                    data: [42, 58, 67, 80],
+                    borderColor: '#d4af37',
+                    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#d4af37',
+                    pointBorderColor: '#1e293b',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#d4af37',
+                        bodyColor: '#e2e8f0',
+                        borderColor: '#d4af37',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // RSVP Trend Chart
+        const rsvpTrendCtx = document.getElementById('rsvpTrendChart').getContext('2d');
+        new Chart(rsvpTrendCtx, {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [
+                    {
+                        label: 'Total RSVPs',
+                        data: [320, 445, 512, 566],
+                        borderColor: '#d4af37',
+                        backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Attending',
+                        data: [245, 334, 389, 428],
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Not Attending',
+                        data: [75, 111, 123, 138],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            color: '#e2e8f0'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#d4af37',
+                        bodyColor: '#e2e8f0',
+                        borderColor: '#d4af37',
+                        borderWidth: 1,
+                        padding: 12
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Event Types Distribution (Donut Chart)
+        const eventTypesCtx = document.getElementById('eventTypesChart').getContext('2d');
+        new Chart(eventTypesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Marine Corps Ball', 'Promotion', 'Retirement', 'Change of Command', 'Dining In', 'Formation', 'Other'],
+                datasets: [{
+                    data: [35, 45, 28, 22, 18, 67, 32],
+                    backgroundColor: [
+                        '#d4af37',
+                        '#22c55e',
+                        '#3b82f6',
+                        '#8b5cf6',
+                        '#ec4899',
+                        '#f59e0b',
+                        '#64748b'
+                    ],
+                    borderColor: '#1e293b',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'right',
+                        labels: {
+                            padding: 12,
+                            usePointStyle: true,
+                            color: '#e2e8f0',
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#d4af37',
+                        bodyColor: '#e2e8f0',
+                        borderColor: '#d4af37',
+                        borderWidth: 1,
+                        padding: 12
+                    }
+                }
+            }
+        });
+
+        // User Growth Chart (Area)
+        const userGrowthCtx = document.getElementById('userGrowthChart').getContext('2d');
+        new Chart(userGrowthCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'],
+                datasets: [{
+                    label: 'Total Users',
+                    data: [15, 22, 28, 35, 43, 52, 61, 68, 74, 82, 89],
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#22c55e',
+                    pointBorderColor: '#1e293b',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#d4af37',
+                        bodyColor: '#e2e8f0',
+                        borderColor: '#d4af37',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Check-in Gauge Chart (Doughnut used as gauge)
+        const checkinGaugeCtx = document.getElementById('checkinGaugeChart').getContext('2d');
+        new Chart(checkinGaugeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Checked In', 'Not Checked In'],
+                datasets: [{
+                    data: [68, 32],
+                    backgroundColor: ['#22c55e', 'rgba(255, 255, 255, 0.1)'],
+                    borderColor: '#1e293b',
+                    borderWidth: 3,
+                    circumference: 180,
+                    rotation: 270
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                }
+            }
+        });
+
+        // Add some interactivity
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = btn.getAttribute('title');
+                console.log(`Action clicked: ${action}`);
+            });
+        });
+
+        // Notification bell click
+        document.querySelector('.notification-bell').addEventListener('click', () => {
+            alert('Notifications:\n\n• Low RSVP Alert: "Promotion Ceremony" has only 40% response rate\n• Milestone: Platform reached 1,800 RSVPs!\n• Upcoming Event: "Marine Corps Ball" is in 3 days');
+        });
+
+        // User menu click
+        document.querySelector('.user-menu').addEventListener('click', () => {
+            alert('User Menu:\n\n• Profile Settings\n• Change Password\n• Admin Settings\n• Logout');
+        });
+
+        console.log('✅ Admin Dashboard Mockup Loaded Successfully');
+        console.log('📊 All charts rendered with sample data');
+        console.log('🎖️ This is a visual mockup - interactive features are simulated');
+    </script>
+</body>
+</html>
