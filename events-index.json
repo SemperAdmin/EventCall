@@ -1,131 +1,26 @@
 [
   [],
   {
-    "id": "3949a69c-1184-430f-a34a-4f2f759efe30",
-    "title": "Unit Formation",
-    "date": "2025-10-27",
-    "time": "08:00",
-    "location": "Bldg 4009",
-    "description": "Mandatory unit formation. All personnel are required to attend unless on approved leave or TDY.",
-    "askReason": true,
-    "allowGuests": false,
-    "requiresMealChoice": false,
-    "customQuestions": [
-      {
-        "id": "custom_0",
-        "question": "How long should your MCMAP belt be?"
-      }
-    ],
-    "eventDetails": {
-      "formation-type": {
-        "label": "Formation Type",
-        "value": "Inspection"
-      },
-      "uniform": {
-        "label": "Uniform",
-        "value": "Cammies"
-      },
-      "reporting-senior": {
-        "label": "Reporting Senior",
-        "value": "MSgt Shorter"
-      }
-    },
-    "created": 1761464342525,
-    "status": "active",
-    "createdBy": "tmmaness5@gmail.com",
-    "createdByName": "Tomas Maness",
-    "coverImage": ""
-  },
-  {
-    "id": "789bd66e-22c3-46a8-96b7-28b7e71579eb",
-    "title": "Marine Corps Birthday Ball",
-    "date": "2025-11-22",
-    "time": "18:46",
-    "location": "MCBH",
-    "description": "Join us in celebrating the founding of the United States Marine Corps with tradition, camaraderie, and honor.",
+    "id": "66170a64-ff20-47d4-8262-35f0542a8e69",
+    "title": "Retirement Ceremony",
+    "date": "2025-11-08",
+    "time": "19:04",
+    "location": "Hole 13",
+    "description": "Please join us in honoring the distinguished career and dedicated service of a fellow Marine.",
     "askReason": false,
     "allowGuests": true,
     "requiresMealChoice": true,
     "customQuestions": [],
     "eventDetails": {
-      "ball-year": {
-        "label": "Birthday Year",
-        "value": "250"
+      "retiree-name": {
+        "label": "Retiree Name",
+        "value": "Smith"
       }
     },
-    "created": 1762231602133,
+    "created": 1762232707716,
     "status": "active",
+    "createdBy": "furby203824",
     "createdByName": "furby203824",
-    "seatingChart": {
-      "enabled": true,
-      "numberOfTables": 10,
-      "seatsPerTable": 8,
-      "totalCapacity": 80,
-      "tables": [
-        {
-          "tableNumber": 1,
-          "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": true
-        },
-        {
-          "tableNumber": 2,
-          "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": false
-        },
-        {
-          "tableNumber": 3,
-          "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": false
-        },
-        {
-          "tableNumber": 4,
-          "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": false
-        },
-        {
-          "tableNumber": 5,
-          "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": false
-        },
-        {
-          "tableNumber": 6,
-          "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": false
-        },
-        {
-          "tableNumber": 7,
-          "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": false
-        },
-        {
-          "tableNumber": 8,
-          "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": false
-        },
-        {
-          "tableNumber": 9,
-          "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": false
-        },
-        {
-          "tableNumber": 10,
-          "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": false
-        }
-      ],
-      "unassignedGuests": [],
-      "lastModified": 1762231602134
-    },
-    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/d92c9c38-3b32-4fbb-be35-462301288b08.png"
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/62d1adc4-53e1-49bd-a4a5-9d227363aabe.jpg"
   }
 ]
