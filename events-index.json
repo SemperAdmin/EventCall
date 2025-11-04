@@ -1,26 +1,96 @@
 [
   [],
   {
-    "id": "66170a64-ff20-47d4-8262-35f0542a8e69",
-    "title": "Retirement Ceremony",
-    "date": "2025-11-08",
-    "time": "19:04",
-    "location": "Hole 13",
-    "description": "Please join us in honoring the distinguished career and dedicated service of a fellow Marine.",
+    "id": "13a8c3a3-117c-47ba-942b-a92c828b5ad2",
+    "title": "Marine Corps Birthday Ball",
+    "date": "2025-11-29",
+    "time": "20:49",
+    "location": "Ball room",
+    "description": "Join us in celebrating the founding of the United States Marine Corps with tradition, camaraderie, and honor.",
     "askReason": false,
     "allowGuests": true,
     "requiresMealChoice": true,
     "customQuestions": [],
     "eventDetails": {
-      "retiree-name": {
-        "label": "Retiree Name",
-        "value": "Smith"
+      "ball-year": {
+        "label": "Birthday Year",
+        "value": "250"
       }
     },
-    "created": 1762232707716,
+    "created": 1762238979226,
     "status": "active",
     "createdBy": "furby203824",
-    "createdByName": "furby203824",
-    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/62d1adc4-53e1-49bd-a4a5-9d227363aabe.jpg"
+    "createdByName": "STEPHEN SHORTER",
+    "seatingChart": {
+      "enabled": true,
+      "numberOfTables": 10,
+      "seatsPerTable": 8,
+      "totalCapacity": 80,
+      "tables": [
+        {
+          "tableNumber": 1,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": true
+        },
+        {
+          "tableNumber": 2,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 3,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 4,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 5,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 6,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 7,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 8,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 9,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 10,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        }
+      ],
+      "unassignedGuests": [],
+      "lastModified": 1762238979226
+    },
+    "coverImage": ""
   }
 ]
