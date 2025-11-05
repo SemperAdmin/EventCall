@@ -30,7 +30,14 @@
         {
           "tableNumber": 1,
           "capacity": 8,
-          "assignedGuests": [],
+          "assignedGuests": [
+            {
+              "rsvpId": "7721449c-9819-44b8-a851-9589192dbc7a",
+              "name": "paul",
+              "guestCount": 0,
+              "assignedAt": 1762370288638
+            }
+          ],
           "vipTable": true
         },
         {
@@ -88,11 +95,354 @@
           "vipTable": false
         }
       ],
-      "unassignedGuests": [
-        "7721449c-9819-44b8-a851-9589192dbc7a"
-      ],
-      "lastModified": 1762293950280
+      "unassignedGuests": [],
+      "lastModified": 1762370288638
     },
     "coverImage": ""
+  },
+  {
+    "id": "eee3bade-77cd-4b0a-8c54-8336755c1010",
+    "title": "Marine Corps Birthday Ball",
+    "date": "2025-11-29",
+    "time": "09:16",
+    "location": "MCB Quantico Inns",
+    "description": "Join us in celebrating the founding of the United States Marine Corps with tradition, camaraderie, and honor.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {
+      "ball-year": {
+        "label": "Birthday Year",
+        "value": "250"
+      },
+      "venue": {
+        "label": "Venue",
+        "value": "MCB Quantico Inns"
+      },
+      "dress-code": {
+        "label": "Dress Code",
+        "value": "Blues"
+      },
+      "ticket-price": {
+        "label": "Ticket Price",
+        "value": "150"
+      }
+    },
+    "created": 1762370235736,
+    "status": "active",
+    "createdBy": "furby203824",
+    "createdByName": "STEPHEN SHORTER",
+    "seatingChart": {
+      "enabled": true,
+      "numberOfTables": 50,
+      "seatsPerTable": 12,
+      "totalCapacity": 600,
+      "tables": [
+        {
+          "tableNumber": 1,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": true
+        },
+        {
+          "tableNumber": 2,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 3,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 4,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 5,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 6,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 7,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 8,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 9,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 10,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 11,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 12,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 13,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 14,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 15,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 16,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 17,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 18,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 19,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 20,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 21,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 22,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 23,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 24,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 25,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 26,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 27,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 28,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 29,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 30,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 31,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 32,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 33,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 34,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 35,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 36,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 37,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 38,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 39,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 40,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 41,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 42,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 43,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 44,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 45,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 46,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 47,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 48,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 49,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 50,
+          "capacity": 12,
+          "assignedGuests": [],
+          "vipTable": false
+        }
+      ],
+      "unassignedGuests": [],
+      "lastModified": 1762370235736
+    },
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/88879fd6-bade-4eb8-a4c1-78c1fe6cfa76.webp"
   }
 ]
