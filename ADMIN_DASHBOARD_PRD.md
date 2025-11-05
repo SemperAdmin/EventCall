@@ -1,10 +1,10 @@
 # Admin Dashboard PRD
 ## EventCall Military Event Management Platform
 
-**Version:** 1.1
+**Version:** 1.2
 **Date:** November 5, 2025
 **Author:** Claude AI
-**Status:** Draft for Review - Technical Corrections Applied
+**Status:** Draft for Review - Performance & Accuracy Improvements
 
 ---
 
@@ -710,11 +710,18 @@ Browser security models prevent accessing localStorage across different user ses
 - **Implementation:**
   ```javascript
   function getUsersFromEvents(events) {
-    const creatorEmails = [...new Set(events.map(e => e.createdBy))];
+    // Group events by creator in a single pass (O(events) complexity)
+    const eventsByCreator = events.reduce((acc, event) => {
+      const email = event.createdBy;
+      if (!acc[email]) {
+        acc[email] = [];
+      }
+      acc[email].push(event);
+      return acc;
+    }, {});
 
-    // Build basic user objects
-    const users = creatorEmails.map(email => {
-      const userEvents = events.filter(e => e.createdBy === email);
+    // Build user objects from grouped events
+    const users = Object.entries(eventsByCreator).map(([email, userEvents]) => {
       return {
         id: email,
         email: email,
@@ -759,10 +766,10 @@ jobs:
 
       - name: Commit updated users data
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add users/users.json
-          git commit -m "Update aggregated user data"
+          git commit -m "Update aggregated user data [skip ci]"
           git push
 ```
 
@@ -1490,30 +1497,35 @@ function calculateAvgRSVPsPerEvent(events, rsvps) {
 
 // Calculate true engagement rate (requires inviteeCount tracking)
 // Note: This requires adding an 'inviteeCount' field to each event object
+// Uses weighted average: (total RSVPs / total invitees) for statistical accuracy
 function calculateEngagementRate(events, rsvps) {
-  // Group RSVPs by event
-  const rsvpsByEvent = groupRSVPsByEvent(rsvps);
+  // Filter events that have invitee count tracking
+  const eventsWithInviteeData = events.filter(event => event.inviteeCount && event.inviteeCount > 0);
 
-  // Calculate engagement for each event that has invitee count
-  let totalEngagement = 0;
-  let eventsWithInviteeCount = 0;
-
-  events.forEach(event => {
-    if (event.inviteeCount && event.inviteeCount > 0) {
-      const eventRSVPs = rsvpsByEvent[event.id]?.length || 0;
-      const eventEngagement = (eventRSVPs / event.inviteeCount) * 100;
-      totalEngagement += eventEngagement;
-      eventsWithInviteeCount++;
-    }
-  });
-
-  if (eventsWithInviteeCount === 0) {
+  if (eventsWithInviteeData.length === 0) {
     // Fallback: return average RSVPs per event if invitee tracking not available
     return calculateAvgRSVPsPerEvent(events, rsvps);
   }
 
-  // Return average engagement rate across all events
-  return Math.round(totalEngagement / eventsWithInviteeCount);
+  // Group RSVPs by event
+  const rsvpsByEvent = groupRSVPsByEvent(rsvps);
+
+  // Calculate weighted engagement rate (total RSVPs / total invitees)
+  let totalRSVPsWithInviteeCount = 0;
+  let totalInvitees = 0;
+
+  eventsWithInviteeData.forEach(event => {
+    totalRSVPsWithInviteeCount += rsvpsByEvent[event.id]?.length || 0;
+    totalInvitees += event.inviteeCount;
+  });
+
+  if (totalInvitees === 0) {
+    return 0; // Avoid division by zero
+  }
+
+  // Return true weighted engagement rate
+  const trueEngagementRate = (totalRSVPsWithInviteeCount / totalInvitees) * 100;
+  return Math.round(trueEngagementRate);
 }
 
 // Calculate growth rate
@@ -1572,6 +1584,11 @@ This PRD requires approval from:
   - Corrected engagement rate calculation to use invitee count or display as "Average RSVPs per Event"
   - Updated data flow documentation
   - Added implementation recommendations for phased rollout
+- v1.2 - November 5, 2025 - Performance and accuracy improvements:
+  - **Performance**: Optimized `getUsersFromEvents()` from O(creators × events) to O(events) complexity
+  - **Accuracy**: Changed engagement rate to use weighted average (total RSVPs / total invitees) instead of average of percentages
+  - **CI Safety**: Added `[skip ci]` to GitHub Actions commit to prevent infinite workflow loops
+  - **Best Practice**: Updated to use official github-actions[bot] email address in workflow
 
 ---
 
