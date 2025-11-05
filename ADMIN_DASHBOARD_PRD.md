@@ -1,10 +1,10 @@
 # Admin Dashboard PRD
 ## EventCall Military Event Management Platform
 
-**Version:** 1.0
-**Date:** November 4, 2025
+**Version:** 1.1
+**Date:** November 5, 2025
 **Author:** Claude AI
-**Status:** Draft for Review
+**Status:** Draft for Review - Technical Corrections Applied
 
 ---
 
@@ -149,20 +149,22 @@ if (userAuth.getCurrentUser()?.username === 'semperadmin') {
 - **Data Source:** `rsvps/*.json` files
 
 **Card 3: Active Users**
-- **Metric:** Total registered users
+- **Metric:** Total registered users (unique event creators)
 - **Visual:** Large number with trend indicator
 - **Breakdowns:**
   - Event managers/creators
   - Active in last 30 days
   - New users this month
   - User growth rate
-- **Data Source:** LocalStorage `eventcall_user` data + event creator analysis
+- **Data Source:** Unique `createdBy` emails from `events/*.json` files
+- **Note:** Full user registry requires server-side aggregation via GitHub Actions workflow (see Section 4.2.3)
 
-**Card 4: Engagement Rate**
-- **Metric:** Average RSVP rate per event
-- **Visual:** Percentage with color coding (green >70%, yellow 40-70%, red <40%)
-- **Calculation:** `(Total RSVPs / Total Events) * 100`
-- **Benchmark:** Industry standard or historical average
+**Card 4: Average RSVPs per Event**
+- **Metric:** Average number of RSVPs received per event
+- **Visual:** Number with trend indicator
+- **Calculation:** `Total RSVPs / Total Events`
+- **Note:** If invitee count tracking is added to event data structure in the future, this can be converted to a true "Engagement Rate" percentage by calculating `(Total RSVPs / Total Invitees) * 100`
+- **Benchmark:** Historical average for the platform
 
 ---
 
@@ -623,9 +625,10 @@ if (userAuth.getCurrentUser()?.username === 'semperadmin') {
 
 #### 4.1.2 Data Flow
 ```
-Events JSON Files → Parse → Calculate Metrics → Render Charts
-RSVPs JSON Files  → Parse → Calculate Metrics → Update Tables
-LocalStorage      → Parse → User Data → Display
+Events JSON Files        → Parse → Calculate Metrics → Render Charts
+RSVPs JSON Files         → Parse → Calculate Metrics → Update Tables
+GitHub Actions Workflow  → Aggregate User Data → Store in users.json → Parse → Display
+                         (or derive from events[].createdBy for basic metrics)
 ```
 
 #### 4.1.3 Libraries & Dependencies
@@ -675,19 +678,93 @@ LocalStorage      → Parse → User Data → Display
   - Total guests: `rsvps.reduce((sum, r) => sum + (r.guestCount || 1), 0)`
 
 #### 4.2.3 User Data
-- **Source:**
-  - `localStorage` for registered users
-  - `events[].createdBy` for event creators
-  - Merge and deduplicate
-- **Parsing:**
+
+**⚠️ Important Note on User Data Aggregation:**
+
+Browser security models prevent accessing localStorage across different user sessions. The admin dashboard cannot read other users' localStorage data from the browser.
+
+**Recommended Approaches:**
+
+**Option 1: GitHub Actions Aggregation (Recommended)**
+- Create a GitHub Actions workflow that aggregates user data from authentication events
+- Store aggregated user data in a central `users/users.json` file in the repository
+- Admin dashboard fetches this file like events and RSVPs
+- Workflow triggers:
+  - On user registration (via existing `api-auth.yml`)
+  - On user login (update last login timestamp)
+  - On user profile update
+- **Implementation:**
   ```javascript
-  function getAllUsers() {
-    const registeredUsers = JSON.parse(localStorage.getItem('all_users') || '[]');
-    const creatorEmails = [...new Set(events.map(e => e.createdBy))];
-    // Merge logic
+  async function loadAllUsers() {
+    // Fetch aggregated user data from GitHub
+    const response = await fetch('users/users.json');
+    const users = await response.json();
     return users;
   }
   ```
+
+**Option 2: Derive from Event Creators (Interim Solution)**
+- Extract unique event creators from `events[].createdBy` field
+- Build basic user metrics from event data
+- Limited information available (no registration dates, last login, etc.)
+- **Implementation:**
+  ```javascript
+  function getUsersFromEvents(events) {
+    const creatorEmails = [...new Set(events.map(e => e.createdBy))];
+
+    // Build basic user objects
+    const users = creatorEmails.map(email => {
+      const userEvents = events.filter(e => e.createdBy === email);
+      return {
+        id: email,
+        email: email,
+        name: userEvents[0]?.createdByName || extractNameFromEmail(email),
+        eventCount: userEvents.length,
+        firstEventDate: Math.min(...userEvents.map(e => e.created)),
+        lastEventDate: Math.max(...userEvents.map(e => e.created)),
+        role: 'manager' // All event creators are managers
+      };
+    });
+
+    return users;
+  }
+  ```
+
+**Recommendation for Implementation:**
+1. **Phase 1**: Use Option 2 (derive from events) for initial implementation
+2. **Phase 2**: Implement Option 1 (GitHub Actions) for complete user management features
+3. **Phase 3**: Consider dedicated backend service for real-time user data (future enhancement)
+
+**Required GitHub Actions Workflow:**
+```yaml
+name: Aggregate User Data
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *' # Hourly aggregation
+
+jobs:
+  aggregate-users:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Aggregate user data
+        run: |
+          # Collect user registration events from issues/workflows
+          # Merge with existing users.json
+          # Update last login timestamps
+          # Save to users/users.json
+
+      - name: Commit updated users data
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add users/users.json
+          git commit -m "Update aggregated user data"
+          git push
+```
 
 #### 4.2.4 Caching Strategy
 - **Cache Duration:** 5 minutes
@@ -1403,14 +1480,40 @@ const eventTrendChart = new Chart(ctx, {
 ### 11.2 Sample Metric Calculations
 
 ```javascript
-// Calculate engagement rate
-function calculateEngagementRate(events, rsvps) {
+// Calculate average RSVPs per event
+function calculateAvgRSVPsPerEvent(events, rsvps) {
   if (events.length === 0) return 0;
 
-  const avgRSVPsPerEvent = rsvps.length / events.length;
-  const engagementRate = (avgRSVPsPerEvent / 100) * 100; // Assuming 100 invited per event
+  const avgRSVPs = rsvps.length / events.length;
+  return Math.round(avgRSVPs * 10) / 10; // Round to 1 decimal place
+}
 
-  return Math.round(engagementRate);
+// Calculate true engagement rate (requires inviteeCount tracking)
+// Note: This requires adding an 'inviteeCount' field to each event object
+function calculateEngagementRate(events, rsvps) {
+  // Group RSVPs by event
+  const rsvpsByEvent = groupRSVPsByEvent(rsvps);
+
+  // Calculate engagement for each event that has invitee count
+  let totalEngagement = 0;
+  let eventsWithInviteeCount = 0;
+
+  events.forEach(event => {
+    if (event.inviteeCount && event.inviteeCount > 0) {
+      const eventRSVPs = rsvpsByEvent[event.id]?.length || 0;
+      const eventEngagement = (eventRSVPs / event.inviteeCount) * 100;
+      totalEngagement += eventEngagement;
+      eventsWithInviteeCount++;
+    }
+  });
+
+  if (eventsWithInviteeCount === 0) {
+    // Fallback: return average RSVPs per event if invitee tracking not available
+    return calculateAvgRSVPsPerEvent(events, rsvps);
+  }
+
+  // Return average engagement rate across all events
+  return Math.round(totalEngagement / eventsWithInviteeCount);
 }
 
 // Calculate growth rate
@@ -1445,7 +1548,8 @@ function groupRSVPsByEvent(rsvps) {
 
 - **KPI:** Key Performance Indicator - measurable value showing how effectively objectives are achieved
 - **RSVP:** Répondez s'il vous plaît - response to event invitation
-- **Engagement Rate:** Percentage of invited guests who respond to event
+- **Engagement Rate:** Percentage of invited guests who respond to an event (requires invitee count tracking); if not tracked, displayed as "Average RSVPs per Event" instead
+- **Average RSVPs per Event:** Total RSVPs divided by total events (used when invitee count is not tracked)
 - **Check-in Rate:** Percentage of attendees who check in at event
 - **Response Time:** Time from event creation to first RSVP
 - **Active User:** User who has logged in or created event in last 30 days
@@ -1463,6 +1567,11 @@ This PRD requires approval from:
 
 **Version History:**
 - v1.0 - November 4, 2025 - Initial draft
+- v1.1 - November 5, 2025 - Technical corrections:
+  - Fixed user data aggregation strategy (removed localStorage approach, added GitHub Actions workflow)
+  - Corrected engagement rate calculation to use invitee count or display as "Average RSVPs per Event"
+  - Updated data flow documentation
+  - Added implementation recommendations for phased rollout
 
 ---
 
