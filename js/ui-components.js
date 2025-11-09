@@ -648,18 +648,31 @@ function updateRanksForBranch() {
     const selectedBranch = branchSelect.value;
 
     // Clear current ranks
-    rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">Select rank...</option>');
+    rankSelect.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select rank...';
+    rankSelect.appendChild(defaultOption);
 
     if (!selectedBranch || selectedBranch === 'Civilian' || selectedBranch === 'Other') {
         // For Civilian or Other, just add a Civilian option and disable
+        rankSelect.innerHTML = '';
+        const option = document.createElement('option');
+
         if (selectedBranch === 'Civilian') {
-            rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="Civilian">Civilian</option>');
+            option.value = 'Civilian';
+            option.textContent = 'Civilian';
+            rankSelect.appendChild(option);
             rankSelect.disabled = true;
         } else if (selectedBranch === 'Other') {
-            rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">N/A</option>');
+            option.value = '';
+            option.textContent = 'N/A';
+            rankSelect.appendChild(option);
             rankSelect.disabled = true;
         } else {
-            rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">Select service branch first...</option>');
+            option.value = '';
+            option.textContent = 'Select service branch first...';
+            rankSelect.appendChild(option);
             rankSelect.disabled = true;
         }
         return;
@@ -669,7 +682,11 @@ function updateRanksForBranch() {
     const branchData = window.MilitaryData[selectedBranch];
 
     if (!branchData) {
-        rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">No ranks available</option>');
+        rankSelect.innerHTML = '';
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No ranks available';
+        rankSelect.appendChild(option);
         rankSelect.disabled = true;
         return;
     }
