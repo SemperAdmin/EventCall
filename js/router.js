@@ -3,17 +3,32 @@
 
 (function(){
   function pageToPath(pageId, param) {
+    // Get the base path (e.g., '/EventCall/' for GitHub Pages or '/' for local)
+    const basePath = (window.getBasePath && window.getBasePath()) || '/';
+    const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+
     switch(pageId) {
-      case 'dashboard': return '/dashboard';
-      case 'create': return '/create';
-      case 'manage': return param ? `/manage/${param}` : '/manage';
-      case 'invite': return param ? `/invite/${param}` : '/invite';
-      default: return `/${pageId || ''}`;
+      case 'dashboard': return base + '/dashboard';
+      case 'create': return base + '/create';
+      case 'manage': return param ? `${base}/manage/${param}` : `${base}/manage`;
+      case 'invite': return param ? `${base}/invite/${param}` : `${base}/invite`;
+      default: return `${base}/${pageId || ''}`;
     }
   }
 
   function pathToPage(pathname) {
-    const path = String(pathname || '').replace(/^[#/]+/, '');
+    // Get the base path and strip it from the pathname
+    const basePath = (window.getBasePath && window.getBasePath()) || '/';
+    let path = String(pathname || '');
+
+    // Remove the base path if present
+    if (basePath !== '/' && path.startsWith(basePath)) {
+      path = path.substring(basePath.length);
+    }
+
+    // Clean up the path
+    path = path.replace(/^[#/]+/, '').replace(/\/$/, '');
+
     if (!path || path === 'index.html') return { pageId: 'dashboard' };
     const parts = path.split('/');
     const base = parts[0];

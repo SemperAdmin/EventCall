@@ -915,6 +915,7 @@ window.exportEventData = exportEventData;
 window.deleteEvent = deleteEvent;
 window.mailAttendee = mailAttendee;
 window.checkURLHash = checkURLHash;
+window.getBasePath = getBasePath;
 // New path-based handler
 function handleURLPath() {
     const pathname = window.location.pathname || '';
