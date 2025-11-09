@@ -719,10 +719,12 @@ async function handleEventSubmit(e) {
                 }
             }
 
-            // Additional async URL validation when present
-            if (baseData.location && window.validation && window.validation.isLikelyURL(baseData.location)) {
+            // Additional async URL validation when present - only for actual URLs
+            // Allow plain text addresses like "Building 123, Room 456"
+            const looksLikeURL = /^https?:\/\/|:\/\//.test(baseData.location);
+            if (baseData.location && looksLikeURL && window.validation && window.validation.validateURL) {
                 try {
-                    const check = await window.validation.validateURL(baseData.location, { requireHTTPS: true, verifyDNS: true });
+                    const check = await window.validation.validateURL(baseData.location, { requireHTTPS: false, verifyDNS: false });
                     if (!check.valid) {
                         check.errors.forEach(err => showToast(err, 'error'));
                         throw new Error('Invalid event location URL');
@@ -780,20 +782,27 @@ async function handleEventSubmit(e) {
             createdByName: currentUser.name || currentUser.username || 'unknown'
         };
 
-        // Secure URL validation for event location (create flow)
+        // Secure URL validation for event location - only if it looks like a URL
+        // Allow plain text addresses like "Building 123, Room 456"
         if (eventData.location && typeof window.validation === 'object' && typeof window.validation.validateURL === 'function') {
-            try {
-                const urlCheck = await window.validation.validateURL(eventData.location, { requireHTTPS: true, verifyDNS: true });
-                if (!urlCheck.valid) {
-                    showToast(`❌ Invalid event location URL: ${urlCheck.errors.join(', ')}`, 'error');
-                    throw new Error('Event location URL failed validation');
+            // Only validate as URL if it starts with http:// or https:// or contains ://
+            const looksLikeURL = /^https?:\/\/|:\/\//.test(eventData.location);
+
+            if (looksLikeURL) {
+                try {
+                    const urlCheck = await window.validation.validateURL(eventData.location, { requireHTTPS: false, verifyDNS: false });
+                    if (!urlCheck.valid) {
+                        showToast(`❌ Invalid event location URL: ${urlCheck.errors.join(', ')}`, 'error');
+                        throw new Error('Event location URL failed validation');
+                    }
+                    // Use sanitized URL
+                    eventData.location = urlCheck.sanitized;
+                } catch (e) {
+                    showToast('❌ Failed to validate event location URL', 'error');
+                    throw e;
                 }
-                // Use sanitized URL
-                eventData.location = urlCheck.sanitized;
-            } catch (e) {
-                showToast('❌ Failed to validate event location URL', 'error');
-                throw e;
             }
+            // Otherwise, treat as plain text and keep as-is (already sanitized above)
         }
 
         // Seating Chart: initialize and persist if enabled
