@@ -136,6 +136,40 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/59c31e2b-1c85-41fc-93fb-cd99c5d814e9.jpg"
   },
   {
+    "id": "aa1a72b5-3447-4822-9e52-e35a04635ac5",
+    "title": "Cookout",
+    "date": "2025-11-29",
+    "time": "23:58",
+    "location": "Klippers",
+    "description": "Battalion BBQ",
+    "askReason": false,
+    "allowGuests": false,
+    "requiresMealChoice": true,
+    "customQuestions": [
+      {
+        "id": "custom_0",
+        "question": "Food choice",
+        "type": "choice",
+        "options": [
+          "Beef",
+          "Chicken",
+          "Vegan"
+        ]
+      },
+      {
+        "id": "custom_1",
+        "question": "Tine you will arrive",
+        "type": "date"
+      }
+    ],
+    "eventDetails": {},
+    "created": 1762682417929,
+    "status": "active",
+    "createdBy": "furby203824",
+    "createdByName": "STEPHEN SHORTER",
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/28fa1b38-75bc-4a89-86ff-3b9bf50c3bd9.jpeg"
+  },
+  {
     "id": "ccf951b8-f602-4ea4-84da-42bcd5eb0d8d",
     "title": "Marine Corps Birthday Ball",
     "date": "2025-11-14",
