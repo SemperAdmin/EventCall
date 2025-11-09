@@ -318,21 +318,42 @@ function updateProfileRanksForBranch() {
         return;
     }
 
+    // Handle Civilian and Other
+    if (branch === 'Civilian') {
+        rankSelect.innerHTML = '<option value="Civilian">Civilian</option>';
+        rankSelect.disabled = true;
+        return;
+    }
+
+    if (branch === 'Other') {
+        rankSelect.innerHTML = '<option value="">N/A</option>';
+        rankSelect.disabled = true;
+        return;
+    }
+
     rankSelect.disabled = false;
 
-    // Get ranks for branch (use same data as registration)
-    const ranks = window.RANK_DATA && window.RANK_DATA[branch] ? window.RANK_DATA[branch] : [];
+    // Get ranks for branch using MilitaryData
+    if (!window.MilitaryData) {
+        console.error('MilitaryData not loaded');
+        return;
+    }
 
-    ranks.forEach(rank => {
+    const ranks = window.MilitaryData.getRanksForBranch(branch);
+
+    ranks.forEach(rankData => {
         const option = document.createElement('option');
-        option.value = rank;
-        option.textContent = rank;
+        option.value = rankData.value;
+        option.textContent = rankData.label;
         rankSelect.appendChild(option);
     });
 
     // Restore previously selected rank if still valid
-    if (currentRank && ranks.includes(currentRank)) {
-        rankSelect.value = currentRank;
+    if (currentRank) {
+        const validRank = ranks.find(r => r.value === currentRank);
+        if (validRank) {
+            rankSelect.value = currentRank;
+        }
     }
 }
 
