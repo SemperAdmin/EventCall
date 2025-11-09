@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Service Worker - EventCall</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1f2e, #2d3748);
+            color: #fff;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 { color: #d4af37; margin-top: 0; }
+        button {
+            background: #d4af37;
+            color: #1a1f2e;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover { background: #c29d2f; }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        ul { line-height: 1.8; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🧹 EventCall Service Worker Reset</h1>
+        <p>Use this page to clear broken service workers and caches.</p>
+
+        <div>
+            <button onclick="clearEverything()">🗑️ Clear All Caches & Service Workers</button>
+            <button onclick="checkStatus()">📊 Check Status</button>
+            <button onclick="goToApp()">🏠 Go to App</button>
+        </div>
+
+        <div id="status" class="status">
+            <p class="info">Click "Check Status" to see current service workers.</p>
+        </div>
+
+        <h2>Manual Steps (if buttons don't work):</h2>
+        <ol>
+            <li>Open DevTools (F12)</li>
+            <li>Go to "Application" tab</li>
+            <li>Click "Service Workers" in left sidebar</li>
+            <li>Click "Unregister" for all EventCall service workers</li>
+            <li>Go to "Storage" in left sidebar</li>
+            <li>Click "Clear site data"</li>
+            <li>Close this tab and open EventCall fresh</li>
+        </ol>
+
+        <h2>Console Commands:</h2>
+        <ul>
+            <li><code>window.unregisterServiceWorkers()</code> - Unregister all service workers</li>
+            <li><code>window.clearAppCache()</code> - Clear caches and reload</li>
+        </ul>
+    </div>
+
+    <script>
+        async function clearEverything() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<p class="info">🔄 Clearing...</p>';
+
+            try {
+                // Clear all caches
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(cacheNames.map(name => caches.delete(name)));
+                    console.log('✅ Caches cleared:', cacheNames);
+                }
+
+                // Unregister all service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(registrations.map(reg => reg.unregister()));
+                    console.log('✅ Service workers unregistered:', registrations.length);
+                }
+
+                statusDiv.innerHTML = '<p class="success">✅ Successfully cleared all caches and service workers!</p><p>You can now close this tab and reload EventCall.</p>';
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.innerHTML = `<p class="error">❌ Error: ${error.message}</p><p>Try the manual steps above.</p>`;
+            }
+        }
+
+        async function checkStatus() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<p class="info">🔍 Checking...</p>';
+
+            let html = '<h3>Current Status:</h3>';
+
+            // Check caches
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                html += `<p><strong>Caches:</strong> ${cacheNames.length} found</p>`;
+                if (cacheNames.length > 0) {
+                    html += '<ul>';
+                    cacheNames.forEach(name => {
+                        html += `<li>${name}</li>`;
+                    });
+                    html += '</ul>';
+                }
+            }
+
+            // Check service workers
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                html += `<p><strong>Service Workers:</strong> ${registrations.length} registered</p>`;
+                if (registrations.length > 0) {
+                    html += '<ul>';
+                    registrations.forEach(reg => {
+                        html += `<li>${reg.scope}</li>`;
+                    });
+                    html += '</ul>';
+                }
+            }
+
+            statusDiv.innerHTML = html;
+        }
+
+        function goToApp() {
+            window.location.href = './index.html';
+        }
+
+        // Auto-check on load
+        window.addEventListener('load', checkStatus);
+    </script>
+</body>
+</html>

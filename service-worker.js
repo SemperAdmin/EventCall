@@ -3,13 +3,13 @@
  * Provides offline support, caching, and performance optimization
  */
 
-const CACHE_NAME = 'eventcall-v2';
+// Increment version number to force cache refresh
+const CACHE_NAME = 'eventcall-v3';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Assets to cache on install
+// Note: Keep this minimal to avoid caching issues with login page
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
     '/styles/main.css',
     '/styles/components.css',
     '/styles/responsive.css',
@@ -17,15 +17,8 @@ const STATIC_ASSETS = [
     '/styles/dashboard-v2.css',
     '/styles/event-management-v2.css',
     '/styles/invite.css',
-    '/styles/login.css',
-    '/js/error-handler.js',
-    '/js/manager-system.js',
-    '/js/event-manager.js',
-    '/js/early-functions.js',
-    '/js/ui-components.js',
-    '/js/github-api.js',
-    '/js/config.js',
-    '/js/utils.js'
+    '/styles/login.css'
+    // IMPORTANT: Don't cache JS files or index.html to avoid login page issues
 ];
 
 // Install event - cache static assets
@@ -88,24 +81,16 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Handle SPA navigation - serve index.html for HTML page requests
+    // Handle SPA navigation - ALWAYS fetch from network for HTML to avoid login page caching issues
     const isNavigationRequest = request.mode === 'navigate' ||
                                 request.destination === 'document' ||
                                 (request.method === 'GET' && request.headers.get('accept')?.includes('text/html'));
 
     if (isNavigationRequest && request.method === 'GET') {
         event.respondWith(
-            caches.open(CACHE_NAME).then(cache => {
-                return cache.match('/index.html').then(cachedResponse => {
-                    const networkFetch = fetch('/index.html').then(networkResponse => {
-                        if (networkResponse && networkResponse.status === 200) {
-                            cache.put('/index.html', networkResponse.clone());
-                        }
-                        return networkResponse;
-                    }).catch(() => cachedResponse);
-
-                    return cachedResponse || networkFetch;
-                });
+            fetch(request).catch(() => {
+                // Only use cache as last resort fallback when network is completely unavailable
+                return caches.match('/index.html');
             })
         );
         return;
