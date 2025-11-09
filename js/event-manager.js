@@ -107,6 +107,7 @@ class EventManager {
             qaMoreMenu.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const act = btn.dataset.action;
+                    if (act === 'edit-event') this.editEvent(eventId);
                     if (act === 'copy-link') this.copyInviteLink(eventId);
                     if (act === 'sync-rsvps') syncWithGitHub();
                     if (act === 'delete-event') deleteEvent(eventId);
@@ -127,6 +128,9 @@ class EventManager {
 
         // Setup overview subtabs mapping existing sections
         this.setupOverviewSubtabs(event, eventResponses);
+
+        // Setup event delegation for remove buttons in seating chart
+        this.setupSeatingChartEventDelegation();
 
         // Render charts if available
         this.renderAttendanceChart(stats);
@@ -209,9 +213,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <button class="btn-back" onclick="goToDashboard()">
                         ← Back to Dashboard
                     </button>
-                    <button class="btn-edit" onclick="eventManager.editEvent('${eventId}')">
-                        ⚙️ Edit
-                    </button>
                 </div>
             </div>
 
@@ -223,6 +224,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 <div class="btn-group more-group">
                     <button class="btn-secondary" id="qa-more" aria-haspopup="true" aria-expanded="false">⋯ More</button>
                     <div class="dropdown" id="qa-more-menu" hidden>
+                        <button class="btn-tertiary" data-action="edit-event">⚙️ Edit Event</button>
                         <button class="btn-tertiary" data-action="copy-link">🔗 Copy Invite Link</button>
                         <button class="btn-tertiary" data-action="sync-rsvps">🔄 Sync RSVPs</button>
                         <button class="btn-tertiary danger" data-action="delete-event">🗑️ Delete Event</button>
@@ -327,10 +329,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <h2>⏱️ Event Timeline</h2>
                     <div id="timeline-list" class="timeline-list"></div>
                 </div>
-            </div>
 
-            <!-- RSVP Dashboard -->
-            <div class="rsvp-dashboard-section">
+                <!-- RSVP Dashboard -->
+                <div class="rsvp-dashboard-section">
                 <h2 class="rsvp-dashboard-title">📊 RSVP Dashboard</h2>
                 
                 <!-- Big Stat Cards -->
@@ -398,30 +399,30 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         <canvas id="responsesOverTimeChart" aria-label="Responses over time chart"></canvas>
                     </div>
                 </div>
-
             </div>
-
-            <!-- Invite Roster (moved to Guest List tab) -->
-            <div class="invite-roster-section" hidden>
-                <h3 class="invite-link-title">📥 Invite Roster</h3>
-                <div class="invite-link-actions" style="margin-bottom: 0.75rem;">
-                    <input type="file"
-                           id="roster-import-file-${eventId}"
-                           accept=".csv"
-                           style="display:none"
-                           onchange="window.csvImporter.handleRosterUpload(event, '${eventId}')">
-                    <button class="btn-action" onclick="document.getElementById('roster-import-file-${eventId}').click()">
-                        📤 Upload Roster CSV
-                    </button>
-                    <a href="#" onclick="window.csvImporter.downloadTemplate(); return false;" style="margin-left: 0.75rem; color: #60a5fa;">
-                        Download CSV Template
-                    </a>
-                </div>
-                <div id="roster-import-preview"></div>
             </div>
 
             <!-- Attendee List -->
             <div class="attendee-list-section">
+                <!-- Invite Roster -->
+                <div class="invite-roster-section" hidden>
+                    <h3 class="invite-link-title">📥 Invite Roster</h3>
+                    <div class="invite-link-actions" style="margin-bottom: 0.75rem;">
+                        <input type="file"
+                               id="roster-import-file-${eventId}"
+                               accept=".csv"
+                               style="display:none"
+                               onchange="window.csvImporter.handleRosterUpload(event, '${eventId}')">
+                        <button class="btn-action" onclick="document.getElementById('roster-import-file-${eventId}').click()">
+                            📤 Upload Roster CSV
+                        </button>
+                        <a href="#" onclick="window.csvImporter.downloadTemplate(); return false;" style="margin-left: 0.75rem; color: #60a5fa;">
+                            Download CSV Template
+                        </a>
+                    </div>
+                    <div id="roster-import-preview"></div>
+                </div>
+
                 <div class="attendee-list-header">
                     <h3 class="attendee-list-title">📋 Attendee List (${eventResponses.length + roster.filter(r => r.email && !respondedEmails.has(r.email.toLowerCase().trim())).length})</h3>
                     <div class="attendee-controls">
@@ -454,9 +455,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const btnOverview = document.getElementById('tab-overview-btn');
         const btnGuests = document.getElementById('tab-guests-btn');
         const btnSpecial = document.getElementById('tab-special-btn');
-        // Do not include timeline container here; Timeline visibility is controlled by Overview subtabs
-        const overviewSelectors = ['.overview-subtabs', '.event-overview-section', '.rsvp-dashboard-section', '.charts-grid', '.timeline-section'];
-        const guestSelectors = ['.attendee-list-section', '.invite-roster-section'];
+        // Note: rsvp-dashboard-section is now nested in event-overview-section, no need to list separately
+        // Note: invite-roster-section is now nested in attendee-list-section, no need to list separately
+        const overviewSelectors = ['.overview-subtabs', '.event-overview-section'];
+        const guestSelectors = ['.attendee-list-section'];
         // Remove invite-link-section from Special; invite link should only appear under Event Timeline
         const specialSelectors = ['.dashboard-actions', '.seating-chart-section'];
 
@@ -605,6 +607,30 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
         // Default to Attendance Stats
         activateAttendance();
+    }
+
+    /**
+     * Setup event delegation for seating chart remove buttons
+     */
+    setupSeatingChartEventDelegation() {
+        // Remove any existing delegation listeners first
+        document.removeEventListener('click', this._handleRemoveButtonClick);
+
+        // Create bound handler
+        this._handleRemoveButtonClick = (e) => {
+            if (e.target.closest('.table-guest-remove')) {
+                const btn = e.target.closest('.table-guest-remove');
+                const eventId = btn.dataset.eventId;
+                const rsvpId = btn.dataset.rsvpId;
+
+                if (eventId && rsvpId) {
+                    this.unassignGuest(eventId, rsvpId);
+                }
+            }
+        };
+
+        // Add event delegation
+        document.addEventListener('click', this._handleRemoveButtonClick);
     }
 
     populateTimeline(event, eventResponses) {
@@ -1695,7 +1721,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                         </option>`;
                                                     }).join('')}
                                                 </select>
-                                                <button class="table-guest-remove" onclick="eventManager.unassignGuest('${eventId}', '${guest.rsvpId}')" title="Remove from table">
+                                                <button class="table-guest-remove" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}" title="Remove from table">
                                                     ✖
                                                 </button>
                                             </div>
