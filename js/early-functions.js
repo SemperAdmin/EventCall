@@ -265,21 +265,146 @@ function showUserMenu() {
     if (!window.userAuth || !window.userAuth.isAuthenticated()) {
         return;
     }
-    
-    const user = window.userAuth.getCurrentUser();
-    
-    const message = `
-👤 ${user.name || user.username}
-${user.unit ? `🎖️ ${user.unit}` : ''}
 
-Do you want to log out?
-    `.trim();
-    
-    if (confirm(message)) {
-        window.userAuth.logout();
+    const user = window.userAuth.getCurrentUser();
+    const modal = document.getElementById('user-profile-modal');
+
+    if (!modal) {
+        console.error('User profile modal not found');
+        return;
+    }
+
+    // Populate modal with user data
+    const avatarEl = document.getElementById('profile-avatar');
+    const usernameEl = document.getElementById('profile-username');
+    const nameEl = document.getElementById('profile-name');
+    const branchEl = document.getElementById('profile-branch');
+    const rankEl = document.getElementById('profile-rank');
+
+    if (avatarEl) avatarEl.textContent = window.userAuth.getInitials ? window.userAuth.getInitials() : '👤';
+    if (usernameEl) usernameEl.value = user.username || '';
+    if (nameEl) nameEl.value = user.name || '';
+    if (branchEl) branchEl.value = user.branch || '';
+
+    // Update ranks for selected branch
+    if (user.branch) {
+        updateProfileRanksForBranch();
+    }
+
+    if (rankEl) rankEl.value = user.rank || '';
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Update rank options when branch is selected in profile
+ */
+function updateProfileRanksForBranch() {
+    const branchSelect = document.getElementById('profile-branch');
+    const rankSelect = document.getElementById('profile-rank');
+
+    if (!branchSelect || !rankSelect) return;
+
+    const branch = branchSelect.value;
+    const currentRank = rankSelect.value;
+
+    // Clear existing options
+    rankSelect.innerHTML = '<option value="">Select rank...</option>';
+
+    if (!branch) {
+        rankSelect.disabled = true;
+        rankSelect.innerHTML = '<option value="">Select service branch first...</option>';
+        return;
+    }
+
+    rankSelect.disabled = false;
+
+    // Get ranks for branch (use same data as registration)
+    const ranks = window.RANK_DATA && window.RANK_DATA[branch] ? window.RANK_DATA[branch] : [];
+
+    ranks.forEach(rank => {
+        const option = document.createElement('option');
+        option.value = rank;
+        option.textContent = rank;
+        rankSelect.appendChild(option);
+    });
+
+    // Restore previously selected rank if still valid
+    if (currentRank && ranks.includes(currentRank)) {
+        rankSelect.value = currentRank;
+    }
+}
+
+/**
+ * Save user profile changes
+ */
+async function saveUserProfile() {
+    if (!window.userAuth || !window.userAuth.isAuthenticated()) {
+        return;
+    }
+
+    const nameEl = document.getElementById('profile-name');
+    const branchEl = document.getElementById('profile-branch');
+    const rankEl = document.getElementById('profile-rank');
+
+    const name = nameEl?.value.trim();
+    const branch = branchEl?.value || '';
+    const rank = rankEl?.value || '';
+
+    if (!name || name.length < 2) {
+        showToast('❌ Please enter a valid name', 'error');
+        nameEl?.focus();
+        return;
+    }
+
+    const user = window.userAuth.getCurrentUser();
+
+    // Update user object
+    user.name = name;
+    user.branch = branch;
+    user.rank = rank;
+
+    // Save to storage
+    window.userAuth.saveUserToStorage(user);
+
+    // Update UI
+    if (window.updateUserDisplay) {
+        window.updateUserDisplay();
+    }
+
+    showToast('✅ Profile updated successfully', 'success');
+    closeUserProfile();
+}
+
+/**
+ * Close user profile modal
+ */
+function closeUserProfile() {
+    const modal = document.getElementById('user-profile-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Logout from profile modal
+ */
+function logoutFromProfile() {
+    if (confirm('Are you sure you want to log out?')) {
+        if (window.userAuth) {
+            window.userAuth.logout();
+        }
         location.reload();
     }
 }
+
+// Make functions globally available
+window.showUserMenu = showUserMenu;
+window.updateProfileRanksForBranch = updateProfileRanksForBranch;
+window.saveUserProfile = saveUserProfile;
+window.closeUserProfile = closeUserProfile;
+window.logoutFromProfile = logoutFromProfile;
 
 /**
  * Show toast notification - Available immediately
@@ -597,16 +722,36 @@ async function deleteEvent(eventId) {
 function checkURLHash() {
     const hash = window.location.hash.substring(1);
     const hasInviteData = window.location.search.includes('data=');
-    
+
     // Handle invite URLs (guest access)
     if (hash.startsWith('invite/') || hasInviteData) {
-        const eventId = hash.split('/')[1];
+        let eventId = '';
+
+        // Try to get event ID from hash first
+        if (hash.startsWith('invite/')) {
+            eventId = hash.split('/')[1];
+        }
+
+        // If no event ID in hash but we have query data, try to parse it
+        if (!eventId && hasInviteData) {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const data = params.get('data');
+                if (data) {
+                    const eventData = JSON.parse(decodeURIComponent(data));
+                    eventId = eventData.id;
+                }
+            } catch (e) {
+                console.error('Failed to parse event data from URL:', e);
+            }
+        }
+
         console.log('🔗 Direct invite link accessed:', eventId);
-        
+
         // Force show invite page without login requirement
         showPageContent('invite');
-        
-        if (window.uiComponents && window.uiComponents.showInvite) {
+
+        if (eventId && window.uiComponents && window.uiComponents.showInvite) {
             window.uiComponents.showInvite(eventId);
         } else {
             console.log('⏳ UI components not loaded yet, will handle invite later');

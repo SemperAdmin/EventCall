@@ -1652,7 +1652,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                         </div>
                                     </div>
                                     <div class="unassigned-guest-actions">
-                                        <select class="table-select" id="table-select-${guest.rsvpId}">
+                                        <select class="table-select" id="table-select-${guest.rsvpId}" onchange="if(this.value) eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}')">
                                             <option value="">Select Table...</option>
                                             ${event.seatingChart.tables.map(table => {
                                                 const occupancy = seatingChart.getTableOccupancy(table.tableNumber);
@@ -1664,9 +1664,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                 </option>`;
                                             }).join('')}
                                         </select>
-                                        <button class="assign-btn" onclick="eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}')">
-                                            Assign
-                                        </button>
                                     </div>
                                 </div>
                             `).join('')}
