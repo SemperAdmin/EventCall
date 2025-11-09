@@ -974,6 +974,17 @@ window.updateUserDisplay = updateUserDisplay;
 window.showUserMenu = showUserMenu;
 
 /**
+ * Show the app loading screen (called on successful login)
+ */
+function showAppLoader() {
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+        loader.classList.remove('hidden');
+    }
+}
+window.showAppLoader = showAppLoader;
+
+/**
  * Hide the app loading screen
  */
 function hideAppLoader() {
@@ -983,19 +994,18 @@ function hideAppLoader() {
         loader.classList.add('hidden');
         // Remove from DOM after animation completes
         setTimeout(() => {
-            loader.remove();
+            if (loader.parentNode) {
+                loader.remove();
+            }
         }, 500);
     }
 }
+window.hideAppLoader = hideAppLoader;
 
 // Initialize hash listener when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     initializeHashListener();
-
-    // Hide loader after a short delay to ensure everything is loaded
-    setTimeout(() => {
-        hideAppLoader();
-    }, 800);
+    // Note: loader is NOT auto-hidden here - only shows/hides on login
 });
 
 console.log('✅ Early functions loaded with username-only authentication support');

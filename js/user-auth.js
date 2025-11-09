@@ -320,6 +320,11 @@ const userAuth = {
                 // Hide login and show app
                 this.hideLoginScreen();
 
+                // Show loading screen while app initializes
+                if (window.showAppLoader) {
+                    window.showAppLoader();
+                }
+
                 // Load user's events
                 if (window.loadManagerData) {
                     await window.loadManagerData();
@@ -329,6 +334,13 @@ const userAuth = {
                 if (window.showPage) {
                     window.showPage('dashboard');
                 }
+
+                // Hide loading screen after a brief delay to ensure smooth transition
+                setTimeout(() => {
+                    if (window.hideAppLoader) {
+                        window.hideAppLoader();
+                    }
+                }, 800);
             } else {
                 throw new Error(response.error || 'Login failed');
             }
