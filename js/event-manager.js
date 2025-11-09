@@ -329,10 +329,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <h2>⏱️ Event Timeline</h2>
                     <div id="timeline-list" class="timeline-list"></div>
                 </div>
-            </div>
 
-            <!-- RSVP Dashboard -->
-            <div class="rsvp-dashboard-section">
+                <!-- RSVP Dashboard -->
+                <div class="rsvp-dashboard-section">
                 <h2 class="rsvp-dashboard-title">📊 RSVP Dashboard</h2>
                 
                 <!-- Big Stat Cards -->
@@ -400,30 +399,30 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         <canvas id="responsesOverTimeChart" aria-label="Responses over time chart"></canvas>
                     </div>
                 </div>
-
             </div>
-
-            <!-- Invite Roster (moved to Guest List tab) -->
-            <div class="invite-roster-section" hidden>
-                <h3 class="invite-link-title">📥 Invite Roster</h3>
-                <div class="invite-link-actions" style="margin-bottom: 0.75rem;">
-                    <input type="file"
-                           id="roster-import-file-${eventId}"
-                           accept=".csv"
-                           style="display:none"
-                           onchange="window.csvImporter.handleRosterUpload(event, '${eventId}')">
-                    <button class="btn-action" onclick="document.getElementById('roster-import-file-${eventId}').click()">
-                        📤 Upload Roster CSV
-                    </button>
-                    <a href="#" onclick="window.csvImporter.downloadTemplate(); return false;" style="margin-left: 0.75rem; color: #60a5fa;">
-                        Download CSV Template
-                    </a>
-                </div>
-                <div id="roster-import-preview"></div>
             </div>
 
             <!-- Attendee List -->
             <div class="attendee-list-section">
+                <!-- Invite Roster -->
+                <div class="invite-roster-section" hidden>
+                    <h3 class="invite-link-title">📥 Invite Roster</h3>
+                    <div class="invite-link-actions" style="margin-bottom: 0.75rem;">
+                        <input type="file"
+                               id="roster-import-file-${eventId}"
+                               accept=".csv"
+                               style="display:none"
+                               onchange="window.csvImporter.handleRosterUpload(event, '${eventId}')">
+                        <button class="btn-action" onclick="document.getElementById('roster-import-file-${eventId}').click()">
+                            📤 Upload Roster CSV
+                        </button>
+                        <a href="#" onclick="window.csvImporter.downloadTemplate(); return false;" style="margin-left: 0.75rem; color: #60a5fa;">
+                            Download CSV Template
+                        </a>
+                    </div>
+                    <div id="roster-import-preview"></div>
+                </div>
+
                 <div class="attendee-list-header">
                     <h3 class="attendee-list-title">📋 Attendee List (${eventResponses.length + roster.filter(r => r.email && !respondedEmails.has(r.email.toLowerCase().trim())).length})</h3>
                     <div class="attendee-controls">
@@ -456,9 +455,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const btnOverview = document.getElementById('tab-overview-btn');
         const btnGuests = document.getElementById('tab-guests-btn');
         const btnSpecial = document.getElementById('tab-special-btn');
-        // Do not include timeline container here; Timeline visibility is controlled by Overview subtabs
-        const overviewSelectors = ['.overview-subtabs', '.event-overview-section', '.rsvp-dashboard-section', '.charts-grid', '.timeline-section'];
-        const guestSelectors = ['.attendee-list-section', '.invite-roster-section'];
+        // Note: rsvp-dashboard-section is now nested in event-overview-section, no need to list separately
+        // Note: invite-roster-section is now nested in attendee-list-section, no need to list separately
+        const overviewSelectors = ['.overview-subtabs', '.event-overview-section'];
+        const guestSelectors = ['.attendee-list-section'];
         // Remove invite-link-section from Special; invite link should only appear under Event Timeline
         const specialSelectors = ['.dashboard-actions', '.seating-chart-section'];
 
