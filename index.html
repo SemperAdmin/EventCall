@@ -10,7 +10,7 @@
     <title>EventCall - Where Every Event Matters</title>
     <!-- Explicit favicon to avoid default /favicon.ico on organization root -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%231a1f2e'/%3E%3Ccircle cx='32' cy='32' r='20' fill='%23d4af37'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/main.min.css">
     <link rel="stylesheet" href="styles/components.css">
     <link rel="stylesheet" href="styles/invite.css">
     <link rel="stylesheet" href="styles/responsive.css">
@@ -24,6 +24,8 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <!-- DOMPurify for HTML sanitization -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous"></script>
+    <!-- zxcvbn for advanced password strength analysis -->
+    <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
 </head>
 <body>
 <!-- Skip to main content link for keyboard users and screen readers -->
@@ -577,18 +579,17 @@ function switchAuthTab(tab) {
 <script src="https://cdn.jsdelivr.net/npm/validator@13.9.0/validator.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.11.6/bundle/libphonenumber-js.min.js"></script>
 <script src="js/validation.js"></script>
--->
 
 <!-- Backend API (must load before auth if backend is used) -->
 <!-- Proxy configuration: set dispatchURL via localStorage or inline assignment -->
 <script>
   (function () {
     // Default proxy URL for production
-    var defaultURL = 'https://eventcall.onrender.com';
+    const defaultURL = 'https://eventcall.onrender.com';
     // Optional override without code changes:
     // In DevTools: localStorage.setItem('eventcall_proxy_url', 'https://your-alt-render-url')
-    var fromStorage = localStorage.getItem('eventcall_proxy_url') || '';
-    var dispatchURL = fromStorage || defaultURL;
+    const fromStorage = localStorage.getItem('eventcall_proxy_url') || '';
+    const dispatchURL = fromStorage || defaultURL;
     window.BACKEND_CONFIG = {
       dispatchURL: dispatchURL,
       // On *.github.io, prefer proxy to avoid CORS on GitHub API
@@ -602,6 +603,8 @@ function switchAuthTab(tab) {
 <script src="js/backend-api.js"></script>
 <!-- AUTHENTICATION - REPLACED manager-auth.js with user-auth.js -->
 <script src="js/user-auth.js?v=20251104-2"></script>
+<!-- UX-004: Form user experience enhancements -->
+<script src="js/form-ux.js"></script>
 
 <!-- GitHub and Event Management -->
 <!--

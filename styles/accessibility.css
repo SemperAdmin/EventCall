@@ -312,3 +312,42 @@ select {
         display: none;
     }
 }
+/* UX-004: Standardized inline errors and valid/invalid states */
+.form-error {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+input.is-invalid, select.is-invalid, textarea.is-invalid {
+  border-color: #ef4444 !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15);
+}
+
+input.is-valid, select.is-valid, textarea.is-valid {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15);
+}
+
+.strength-meter {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+.strength-bar {
+  height: 8px;
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+.strength-suggestions {
+  grid-column: 1 / -1;
+  margin: 0.25rem 0 0;
+  padding-left: 1rem;
+  color: #64748b;
+  font-size: 0.8rem;
+}

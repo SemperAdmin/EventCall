@@ -5,11 +5,21 @@
   "description": "EventCall security test harness",
   "scripts": {
     "start": "http-server -p 8080",
-    "test": "node tests/run-tests.js"
+    "test": "node tests/run-tests.js",
+    "build:css": "postcss styles/main.css -o styles/main.min.css",
+    "build:prod": "cross-env NODE_ENV=production postcss styles/main.css -o styles/main.min.css",
+    "lint:css": "stylelint \"styles/**/*.css\""
   },
   "devDependencies": {
     "http-server": "^14.1.1",
-    "puppeteer": "^22.7.1"
+    "puppeteer": "^22.7.1",
+    "autoprefixer": "^10.4.19",
+    "cssnano": "^6.1.0",
+    "postcss": "^8.4.35",
+    "postcss-cli": "^10.1.0",
+    "@fullhuman/postcss-purgecss": "^5.0.0",
+    "stylelint": "^16.9.0",
+    "stylelint-config-standard": "^36.0.0",
+    "cross-env": "^7.0.3"
   }
 }
-

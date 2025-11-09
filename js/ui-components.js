@@ -146,7 +146,16 @@ function createRSVPFormHTML(event, eventId) {
 
                 <div class="form-group">
                     <label for="rsvp-phone">Phone Number</label>
-                    <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" style="min-height: 44px;">
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                      <select id="rsvp-country" style="min-height:44px;">
+                        <option value="US">🇺🇸 US</option>
+                        <option value="CA">🇨🇦 CA</option>
+                        <option value="GB">🇬🇧 UK</option>
+                        <option value="AU">🇦🇺 AU</option>
+                        <option value="DE">🇩🇪 DE</option>
+                      </select>
+                      <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" style="min-height: 44px; flex:1;">
+                    </div>
                 </div>
 
                 <!-- Military Information (Optional) -->
@@ -217,6 +226,10 @@ function createRSVPFormHTML(event, eventId) {
                         <textarea id="reason" placeholder="Share your thoughts..." rows="3"></textarea>
                     </div>
                 ` : ''}
+
+                <div class="form-group">
+                  <button type="button" id="rsvp-start-over" class="btn-secondary">Start Over</button>
+                </div>
                 
                 ${createCustomQuestionsHTML(event.customQuestions || [])}
                 

@@ -1,0 +1,12 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "color-hex-case": "lower",
+    "color-hex-length": "short",
+    "font-family-no-duplicate-names": true,
+    "no-duplicate-selectors": true,
+    "declaration-block-no-duplicate-properties": [true, {"ignore": ["consecutive-duplicates-with-different-values"]}],
+    "block-no-empty": true
+  }
+}
+
