@@ -113,7 +113,7 @@ class BackendAPI {
                 const cfg = window.BACKEND_CONFIG || {};
                 const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
                 const csrf = await this.getProxyCsrf();
-                response = await fetch(base + '/api/dispatch', {
+                const proxyOptions = {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -122,7 +122,10 @@ class BackendAPI {
                         'X-CSRF-Expires': String(csrf.expires)
                     },
                     body: JSON.stringify(requestBody)
-                });
+                };
+                response = await (window.rateLimiter
+                    ? window.rateLimiter.fetch(base + '/api/dispatch', proxyOptions, { endpointKey: 'proxy_dispatch', retry: { maxAttempts: 5, baseDelayMs: 1000, jitter: true } })
+                    : fetch(base + '/api/dispatch', proxyOptions));
             } else {
                 response = await (window.rateLimiter ? window.rateLimiter.fetch(url, {
                     method: 'POST',

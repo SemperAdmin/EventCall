@@ -12,7 +12,8 @@ const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '';
 const CSRF_SHARED_SECRET = process.env.CSRF_SHARED_SECRET || '';
 
 if (!GITHUB_TOKEN || !REPO_OWNER || !REPO_NAME) {
-  console.error('Missing required env: GITHUB_TOKEN, REPO_OWNER, REPO_NAME');
+  console.error('Missing required env: GITHUB_TOKEN, REPO_OWNER, REPO_NAME. Exiting.');
+  process.exit(1);
 }
 if (!ALLOWED_ORIGIN) {
   console.warn('ALLOWED_ORIGIN is not set; requests will be blocked.');
@@ -32,11 +33,13 @@ app.use(cors({
 }));
 
 function isOriginAllowed(req) {
-  const origin = req.headers.origin || '';
+  const origin = req.headers.origin;
+  // Allow non-browser clients (no Origin) like curl and server-to-server
+  if (!origin) return true;
   if (origin !== ALLOWED_ORIGIN) return false;
-  // Optional referer check as a second signal
-  const referer = req.headers.referer || '';
-  return referer.startsWith(ALLOWED_ORIGIN);
+  // If referer exists, it must be consistent; otherwise allow
+  const referer = req.headers.referer;
+  return !referer || referer.startsWith(ALLOWED_ORIGIN);
 }
 
 function hmacToken(clientId, expiresMs) {
@@ -123,4 +126,3 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 app.listen(PORT, () => {
   console.log(`EventCall proxy listening on port ${PORT}`);
 });
-
