@@ -135,6 +135,20 @@
     transition: border-color 0.3s ease;
 }
 
+/* Darker background for all select dropdown options */
+select option {
+    background-color: #1a1f2e;
+    color: #ffffff;
+    padding: 0.5rem;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+    background-color: #2d3748;
+    color: #ffd700;
+}
+
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {
