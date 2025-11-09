@@ -242,6 +242,7 @@ class EventTemplates {
             // Show the event details section
             const eventDetailsSection = document.getElementById('event-details-section');
             if (eventDetailsSection) {
+                eventDetailsSection.classList.remove('hidden');
                 eventDetailsSection.style.display = 'block';
             }
 
