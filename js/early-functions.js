@@ -553,20 +553,31 @@ async function copyInviteLink(eventId) {
  * @returns {string} Base path (e.g., '/EventCall/' or '/')
  */
 function getBasePath() {
+    // Return cached value if already determined
+    if (window.__BASE_PATH_CACHE__) {
+        return window.__BASE_PATH_CACHE__;
+    }
+
     // Check if we're on GitHub Pages
     const isGitHubPages = window.location.hostname.endsWith('.github.io');
 
     if (isGitHubPages) {
+        // List of known app pages to exclude when extracting base path
+        const knownPages = ['dashboard', 'create', 'manage', 'invite', 'index.html'];
+
         // Extract repo name from pathname
         const pathParts = window.location.pathname.split('/').filter(p => p);
-        if (pathParts.length > 0) {
-            return '/' + pathParts[0] + '/';
+        if (pathParts.length > 0 && !knownPages.includes(pathParts[0])) {
+            window.__BASE_PATH_CACHE__ = '/' + pathParts[0] + '/';
+            return window.__BASE_PATH_CACHE__;
         }
-        // Fallback for root
-        return '/EventCall/';
+        // Fallback for root or when first part is a known page
+        window.__BASE_PATH_CACHE__ = '/EventCall/';
+        return window.__BASE_PATH_CACHE__;
     }
 
-    return '/';
+    window.__BASE_PATH_CACHE__ = '/';
+    return window.__BASE_PATH_CACHE__;
 }
 
 /**
