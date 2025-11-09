@@ -49,7 +49,10 @@ const userAuth = {
         const appContent = document.querySelector('.app-content');
 
         if (loginPage) loginPage.style.display = 'flex';
-        if (appContent) appContent.style.display = 'none';
+        if (appContent) {
+            appContent.classList.add('hidden');
+            appContent.style.display = 'none';
+        }
 
         console.log('🔑 Login screen displayed');
     },
@@ -62,7 +65,10 @@ const userAuth = {
         const appContent = document.querySelector('.app-content');
 
         if (loginPage) loginPage.style.display = 'none';
-        if (appContent) appContent.style.display = 'block';
+        if (appContent) {
+            appContent.classList.remove('hidden');
+            appContent.style.display = 'block';
+        }
 
         console.log('📱 App content displayed');
     },

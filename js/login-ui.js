@@ -250,7 +250,10 @@ class LoginUI {
                 // Show app
                 const appContent = document.querySelector('.app-content');
                 const nav = document.querySelector('.nav');
-                if (appContent) appContent.style.display = 'block';
+                if (appContent) {
+                    appContent.classList.remove('hidden');
+                    appContent.style.display = 'block';
+                }
                 if (nav) nav.style.display = 'flex';
                 
                 // Navigate to dashboard
@@ -389,7 +392,10 @@ class LoginUI {
                 // Show app
                 const appContent = document.querySelector('.app-content');
                 const nav = document.querySelector('.nav');
-                if (appContent) appContent.style.display = 'block';
+                if (appContent) {
+                    appContent.classList.remove('hidden');
+                    appContent.style.display = 'block';
+                }
                 if (nav) nav.style.display = 'flex';
                 
                 // Navigate to create event

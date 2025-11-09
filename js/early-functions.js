@@ -78,7 +78,10 @@ function enforceLogin() {
         const appContent = document.querySelector('.app-content');
         
         if (loginPage) loginPage.style.display = 'flex';
-        if (appContent) appContent.style.display = 'none';
+        if (appContent) {
+            appContent.classList.add('hidden');
+            appContent.style.display = 'none';
+        }
         
         return false;
     }
@@ -89,7 +92,10 @@ function enforceLogin() {
     const appContent = document.querySelector('.app-content');
     
     if (loginPage) loginPage.style.display = 'none';
-    if (appContent) appContent.style.display = 'block';
+    if (appContent) {
+        appContent.classList.remove('hidden');
+        appContent.style.display = 'block';
+    }
     
     return true;
 }
