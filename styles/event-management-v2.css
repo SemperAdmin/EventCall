@@ -569,6 +569,24 @@
   box-shadow: 0 8px 24px rgba(0,0,0,0.35);
 }
 
+.quick-actions-toolbar .dropdown button {
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.quick-actions-toolbar .dropdown button:hover {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: #ffd700;
+  color: #ffd700;
+  transform: translateX(4px);
+}
+
+.quick-actions-toolbar .dropdown button.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
 .manage-tabs {
   display: flex;
   gap: 0.5rem;

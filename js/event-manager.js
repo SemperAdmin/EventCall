@@ -107,6 +107,7 @@ class EventManager {
             qaMoreMenu.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const act = btn.dataset.action;
+                    if (act === 'edit-event') this.editEvent(eventId);
                     if (act === 'copy-link') this.copyInviteLink(eventId);
                     if (act === 'sync-rsvps') syncWithGitHub();
                     if (act === 'delete-event') deleteEvent(eventId);
@@ -127,6 +128,9 @@ class EventManager {
 
         // Setup overview subtabs mapping existing sections
         this.setupOverviewSubtabs(event, eventResponses);
+
+        // Setup event delegation for remove buttons in seating chart
+        this.setupSeatingChartEventDelegation();
 
         // Render charts if available
         this.renderAttendanceChart(stats);
@@ -209,9 +213,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <button class="btn-back" onclick="goToDashboard()">
                         ← Back to Dashboard
                     </button>
-                    <button class="btn-edit" onclick="eventManager.editEvent('${eventId}')">
-                        ⚙️ Edit
-                    </button>
                 </div>
             </div>
 
@@ -223,6 +224,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 <div class="btn-group more-group">
                     <button class="btn-secondary" id="qa-more" aria-haspopup="true" aria-expanded="false">⋯ More</button>
                     <div class="dropdown" id="qa-more-menu" hidden>
+                        <button class="btn-tertiary" data-action="edit-event">⚙️ Edit Event</button>
                         <button class="btn-tertiary" data-action="copy-link">🔗 Copy Invite Link</button>
                         <button class="btn-tertiary" data-action="sync-rsvps">🔄 Sync RSVPs</button>
                         <button class="btn-tertiary danger" data-action="delete-event">🗑️ Delete Event</button>
@@ -605,6 +607,30 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
         // Default to Attendance Stats
         activateAttendance();
+    }
+
+    /**
+     * Setup event delegation for seating chart remove buttons
+     */
+    setupSeatingChartEventDelegation() {
+        // Remove any existing delegation listeners first
+        document.removeEventListener('click', this._handleRemoveButtonClick);
+
+        // Create bound handler
+        this._handleRemoveButtonClick = (e) => {
+            if (e.target.closest('.table-guest-remove')) {
+                const btn = e.target.closest('.table-guest-remove');
+                const eventId = btn.dataset.eventId;
+                const rsvpId = btn.dataset.rsvpId;
+
+                if (eventId && rsvpId) {
+                    this.unassignGuest(eventId, rsvpId);
+                }
+            }
+        };
+
+        // Add event delegation
+        document.addEventListener('click', this._handleRemoveButtonClick);
     }
 
     populateTimeline(event, eventResponses) {
@@ -1695,7 +1721,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                         </option>`;
                                                     }).join('')}
                                                 </select>
-                                                <button class="table-guest-remove" onclick="eventManager.unassignGuest('${eventId}', '${guest.rsvpId}')" title="Remove from table">
+                                                <button class="table-guest-remove" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}" title="Remove from table">
                                                     ✖
                                                 </button>
                                             </div>
