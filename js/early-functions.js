@@ -368,6 +368,7 @@ async function saveUserProfile() {
     const nameEl = document.getElementById('profile-name');
     const branchEl = document.getElementById('profile-branch');
     const rankEl = document.getElementById('profile-rank');
+    const saveBtn = document.querySelector('#user-profile-modal button[onclick*="saveUserProfile"]');
 
     const name = nameEl?.value.trim();
     const branch = branchEl?.value || '';
@@ -380,22 +381,71 @@ async function saveUserProfile() {
     }
 
     const user = window.userAuth.getCurrentUser();
+    const showToast = window.showToast || function(msg, type) { console.log(msg); };
 
-    // Update user object
-    user.name = name;
-    user.branch = branch;
-    user.rank = rank;
+    try {
+        // Show loading state
+        if (saveBtn && window.LoadingUI && window.LoadingUI.withButtonLoading) {
+            await window.LoadingUI.withButtonLoading(saveBtn, 'Updating profile...', async () => {
+                // Trigger update_profile workflow via userAuth
+                const response = await window.userAuth.triggerAuthWorkflow('update_profile', {
+                    username: user.username,
+                    password: '', // Password not required for profile updates
+                    name: name,
+                    branch: branch,
+                    rank: rank,
+                    client_id: 'profile_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+                });
 
-    // Save to storage
-    window.userAuth.saveUserToStorage(user);
+                if (response.success && response.user) {
+                    // Update local user object with server response
+                    user.name = response.user.name;
+                    user.branch = response.user.branch || '';
+                    user.rank = response.user.rank || '';
 
-    // Update UI
-    if (window.updateUserDisplay) {
-        window.updateUserDisplay();
+                    // Save to storage
+                    window.userAuth.saveUserToStorage(user);
+
+                    // Update UI
+                    if (window.updateUserDisplay) {
+                        window.updateUserDisplay();
+                    }
+
+                    showToast('✅ Profile updated successfully', 'success');
+                    closeUserProfile();
+                } else {
+                    throw new Error(response.error || 'Profile update failed');
+                }
+            });
+        } else {
+            // Fallback if LoadingUI not available
+            const response = await window.userAuth.triggerAuthWorkflow('update_profile', {
+                username: user.username,
+                password: '',
+                name: name,
+                branch: branch,
+                rank: rank,
+                client_id: 'profile_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+            });
+
+            if (response.success && response.user) {
+                user.name = response.user.name;
+                user.branch = response.user.branch || '';
+                user.rank = response.user.rank || '';
+                window.userAuth.saveUserToStorage(user);
+                if (window.updateUserDisplay) {
+                    window.updateUserDisplay();
+                }
+                showToast('✅ Profile updated successfully', 'success');
+                closeUserProfile();
+            } else {
+                throw new Error(response.error || 'Profile update failed');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Profile update failed:', error);
+        showToast('❌ Profile update failed: ' + error.message, 'error');
     }
-
-    showToast('✅ Profile updated successfully', 'success');
-    closeUserProfile();
 }
 
 /**
