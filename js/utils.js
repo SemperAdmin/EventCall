@@ -97,13 +97,35 @@ function sanitizeText(text) {
 }
 
 /**
+ * Get the base path for the application (handles GitHub Pages)
+ * @returns {string} Base path (e.g., '/EventCall/' or '/')
+ */
+function getBasePath() {
+    // Check if we're on GitHub Pages
+    const isGitHubPages = window.location.hostname.endsWith('.github.io');
+
+    if (isGitHubPages) {
+        // Extract repo name from pathname
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        if (pathParts.length > 0) {
+            return '/' + pathParts[0] + '/';
+        }
+        // Fallback for root
+        return '/EventCall/';
+    }
+
+    return '/';
+}
+
+/**
  * Generate invite URL for an event
  * @param {Object} event - Event data
  * @returns {string} Invite URL
  */
 // function generateInviteURL(event) {
 function generateInviteURL(event) {
-    const baseURL = window.location.origin + window.location.pathname;
+    const basePath = getBasePath();
+    const baseURL = window.location.origin + basePath;
     const encodedData = encodeURIComponent(JSON.stringify({
         id: event.id,
         title: event.title,

@@ -726,11 +726,29 @@ class RSVPHandler {
     }
 
     /**
+     * Get the base path for the application (handles GitHub Pages)
+     */
+    getBasePath() {
+        const isGitHubPages = window.location.hostname.endsWith('.github.io');
+
+        if (isGitHubPages) {
+            const pathParts = window.location.pathname.split('/').filter(p => p);
+            if (pathParts.length > 0) {
+                return '/' + pathParts[0] + '/';
+            }
+            return '/EventCall/';
+        }
+
+        return '/';
+    }
+
+    /**
      * Generate edit URL for an RSVP
      */
     generateEditURL(event, rsvpId, editToken) {
         if (!event) return '';
-        const currentURL = window.location.href.split('?')[0].split('#')[0];
+        const basePath = this.getBasePath();
+        const baseURL = window.location.origin + basePath;
         const encodedData = btoa(JSON.stringify({
             id: event.id,
             title: event.title,
@@ -746,7 +764,7 @@ class RSVPHandler {
             customQuestions: event.customQuestions || [],
             created: event.created
         }));
-        return `${currentURL}?data=${encodedData}&edit=${editToken}&rsvpId=${rsvpId}#invite/${event.id}`;
+        return `${baseURL}?data=${encodedData}&edit=${editToken}&rsvpId=${rsvpId}#invite/${event.id}`;
     }
 
     /**
