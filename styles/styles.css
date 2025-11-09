@@ -38,8 +38,8 @@
 
 .form-group { margin-bottom: 1.5rem; }
 .form-label { display: block; color: var(--ux2-text-muted); font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; }
-.form-control { width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: var(--ux2-text-light); font-size: 1rem; transition: all 0.2s ease; }
-.form-control:focus { outline: none; border-color: var(--ux2-gold); background: rgba(255, 255, 255, 0.15); }
+.form-control { width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.25); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.5rem; color: var(--ux2-text-light); font-size: 1rem; transition: all 0.2s ease; }
+.form-control:focus { outline: none; border-color: var(--ux2-gold); background: rgba(255, 255, 255, 0.35); }
 .form-help { color: var(--ux2-text-muted); font-size: 0.8rem; display: block; margin-top: 0.25rem; }
 .form-help--inline { display: inline; margin-top: 0; }
 .text-danger { color: var(--ux2-danger); }

@@ -590,6 +590,76 @@ window.updateRegRanksForBranch = updateRegRanksForBranch;
   </div>
 </div>
 
+<!-- User Profile Modal -->
+<div id="user-profile-modal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2>User Profile</h2>
+        </div>
+        <div class="modal-body">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--ux2-gold); color: var(--ux2-navy); font-size: 2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                    <span id="profile-avatar">👤</span>
+                </div>
+            </div>
+
+            <form id="profile-edit-form">
+                <div class="form-group">
+                    <label for="profile-username" class="form-label">Username</label>
+                    <input
+                        type="text"
+                        id="profile-username"
+                        class="form-control"
+                        readonly
+                        disabled
+                        style="background: rgba(255, 255, 255, 0.15); cursor: not-allowed;"
+                    >
+                    <div class="form-help">Username cannot be changed</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                    <input
+                        type="text"
+                        id="profile-name"
+                        class="form-control"
+                        required
+                        minlength="2"
+                        placeholder="Enter your full name"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-branch" class="form-label">Service Branch</label>
+                    <select id="profile-branch" class="form-control" onchange="window.updateProfileRanksForBranch && window.updateProfileRanksForBranch()">
+                        <option value="">Select service branch...</option>
+                        <option value="USA">United States Army</option>
+                        <option value="USMC">United States Marine Corps</option>
+                        <option value="USN">United States Navy</option>
+                        <option value="USAF">United States Air Force</option>
+                        <option value="USSF">United States Space Force</option>
+                        <option value="USCG">United States Coast Guard</option>
+                        <option value="Civilian">Civilian</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-rank" class="form-label">Rank</label>
+                    <select id="profile-rank" class="form-control">
+                        <option value="">Select service branch first...</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeUserProfile()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="saveUserProfile()">Save Changes</button>
+            <button type="button" class="btn btn-danger" onclick="logoutFromProfile()">Logout</button>
+        </div>
+    </div>
+</div>
+
 <!-- Service Worker Registration -->
 <script src="js/service-worker-registration.js"></script>
 

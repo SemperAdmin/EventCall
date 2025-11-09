@@ -38,15 +38,35 @@
 
   const AppRouter = {
     init: function() {
+      // Check for query parameter with event data (invite links)
+      const hasInviteData = location.search && location.search.includes('data=');
+
       // Translate hash on first load for back-compat
       if (location.hash) {
         const hash = location.hash.replace(/^#/, '');
         const parts = hash.split('/');
         const pageId = parts[0] || 'dashboard';
         const param = parts[1] || '';
-        const path = pageToPath(pageId, param);
-        history.replaceState({ pageId, param }, '', path);
-        if (window.showPage) window.showPage(pageId);
+
+        // Handle invite URLs with hash
+        if (pageId === 'invite' || hasInviteData) {
+          const path = pageToPath('invite', param);
+          history.replaceState({ pageId: 'invite', param }, '', path + location.search);
+          if (window.showPageContent) window.showPageContent('invite');
+          if (param && window.uiComponents && window.uiComponents.showInvite) {
+            window.uiComponents.showInvite(param);
+          }
+        } else {
+          const path = pageToPath(pageId, param);
+          history.replaceState({ pageId, param }, '', path);
+          if (window.showPage) window.showPage(pageId);
+        }
+      } else if (hasInviteData) {
+        // Handle invite data in query parameter without hash
+        const parsed = pathToPage(location.pathname);
+        const pageId = parsed.pageId === 'dashboard' ? 'invite' : parsed.pageId;
+        history.replaceState({ pageId, param: '' }, '', pageToPath(pageId, ''));
+        if (window.showPageContent) window.showPageContent('invite');
       } else {
         const parsed = pathToPage(location.pathname);
         history.replaceState(parsed, '', pageToPath(parsed.pageId, parsed.param));
