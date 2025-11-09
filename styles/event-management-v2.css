@@ -1018,3 +1018,28 @@
     background: rgba(100, 116, 139, 0.3);
     color: #cbd5e1;
 }
+
+/* ============================================
+   BULK ACTIONS SECTION
+   ============================================ */
+
+.bulk-actions {
+    display: none;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: var(--gray-50);
+    border-radius: 0.5rem;
+    border: 2px solid var(--primary-color);
+}
+
+.bulk-actions-inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.bulk-actions-count {
+    font-weight: 600;
+    color: var(--primary-color);
+}

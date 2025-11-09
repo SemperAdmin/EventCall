@@ -1237,6 +1237,88 @@ class GitHubAPI {
     }
 
     /**
+     * Save responses to GitHub with atomic read-modify-write using SHA-based optimistic locking
+     * This prevents race conditions by ensuring we're updating the latest version of the file
+     * @param {string} eventId - Event ID
+     * @param {Array} responses - Array of response objects to save
+     * @returns {Promise<void>}
+     */
+    async saveResponses(eventId, responses) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available. Cannot save responses.');
+        }
+
+        try {
+            const path = `rsvps/${eventId}.json`;
+
+            // Fetch the current file to get its SHA (for optimistic locking)
+            let existingSha = null;
+
+            try {
+                const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                });
+
+                if (existingResponse.ok) {
+                    const existingData = await existingResponse.json();
+                    existingSha = existingData.sha;
+                    console.log(`✅ Found existing responses file with SHA: ${existingSha}`);
+                }
+            } catch (error) {
+                console.log('No existing responses file found, will create new one');
+            }
+
+            // Prepare content
+            const content = this.safeBase64Encode(JSON.stringify(responses, null, 2));
+
+            const updateData = {
+                message: `Update responses for event ${eventId} (${responses.length} responses)`,
+                content: content,
+                branch: 'main'
+            };
+
+            // Include SHA if file exists (this enables optimistic locking)
+            if (existingSha) {
+                updateData.sha = existingSha;
+            }
+
+            // Save to GitHub
+            const saveResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'EventCall-App'
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            if (!saveResponse.ok) {
+                const errorText = await saveResponse.text();
+
+                // Check if it's a conflict (SHA mismatch)
+                if (saveResponse.status === 409) {
+                    throw new Error('Conflict: The responses file was modified by another user. Please refresh and try again.');
+                }
+
+                throw new Error(`Failed to save responses: ${saveResponse.status} - ${errorText}`);
+            }
+
+            console.log(`✅ Saved ${responses.length} responses for event ${eventId} with optimistic locking`);
+
+        } catch (error) {
+            console.error('Failed to save responses:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Upload an image to the public image repository
      * @param {File} file - The image file to upload
      * @param {string} fileName - The desired name for the file in the repo
