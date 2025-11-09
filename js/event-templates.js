@@ -221,21 +221,21 @@ class EventTemplates {
             template.eventFields.forEach(field => {
                 const fieldDiv = document.createElement('div');
                 fieldDiv.className = 'form-group';
-                fieldDiv.innerHTML = `
-                    <label for="event-detail-${field.id}">
-                        ${field.label}${field.required ? ' *' : ''}
+                fieldDiv.innerHTML = window.utils.sanitizeHTML(`
+                    <label for="event-detail-${window.utils.escapeHTML(field.id)}">
+                        ${window.utils.escapeHTML(field.label)}${field.required ? ' *' : ''}
                     </label>
                     <input
                         type="text"
-                        id="event-detail-${field.id}"
-                        name="${field.id}"
-                        placeholder="${field.placeholder || ''}"
+                        id="event-detail-${window.utils.escapeHTML(field.id)}"
+                        name="${window.utils.escapeHTML(field.id)}"
+                        placeholder="${window.utils.escapeHTML(field.placeholder || '')}"
                         ${field.required ? 'required' : ''}
                         class="event-detail-field"
-                        data-field-id="${field.id}"
-                        data-field-label="${field.label}"
+                        data-field-id="${window.utils.escapeHTML(field.id)}"
+                        data-field-label="${window.utils.escapeHTML(field.label)}"
                     >
-                `;
+                `);
                 eventDetailsContainer.appendChild(fieldDiv);
             });
 

@@ -234,15 +234,21 @@ class CSVImporter {
 
         showToast(`⏳ Importing ${this.validRows.length} guests...`, 'success');
 
-        // Store in localStorage (in production, would submit to GitHub workflow)
+        // Store in secure session storage (dev); production submits to backend
         this.validRows.forEach(rsvpData => {
             const storageKey = `eventcall_pending_rsvps_${rsvpData.eventId}`;
             let pendingRSVPs = [];
 
             try {
-                const existing = localStorage.getItem(storageKey);
-                if (existing) {
-                    pendingRSVPs = JSON.parse(existing);
+                const storageSync = window.utils && window.utils.secureStorageSync;
+                if (storageSync) {
+                    const arr = storageSync.get(storageKey);
+                    if (Array.isArray(arr)) pendingRSVPs = arr;
+                } else {
+                    const existing = localStorage.getItem(storageKey);
+                    if (existing) {
+                        pendingRSVPs = JSON.parse(existing);
+                    }
                 }
             } catch (e) {
                 console.warn('Failed to load existing pending RSVPs:', e);
@@ -251,7 +257,12 @@ class CSVImporter {
             pendingRSVPs.push(rsvpData);
 
             try {
-                localStorage.setItem(storageKey, JSON.stringify(pendingRSVPs));
+                const storageSync = window.utils && window.utils.secureStorageSync;
+                if (storageSync) {
+                    storageSync.set(storageKey, pendingRSVPs, { ttl: 4 * 60 * 60 * 1000 });
+                } else {
+                    localStorage.setItem(storageKey, JSON.stringify(pendingRSVPs));
+                }
             } catch (e) {
                 console.error('Failed to save RSVP:', e);
             }
@@ -422,7 +433,12 @@ Bob Johnson,bob@example.com,555-0102,No,,,Civilian,,,Personal conflict,0`;
         }
         const key = `eventcall_invite_roster_${eventId}`;
         try {
-            localStorage.setItem(key, JSON.stringify(this.validRosterRows));
+            const storageSync = window.utils && window.utils.secureStorageSync;
+            if (storageSync) {
+                storageSync.set(key, this.validRosterRows, { ttl: 4 * 60 * 60 * 1000 });
+            } else {
+                localStorage.setItem(key, JSON.stringify(this.validRosterRows));
+            }
             showToast(`✅ Saved ${this.validRosterRows.length} invitees to roster`, 'success');
         } catch (e) {
             console.error('Failed to save roster:', e);

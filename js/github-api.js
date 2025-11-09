@@ -94,7 +94,12 @@ class GitHubAPI {
             options.body = JSON.stringify(data);
         }
 
-        const response = await fetch(url, options);
+        const response = await (window.rateLimiter
+            ? window.rateLimiter.fetch(url, options, {
+                endpointKey: 'github_contents',
+                retry: { maxAttempts: 5, baseDelayMs: 800, jitter: true }
+              })
+            : fetch(url, options));
         return await this.handleResponse(response);
     }
 
@@ -413,13 +418,19 @@ class GitHubAPI {
             console.log('🔎 Loading RSVP issues from GitHub...');
             
             // Get issues with RSVP label
-            const response = await fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
+            const response = await (window.rateLimiter ? window.rateLimiter.fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
                 headers: {
                     'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json',
                     'User-Agent': 'EventCall-App'
                 }
-            });
+            }, { endpointKey: 'github_issues', retry: { maxAttempts: 5, baseDelayMs: 1000, jitter: true } }) : fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
+                }
+            }));
 
             if (!response.ok) {
                 throw new Error(`Failed to load RSVP issues: ${response.status}`);
@@ -710,13 +721,27 @@ class GitHubAPI {
                 createData.sha = existingSha;
             }
 
+            // CSRF headers for state-changing request (informational; GitHub does not validate)
+            const csrfToken = (window.csrf && window.csrf.getToken && window.csrf.getToken()) || '';
+
+            // Client-side origin whitelist precheck
+            if (window.csrf && typeof window.csrf.originAllowed === 'function') {
+                if (!window.csrf.originAllowed()) {
+                    const err = new Error('Origin not allowed by SECURITY_CONFIG');
+                    if (window.errorHandler) window.errorHandler.handleError(err, 'Security-CSRF', { origin: window.location.origin });
+                    throw err;
+                }
+            }
+
             const createResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json',
                     'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App'
+                    'User-Agent': 'EventCall-App',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify(createData)
             });

@@ -14,8 +14,9 @@ function addCustomQuestion(questionText = '') {
 
     const questionItem = document.createElement('div');
     questionItem.className = 'custom-question-item';
+    // Preserve inline handler; escape dynamic value
     questionItem.innerHTML = `
-        <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${questionText}">
+        <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${window.utils.escapeHTML(questionText)}">
         <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
     `;
     container.appendChild(questionItem);
@@ -112,7 +113,8 @@ async function syncWithGitHub() {
         // Update button state
         const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
         syncButtons.forEach(btn => {
-            btn.innerHTML = '<div class="spinner"></div> Syncing...';
+            // Safe HTML injection for spinner state
+            btn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Syncing...');
             btn.disabled = true;
         });
 
@@ -143,7 +145,8 @@ async function syncWithGitHub() {
         // Reset button state
         const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
         syncButtons.forEach(btn => {
-            btn.innerHTML = '🔄 Sync RSVPs';
+            // Use textContent to avoid HTML parsing for simple text
+            btn.textContent = '🔄 Sync RSVPs';
             btn.disabled = false;
         });
     }
@@ -165,11 +168,11 @@ async function updatePendingRSVPCount() {
         const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
         syncButtons.forEach(btn => {
             if (count > 0) {
-                btn.innerHTML = `🔄 Sync RSVPs (${count} pending)`;
+                btn.innerHTML = window.utils.sanitizeHTML(`🔄 Sync RSVPs (${window.utils.escapeHTML(String(count))} pending)`);
                 btn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
                 btn.style.animation = 'pulse 2s infinite';
             } else {
-                btn.innerHTML = '🔄 Sync RSVPs';
+                btn.innerHTML = window.utils.sanitizeHTML('🔄 Sync RSVPs');
                 btn.style.background = '';
                 btn.style.animation = '';
             }
@@ -209,10 +212,11 @@ function updateDashboardSyncStatus(pendingCount) {
             font-weight: 600;
             color: #92400e;
         `;
+        // Keep inline onclick; escape dynamic pieces
         syncBanner.innerHTML = `
             <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                 <span style="font-size: 1.2rem;">📬</span>
-                <span>${pendingCount} new RSVP${pendingCount > 1 ? 's' : ''} ready to sync!</span>
+                <span>${window.utils.escapeHTML(String(pendingCount))} new RSVP${pendingCount > 1 ? 's' : ''} ready to sync!</span>
                 <button class="btn" onclick="syncWithGitHub()" style="margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.875rem;">
                     🔄 Sync Now
                 </button>
@@ -697,6 +701,31 @@ async function handleEventSubmit(e) {
         if (window.eventManager && window.eventManager.editMode) {
             const baseData = window.eventManager.getFormData ? window.eventManager.getFormData() : {};
 
+            // Validate event data (title/date/time and location URL)
+            if (window.eventManager && typeof window.eventManager.validateEventData === 'function') {
+                const validation = window.eventManager.validateEventData(baseData);
+                if (!validation.valid) {
+                    validation.errors.forEach(err => showToast(err, 'error'));
+                    throw new Error('Event validation failed');
+                }
+            }
+
+            // Additional async URL validation when present
+            if (baseData.location && window.validation && window.validation.isLikelyURL(baseData.location)) {
+                try {
+                    const check = await window.validation.validateURL(baseData.location, { requireHTTPS: true, verifyDNS: true });
+                    if (!check.valid) {
+                        check.errors.forEach(err => showToast(err, 'error'));
+                        throw new Error('Invalid event location URL');
+                    }
+                    // Optionally use sanitized URL
+                    baseData.location = check.sanitized;
+                } catch (e2) {
+                    showToast('❌ Failed to validate event location URL', 'error');
+                    throw e2;
+                }
+            }
+
             // Preserve or initialize seating chart based on toggle
             const enableSeatingEl = document.getElementById('enable-seating');
             const currentEvent = window.eventManager.currentEvent;
@@ -741,6 +770,22 @@ async function handleEventSubmit(e) {
             createdBy: (currentUser.username || 'unknown'),
             createdByName: currentUser.name || currentUser.username || 'unknown'
         };
+
+        // Secure URL validation for event location (create flow)
+        if (eventData.location && typeof window.validation === 'object' && typeof window.validation.validateURL === 'function') {
+            try {
+                const urlCheck = await window.validation.validateURL(eventData.location, { requireHTTPS: true, verifyDNS: true });
+                if (!urlCheck.valid) {
+                    showToast(`❌ Invalid event location URL: ${urlCheck.errors.join(', ')}`, 'error');
+                    throw new Error('Event location URL failed validation');
+                }
+                // Use sanitized URL
+                eventData.location = urlCheck.sanitized;
+            } catch (e) {
+                showToast('❌ Failed to validate event location URL', 'error');
+                throw e;
+            }
+        }
 
         // Seating Chart: initialize and persist if enabled
         const enableSeating = document.getElementById('enable-seating');
@@ -814,7 +859,7 @@ async function handleEventSubmit(e) {
         // Reset upload area text
         const coverUpload = document.getElementById('cover-upload');
         if (coverUpload) {
-            coverUpload.innerHTML = '<p>Click or drag to upload cover image</p>';
+            coverUpload.innerHTML = window.utils.sanitizeHTML('<p>Click or drag to upload cover image</p>');
         }
 
         clearCustomQuestions();
@@ -1059,24 +1104,30 @@ function setupPhotoUpload() {
  * @param {File} file - Image file to process
  */
 async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInput) {
-
-    // Validate file size (5MB max)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-        showToast('❌ Image too large. Maximum size is 5MB', 'error');
-        return;
-    }
-
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-        showToast('❌ Invalid file type. Please use JPEG, PNG, GIF, or WebP', 'error');
-        return;
+    // Enhanced file validation (size, MIME, signature)
+    if (window.validation && typeof window.validation.validateImageUpload === 'function') {
+        const check = await window.validation.validateImageUpload(file);
+        if (!check.valid) {
+            showToast('❌ ' + (check.errors.join('\n') || 'File validation failed'), 'error');
+            return;
+        }
+    } else {
+        // Fallback: minimal checks
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            showToast('❌ Image too large. Maximum size is 5MB', 'error');
+            return;
+        }
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            showToast('❌ Invalid file type. Please use JPEG, PNG, GIF, or WebP', 'error');
+            return;
+        }
     }
 
     try {
         // Show loading state
-        coverUpload.innerHTML = '<div class="spinner"></div><p>Uploading...</p>';
+        coverUpload.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div><p>Uploading...</p>');
 
         // Generate a unique filename
         const fileExtension = file.name.split('.').pop();
@@ -1091,7 +1142,7 @@ async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInp
         coverPreview.classList.remove('hidden');
 
         // Update upload area text
-        coverUpload.innerHTML = '<p>✅ Image uploaded! Click or drag to change</p>';
+        coverUpload.innerHTML = window.utils.sanitizeHTML('<p>✅ Image uploaded! Click or drag to change</p>');
 
         showToast('📷 Cover image uploaded successfully!', 'success');
 
@@ -1100,7 +1151,7 @@ async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInp
         showToast('❌ Failed to upload image: ' + error.message, 'error');
 
         // Reset upload area
-        coverUpload.innerHTML = '<p>Click or drag to upload cover image</p>';
+        coverUpload.innerHTML = window.utils.sanitizeHTML('<p>Click or drag to upload cover image</p>');
     }
 }
 

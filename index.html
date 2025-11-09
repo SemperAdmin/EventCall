@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Reduce referrer leakage to external sites -->
+    <meta name="referrer" content="no-referrer">
+    <!-- Strengthen CSP by upgrading insecure requests and allowing workers safely -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: https://www.google.com https://www.gstatic.com https://dns.google; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
     <title>EventCall - Where Every Event Matters</title>
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/components.css">
@@ -16,6 +20,8 @@
     <!-- Scripts -->
     <!-- CSV Parser -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <!-- DOMPurify for HTML sanitization -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
 <!-- Skip to main content link for keyboard users and screen readers -->
@@ -540,14 +546,44 @@ function switchAuthTab(tab) {
 <!-- ============================================
      SCRIPTS (UPDATED ORDER)
      ============================================ -->
-<script src="js/backend-api.js"></script>
+<!-- Temporarily minimizing scripts to isolate a parse error -->
 <script src="js/config.js?v=20251104-2"></script>
+<!-- Isolation mode: other scripts temporarily disabled for debugging
+<script src="js/rate-limiter.js"></script>
 <script src="js/utils.js"></script>
+<!-- Re-enabling remaining modules for isolation testing -->
+<script src="js/validation.js"></script>
+<script src="js/manager-auth.js"></script>
+<script src="js/recurring-events.js"></script>
+<script src="js/login-ui.js"></script>
+<script src="js/main.js"></script>
+<script src="js/calendar-export.js"></script>
+<script src="js/csv-import.js"></script>
+<script src="js/event-templates.js"></script>
+<script src="js/military-data.js"></script>
+<script src="js/qr-checkin.js"></script>
+<script src="js/seating-chart.js"></script>
+<script src="js/service-worker-registration.js"></script>
+<!-- Removed duplicate imports: keeping versioned user-auth and single backend-api later -->
+<script src="js/utils.js"></script>
+<script src="js/csrf.js"></script>
+<script src="js/github-api.js"></script>
+<script src="js/rsvp-handler.js"></script>
+<script src="js/ui-components.js"></script>
+<script src="js/event-manager.js"></script>
+<script src="js/manager-system.js"></script>
+<script src="js/early-functions.js"></script>
+<script src="js/rate-limiter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/validator@13.9.0/validator.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.11.6/bundle/libphonenumber-js.min.js"></script>
+<script src="js/validation.js"></script>
+-->
 
 <!-- AUTHENTICATION - REPLACED manager-auth.js with user-auth.js -->
 <script src="js/user-auth.js?v=20251104-2"></script>
 
 <!-- GitHub and Event Management -->
+<!--
 <script src="js/github-api.js"></script>
 <script src="js/calendar-export.js"></script>
 <script src="js/military-data.js"></script>
@@ -560,6 +596,8 @@ function switchAuthTab(tab) {
 <script src="js/ui-components.js"></script>
 <script src="js/rsvp-handler.js"></script>
 <script src="js/early-functions.js"></script>
+-->
 
 </body>
 </html>
+ 

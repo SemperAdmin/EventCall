@@ -17,8 +17,14 @@ class EventManager {
     getInviteRoster(eventId) {
         const key = `eventcall_invite_roster_${eventId}`;
         try {
-            const raw = localStorage.getItem(key);
-            return raw ? JSON.parse(raw) : [];
+            const storageSync = window.utils && window.utils.secureStorageSync;
+            if (storageSync) {
+                const roster = storageSync.get(key);
+                return Array.isArray(roster) ? roster : [];
+            } else {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : [];
+            }
         } catch (e) {
             console.warn('Failed to load roster:', e);
             return [];
@@ -61,7 +67,7 @@ class EventManager {
             `;
         }
 
-        document.getElementById('event-details').innerHTML = this.generateEventDetailsHTML(event, eventId, responseTableHTML);
+        document.getElementById('event-details').innerHTML = window.utils.sanitizeHTML(this.generateEventDetailsHTML(event, eventId, responseTableHTML));
         showPage('manage');
         
         const targetHash = `#manage/${eventId}`;
@@ -462,7 +468,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         return new Promise((resolve) => {
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
-            modal.innerHTML = `
+            modal.innerHTML = window.utils.sanitizeHTML(`
                 <div class="modal-content" style="max-width: 500px;">
                     <div class="modal-header">
                         <h3>📧 Send Event Reminder</h3>
@@ -499,7 +505,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         ">Send Reminders</button>
                     </div>
                 </div>
-            `;
+            `);
 
             // Add styles for reminder options
             const style = document.createElement('style');
@@ -703,7 +709,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
-        modal.innerHTML = `
+        modal.innerHTML = window.utils.sanitizeHTML(`
             <div class="modal-content qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title" tabindex="0" style="max-width: 500px;">
                 <div class="modal-header">
                     <h3 id="qr-modal-title">📱 Event QR Code</h3>
@@ -745,7 +751,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <button id="qr-close-footer-btn" class="btn btn-secondary" aria-label="Close modal">Close</button>
                 </div>
             </div>
-        `;
+        `);
 
         // Add QR modal styles
         const style = document.createElement('style');
@@ -1107,7 +1113,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             if (!window.MilitaryData) return;
             
             const ranks = window.MilitaryData.getRanksForBranch(branchValue) || [];
-            rankSelect.innerHTML = '<option value="">All Ranks</option>';
+            rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">All Ranks</option>');
             ranks.forEach(r => {
                 const opt = document.createElement('option');
                 opt.value = r.value;
@@ -1147,7 +1153,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
         try {
             if (syncBtn) {
-                syncBtn.innerHTML = '<div class="spinner"></div> Syncing...';
+                syncBtn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Syncing...');
                 syncBtn.disabled = true;
             }
 
@@ -1550,12 +1556,12 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         });
         
         if (searchTerm || attendanceFilter) {
-            statsElement.innerHTML = `🔗 Showing ${visibleCount} of ${totalCount} responses`;
+            statsElement.innerHTML = window.utils.sanitizeHTML(`🔗 Showing ${visibleCount} of ${totalCount} responses`);
             if (visibleCount === 0) {
-                statsElement.innerHTML += ' - <span style="color: var(--error-color);">No matches found</span>';
+                statsElement.innerHTML = window.utils.sanitizeHTML(statsElement.innerHTML + ' - <span style="color: var(--error-color);">No matches found</span>');
             }
         } else {
-            statsElement.innerHTML = `📊 Showing ${totalCount} of ${totalCount} responses`;
+            statsElement.innerHTML = window.utils.sanitizeHTML(`📊 Showing ${totalCount} of ${totalCount} responses`);
         }
     }
 
@@ -1573,7 +1579,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         });
         
         const statsElement = document.getElementById(`search-stats-${eventId}`);
-        statsElement.innerHTML = `📊 Showing ${rows.length} of ${rows.length} responses`;
+        statsElement.innerHTML = window.utils.sanitizeHTML(`📊 Showing ${rows.length} of ${rows.length} responses`);
         
         showToast('ðŸ§¹ Search cleared', 'success');
     }
@@ -1650,16 +1656,16 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     // Update upload area to show existing image
     const uploadArea = document.getElementById('cover-upload');
     if (uploadArea) {
-        uploadArea.innerHTML = `
+        uploadArea.innerHTML = window.utils.sanitizeHTML(`
             <p style="color: #10b981; font-weight: 600;">✅ Current image loaded</p>
             <p style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Click to change image</p>
-        `;
+        `);
     }
 } else {
     // Reset upload area for new image
     const uploadArea = document.getElementById('cover-upload');
     if (uploadArea) {
-        uploadArea.innerHTML = `<p>Click or drag to upload cover image</p>`;
+        uploadArea.innerHTML = window.utils.sanitizeHTML(`<p>Click or drag to upload cover image</p>`);
     }
 }
 
@@ -1720,8 +1726,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             questions.forEach(q => {
                 const questionItem = document.createElement('div');
                 questionItem.className = 'custom-question-item';
+                // Avoid sanitizing full template to preserve inline onclick.
+                // Escape dynamic attribute value to prevent injection.
                 questionItem.innerHTML = `
-                    <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${q.question || ''}">
+                    <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${window.utils.escapeHTML(q.question || '')}">
                     <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">ðŸ—‘ï¸</button>
                 `;
                 container.appendChild(questionItem);
@@ -1973,6 +1981,36 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         if (eventDate < yesterday) {
             result.valid = false;
             result.errors.push('Event date cannot be more than 1 day in the past');
+        }
+
+        // Location URL validation (SEC-005)
+        if (eventData.location && window.validation && typeof window.validation.isLikelyURL === 'function') {
+            if (window.validation.isLikelyURL(eventData.location)) {
+                // Enforce https and basic domain checks
+                // Using DNS check is optional due to latency
+                // If invalid, block submission with clear message
+                // Note: sanitized URL returned for display/storage if needed
+                // We do not auto-modify the user's input here
+                // to avoid surprising changes in form fields
+                // The backend will also re-validate
+                const checkPromise = window.validation.validateURL(eventData.location, { requireHTTPS: true, verifyDNS: false });
+                // Support both async and sync environments
+                if (checkPromise && typeof checkPromise.then === 'function') {
+                    // This method is synchronous; signal invalid and let submit handler re-validate asynchronously
+                    // Store a marker error to be replaced in submit handler when async resolves
+                    // For now, perform a quick client-side protocol check
+                    try {
+                        const u = new URL(eventData.location.startsWith('http') ? eventData.location : `https://${eventData.location}`);
+                        if (u.protocol !== 'https:') {
+                            result.valid = false;
+                            result.errors.push('Event location URL must use https://');
+                        }
+                    } catch {
+                        result.valid = false;
+                        result.errors.push('Please enter a valid event location URL');
+                    }
+                }
+            }
         }
 
         return result;

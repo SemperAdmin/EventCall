@@ -37,12 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
 function loadInviteContentDirect() {
     const event = getEventFromURL();
     if (!event) {
-        document.getElementById('invite-content').innerHTML = `
+        document.getElementById('invite-content').innerHTML = window.utils.sanitizeHTML(`
             <div style="text-align: center; padding: 3rem; color: #ef4444;">
                 <h2>❌ Event Not Found</h2>
                 <p>This invite link may be invalid or the event may have been deleted.</p>
             </div>
-        `;
+        `);
         return;
     }
     
@@ -50,11 +50,11 @@ function loadInviteContentDirect() {
     const isPast = isEventInPast(event.date, event.time);
     
     if (isPast) {
-        document.getElementById('invite-content').innerHTML = createPastEventHTML(event);
+        document.getElementById('invite-content').innerHTML = window.utils.sanitizeHTML(createPastEventHTML(event));
         return;
     }
     
-    document.getElementById('invite-content').innerHTML = createInviteHTML(event, eventId);
+    document.getElementById('invite-content').innerHTML = window.utils.sanitizeHTML(createInviteHTML(event, eventId));
     
     // Setup form functionality
     setupRSVPForm();
@@ -562,18 +562,18 @@ function updateRanksForBranch() {
     const selectedBranch = branchSelect.value;
 
     // Clear current ranks
-    rankSelect.innerHTML = '<option value="">Select rank...</option>';
+    rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">Select rank...</option>');
 
     if (!selectedBranch || selectedBranch === 'Civilian' || selectedBranch === 'Other') {
         // For Civilian or Other, just add a Civilian option and disable
         if (selectedBranch === 'Civilian') {
-            rankSelect.innerHTML = '<option value="Civilian">Civilian</option>';
+            rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="Civilian">Civilian</option>');
             rankSelect.disabled = true;
         } else if (selectedBranch === 'Other') {
-            rankSelect.innerHTML = '<option value="">N/A</option>';
+            rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">N/A</option>');
             rankSelect.disabled = true;
         } else {
-            rankSelect.innerHTML = '<option value="">Select service branch first...</option>';
+            rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">Select service branch first...</option>');
             rankSelect.disabled = true;
         }
         return;
@@ -583,7 +583,7 @@ function updateRanksForBranch() {
     const branchData = window.MilitaryData[selectedBranch];
 
     if (!branchData) {
-        rankSelect.innerHTML = '<option value="">No ranks available</option>';
+        rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">No ranks available</option>');
         rankSelect.disabled = true;
         return;
     }

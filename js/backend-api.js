@@ -3,6 +3,27 @@ class BackendAPI {
         this.owner = 'SemperAdmin';
         this.repo = 'EventCall';
         this.apiBase = 'https://api.github.com';
+        this.tokenIndex = parseInt(sessionStorage.getItem('github_token_index') || '0', 10);
+    }
+
+    getToken() {
+        const cfg = window.GITHUB_CONFIG || {};
+        const tokens = Array.isArray(cfg.tokens) ? cfg.tokens.filter(t => !!t) : [];
+        if (tokens.length > 0) {
+            const tok = tokens[this.tokenIndex % tokens.length];
+            return tok;
+        }
+        return cfg.token || null;
+    }
+
+    advanceToken() {
+        const cfg = window.GITHUB_CONFIG || {};
+        const tokens = Array.isArray(cfg.tokens) ? cfg.tokens.filter(t => !!t) : [];
+        if (tokens.length > 1) {
+            this.tokenIndex = (this.tokenIndex + 1) % tokens.length;
+            sessionStorage.setItem('github_token_index', String(this.tokenIndex));
+            console.warn('🔄 Rotated GitHub token due to rate limiting');
+        }
     }
 
     async triggerWorkflow(eventType, payload) {
@@ -16,14 +37,25 @@ class BackendAPI {
             return { success: true, local: true };
         }
 
-        // Get token from GITHUB_CONFIG
-        const token = window.GITHUB_CONFIG && window.GITHUB_CONFIG.token ? window.GITHUB_CONFIG.token : null;
+        // Get token (with optional rotation support)
+        const token = this.getToken();
 
         if (!token) {
             throw new Error('GitHub token not available for workflow trigger');
         }
 
         try {
+            // CSRF origin check (client-side preflight)
+            if (window.csrf && typeof window.csrf.originAllowed === 'function') {
+                if (!window.csrf.originAllowed()) {
+                    const err = new Error('Origin not allowed by SECURITY_CONFIG');
+                    if (window.errorHandler) window.errorHandler.handleError(err, 'Security-CSRF', { origin: window.location.origin });
+                    throw err;
+                }
+            }
+
+            const csrfToken = (window.csrf && window.csrf.getToken && window.csrf.getToken()) || '';
+
             console.log('Triggering workflow:', eventType);
             console.log('Payload size:', JSON.stringify(payload).length, 'bytes');
 
@@ -31,21 +63,41 @@ class BackendAPI {
             const requestBody = {
                 event_type: eventType,
                 client_payload: {
-                    data: payload,            // full RSVP/event data lives here
+                    data: { ...payload, csrfToken }, // embed CSRF token
                     sentAt: Date.now(),       // optional meta
-                    source: 'EventCall-App'   // optional meta
+                    source: 'EventCall-App',  // optional meta
+                    origin: window.location.origin,
+                    referer: document.referrer || ''
                 }
             };
 
-            const response = await fetch(url, {
+            const response = await (window.rateLimiter ? window.rateLimiter.fetch(url, {
                 method: 'POST',
                 headers: {
                     'Authorization': 'token ' + token,
                     'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify(requestBody)
-            });
+            }, { endpointKey: 'github_dispatch', retry: { maxAttempts: 5, baseDelayMs: 1000, jitter: true } }) : fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'token ' + token,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify(requestBody)
+            }));
+
+            // Rotate token if rate limit is exhausted
+            const remaining = parseInt(response.headers.get('x-ratelimit-remaining') || '-1', 10);
+            if (!isNaN(remaining) && remaining <= 0) {
+                this.advanceToken();
+            }
 
             if (!response.ok) {
                 // Try to get error details from response
@@ -100,7 +152,10 @@ class BackendAPI {
             checkInToken: rsvpData.checkInToken || '',
             editToken: rsvpData.editToken || '',
             isUpdate: rsvpData.isUpdate || false,
-            lastModified: rsvpData.lastModified || null
+            lastModified: rsvpData.lastModified || null,
+            csrfToken: (window.csrf && window.csrf.getToken && window.csrf.getToken()) || '',
+            captchaToken: rsvpData.captchaToken || '',
+            captchaAction: rsvpData.captchaAction || ''
         };
 
         if (!payload.eventId || !payload.name || !payload.email) {
@@ -112,6 +167,10 @@ class BackendAPI {
         }
 
         console.log('Submitting RSVP payload with guestCount:', payload.guestCount);
+        if (!payload.csrfToken) {
+            const err = new Error('Missing CSRF token');
+            if (window.errorHandler) window.errorHandler.handleError(err, 'Security-CSRF', { form: 'rsvp' });
+        }
 
         // Try workflow dispatch first, fall back to GitHub Issues if it fails
         try {
@@ -125,7 +184,7 @@ class BackendAPI {
     async submitRSVPViaIssue(rsvpData) {
         console.log('Submitting RSVP via GitHub Issue...');
 
-        const token = window.GITHUB_CONFIG && window.GITHUB_CONFIG.token ? window.GITHUB_CONFIG.token : null;
+        const token = this.getToken();
 
         if (!token) {
             throw new Error('GitHub token not available');
@@ -133,6 +192,19 @@ class BackendAPI {
 
         // Format RSVP data for issue body
         const issueTitle = `RSVP: ${rsvpData.name} - ${rsvpData.attending ? 'Attending' : 'Not Attending'}`;
+
+        // Build military info section without nested template literals
+        let militaryInfo = '';
+        if (rsvpData.rank || rsvpData.unit || rsvpData.branch) {
+            militaryInfo += '### Military Information\n';
+            if (rsvpData.rank) militaryInfo += `**Rank:** ${rsvpData.rank}\n`;
+            if (rsvpData.unit) militaryInfo += `**Unit:** ${rsvpData.unit}\n`;
+            if (rsvpData.branch) militaryInfo += `**Branch:** ${rsvpData.branch}\n`;
+        }
+
+        const reasonBlock = rsvpData.reason ? `**Reason:** ${rsvpData.reason}\n\n` : '';
+        const allergyBlock = rsvpData.allergyDetails ? `**Allergy Details:** ${rsvpData.allergyDetails}\n\n` : '';
+
         const issueBody = `
 ## RSVP Submission
 
@@ -144,13 +216,13 @@ class BackendAPI {
 **Attending:** ${rsvpData.attending ? '✅ Yes' : '❌ No'}
 **Guest Count:** ${rsvpData.guestCount}
 
-${rsvpData.rank || rsvpData.unit || rsvpData.branch ? `### Military Information
-${rsvpData.rank ? `**Rank:** ${rsvpData.rank}\n` : ''}${rsvpData.unit ? `**Unit:** ${rsvpData.unit}\n` : ''}${rsvpData.branch ? `**Branch:** ${rsvpData.branch}\n` : ''}` : ''}
+${militaryInfo}
 
-${rsvpData.reason ? `**Reason:** ${rsvpData.reason}\n\n` : ''}${rsvpData.allergyDetails ? `**Allergy Details:** ${rsvpData.allergyDetails}\n\n` : ''}
+${reasonBlock}${allergyBlock}
 ---
 **Timestamp:** ${new Date(rsvpData.timestamp).toISOString()}
 **Validation Hash:** ${rsvpData.validationHash}
+**CSRF Token:** ${(window.csrf && window.csrf.getToken && window.csrf.getToken()) || ''}
 **Submission Method:** github_issue_fallback
 
 \`\`\`json
@@ -159,7 +231,7 @@ ${JSON.stringify(rsvpData, null, 2)}
 `;
 
         try {
-            const response = await fetch(`${this.apiBase}/repos/${this.owner}/${this.repo}/issues`, {
+            const response = await (window.rateLimiter ? window.rateLimiter.fetch(`${this.apiBase}/repos/${this.owner}/${this.repo}/issues`, {
                 method: 'POST',
                 headers: {
                     'Authorization': 'token ' + token,
@@ -171,7 +243,24 @@ ${JSON.stringify(rsvpData, null, 2)}
                     body: issueBody,
                     labels: ['rsvp', 'automated', rsvpData.attending ? 'attending' : 'not-attending']
                 })
-            });
+            }, { endpointKey: 'github_issues', retry: { maxAttempts: 5, baseDelayMs: 1000, jitter: true } }) : fetch(`${this.apiBase}/repos/${this.owner}/${this.repo}/issues`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'token ' + token,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: issueTitle,
+                    body: issueBody,
+                    labels: ['rsvp', 'automated', rsvpData.attending ? 'attending' : 'not-attending']
+                })
+            }));
+
+            const remaining = parseInt(response.headers.get('x-ratelimit-remaining') || '-1', 10);
+            if (!isNaN(remaining) && remaining <= 0) {
+                this.advanceToken();
+            }
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -231,7 +320,8 @@ ${JSON.stringify(rsvpData, null, 2)}
         createdByUsername: creatorUsername || '',
         createdByName: creatorName,
         created: eventData.created || Date.now(),
-        status: 'active'
+        status: 'active',
+        csrfToken: (window.csrf && window.csrf.getToken && window.csrf.getToken()) || ''
     };
 
         if (!payload.title || !payload.date || !payload.time) {

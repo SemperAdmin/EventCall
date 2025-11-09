@@ -9,6 +9,7 @@ class ManagerAuth {
         this.currentSession = null;
         this.sessionKey = 'eventcall_session';
         this.rememberKey = 'eventcall_remember';
+        this.storage = (window.utils && window.utils.secureStorageSync) || null;
     }
 
     /**
@@ -120,11 +121,20 @@ class ManagerAuth {
             // Create session
             const session = this.createSession(manager, authorizedEvents, codePrefix);
 
-            // Save session
-            if (rememberMe) {
-                this.saveRememberMe(session);
+            // Save session (secure, TTL)
+            if (this.storage) {
+                const ttlMs = Math.max(new Date(session.expiresAt).getTime() - Date.now(), 0);
+                this.storage.set(this.sessionKey, session, { ttl: ttlMs || (4 * 60 * 60 * 1000) });
+                if (rememberMe) {
+                    this.saveRememberMe(session);
+                }
+            } else {
+                // Fallback to sessionStorage if secure storage unavailable
+                sessionStorage.setItem(this.sessionKey, JSON.stringify(session));
+                if (rememberMe) {
+                    this.saveRememberMe(session);
+                }
             }
-            sessionStorage.setItem(this.sessionKey, JSON.stringify(session));
 
             this.currentManager = manager;
             this.currentSession = session;
@@ -151,7 +161,11 @@ class ManagerAuth {
     logout() {
         console.log('👋 Logging out:', this.currentManager?.email);
         
-        sessionStorage.removeItem(this.sessionKey);
+        if (this.storage) {
+            this.storage.remove(this.sessionKey);
+        } else {
+            sessionStorage.removeItem(this.sessionKey);
+        }
         this.currentManager = null;
         this.currentSession = null;
         
@@ -331,17 +345,21 @@ class ManagerAuth {
      */
     async restoreSession() {
         try {
-            // Try sessionStorage first
-            let sessionData = sessionStorage.getItem(this.sessionKey);
-            
-            // Fall back to remember me
-            if (!sessionData && AUTH_CONFIG.rememberMeOption) {
-                sessionData = localStorage.getItem(this.rememberKey);
+            // Try secure storage first
+            let session = null;
+            if (this.storage) {
+                session = this.storage.get(this.sessionKey);
+                if (!session && AUTH_CONFIG.rememberMeOption) {
+                    const remembered = this.storage.get(this.rememberKey);
+                    if (remembered) session = remembered;
+                }
+            } else {
+                // Fallback: session/local storage
+                const sessionData = sessionStorage.getItem(this.sessionKey) || (AUTH_CONFIG.rememberMeOption ? localStorage.getItem(this.rememberKey) : null);
+                if (sessionData) session = JSON.parse(sessionData);
             }
 
-            if (sessionData) {
-                const session = JSON.parse(sessionData);
-                
+            if (session) {
                 // Check if expired
                 if (new Date() > new Date(session.expiresAt)) {
                     console.log('⏰ Stored session expired');
@@ -368,14 +386,14 @@ class ManagerAuth {
      */
     saveRememberMe(session) {
         if (!AUTH_CONFIG.rememberMeOption) return;
-        
-        // Extend expiration for remember me
-        const rememberSession = {
-            ...session,
-            expiresAt: new Date(Date.now() + (AUTH_CONFIG.rememberMeDays * 24 * 60 * 60 * 1000)).toISOString()
-        };
-        
-        localStorage.setItem(this.rememberKey, JSON.stringify(rememberSession));
+        const rememberSession = { ...session };
+        // Security policy: cap persistence to 4 hours
+        rememberSession.expiresAt = new Date(Date.now() + (4 * 60 * 60 * 1000)).toISOString();
+        if (this.storage) {
+            this.storage.set(this.rememberKey, rememberSession, { ttl: 4 * 60 * 60 * 1000 });
+        } else {
+            localStorage.setItem(this.rememberKey, JSON.stringify(rememberSession));
+        }
     }
 
     // ==================== DATA PERSISTENCE (To be implemented with GitHub Actions) ====================
@@ -386,10 +404,16 @@ class ManagerAuth {
     async saveManagerData(manager) {
         // TODO: Implement with GitHub Action webhook
         console.log('💾 Saving manager data:', manager.id);
-        // For now, store in localStorage for development
-        const managers = JSON.parse(localStorage.getItem('managers') || '{}');
-        managers[manager.id] = manager;
-        localStorage.setItem('managers', JSON.stringify(managers));
+        // For now, store in secure session storage for development
+        if (this.storage) {
+            const managers = this.storage.get('managers') || {};
+            managers[manager.id] = manager;
+            this.storage.set('managers', managers, { ttl: 4 * 60 * 60 * 1000 });
+        } else {
+            const managers = JSON.parse(localStorage.getItem('managers') || '{}');
+            managers[manager.id] = manager;
+            localStorage.setItem('managers', JSON.stringify(managers));
+        }
         return true;
     }
 
@@ -399,7 +423,7 @@ class ManagerAuth {
     async findManagerByMasterCode(email, masterCode) {
         // TODO: Implement with GitHub API
         console.log('🔍 Finding manager by master code:', email);
-        const managers = JSON.parse(localStorage.getItem('managers') || '{}');
+        const managers = this.storage ? (this.storage.get('managers') || {}) : JSON.parse(localStorage.getItem('managers') || '{}');
         return Object.values(managers).find(m => 
             m.email === email && m.masterCode === masterCode
         );
@@ -410,7 +434,7 @@ class ManagerAuth {
      */
     async findManagerByEmail(email) {
         // TODO: Implement with GitHub API
-        const managers = JSON.parse(localStorage.getItem('managers') || '{}');
+        const managers = this.storage ? (this.storage.get('managers') || {}) : JSON.parse(localStorage.getItem('managers') || '{}');
         return Object.values(managers).find(m => m.email === email);
     }
 
@@ -419,7 +443,7 @@ class ManagerAuth {
      */
     async findManagerById(managerId) {
         // TODO: Implement with GitHub API
-        const managers = JSON.parse(localStorage.getItem('managers') || '{}');
+        const managers = this.storage ? (this.storage.get('managers') || {}) : JSON.parse(localStorage.getItem('managers') || '{}');
         return managers[managerId];
     }
 
@@ -468,9 +492,15 @@ class ManagerAuth {
     async saveInviteData(inviteData) {
         // TODO: Implement with GitHub Action
         console.log('💾 Saving invite data:', inviteData.code);
-        const invites = JSON.parse(localStorage.getItem('invites') || '{}');
-        invites[inviteData.code] = inviteData;
-        localStorage.setItem('invites', JSON.stringify(invites));
+        if (this.storage) {
+            const invites = this.storage.get('invites') || {};
+            invites[inviteData.code] = inviteData;
+            this.storage.set('invites', invites, { ttl: 4 * 60 * 60 * 1000 });
+        } else {
+            const invites = JSON.parse(localStorage.getItem('invites') || '{}');
+            invites[inviteData.code] = inviteData;
+            localStorage.setItem('invites', JSON.stringify(invites));
+        }
         return true;
     }
 }
