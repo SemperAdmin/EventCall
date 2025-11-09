@@ -38,6 +38,7 @@ jobs:
           USERNAME: ${{ github.event.client_payload.data.username }}
           PASSWORD: ${{ github.event.client_payload.data.password }}
           NAME: ${{ github.event.client_payload.data.name }}
+          BRANCH: ${{ github.event.client_payload.data.branch }}
           RANK: ${{ github.event.client_payload.data.rank }}
           CLIENT_ID: ${{ github.event.client_payload.data.client_id }}
         run: |
@@ -55,6 +56,7 @@ jobs:
                   const username = process.env.USERNAME?.toLowerCase().trim();
                   const password = process.env.PASSWORD;
                   const name = process.env.NAME;
+                  const branch = process.env.BRANCH;
                   const rank = process.env.RANK;
                   const clientId = process.env.CLIENT_ID;
 
@@ -101,6 +103,7 @@ jobs:
                           username: username,
                           passwordHash: passwordHash,
                           name: name || '',
+                          branch: branch || '',
                           rank: rank || '',
                           createdAt: new Date().toISOString(),
                           lastLogin: new Date().toISOString(),
@@ -200,7 +203,8 @@ jobs:
 
                       // Update fields
                       if (name) user.name = name;
-                      if (rank) user.rank = rank;
+                      if (branch !== undefined) user.branch = branch;
+                      if (rank !== undefined) user.rank = rank;
                       user.lastUpdated = new Date().toISOString();
 
                       // Save updated user
