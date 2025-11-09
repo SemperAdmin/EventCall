@@ -135,6 +135,7 @@ const userAuth = {
         const form = event.target;
         const usernameInput = document.getElementById('reg-username');
         const nameInput = document.getElementById('reg-name');
+        const branchInput = document.getElementById('reg-branch');
         const rankInput = document.getElementById('reg-rank');
         const passwordInput = document.getElementById('reg-password');
         const confirmPasswordInput = document.getElementById('reg-confirm-password');
@@ -142,6 +143,7 @@ const userAuth = {
 
         const username = usernameInput?.value.trim().toLowerCase();
         const name = nameInput?.value.trim();
+        const branch = branchInput?.value || '';
         const rank = rankInput?.value || '';
         const password = passwordInput?.value;
         const confirmPassword = confirmPasswordInput?.value;
@@ -203,6 +205,7 @@ const userAuth = {
                 username,
                 password,
                 name,
+                branch,
                 rank,
                 client_id: clientId
             });
