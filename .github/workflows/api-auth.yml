@@ -245,7 +245,7 @@ jobs:
           echo "Script completed successfully"
 
       - name: Create Response Issue (Success)
-        if: success()
+        if: success() && github.event.action != 'login_user'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -314,7 +314,7 @@ jobs:
             });
 
       - name: Create Response Issue (Error)
-        if: failure()
+        if: failure() && github.event.action != 'login_user'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
