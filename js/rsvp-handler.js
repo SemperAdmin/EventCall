@@ -272,13 +272,16 @@ class RSVPHandler {
             console.error('Backend submission error:', error);
             
             let errorMessage = 'Backend submission failed';
-            
-            if (error.message.includes('Failed: 404')) {
-                errorMessage = 'Backend workflow not found - please contact administrator';
-            } else if (error.message.includes('Failed: 401')) {
+
+            if (error.message.includes('404') || error.message.includes('Workflow not found')) {
+                errorMessage = 'Workflow endpoint unavailable - using fallback submission method';
+                console.log('ℹ️ This is expected behavior when workflow dispatch is not configured');
+            } else if (error.message.includes('401') || error.message.includes('Authentication')) {
                 errorMessage = 'Authentication failed - please contact administrator';
-            } else if (error.message.includes('Failed: 403')) {
+            } else if (error.message.includes('403') || error.message.includes('Permission')) {
                 errorMessage = 'Permission denied - please contact administrator';
+            } else if (error.message.includes('Both workflow and issue')) {
+                errorMessage = 'All submission methods failed - ' + error.message;
             } else {
                 errorMessage = error.message;
             }

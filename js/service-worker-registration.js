@@ -88,16 +88,44 @@ if ('serviceWorker' in navigator) {
     // Provide manual cache clear function
     window.clearAppCache = async () => {
         if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-                type: 'CLEAR_CACHE'
-            });
+            try {
+                // Use MessageChannel for proper two-way communication
+                const messageChannel = new MessageChannel();
 
-            if (window.showToast) {
-                window.showToast('🧹 Cache cleared successfully!', 'success');
+                // Create promise to wait for response
+                const responsePromise = new Promise((resolve, reject) => {
+                    messageChannel.port1.onmessage = (event) => {
+                        if (event.data.success) {
+                            resolve(event.data);
+                        } else {
+                            reject(new Error('Cache clear failed'));
+                        }
+                    };
+
+                    // Timeout after 5 seconds
+                    setTimeout(() => reject(new Error('Cache clear timeout')), 5000);
+                });
+
+                // Send message with response port
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'CLEAR_CACHE'
+                }, [messageChannel.port2]);
+
+                // Wait for response
+                await responsePromise;
+
+                if (window.showToast) {
+                    window.showToast('🧹 Cache cleared successfully!', 'success');
+                }
+
+                // Reload after a brief delay
+                setTimeout(() => window.location.reload(), 500);
+            } catch (error) {
+                console.error('Cache clear error:', error);
+                if (window.showToast) {
+                    window.showToast('⚠️ Cache clear may have failed', 'error');
+                }
             }
-
-            // Reload after a brief delay
-            setTimeout(() => window.location.reload(), 500);
         }
     };
 
