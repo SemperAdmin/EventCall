@@ -584,25 +584,36 @@ const userAuth = {
      */
     checkPasswordStrength(password) {
         if (!password) {
-            return { strength: 'none', message: '', color: '#ccc' };
+            return { strength: 'none', message: '', color: '#ccc', score: 0, suggestions: [] };
         }
 
-        let score = 0;
-        const feedback = [];
+        // Prefer zxcvbn if available for robust analysis
+        try {
+            if (typeof window !== 'undefined' && typeof window.zxcvbn === 'function') {
+                const result = window.zxcvbn(password);
+                const scoreMap = ['very weak','weak','medium','strong','very strong'];
+                const strength = scoreMap[Math.max(0, Math.min(4, result.score))];
+                const colorMap = ['#e74c3c','#e67e22','#f39c12','#27ae60','#2ecc71'];
+                const color = colorMap[Math.max(0, Math.min(4, result.score))];
+                const suggestions = (result.feedback && result.feedback.suggestions) ? result.feedback.suggestions : [];
+                const warning = (result.feedback && result.feedback.warning) ? result.feedback.warning : '';
+                const message = warning || (strength.charAt(0).toUpperCase() + strength.slice(1));
+                return { strength, message, color, score: result.score, suggestions };
+            }
+        } catch (e) {
+            // Fall back to heuristic below
+        }
 
-        // Length check
+        // Fallback heuristic if zxcvbn not present
+        let score = 0;
         if (password.length >= 8) score++;
         if (password.length >= 12) score++;
-
-        // Character variety checks
         if (/[a-z]/.test(password)) score++;
         if (/[A-Z]/.test(password)) score++;
         if (/[0-9]/.test(password)) score++;
         if (/[^a-zA-Z0-9]/.test(password)) score++;
 
-        // Determine strength
         let strength, message, color;
-
         if (score <= 2) {
             strength = 'weak';
             message = 'Weak password';
@@ -616,8 +627,7 @@ const userAuth = {
             message = 'Strong password';
             color = '#27ae60';
         }
-
-        return { strength, message, color, score };
+        return { strength, message, color, score, suggestions: [] };
     },
 
     /**

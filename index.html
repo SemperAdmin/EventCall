@@ -24,6 +24,8 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <!-- DOMPurify for HTML sanitization -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous"></script>
+    <!-- zxcvbn for advanced password strength analysis -->
+    <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
 </head>
 <body>
 <!-- Skip to main content link for keyboard users and screen readers -->
@@ -583,11 +585,11 @@ function switchAuthTab(tab) {
 <script>
   (function () {
     // Default proxy URL for production
-    var defaultURL = 'https://eventcall.onrender.com';
+    const defaultURL = 'https://eventcall.onrender.com';
     // Optional override without code changes:
     // In DevTools: localStorage.setItem('eventcall_proxy_url', 'https://your-alt-render-url')
-    var fromStorage = localStorage.getItem('eventcall_proxy_url') || '';
-    var dispatchURL = fromStorage || defaultURL;
+    const fromStorage = localStorage.getItem('eventcall_proxy_url') || '';
+    const dispatchURL = fromStorage || defaultURL;
     window.BACKEND_CONFIG = {
       dispatchURL: dispatchURL,
       // On *.github.io, prefer proxy to avoid CORS on GitHub API
@@ -601,6 +603,8 @@ function switchAuthTab(tab) {
 <script src="js/backend-api.js"></script>
 <!-- AUTHENTICATION - REPLACED manager-auth.js with user-auth.js -->
 <script src="js/user-auth.js?v=20251104-2"></script>
+<!-- UX-004: Form user experience enhancements -->
+<script src="js/form-ux.js"></script>
 
 <!-- GitHub and Event Management -->
 <!--

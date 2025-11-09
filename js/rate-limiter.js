@@ -187,6 +187,9 @@
     minDelayMs: 700,
     endpointWindows: {
       default: { maxPerWindow: 30, windowMs: 30_000 },
+      // Explicit window for backend proxy dispatches (Render proxy)
+      // Keeps bursty client traffic under control and separates from GitHub keys
+      proxy_dispatch: { maxPerWindow: 20, windowMs: 30_000 },
       github_dispatch: { maxPerWindow: 5, windowMs: 60_000 },
       github_issues: { maxPerWindow: 8, windowMs: 60_000 },
       github_contents: { maxPerWindow: 50, windowMs: 60_000 }
@@ -198,4 +201,3 @@
     window.rateLimiter = limiter;
   }
 })();
-
