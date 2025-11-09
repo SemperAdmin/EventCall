@@ -1838,9 +1838,18 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     </td>
                     ${event.askReason ? `<td style="max-width: 200px; word-wrap: break-word;">${response.reason || '-'}</td>` : ''}
                     ${event.allowGuests ? `<td><strong>${response.guestCount || 0}</strong> ${(response.guestCount || 0) === 1 ? 'guest' : 'guests'}</td>` : ''}
-                    ${event.customQuestions ? event.customQuestions.map(q => 
-                        `<td style="max-width: 150px; word-wrap: break-word;">${response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '-'}</td>`
-                    ).join('') : ''}
+                    ${event.customQuestions ? event.customQuestions.map(q => {
+                        let answer = response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '-';
+                        // Format datetime answers
+                        if (answer !== '-' && q.type === 'datetime' && answer.includes('T')) {
+                            const [datePart, timePart] = answer.split('T');
+                            answer = `${datePart} ${timePart}`;
+                        } else if (answer !== '-' && q.type === 'date') {
+                            // Date is already in YYYY-MM-DD format, just display it
+                            answer = answer;
+                        }
+                        return `<td style="max-width: 150px; word-wrap: break-word;">${answer}</td>`;
+                    }).join('') : ''}
                     <td style="font-size: 0.875rem;">${new Date(response.timestamp).toLocaleString()}</td>
                     <td style="font-size: 0.875rem;" title="${source}">
                         ${sourceIcon} ${response.issueNumber ? `#${response.issueNumber}` : 'Direct'}
