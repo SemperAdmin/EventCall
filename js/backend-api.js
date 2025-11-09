@@ -30,7 +30,15 @@ class BackendAPI {
         const url = this.apiBase + '/repos/' + this.owner + '/' + this.repo + '/dispatches';
 
         // Skip external dispatch in local development unless forced via config
-        const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        // Treat common local hosts as dev to avoid external dispatches unless forced
+        const isLocalDev = (function () {
+            try {
+                const host = window.location.hostname;
+                return ['localhost', '127.0.0.1', '0.0.0.0'].includes(host);
+            } catch (_) {
+                return false;
+            }
+        })();
         const forceBackendInDev = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.forceBackendInDev);
         if (isLocalDev && !forceBackendInDev) {
             console.warn('🧪 Local dev detected: skipping GitHub workflow dispatch (set AUTH_CONFIG.forceBackendInDev=true to enable)');

@@ -13,38 +13,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Skip auth check for invite pages (guests don't need login)
     const isInvitePage = window.location.hash.includes('invite/') || window.location.search.includes('data=');
 
-    if (!isInvitePage && window.managerAuth) {
-        const isAuthenticated = await window.managerAuth.init();
-        if (!isAuthenticated) {
-            console.log('🔒 Not authenticated - showing login page');
-            window.loginUI.showLoginPage();
-        } else {
-            console.log('✅ Authenticated - showing app');
-
-            // Load events on initial page load if on dashboard
-            const hash = window.location.hash.substring(1);
-            const isDefaultDashboard = !hash || hash === 'dashboard';
-
-            if (isDefaultDashboard) {
-                console.log('📊 Initial load: Loading dashboard data...');
-                // Wait for loadManagerData to be available
-                const waitForLoad = setInterval(() => {
-                    if (typeof window.loadManagerData === 'function') {
-                        clearInterval(waitForLoad);
-                        window.loadManagerData();
-                    }
-                }, 100); // Check every 100ms
-
-                // Timeout after 5 seconds
-                setTimeout(() => {
-                    clearInterval(waitForLoad);
-                    if (typeof window.loadManagerData !== 'function') {
-                        console.error('❌ loadManagerData function not available after timeout');
-                    }
-                }, 5000);
-            }
-        }
+    if (isInvitePage) {
+        return;
     }
+
+    // Prefer the new username/password auth flow
+    if (window.userAuth && typeof window.userAuth.init === 'function') {
+        try {
+            await window.userAuth.init();
+        } catch (err) {
+            console.error('Failed to initialize userAuth:', err);
+        }
+
+        if (!window.userAuth.isAuthenticated()) {
+            console.log('🔒 Not authenticated - showing new login screen');
+            // userAuth.showLoginScreen() is called inside init when needed, but call again for safety
+            if (typeof window.userAuth.showLoginScreen === 'function') {
+                window.userAuth.showLoginScreen();
+            }
+            return;
+        }
+
+        console.log('✅ Authenticated - showing app');
+
+        // Load events on initial page load if on dashboard
+        const hash = window.location.hash.substring(1);
+        const isDefaultDashboard = !hash || hash === 'dashboard';
+
+        if (isDefaultDashboard) {
+            console.log('📊 Initial load: Loading dashboard data...');
+            // Wait for loadManagerData to be available
+            const waitForLoad = setInterval(() => {
+                if (typeof window.loadManagerData === 'function') {
+                    clearInterval(waitForLoad);
+                    window.loadManagerData();
+                }
+            }, 100); // Check every 100ms
+
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                clearInterval(waitForLoad);
+                if (typeof window.loadManagerData !== 'function') {
+                    console.error('❌ loadManagerData function not available after timeout');
+                }
+            }, 5000);
+        }
+        return;
+    }
+
+    // Fallback: if new auth is unavailable, show the generic login page UI
+    console.warn('⚠️ userAuth not available; showing built-in login page UI');
+    showLoginPage();
 });
 
 /**

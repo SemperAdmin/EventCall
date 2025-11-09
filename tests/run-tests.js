@@ -14,7 +14,10 @@ async function run() {
   await delay(1000); // give server time to start
 
   const puppeteer = await import('puppeteer');
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
   const page = await browser.newPage();
   const url = `http://localhost:${httpPort}/tests/test-runner.html`;
   await page.goto(url, { waitUntil: 'networkidle0' });

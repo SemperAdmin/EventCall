@@ -359,7 +359,15 @@ const userAuth = {
             }
 
             // In local development, bypass GitHub dispatch unless forced via config
-            const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            // Treat common local hosts as dev to bypass backend unless forced
+            const isLocalDev = (function () {
+                try {
+                    const host = window.location.hostname;
+                    return ['localhost', '127.0.0.1', '0.0.0.0'].includes(host);
+                } catch (_) {
+                    return false;
+                }
+            })();
             const forceBackendInDev = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.forceBackendInDev);
             if (isLocalDev && !forceBackendInDev) {
                 console.log('🧪 Local dev detected: skipping GitHub workflow dispatch and polling (set AUTH_CONFIG.forceBackendInDev=true to enable)');
