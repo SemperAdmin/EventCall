@@ -583,18 +583,19 @@ function switchAuthTab(tab) {
 <!-- Proxy configuration: set dispatchURL via localStorage or inline assignment -->
 <script>
   (function () {
-    // Allow setting proxy URL without code changes:
-    // In DevTools, run: localStorage.setItem('eventcall_proxy_url', 'https://<your-render-service-url>');
-    var configured = (window.BACKEND_CONFIG && window.BACKEND_CONFIG.dispatchURL) || '';
+    // Default proxy URL for production
+    var defaultURL = 'https://eventcall.onrender.com';
+    // Optional override without code changes:
+    // In DevTools: localStorage.setItem('eventcall_proxy_url', 'https://your-alt-render-url')
     var fromStorage = localStorage.getItem('eventcall_proxy_url') || '';
-    var dispatchURL = configured || fromStorage;
+    var dispatchURL = fromStorage || defaultURL;
     window.BACKEND_CONFIG = {
       dispatchURL: dispatchURL,
-      // When hosted on *.github.io, prefer proxy to avoid CORS on GitHub API
+      // On *.github.io, prefer proxy to avoid CORS on GitHub API
       useProxyOnGithubPages: true
     };
-    if (!dispatchURL && (location.hostname || '').endsWith('github.io')) {
-      console.warn('[EventCall] Proxy dispatchURL not configured. Set localStorage.eventcall_proxy_url to your Render URL.');
+    if ((location.hostname || '').endsWith('github.io')) {
+      console.log('[EventCall] Using proxy dispatchURL:', dispatchURL);
     }
   })();
 </script>
