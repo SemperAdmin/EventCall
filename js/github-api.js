@@ -733,15 +733,15 @@ class GitHubAPI {
                 }
             }
 
+            // Note: Don't send X-CSRF-Token to GitHub API - it causes CORS errors
+            // GitHub API has its own authentication via the Authorization token
             const createResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json',
                     'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-Token': csrfToken
+                    'User-Agent': 'EventCall-App'
                 },
                 body: JSON.stringify(createData)
             });
