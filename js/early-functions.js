@@ -992,12 +992,12 @@ function hideAppLoader() {
     if (loader) {
         // Add hidden class to trigger fade out
         loader.classList.add('hidden');
-        // Remove from DOM after animation completes
-        setTimeout(() => {
+        // Remove from DOM after transition completes
+        loader.addEventListener('transitionend', () => {
             if (loader.parentNode) {
                 loader.remove();
             }
-        }, 500);
+        }, { once: true });
     }
 }
 window.hideAppLoader = hideAppLoader;
