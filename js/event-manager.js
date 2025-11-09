@@ -1792,11 +1792,31 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     📊 Showing ${eventResponses.length} of ${eventResponses.length} responses
                 </div>
             </div>
-            
+
+            <div class="bulk-actions" id="bulk-actions-${eventId}" style="display: none; margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border: 2px solid var(--primary-color);">
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <span style="font-weight: 600; color: var(--primary-color);">
+                        <span id="selected-count-${eventId}">0</span> selected
+                    </span>
+                    <button class="btn-small" onclick="eventManager.bulkExportSelected('${eventId}')" title="Export selected responses to CSV">
+                        📤 Export Selected
+                    </button>
+                    <button class="btn-small" onclick="eventManager.bulkEmailSelected('${eventId}')" title="Email selected attendees">
+                        📧 Email Selected
+                    </button>
+                    <button class="btn-small btn-danger" onclick="eventManager.bulkDeleteSelected('${eventId}')" title="Delete selected responses">
+                        🗑️ Delete Selected
+                    </button>
+                </div>
+            </div>
+
             <div style="overflow-x: auto;">
                 <table class="response-table">
                     <thead>
                         <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="select-all-${eventId}" onchange="eventManager.toggleSelectAll('${eventId}')" aria-label="Select all responses">
+                            </th>
                             <th>Name</th>
                             <th>Email</th>
                             <th>Phone</th>
@@ -1820,16 +1840,19 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             const sourceIcon = response.issueNumber ? '🔗—' : 'ðŸ“';
 
             html += `
-                <tr class="response-row" data-response-index="${index}" 
-                    data-name="${displayName.toLowerCase()}" 
-                    data-attending="${response.attending}" 
-                    data-reason="${(response.reason || '').toLowerCase()}" 
+                <tr class="response-row" data-response-index="${index}"
+                    data-name="${displayName.toLowerCase()}"
+                    data-attending="${response.attending}"
+                    data-reason="${(response.reason || '').toLowerCase()}"
                     data-guest-count="${response.guestCount || 0}"
-                    data-phone="${phone.toLowerCase()}" 
+                    data-phone="${phone.toLowerCase()}"
                     data-email="${email.toLowerCase()}"
                     data-branch="${(response.branch || '').toLowerCase()}"
                     data-rank="${(response.rank || '').toLowerCase()}"
                     data-unit="${(response.unit || '').toLowerCase()}">
+                    <td>
+                        <input type="checkbox" class="response-checkbox" data-response-index="${index}" data-email="${email}" data-name="${displayName}" onchange="eventManager.updateBulkActions('${eventId}')">
+                    </td>
                     <td><strong>${displayName}</strong></td>
                     <td><a href="mailto:${email}" style="color: var(--semper-red); text-decoration: none;">${email}</a></td>
                     <td>${phone !== 'N/A' ? `<a href="tel:${phone}" style="color: var(--semper-red); text-decoration: none;">${phone}</a>` : phone}</td>
@@ -2616,6 +2639,152 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     refreshSeatingChart(eventId) {
         // Simply reload the event management view
         this.showEventManagement(eventId);
+    }
+
+    /**
+     * Toggle select all checkboxes
+     * @param {string} eventId - Event ID
+     */
+    toggleSelectAll(eventId) {
+        const selectAllCheckbox = document.getElementById(`select-all-${eventId}`);
+        const checkboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox`);
+
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+
+        this.updateBulkActions(eventId);
+    }
+
+    /**
+     * Update bulk actions visibility and count
+     * @param {string} eventId - Event ID
+     */
+    updateBulkActions(eventId) {
+        const checkboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox:checked`);
+        const selectedCount = checkboxes.length;
+        const bulkActionsDiv = document.getElementById(`bulk-actions-${eventId}`);
+        const countSpan = document.getElementById(`selected-count-${eventId}`);
+
+        if (selectedCount > 0) {
+            bulkActionsDiv.style.display = 'block';
+            countSpan.textContent = selectedCount;
+        } else {
+            bulkActionsDiv.style.display = 'none';
+        }
+
+        // Update select-all checkbox state
+        const allCheckboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox`);
+        const selectAllCheckbox = document.getElementById(`select-all-${eventId}`);
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = selectedCount === allCheckboxes.length && selectedCount > 0;
+            selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < allCheckboxes.length;
+        }
+    }
+
+    /**
+     * Export selected responses to CSV
+     * @param {string} eventId - Event ID
+     */
+    bulkExportSelected(eventId) {
+        const event = window.events[eventId];
+        const allResponses = window.responses[eventId] || [];
+        const checkboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox:checked`);
+
+        if (checkboxes.length === 0) {
+            showToast('No responses selected', 'error');
+            return;
+        }
+
+        // Get selected response indices
+        const selectedIndices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.responseIndex));
+        const selectedResponses = allResponses.filter((r, idx) => selectedIndices.includes(idx));
+
+        // Use existing CSV creation function
+        const csvContent = createCSVContent(event, selectedResponses);
+        const filename = `${generateSafeFilename(event.title)}_selected_rsvps.csv`;
+
+        downloadFile(csvContent, filename, 'text/csv');
+        showToast(`📊 Exported ${selectedResponses.length} responses`, 'success');
+    }
+
+    /**
+     * Email selected attendees
+     * @param {string} eventId - Event ID
+     */
+    bulkEmailSelected(eventId) {
+        const checkboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox:checked`);
+
+        if (checkboxes.length === 0) {
+            showToast('No responses selected', 'error');
+            return;
+        }
+
+        // Collect email addresses
+        const emails = Array.from(checkboxes)
+            .map(cb => cb.dataset.email)
+            .filter(email => email && email !== 'N/A');
+
+        if (emails.length === 0) {
+            showToast('No valid email addresses in selection', 'error');
+            return;
+        }
+
+        // Open default email client with BCC list
+        const subject = encodeURIComponent(`Event Update: ${window.events[eventId].title}`);
+        const mailtoLink = `mailto:?bcc=${emails.join(',')}&subject=${subject}`;
+
+        window.location.href = mailtoLink;
+        showToast(`📧 Opening email client for ${emails.length} recipients`, 'success');
+    }
+
+    /**
+     * Delete selected responses
+     * @param {string} eventId - Event ID
+     */
+    async bulkDeleteSelected(eventId) {
+        const checkboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox:checked`);
+
+        if (checkboxes.length === 0) {
+            showToast('No responses selected', 'error');
+            return;
+        }
+
+        const count = checkboxes.length;
+        const confirmed = confirm(`Are you sure you want to delete ${count} selected response${count > 1 ? 's' : ''}? This action cannot be undone.`);
+
+        if (!confirmed) return;
+
+        try {
+            // Get selected response indices (sort in descending order to delete from end)
+            const selectedIndices = Array.from(checkboxes)
+                .map(cb => parseInt(cb.dataset.responseIndex))
+                .sort((a, b) => b - a);
+
+            const allResponses = window.responses[eventId] || [];
+
+            // Delete from end to beginning to maintain correct indices
+            for (const index of selectedIndices) {
+                allResponses.splice(index, 1);
+            }
+
+            // Update storage
+            window.responses[eventId] = allResponses;
+
+            // Save to GitHub
+            if (window.githubAPI) {
+                await window.githubAPI.saveResponses(eventId, allResponses);
+            }
+
+            showToast(`🗑️ Deleted ${count} response${count > 1 ? 's' : ''}`, 'success');
+
+            // Refresh the view
+            this.showEventManagement(eventId);
+
+        } catch (error) {
+            console.error('Bulk delete failed:', error);
+            showToast('Failed to delete responses', 'error');
+        }
     }
 
     /**
