@@ -1851,7 +1851,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     data-rank="${(response.rank || '').toLowerCase()}"
                     data-unit="${(response.unit || '').toLowerCase()}">
                     <td>
-                        <input type="checkbox" class="response-checkbox" data-response-index="${index}" data-email="${window.utils.escapeHTML(email)}" data-name="${window.utils.escapeHTML(displayName)}" onchange="eventManager.updateBulkActions('${eventId}')">
+                        <input type="checkbox" class="response-checkbox" data-response-index="${index}" onchange="eventManager.updateBulkActions('${eventId}')">
                     </td>
                     <td><strong>${displayName}</strong></td>
                     <td><a href="mailto:${email}" style="color: var(--semper-red); text-decoration: none;">${email}</a></td>
@@ -2720,9 +2720,11 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             return;
         }
 
-        // Collect email addresses
-        const emails = Array.from(checkboxes)
-            .map(cb => cb.dataset.email)
+        // Get email addresses from responses array using indices (avoid DOM-stored data)
+        const allResponses = window.responses[eventId] || [];
+        const selectedIndices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.responseIndex, 10));
+        const emails = selectedIndices
+            .map(index => allResponses[index]?.email)
             .filter(email => email && email !== 'N/A');
 
         if (emails.length === 0) {
@@ -2738,30 +2740,88 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const MAX_MAILTO_LENGTH = 2000;
         if (mailtoLink.length > MAX_MAILTO_LENGTH) {
             // Fallback: Display emails in a modal for manual copy
-            const emailList = emails.join('\n');
-            const modal = document.createElement('div');
-            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
-            modal.innerHTML = `
-                <div style="background: white; padding: 2rem; border-radius: 0.5rem; max-width: 600px; max-height: 80vh; overflow-y: auto;">
-                    <h3 style="margin-top: 0;">Too Many Recipients for Mailto Link</h3>
-                    <p>The email list is too large for a mailto: link. Please copy the email addresses below:</p>
-                    <textarea readonly style="width: 100%; height: 200px; font-family: monospace; padding: 0.5rem; border: 1px solid #ccc; border-radius: 0.25rem;">${emailList}</textarea>
-                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                        <button class="btn" onclick="navigator.clipboard.writeText(\`${emailList.replace(/`/g, '\\`')}\`).then(() => showToast('📋 Copied to clipboard', 'success')); this.closest('div[style*=\\'fixed\\']').remove();">
-                            📋 Copy to Clipboard
-                        </button>
-                        <button class="btn btn-danger" onclick="this.closest('div[style*=\\'fixed\\']').remove();">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
+            this.showEmailListModal(emails);
             showToast(`⚠️ Too many recipients for mailto link. Showing list instead.`, 'warning');
         } else {
             window.location.href = mailtoLink;
             showToast(`📧 Opening email client for ${emails.length} recipients`, 'success');
         }
+    }
+
+    /**
+     * Show modal with email list for copying
+     * @param {Array<string>} emails - Email addresses to display
+     */
+    showEmailListModal(emails) {
+        const emailList = emails.join('\n');
+
+        // Create modal overlay
+        const modal = document.createElement('div');
+        modal.className = 'bulk-email-modal-overlay';
+
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.className = 'bulk-email-modal-content';
+
+        // Create title
+        const title = document.createElement('h3');
+        title.className = 'bulk-email-modal-title';
+        title.textContent = 'Too Many Recipients for Mailto Link';
+
+        // Create description
+        const description = document.createElement('p');
+        description.textContent = 'The email list is too large for a mailto: link. Please copy the email addresses below:';
+
+        // Create textarea
+        const textarea = document.createElement('textarea');
+        textarea.className = 'bulk-email-modal-textarea';
+        textarea.readOnly = true;
+        textarea.value = emailList;
+
+        // Create button container
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'bulk-email-modal-buttons';
+
+        // Create copy button
+        const copyButton = document.createElement('button');
+        copyButton.className = 'btn';
+        copyButton.textContent = '📋 Copy to Clipboard';
+        copyButton.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(emailList);
+                showToast('📋 Copied to clipboard', 'success');
+            } catch (error) {
+                console.error('Failed to copy to clipboard:', error);
+                showToast('Failed to copy to clipboard', 'error');
+            }
+        });
+
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.className = 'btn btn-danger';
+        closeButton.textContent = 'Close';
+        closeButton.addEventListener('click', () => {
+            modal.remove();
+        });
+
+        // Assemble modal
+        buttonContainer.appendChild(copyButton);
+        buttonContainer.appendChild(closeButton);
+        modalContent.appendChild(title);
+        modalContent.appendChild(description);
+        modalContent.appendChild(textarea);
+        modalContent.appendChild(buttonContainer);
+        modal.appendChild(modalContent);
+
+        // Add to page
+        document.body.appendChild(modal);
+
+        // Close on overlay click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
     }
 
     /**

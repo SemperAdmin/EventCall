@@ -1043,3 +1043,53 @@
     font-weight: 600;
     color: var(--primary-color);
 }
+
+/* ============================================
+   BULK EMAIL MODAL
+   ============================================ */
+
+.bulk-email-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.bulk-email-modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.bulk-email-modal-title {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #1a1f2e;
+}
+
+.bulk-email-modal-textarea {
+    width: 100%;
+    height: 200px;
+    font-family: monospace;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 0.25rem;
+    resize: vertical;
+    margin: 1rem 0;
+}
+
+.bulk-email-modal-buttons {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
