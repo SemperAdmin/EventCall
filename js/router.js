@@ -38,6 +38,36 @@
 
   const AppRouter = {
     init: function() {
+      // Check for redirected path from 404.html (GitHub Pages SPA routing)
+      const redirectPath = sessionStorage.getItem('redirectPath');
+      if (redirectPath) {
+        console.log('📍 Restored path from 404 redirect:', redirectPath);
+        sessionStorage.removeItem('redirectPath');
+
+        // Parse the redirect path
+        const url = new URL(redirectPath, window.location.origin);
+        const parsed = pathToPage(url.pathname);
+
+        history.replaceState(parsed, '', redirectPath);
+
+        // Handle invite pages specially
+        if (parsed.pageId === 'invite' && parsed.param) {
+          if (window.uiComponents && window.uiComponents.showInvite) {
+            window.uiComponents.showInvite(parsed.param);
+          }
+          if (window.showPageContent) window.showPageContent('invite');
+        } else if (parsed.pageId === 'manage' && parsed.param) {
+          if (window.eventManager && window.eventManager.showEventManagement) {
+            window.eventManager.showEventManagement(parsed.param);
+          }
+        } else {
+          if (window.showPage) window.showPage(parsed.pageId);
+        }
+
+        setActiveNav(parsed.pageId);
+        return;
+      }
+
       // Check for query parameter with event data (invite links)
       const hasInviteData = location.search && location.search.includes('data=');
 
