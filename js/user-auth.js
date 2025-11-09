@@ -359,43 +359,6 @@ const userAuth = {
                 return { success: true, user };
             }
 
-            // For login_user, skip GitHub workflow and issue polling to reduce overhead
-            // Login validation is handled server-side via direct API or in simple mode
-            if (actionType === 'login_user') {
-                console.log('🔓 Login mode: using simplified authentication without issue tracking');
-
-                // Try to load user data from data repo
-                try {
-                    const username = payload?.username;
-                    if (!username) {
-                        throw new Error('Username is required');
-                    }
-
-                    // Fetch user data from data repo
-                    const userDataUrl = `https://raw.githubusercontent.com/${window.GITHUB_CONFIG.owner}/EventCall-Data/main/users/${username}.json`;
-                    const response = await fetch(userDataUrl);
-
-                    if (!response.ok) {
-                        throw new Error('Invalid username or password');
-                    }
-
-                    const userData = await response.json();
-
-                    // Remove password hash before returning
-                    const { passwordHash, ...safeUser } = userData;
-
-                    console.log('✅ User data loaded successfully');
-                    return {
-                        success: true,
-                        user: safeUser,
-                        events: []
-                    };
-                } catch (error) {
-                    console.error('❌ Login validation failed:', error);
-                    throw new Error('Invalid username or password');
-                }
-            }
-
             // In local development, bypass GitHub dispatch unless forced via config
             // Treat common local hosts as dev to bypass backend unless forced
             const isLocalDev = (function () {

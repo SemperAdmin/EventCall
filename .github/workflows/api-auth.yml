@@ -245,7 +245,8 @@ jobs:
           echo "Script completed successfully"
 
       - name: Create Response Issue (Success)
-        if: success() && github.event.action != 'login_user'
+        if: success()
+        id: create_issue
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -305,7 +306,7 @@ jobs:
               timestamp: new Date().toISOString()
             };
 
-            await github.rest.issues.create({
+            const issue = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `AUTH_RESPONSE::${clientId}`,
@@ -313,8 +314,19 @@ jobs:
               labels: ['auth-response', 'success', action]
             });
 
+            // Immediately close login issues to reduce clutter
+            if (action === 'login_user') {
+              console.log(`Closing login issue #${issue.data.number} to reduce clutter...`);
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.data.number,
+                state: 'closed'
+              });
+            }
+
       - name: Create Response Issue (Error)
-        if: failure() && github.event.action != 'login_user'
+        if: failure()
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -331,7 +343,7 @@ jobs:
               errorMessage = 'Invalid username or password';
             }
 
-            await github.rest.issues.create({
+            const issue = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `AUTH_RESPONSE::${clientId}`,
@@ -344,3 +356,14 @@ jobs:
               }),
               labels: ['auth-response', 'error', action]
             });
+
+            // Immediately close login issues to reduce clutter
+            if (action === 'login_user') {
+              console.log(`Closing login error issue #${issue.data.number} to reduce clutter...`);
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.data.number,
+                state: 'closed'
+              });
+            }
