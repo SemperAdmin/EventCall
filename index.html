@@ -138,6 +138,28 @@
             </div>
 
             <div class="form-group">
+                <label for="reg-branch" class="form-label">
+                    Service Branch <span class="form-help form-help--inline">(Optional)</span>
+                </label>
+                <select
+                    id="reg-branch"
+                    name="branch"
+                    class="form-control"
+                    onchange="window.updateRegRanksForBranch && window.updateRegRanksForBranch()"
+                >
+                    <option value="">Select service branch...</option>
+                    <option value="USA">United States Army</option>
+                    <option value="USMC">United States Marine Corps</option>
+                    <option value="USN">United States Navy</option>
+                    <option value="USAF">United States Air Force</option>
+                    <option value="USSF">United States Space Force</option>
+                    <option value="USCG">United States Coast Guard</option>
+                    <option value="Civilian">Civilian</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="reg-rank" class="form-label">
                     Rank <span class="form-help form-help--inline">(Optional)</span>
                 </label>
@@ -145,34 +167,9 @@
                     id="reg-rank"
                     name="rank"
                     class="form-control"
+                    disabled
                 >
-                    <option value="">Select rank...</option>
-                    <option value="Pvt">Pvt - Private</option>
-                    <option value="PFC">PFC - Private First Class</option>
-                    <option value="LCpl">LCpl - Lance Corporal</option>
-                    <option value="Cpl">Cpl - Corporal</option>
-                    <option value="Sgt">Sgt - Sergeant</option>
-                    <option value="SSgt">SSgt - Staff Sergeant</option>
-                    <option value="GySgt">GySgt - Gunnery Sergeant</option>
-                    <option value="MSgt">MSgt - Master Sergeant</option>
-                    <option value="1stSgt">1stSgt - First Sergeant</option>
-                    <option value="MGySgt">MGySgt - Master Gunnery Sergeant</option>
-                    <option value="SgtMaj">SgtMaj - Sergeant Major</option>
-                    <option value="Pvt">WO - Warrant Officer</option>
-                    <option value="Pvt">CWO2 - Chief Warrant Officer 2</option>
-                    <option value="Pvt">CWO3 - Chief Warrant Officer 3</option>
-                    <option value="Pvt">CWO4 - Chief Warrant Officer 4</option>
-                    <option value="Pvt">CWO5 - Chief Warrant Officer 5</option>
-                    <option value="2ndLt">2ndLt - Second Lieutenant</option>
-                    <option value="1stLt">1stLt - First Lieutenant</option>
-                    <option value="Capt">Capt - Captain</option>
-                    <option value="Maj">Maj - Major</option>
-                    <option value="LtCol">LtCol - Lieutenant Colonel</option>
-                    <option value="Col">Col - Colonel</option>
-                    <option value="BGen">BGen - Brigadier General</option>
-                    <option value="MajGen">MajGen - Major General</option>
-                    <option value="LtGen">LtGen - Lieutenant General</option>
-                    <option value="Gen">Gen - General</option>
+                    <option value="">Select service branch first...</option>
                 </select>
             </div>
 
@@ -256,6 +253,96 @@ const tabs = document.querySelectorAll('.auth__tab');
     loginForm.classList.toggle('auth__form--active', showLogin);
     registerForm.classList.toggle('auth__form--active', !showLogin);
 }
+
+// Update rank dropdown based on selected service branch for registration form
+function updateRegRanksForBranch() {
+    const branchSelect = document.getElementById('reg-branch');
+    const rankSelect = document.getElementById('reg-rank');
+
+    if (!branchSelect || !rankSelect || !window.MilitaryData) {
+        return;
+    }
+
+    const selectedBranch = branchSelect.value;
+
+    // Clear current ranks
+    rankSelect.innerHTML = '<option value="">Select rank...</option>';
+
+    if (!selectedBranch || selectedBranch === 'Civilian' || selectedBranch === 'Other') {
+        // For Civilian or Other, just add a Civilian option and disable
+        if (selectedBranch === 'Civilian') {
+            rankSelect.innerHTML = '<option value="Civilian">Civilian</option>';
+            rankSelect.disabled = true;
+        } else if (selectedBranch === 'Other') {
+            rankSelect.innerHTML = '<option value="">N/A</option>';
+            rankSelect.disabled = true;
+        } else {
+            rankSelect.innerHTML = '<option value="">Select service branch first...</option>';
+            rankSelect.disabled = true;
+        }
+        return;
+    }
+
+    // Get ranks for selected branch
+    const branchData = window.MilitaryData[selectedBranch];
+
+    if (!branchData) {
+        rankSelect.innerHTML = '<option value="">No ranks available</option>';
+        rankSelect.disabled = true;
+        return;
+    }
+
+    // Enable the rank dropdown
+    rankSelect.disabled = false;
+
+    // Add officer ranks
+    if (branchData.officer && branchData.officer.length > 0) {
+        const officerGroup = document.createElement('optgroup');
+        officerGroup.label = 'Officer';
+        branchData.officer.forEach(rank => {
+            const option = document.createElement('option');
+            option.value = rank.value;
+            option.textContent = rank.label;
+            officerGroup.appendChild(option);
+        });
+        rankSelect.appendChild(officerGroup);
+    }
+
+    // Add warrant officer ranks
+    if (branchData.warrant && branchData.warrant.length > 0) {
+        const warrantGroup = document.createElement('optgroup');
+        warrantGroup.label = 'Warrant Officer';
+        branchData.warrant.forEach(rank => {
+            const option = document.createElement('option');
+            option.value = rank.value;
+            option.textContent = rank.label;
+            warrantGroup.appendChild(option);
+        });
+        rankSelect.appendChild(warrantGroup);
+    }
+
+    // Add enlisted ranks
+    if (branchData.enlisted && branchData.enlisted.length > 0) {
+        const enlistedGroup = document.createElement('optgroup');
+        enlistedGroup.label = 'Enlisted';
+        branchData.enlisted.forEach(rank => {
+            const option = document.createElement('option');
+            option.value = rank.value;
+            option.textContent = rank.label;
+            enlistedGroup.appendChild(option);
+        });
+        rankSelect.appendChild(enlistedGroup);
+    }
+
+    // Add Civilian option at the end
+    const civilianOption = document.createElement('option');
+    civilianOption.value = 'Civilian';
+    civilianOption.textContent = 'Civilian';
+    rankSelect.appendChild(civilianOption);
+}
+
+// Make function globally available
+window.updateRegRanksForBranch = updateRegRanksForBranch;
 </script>
 
 <!-- ============================================
