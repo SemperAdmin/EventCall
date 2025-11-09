@@ -1793,9 +1793,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 </div>
             </div>
 
-            <div class="bulk-actions" id="bulk-actions-${eventId}" style="display: none; margin: 1rem 0; padding: 1rem; background: var(--gray-50); border-radius: 0.5rem; border: 2px solid var(--primary-color);">
-                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                    <span style="font-weight: 600; color: var(--primary-color);">
+            <div class="bulk-actions" id="bulk-actions-${eventId}">
+                <div class="bulk-actions-inner">
+                    <span class="bulk-actions-count">
                         <span id="selected-count-${eventId}">0</span> selected
                     </span>
                     <button class="btn-small" onclick="eventManager.bulkExportSelected('${eventId}')" title="Export selected responses to CSV">
@@ -1851,7 +1851,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     data-rank="${(response.rank || '').toLowerCase()}"
                     data-unit="${(response.unit || '').toLowerCase()}">
                     <td>
-                        <input type="checkbox" class="response-checkbox" data-response-index="${index}" data-email="${email}" data-name="${displayName}" onchange="eventManager.updateBulkActions('${eventId}')">
+                        <input type="checkbox" class="response-checkbox" data-response-index="${index}" data-email="${window.utils.escapeHTML(email)}" data-name="${window.utils.escapeHTML(displayName)}" onchange="eventManager.updateBulkActions('${eventId}')">
                     </td>
                     <td><strong>${displayName}</strong></td>
                     <td><a href="mailto:${email}" style="color: var(--semper-red); text-decoration: none;">${email}</a></td>
@@ -2734,8 +2734,34 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const subject = encodeURIComponent(`Event Update: ${window.events[eventId].title}`);
         const mailtoLink = `mailto:?bcc=${emails.join(',')}&subject=${subject}`;
 
-        window.location.href = mailtoLink;
-        showToast(`📧 Opening email client for ${emails.length} recipients`, 'success');
+        // Check URL length - most email clients have limitations (safe threshold: 2000 chars)
+        const MAX_MAILTO_LENGTH = 2000;
+        if (mailtoLink.length > MAX_MAILTO_LENGTH) {
+            // Fallback: Display emails in a modal for manual copy
+            const emailList = emails.join('\n');
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            modal.innerHTML = `
+                <div style="background: white; padding: 2rem; border-radius: 0.5rem; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+                    <h3 style="margin-top: 0;">Too Many Recipients for Mailto Link</h3>
+                    <p>The email list is too large for a mailto: link. Please copy the email addresses below:</p>
+                    <textarea readonly style="width: 100%; height: 200px; font-family: monospace; padding: 0.5rem; border: 1px solid #ccc; border-radius: 0.25rem;">${emailList}</textarea>
+                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button class="btn" onclick="navigator.clipboard.writeText(\`${emailList.replace(/`/g, '\\`')}\`).then(() => showToast('📋 Copied to clipboard', 'success')); this.closest('div[style*=\\'fixed\\']').remove();">
+                            📋 Copy to Clipboard
+                        </button>
+                        <button class="btn btn-danger" onclick="this.closest('div[style*=\\'fixed\\']').remove();">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            showToast(`⚠️ Too many recipients for mailto link. Showing list instead.`, 'warning');
+        } else {
+            window.location.href = mailtoLink;
+            showToast(`📧 Opening email client for ${emails.length} recipients`, 'success');
+        }
     }
 
     /**
