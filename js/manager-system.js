@@ -669,6 +669,7 @@ function clearEventDetails() {
         container.innerHTML = '';
     }
     if (section) {
+        section.classList.add('hidden');
         section.style.display = 'none';
     }
 }

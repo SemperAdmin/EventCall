@@ -120,6 +120,11 @@
   window.AppRouter = AppRouter;
   // Auto-init when DOM is ready
   document.addEventListener('DOMContentLoaded', function(){
+    // Skip initialization in test mode
+    if (window.__TEST_MODE__) {
+      console.log('⚠️ Test mode detected - skipping router initialization');
+      return;
+    }
     try { AppRouter.init(); } catch (e) { console.warn('Router init failed:', e); }
   });
 })();

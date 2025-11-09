@@ -19,6 +19,9 @@
   <div id="test-output" style="white-space: pre-wrap; font-family: monospace;"></div>
 
   <script>
+    // Set test mode flag to prevent auth initialization
+    window.__TEST_MODE__ = true;
+
     // Minimal expect/assert implementation for our tests
     (function(){
       function Expect(actual, neg) { this.actual = actual; this.neg = !!neg; }
