@@ -321,6 +321,12 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         </div>
                     ` : ''}
                 </div>
+
+                <!-- Event Timeline -->
+                <div class="timeline-section" id="sub-timeline" hidden>
+                    <h2>⏱️ Event Timeline</h2>
+                    <div id="timeline-list" class="timeline-list"></div>
+                </div>
             </div>
 
             <!-- RSVP Dashboard -->
@@ -393,12 +399,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     </div>
                 </div>
 
-            </div>
-
-            <!-- Event Timeline (moved outside RSVP Dashboard) -->
-            <div class="timeline-section" id="sub-timeline" hidden>
-                <h2>⏱️ Event Timeline</h2>
-                <div id="timeline-list" class="timeline-list"></div>
             </div>
 
             <!-- Invite Roster (moved to Guest List tab) -->
