@@ -973,9 +973,29 @@ window.enforceLogin = enforceLogin;
 window.updateUserDisplay = updateUserDisplay;
 window.showUserMenu = showUserMenu;
 
+/**
+ * Hide the app loading screen
+ */
+function hideAppLoader() {
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+        // Add hidden class to trigger fade out
+        loader.classList.add('hidden');
+        // Remove from DOM after animation completes
+        setTimeout(() => {
+            loader.remove();
+        }, 500);
+    }
+}
+
 // Initialize hash listener when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     initializeHashListener();
+
+    // Hide loader after a short delay to ensure everything is loaded
+    setTimeout(() => {
+        hideAppLoader();
+    }, 800);
 });
 
 console.log('✅ Early functions loaded with username-only authentication support');

@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="styles/event-management-v2.css">
     <link rel="stylesheet" href="styles/seating-chart.css">
     <link rel="stylesheet" href="styles/loading.css">
+    <link rel="stylesheet" href="styles/app-loader.css">
     <!-- UX-002 stylesheet for BEM classes and variables -->
     <link rel="stylesheet" href="styles/styles.css">
     <!-- Scripts -->
@@ -31,6 +32,39 @@
     <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
 </head>
 <body>
+<!-- App Loading Screen -->
+<div id="app-loader" class="app-loader">
+    <div class="app-loader__container">
+        <div class="app-loader__header">
+            <div class="app-loader__icon">🎖️</div>
+            <h1 class="app-loader__title">EventCall</h1>
+            <p class="app-loader__subtitle">Semper Admin</p>
+        </div>
+
+        <!-- Book Loader -->
+        <div class="book-loader">
+            <div class="book-loader__shadow"></div>
+            <div class="book-loader__page"></div>
+            <div class="book-loader__page book-loader__page--2"></div>
+            <div class="book-loader__page book-loader__page--3"></div>
+            <div class="book-loader__page book-loader__page--4"></div>
+            <div class="book-loader__page book-loader__page--5"></div>
+        </div>
+
+        <!-- Status Text -->
+        <div class="app-loader__status">
+            <p class="app-loader__status-label">Loading</p>
+            <div class="app-loader__words">
+                <span class="app-loader__word">events</span>
+                <span class="app-loader__word">responses</span>
+                <span class="app-loader__word">dashboard</span>
+                <span class="app-loader__word">security</span>
+                <span class="app-loader__word">events</span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Removed skip-to-main anchor per request -->
 <!-- Updated Login Page HTML with Obfuscated Token -->
 
