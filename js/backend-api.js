@@ -4,6 +4,34 @@ class BackendAPI {
         this.repo = 'EventCall';
         this.apiBase = 'https://api.github.com';
         this.tokenIndex = parseInt(sessionStorage.getItem('github_token_index') || '0', 10);
+        this.proxyCsrf = null; // { clientId, token, expires }
+    }
+
+    shouldUseProxy() {
+        try {
+            const cfg = window.BACKEND_CONFIG || {};
+            const hasProxy = typeof cfg.dispatchURL === 'string' && cfg.dispatchURL.length > 0;
+            const isGithubPages = (window.location.hostname || '').endsWith('github.io');
+            const forceProxy = !!cfg.useProxyOnGithubPages;
+            return hasProxy && (isGithubPages || forceProxy);
+        } catch (_) {
+            return false;
+        }
+    }
+
+    async getProxyCsrf() {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Proxy dispatchURL not configured');
+        const current = this.proxyCsrf;
+        if (current && current.expires && Date.now() < (Number(current.expires) - 5000)) {
+            return current;
+        }
+        const res = await fetch(base + '/api/csrf', { method: 'GET', credentials: 'omit' });
+        if (!res.ok) throw new Error('Failed to obtain CSRF handshake from proxy');
+        const data = await res.json();
+        this.proxyCsrf = { clientId: data.clientId, token: data.token, expires: data.expires };
+        return this.proxyCsrf;
     }
 
     getToken() {
@@ -27,6 +55,7 @@ class BackendAPI {
     }
 
     async triggerWorkflow(eventType, payload) {
+        const useProxy = this.shouldUseProxy();
         const url = this.apiBase + '/repos/' + this.owner + '/' + this.repo + '/dispatches';
 
         // Skip external dispatch in local development unless forced via config
@@ -45,10 +74,10 @@ class BackendAPI {
             return { success: true, local: true };
         }
 
-        // Get token (with optional rotation support)
-        const token = this.getToken();
+        // Get token (with optional rotation support) only for direct GitHub calls
+        const token = useProxy ? null : this.getToken();
 
-        if (!token) {
+        if (!useProxy && !token) {
             throw new Error('GitHub token not available for workflow trigger');
         }
 
@@ -79,32 +108,51 @@ class BackendAPI {
                 }
             };
 
-            const response = await (window.rateLimiter ? window.rateLimiter.fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-Token': csrfToken
-                },
-                body: JSON.stringify(requestBody)
-            }, { endpointKey: 'github_dispatch', retry: { maxAttempts: 5, baseDelayMs: 1000, jitter: true } }) : fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-Token': csrfToken
-                },
-                body: JSON.stringify(requestBody)
-            }));
+            let response;
+            if (useProxy) {
+                const cfg = window.BACKEND_CONFIG || {};
+                const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+                const csrf = await this.getProxyCsrf();
+                response = await fetch(base + '/api/dispatch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Client': csrf.clientId,
+                        'X-CSRF-Token': csrf.token,
+                        'X-CSRF-Expires': String(csrf.expires)
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+            } else {
+                response = await (window.rateLimiter ? window.rateLimiter.fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify(requestBody)
+                }, { endpointKey: 'github_dispatch', retry: { maxAttempts: 5, baseDelayMs: 1000, jitter: true } }) : fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify(requestBody)
+                }));
+            }
 
-            // Rotate token if rate limit is exhausted
-            const remaining = parseInt(response.headers.get('x-ratelimit-remaining') || '-1', 10);
-            if (!isNaN(remaining) && remaining <= 0) {
-                this.advanceToken();
+            // Rotate token if rate limit is exhausted (only when hitting GitHub directly)
+            if (!useProxy) {
+                const remaining = parseInt(response.headers.get('x-ratelimit-remaining') || '-1', 10);
+                if (!isNaN(remaining) && remaining <= 0) {
+                    this.advanceToken();
+                }
             }
 
             if (!response.ok) {
