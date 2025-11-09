@@ -356,12 +356,49 @@ function createCustomQuestionsHTML(customQuestions) {
         return '';
     }
 
-    return customQuestions.map(q => `
-        <div class="form-group">
-            <label for="${q.id}">${q.question}</label>
-            <textarea id="${q.id}" placeholder="Your answer..." rows="3"></textarea>
-        </div>
-    `).join('');
+    return customQuestions.map(q => {
+        const type = q.type || 'text';
+        let inputHTML = '';
+
+        switch(type) {
+            case 'text':
+                inputHTML = `<textarea id="${q.id}" class="custom-question-response" data-question-type="text" placeholder="Your answer..." rows="3"></textarea>`;
+                break;
+
+            case 'choice':
+                if (q.options && q.options.length > 0) {
+                    inputHTML = `<select id="${q.id}" class="custom-question-response" data-question-type="choice">
+                        <option value="">-- Select an option --</option>
+                        ${q.options.map(opt => `<option value="${window.utils.escapeHTML(opt)}">${window.utils.escapeHTML(opt)}</option>`).join('')}
+                    </select>`;
+                } else {
+                    inputHTML = `<p style="color: var(--error-color);">No options configured for this question.</p>`;
+                }
+                break;
+
+            case 'date':
+                inputHTML = `<input type="date" id="${q.id}" class="custom-question-response" data-question-type="date">`;
+                break;
+
+            case 'datetime':
+                inputHTML = `<div class="datetime-input-group">
+                    <input type="date" id="${q.id}_date" class="custom-question-response-date" data-question-type="datetime" placeholder="Date">
+                    <input type="time" id="${q.id}_time" class="custom-question-response-time" data-question-type="datetime" placeholder="Time">
+                </div>
+                <input type="hidden" id="${q.id}" class="custom-question-response" data-question-type="datetime">`;
+                break;
+
+            default:
+                inputHTML = `<textarea id="${q.id}" class="custom-question-response" data-question-type="text" placeholder="Your answer..." rows="3"></textarea>`;
+        }
+
+        return `
+            <div class="form-group">
+                <label for="${q.id}">${window.utils.escapeHTML(q.question)}</label>
+                ${inputHTML}
+            </div>
+        `;
+    }).join('');
 }
 
 /**
@@ -383,6 +420,39 @@ function toggleGuestCount(attending) {
 }
 
 /**
+ * Setup datetime input synchronization for custom questions
+ */
+function setupDatetimeInputSync() {
+    // Find all datetime question groups
+    document.querySelectorAll('.datetime-input-group').forEach(group => {
+        const dateInput = group.querySelector('.custom-question-response-date');
+        const timeInput = group.querySelector('.custom-question-response-time');
+
+        if (dateInput && timeInput) {
+            const hiddenId = dateInput.id.replace('_date', '');
+            const hiddenInput = document.getElementById(hiddenId);
+
+            if (hiddenInput) {
+                // Function to sync values
+                const syncValues = () => {
+                    if (dateInput.value && timeInput.value) {
+                        hiddenInput.value = `${dateInput.value}T${timeInput.value}`;
+                    } else if (dateInput.value) {
+                        hiddenInput.value = dateInput.value;
+                    } else {
+                        hiddenInput.value = '';
+                    }
+                };
+
+                // Attach listeners
+                dateInput.addEventListener('change', syncValues);
+                timeInput.addEventListener('change', syncValues);
+            }
+        }
+    });
+}
+
+/**
  * Setup RSVP form functionality
  */
 async function setupRSVPForm() {
@@ -390,6 +460,9 @@ async function setupRSVPForm() {
     if (window.rsvpHandler && window.rsvpHandler.setupRealTimeValidation) {
         window.rsvpHandler.setupRealTimeValidation();
     }
+
+    // Setup datetime input synchronization
+    setupDatetimeInputSync();
 
     // Check for edit mode and pre-fill if editing
     if (window.rsvpHandler && window.rsvpHandler.initEditMode) {

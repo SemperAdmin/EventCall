@@ -8,16 +8,40 @@ let syncInProgress = false;
 let pendingRSVPCount = 0;
 
 // Add custom question function
-function addCustomQuestion(questionText = '') {
+function addCustomQuestion(questionData = null) {
     const container = document.getElementById('custom-questions-container');
     if (!container) return;
 
     const questionItem = document.createElement('div');
     questionItem.className = 'custom-question-item';
-    // Preserve inline handler; escape dynamic value
+
+    // Default values or from existing questionData
+    const questionText = questionData?.question || '';
+    const questionType = questionData?.type || 'text';
+    const questionOptions = questionData?.options || [];
+
+    const optionsHTML = questionOptions.map((opt, idx) =>
+        `<div class="question-option-item">
+            <input type="text" class="question-option-input" placeholder="Option ${idx + 1}" value="${window.utils.escapeHTML(opt)}">
+            <button type="button" class="btn-small btn-danger" onclick="removeQuestionOption(this)">✕</button>
+        </div>`
+    ).join('');
+
     questionItem.innerHTML = `
-        <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${window.utils.escapeHTML(questionText)}">
-        <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
+        <div class="question-header">
+            <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${window.utils.escapeHTML(questionText)}">
+            <select class="question-type-select" onchange="handleQuestionTypeChange(this)">
+                <option value="text" ${questionType === 'text' ? 'selected' : ''}>📝 Text</option>
+                <option value="choice" ${questionType === 'choice' ? 'selected' : ''}>☑️ Multiple Choice</option>
+                <option value="date" ${questionType === 'date' ? 'selected' : ''}>📅 Date</option>
+                <option value="datetime" ${questionType === 'datetime' ? 'selected' : ''}>🕐 Date & Time</option>
+            </select>
+            <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
+        </div>
+        <div class="question-options-container" style="display: ${questionType === 'choice' ? 'block' : 'none'}">
+            <div class="question-options-list">${optionsHTML}</div>
+            <button type="button" class="btn-small" onclick="addQuestionOption(this)">+ Add Option</button>
+        </div>
     `;
     container.appendChild(questionItem);
 }
@@ -26,6 +50,47 @@ function removeCustomQuestion(button) {
     const questionItem = button.closest('.custom-question-item');
     if (questionItem) {
         questionItem.remove();
+    }
+}
+
+// Handle question type change
+function handleQuestionTypeChange(selectElement) {
+    const questionItem = selectElement.closest('.custom-question-item');
+    const optionsContainer = questionItem.querySelector('.question-options-container');
+
+    if (selectElement.value === 'choice') {
+        optionsContainer.style.display = 'block';
+        // Add default options if none exist
+        const optionsList = optionsContainer.querySelector('.question-options-list');
+        if (!optionsList.querySelector('.question-option-item')) {
+            addQuestionOption(optionsContainer.querySelector('.btn-small'));
+            addQuestionOption(optionsContainer.querySelector('.btn-small'));
+        }
+    } else {
+        optionsContainer.style.display = 'none';
+    }
+}
+
+// Add option to a choice question
+function addQuestionOption(button) {
+    const optionsContainer = button.closest('.question-options-container');
+    const optionsList = optionsContainer.querySelector('.question-options-list');
+    const optionCount = optionsList.querySelectorAll('.question-option-item').length;
+
+    const optionItem = document.createElement('div');
+    optionItem.className = 'question-option-item';
+    optionItem.innerHTML = `
+        <input type="text" class="question-option-input" placeholder="Option ${optionCount + 1}">
+        <button type="button" class="btn-small btn-danger" onclick="removeQuestionOption(this)">✕</button>
+    `;
+    optionsList.appendChild(optionItem);
+}
+
+// Remove option from a choice question
+function removeQuestionOption(button) {
+    const optionItem = button.closest('.question-option-item');
+    if (optionItem) {
+        optionItem.remove();
     }
 }
 
@@ -619,16 +684,35 @@ function sanitizeURL(url) {
 }
 
 function getCustomQuestions() {
-    const inputs = document.querySelectorAll('.custom-question-input');
+    const questionItems = document.querySelectorAll('.custom-question-item');
     const questions = [];
 
-    inputs.forEach((input, index) => {
+    questionItems.forEach((item, index) => {
+        const input = item.querySelector('.custom-question-input');
+        const typeSelect = item.querySelector('.question-type-select');
         const text = sanitizeText(input.value);
+
         if (text && text.length >= 3) {
-            questions.push({
+            const questionData = {
                 id: `custom_${index}`,
-                question: text
-            });
+                question: text,
+                type: typeSelect.value
+            };
+
+            // Collect options for choice questions
+            if (typeSelect.value === 'choice') {
+                const optionInputs = item.querySelectorAll('.question-option-input');
+                const options = [];
+                optionInputs.forEach(optInput => {
+                    const optText = sanitizeText(optInput.value);
+                    if (optText) {
+                        options.push(optText);
+                    }
+                });
+                questionData.options = options;
+            }
+
+            questions.push(questionData);
         }
     });
 
