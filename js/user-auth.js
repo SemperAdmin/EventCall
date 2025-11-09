@@ -192,9 +192,15 @@ const userAuth = {
             return;
         }
 
-        // Standardized loading state
+        // Show app loader immediately
+        if (window.showAppLoader) {
+            window.showAppLoader();
+        }
+
+        // Set authentication in progress
         this.authInProgress = true;
-        await window.LoadingUI.withButtonLoading(submitBtn, 'Creating account...', async () => {
+
+        try {
             // Generate unique client ID for tracking response
             const clientId = 'reg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
@@ -237,15 +243,24 @@ const userAuth = {
                 if (window.showPage) {
                     window.showPage('dashboard');
                 }
+
+                // Hide loading screen after a brief delay to ensure smooth transition
+                setTimeout(() => {
+                    if (window.hideAppLoader) {
+                        window.hideAppLoader();
+                    }
+                }, 800);
             } else {
                 throw new Error(response.error || 'Registration failed');
             }
-        });
-        try {
-            // No-op: handled in withButtonLoading block
         } catch (error) {
             console.error('❌ Registration failed:', error);
             showToast('❌ Registration failed: ' + error.message, 'error');
+
+            // Hide app loader on error
+            if (window.hideAppLoader) {
+                window.hideAppLoader();
+            }
         } finally {
             this.authInProgress = false;
         }
@@ -287,9 +302,15 @@ const userAuth = {
             return;
         }
 
-        // Standardized loading state
+        // Show app loader immediately
+        if (window.showAppLoader) {
+            window.showAppLoader();
+        }
+
+        // Set authentication in progress
         this.authInProgress = true;
-        await window.LoadingUI.withButtonLoading(submitBtn, 'Signing in...', async () => {
+
+        try {
             // Generate unique client ID for tracking response
             const clientId = 'login_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
@@ -320,11 +341,6 @@ const userAuth = {
                 // Hide login and show app
                 this.hideLoginScreen();
 
-                // Show loading screen while app initializes
-                if (window.showAppLoader) {
-                    window.showAppLoader();
-                }
-
                 // Load user's events
                 if (window.loadManagerData) {
                     await window.loadManagerData();
@@ -344,12 +360,14 @@ const userAuth = {
             } else {
                 throw new Error(response.error || 'Login failed');
             }
-        });
-        try {
-            // No-op: handled in withButtonLoading block
         } catch (error) {
             console.error('❌ Login failed:', error);
             showToast('❌ Login failed: ' + error.message, 'error');
+
+            // Hide app loader on error
+            if (window.hideAppLoader) {
+                window.hideAppLoader();
+            }
         } finally {
             this.authInProgress = false;
         }
