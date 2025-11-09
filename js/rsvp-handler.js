@@ -43,9 +43,17 @@ class RSVPHandler {
             if (event) {
                 const storageKey = `eventcall_pending_rsvps_${event.id}`;
                 try {
-                    const pending = localStorage.getItem(storageKey);
-                    if (pending) {
-                        const rsvps = JSON.parse(pending);
+                    const storageSync = window.utils && window.utils.secureStorageSync;
+                    let rsvps = null;
+                    if (storageSync) {
+                        rsvps = storageSync.get(storageKey);
+                    } else {
+                        const pending = localStorage.getItem(storageKey);
+                        if (pending) {
+                            rsvps = JSON.parse(pending);
+                        }
+                    }
+                    if (rsvps && Array.isArray(rsvps)) {
                         const existing = rsvps.find(r => r.rsvpId === rsvpId || r.editToken === editToken);
                         if (existing) {
                             return existing;
@@ -107,7 +115,7 @@ class RSVPHandler {
             text-align: center;
             border: 2px solid #fcd34d;
         `;
-        banner.innerHTML = '✏️ <strong>Edit Mode:</strong> You are updating your existing RSVP';
+        banner.innerHTML = window.utils.sanitizeHTML('✏️ <strong>Edit Mode:</strong> You are updating your existing RSVP');
 
         const firstChild = inviteContent.firstChild;
         if (firstChild) {
@@ -130,11 +138,11 @@ class RSVPHandler {
         const originalText = submitBtn.textContent;
 
         try {
-            submitBtn.innerHTML = '<div class="spinner"></div> Submitting...';
+            submitBtn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Submitting...');
             submitBtn.disabled = true;
 
             const rsvpData = this.collectFormData();
-            const validation = this.validateRSVPData(rsvpData);
+            const validation = await this.validateRSVPData(rsvpData);
 
             if (!validation.valid) {
                 validation.errors.forEach(error => {
@@ -160,6 +168,24 @@ class RSVPHandler {
             rsvpData.eventId = eventId;
             rsvpData.validationHash = this.generateValidationHash(rsvpData);
             rsvpData.submissionMethod = 'secure_backend';
+            rsvpData.userAgent = navigator.userAgent || '';
+
+            // Acquire reCAPTCHA v3 token if configured
+            try {
+                const cfg = window.RECAPTCHA_CONFIG || {};
+                const action = (cfg.actionMap && cfg.actionMap.rsvp) || 'rsvp_submit';
+                if (cfg.enabled && cfg.siteKey && (!cfg.enabledForms || cfg.enabledForms.includes('rsvp'))) {
+                    const token = await (window.utils && window.utils.getRecaptchaToken ? window.utils.getRecaptchaToken(action) : Promise.resolve(null));
+                    if (token) {
+                        rsvpData.captchaToken = token;
+                        rsvpData.captchaAction = action;
+                    } else {
+                        console.warn('reCAPTCHA token unavailable; proceeding without token');
+                    }
+                }
+            } catch (captchaErr) {
+                console.warn('reCAPTCHA acquisition error:', captchaErr);
+            }
 
             // Generate check-in token
             if (window.qrCheckIn) {
@@ -213,8 +239,16 @@ class RSVPHandler {
         }
 
         try {
-            const result = await window.BackendAPI.submitRSVP(rsvpData);
+        // Attach CSRF token into payload for secure backend
+        if (window.csrf && typeof window.csrf.getToken === 'function') {
+            rsvpData.csrfToken = window.csrf.getToken();
+        }
+        const result = await window.BackendAPI.submitRSVP(rsvpData);
             
+            // Rotate CSRF token after successful submission
+            if (window.csrf && typeof window.csrf.rotateToken === 'function') {
+                window.csrf.rotateToken();
+            }
             return {
                 method: 'secure_backend',
                 success: true,
@@ -246,9 +280,15 @@ class RSVPHandler {
         let pendingRSVPs = [];
         
         try {
-            const existing = localStorage.getItem(storageKey);
-            if (existing) {
-                pendingRSVPs = JSON.parse(existing);
+            const storageSync = window.utils && window.utils.secureStorageSync;
+            if (storageSync) {
+                const arr = storageSync.get(storageKey);
+                if (Array.isArray(arr)) pendingRSVPs = arr;
+            } else {
+                const existing = localStorage.getItem(storageKey);
+                if (existing) {
+                    pendingRSVPs = JSON.parse(existing);
+                }
             }
         } catch (e) {
             console.warn('Failed to load existing pending RSVPs:', e);
@@ -266,13 +306,18 @@ class RSVPHandler {
         }
 
         try {
-            localStorage.setItem(storageKey, JSON.stringify(pendingRSVPs));
+            const storageSync = window.utils && window.utils.secureStorageSync;
+            if (storageSync) {
+                storageSync.set(storageKey, pendingRSVPs, { ttl: 4 * 60 * 60 * 1000 });
+            } else {
+                localStorage.setItem(storageKey, JSON.stringify(pendingRSVPs));
+            }
         } catch (e) {
             throw new Error(`Failed to save locally: ${e.message}`);
         }
 
         return {
-            method: 'local_storage',
+            method: (window.utils && window.utils.secureStorageSync) ? 'secure_session' : 'local_storage',
             success: true,
             pendingCount: pendingRSVPs.length,
             requiresManualProcessing: true
@@ -322,20 +367,20 @@ class RSVPHandler {
             );
         }
 
-        document.getElementById('invite-content').innerHTML = `
+        document.getElementById('invite-content').innerHTML = window.utils.sanitizeHTML(`
             <div class="rsvp-confirmation">
                 <div class="confirmation-title">🎉 RSVP Submitted Successfully!</div>
                 <div class="confirmation-message">
-                    Thank you, <strong>${rsvpData.name}</strong>! Your RSVP has been recorded.
+                    Thank you, <strong>${window.utils.escapeHTML(rsvpData.name)}</strong>! Your RSVP has been recorded.
                 </div>
                 
                 <div class="confirmation-details">
-                    <div class="confirmation-status">
-                        <strong>Your Status:</strong> ${rsvpData.attending ? '✅ Attending' : '❌ Not Attending'}
-                    </div>
-                    
-                    ${rsvpData.guestCount > 0 ? `
-                        <div><strong>Additional Guests:</strong> ${rsvpData.guestCount}</div>
+                <div class="confirmation-status">
+                    <strong>Your Status:</strong> ${rsvpData.attending ? '✅ Attending' : '❌ Not Attending'}
+                </div>
+                
+                ${rsvpData.guestCount > 0 ? `
+                        <div><strong>Additional Guests:</strong> ${window.utils.escapeHTML(String(rsvpData.guestCount))}</div>
                     ` : ''}
 
                     ${rsvpData.dietaryRestrictions && rsvpData.dietaryRestrictions.length > 0 ? `
@@ -403,7 +448,7 @@ class RSVPHandler {
                     </div>
                 </div>
             </div>
-        `;
+        `);
     }
 
     showSubmissionError(error) {
@@ -411,7 +456,7 @@ class RSVPHandler {
         
         showToast(`❌ Submission failed: ${errorDetails.userMessage}`, 'error');
         
-        document.getElementById('invite-content').innerHTML = `
+        document.getElementById('invite-content').innerHTML = window.utils.sanitizeHTML(`
             <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 1rem; padding: 2rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
                 <div style="color: #ef4444; font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">
                     ❌ Submission Failed
@@ -431,7 +476,7 @@ class RSVPHandler {
                     <button class="btn" onclick="window.location.reload()">🔄 Try Again</button>
                 </div>
             </div>
-        `;
+        `);
     }
 
     categorizeError(error) {
@@ -522,7 +567,7 @@ class RSVPHandler {
         };
     }
 
-    validateRSVPData(rsvpData) {
+    async validateRSVPData(rsvpData) {
         const result = {
             valid: true,
             errors: []
@@ -533,7 +578,18 @@ class RSVPHandler {
             result.errors.push('Please enter your full name (at least 2 characters)');
         }
 
-        if (!rsvpData.email || !isValidEmail(rsvpData.email)) {
+        if (!rsvpData.email) {
+            result.valid = false;
+            result.errors.push('Please enter your email address');
+        } else if (window.validation && typeof window.validation.validateEmail === 'function') {
+            const emailCheck = await window.validation.validateEmail(rsvpData.email, { verifyDNS: true });
+            if (!emailCheck.valid) {
+                result.valid = false;
+                result.errors.push(...emailCheck.errors);
+            } else {
+                rsvpData.email = emailCheck.normalized;
+            }
+        } else if (!isValidEmail(rsvpData.email)) {
             result.valid = false;
             result.errors.push('Please enter a valid email address');
         }
@@ -543,9 +599,19 @@ class RSVPHandler {
             result.errors.push('Please select if you are attending');
         }
 
-        if (rsvpData.phone && !isValidPhone(rsvpData.phone)) {
-            result.valid = false;
-            result.errors.push('Please enter a valid phone number');
+        if (rsvpData.phone) {
+            if (window.validation && typeof window.validation.validatePhone === 'function') {
+                const phoneCheck = window.validation.validatePhone(rsvpData.phone, 'US');
+                if (!phoneCheck.valid) {
+                    result.valid = false;
+                    result.errors.push(...phoneCheck.errors);
+                } else {
+                    rsvpData.phone = phoneCheck.formatted || phoneCheck.e164;
+                }
+            } else if (!isValidPhone(rsvpData.phone)) {
+                result.valid = false;
+                result.errors.push('Please enter a valid phone number');
+            }
         }
 
         if (rsvpData.guestCount < 0 || rsvpData.guestCount > 10) {

@@ -36,7 +36,7 @@ class LoginUI {
             document.body.appendChild(loginContainer);
         }
 
-        loginContainer.innerHTML = `
+        loginContainer.innerHTML = window.utils.sanitizeHTML(`
             <div class="login-wrapper">
                 <div class="login-box">
                     <!-- Header -->
@@ -119,7 +119,7 @@ class LoginUI {
                     </div>
                 </div>
             </div>
-        `;
+        `);
 
         this.attachLoginListeners();
     }
@@ -130,7 +130,7 @@ class LoginUI {
     showRegisterForm() {
         const loginContainer = document.getElementById('login-container');
         
-        loginContainer.innerHTML = `
+        loginContainer.innerHTML = window.utils.sanitizeHTML(`
             <div class="login-wrapper">
                 <div class="login-box">
                     <!-- Header -->
@@ -186,7 +186,7 @@ class LoginUI {
                     </div>
                 </div>
             </div>
-        `;
+        `);
 
         this.attachRegisterListeners();
     }
@@ -236,7 +236,7 @@ class LoginUI {
 
         try {
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<div class="spinner"></div> Verifying...';
+        submitBtn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Verifying...');
 
             const result = await window.managerAuth.login(email, code, rememberMe);
 
@@ -268,7 +268,7 @@ class LoginUI {
             
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '🔓 ACCESS EVENTS';
+        submitBtn.innerHTML = window.utils.sanitizeHTML('🔓 ACCESS EVENTS');
         }
     }
 
@@ -282,7 +282,7 @@ class LoginUI {
 
         try {
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<div class="spinner"></div> Creating Account...';
+        submitBtn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Creating Account...');
 
             const result = await window.managerAuth.registerManager(email, name);
 
@@ -297,7 +297,7 @@ class LoginUI {
             
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '🚀 CREATE ACCOUNT';
+        submitBtn.innerHTML = window.utils.sanitizeHTML('🚀 CREATE ACCOUNT');
         }
     }
 
@@ -307,22 +307,22 @@ class LoginUI {
     showAccessCodeModal(manager, masterCode) {
         const modal = document.createElement('div');
         modal.className = 'modal-overlay active';
-        modal.innerHTML = `
+        modal.innerHTML = window.utils.sanitizeHTML(`
             <div class="modal access-code-modal">
                 <div class="modal-header">
                     <h2>✅ Account Created Successfully!</h2>
                 </div>
                 <div class="modal-body">
                     <div class="success-message">
-                        <p>Welcome, <strong>${manager.name}</strong>!</p>
+                        <p>Welcome, <strong>${window.utils.escapeHTML(manager.name)}</strong>!</p>
                         <p>Your manager account has been created.</p>
                     </div>
 
                     <div class="access-code-display">
                         <label>🔑 Your Manager Access Code:</label>
                         <div class="code-box">
-                            <code id="manager-code-display">${masterCode}</code>
-                            <button class="btn btn-icon" onclick="loginUI.copyCode('${masterCode}')" title="Copy to clipboard">
+                            <code id="manager-code-display">${window.utils.escapeHTML(masterCode)}</code>
+                            <button id="copy-code-btn" class="btn btn-icon" title="Copy to clipboard">
                                 📋
                             </button>
                         </div>
@@ -342,14 +342,18 @@ class LoginUI {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-primary" onclick="loginUI.proceedAfterRegistration('${manager.email}', '${masterCode}')">
+                    <button id="proceed-btn" class="btn btn-primary">
                         Continue to Dashboard
                     </button>
                 </div>
             </div>
-        `;
+        `);
 
         document.body.appendChild(modal);
+        const copyBtn = modal.querySelector('#copy-code-btn');
+        if (copyBtn) copyBtn.addEventListener('click', () => this.copyCode(masterCode));
+        const proceedBtn = modal.querySelector('#proceed-btn');
+        if (proceedBtn) proceedBtn.addEventListener('click', () => this.proceedAfterRegistration(manager.email, masterCode));
     }
 
     /**
@@ -416,25 +420,33 @@ class LoginUI {
 
         const menu = document.createElement('div');
         menu.className = 'user-menu-dropdown';
-        menu.innerHTML = `
+        menu.innerHTML = window.utils.sanitizeHTML(`
             <div class="user-menu-header">
-                <strong>${manager.name}</strong>
-                <small>${manager.email}</small>
+                <strong>${window.utils.escapeHTML(manager.name)}</strong>
+                <small>${window.utils.escapeHTML(manager.email)}</small>
             </div>
-            <div class="user-menu-item" onclick="showPage('dashboard')">
+            <div class="user-menu-item" data-action="dashboard">
                 📊 Dashboard
             </div>
-            <div class="user-menu-item" onclick="showPage('create')">
+            <div class="user-menu-item" data-action="create">
                 ➕ Create Event
             </div>
             <div class="user-menu-divider"></div>
-            <div class="user-menu-item" onclick="loginUI.handleLogout()">
+            <div class="user-menu-item" data-action="logout">
                 🚪 Logout
             </div>
-        `;
+        `);
 
         const userBtn = document.querySelector('.user-profile-btn');
-        if (userBtn) userBtn.appendChild(menu);
+        if (userBtn) {
+            userBtn.appendChild(menu);
+            const dashboard = menu.querySelector('[data-action="dashboard"]');
+            const create = menu.querySelector('[data-action="create"]');
+            const logout = menu.querySelector('[data-action="logout"]');
+            if (dashboard) dashboard.addEventListener('click', () => window.showPage('dashboard'));
+            if (create) create.addEventListener('click', () => window.showPage('create'));
+            if (logout) logout.addEventListener('click', () => this.handleLogout());
+        }
     }
 
     handleLogout() {
@@ -455,7 +467,7 @@ console.log('✅ Login UI Component loaded');
 // Escape user-facing strings (errors, prompts, etc.)
 function showLoginError(msg) {
     const h = window.utils.escapeHTML;
-    document.getElementById('login-error').innerHTML = `
+    document.getElementById('login-error').innerHTML = window.utils.sanitizeHTML(`
         <div class="error">${h(msg || 'Unknown error')}</div>
-    `;
+    `);
 }

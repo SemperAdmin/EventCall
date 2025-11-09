@@ -39,14 +39,14 @@ if ('serviceWorker' in navigator) {
                     border-radius: 0.5rem; box-shadow: 0 6px 20px rgba(0,0,0,0.2);
                     display: flex; align-items: center; gap: 0.75rem;
                 `;
-                banner.innerHTML = `
+                banner.innerHTML = window.utils.sanitizeHTML(`
                     <span>📦 App update available</span>
                     <button id="sw-refresh-btn" style="
                         background: #10b981; color: #fff; border: none;
                         padding: 0.5rem 0.75rem; border-radius: 0.375rem; cursor: pointer;">
                         Refresh now
                     </button>
-                `;
+                `);
                 document.body.appendChild(banner);
 
                 const btn = banner.querySelector('#sw-refresh-btn');

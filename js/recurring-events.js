@@ -13,6 +13,9 @@ class RecurringEvents {
             quarterly: { label: 'Quarterly', days: 90 },
             yearly: { label: 'Yearly', days: 365 }
         };
+
+        // Use a 4-hour TTL for session-persistent recurring event data
+        this.FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
     }
 
     /**
@@ -163,15 +166,25 @@ class RecurringEvents {
         baseEvent.recurrence.createdInstances = instances.map(i => i.id);
 
         // In production, would submit to GitHub workflow
-        // For now, store in localStorage
+        // For now, store using secure session storage with TTL, fallback to localStorage
         const allEvents = [baseEvent, ...instances];
 
         allEvents.forEach(event => {
             const storageKey = `event_${event.id}`;
             try {
-                localStorage.setItem(storageKey, JSON.stringify(event));
+                if (typeof secureStorageSync !== 'undefined' && secureStorageSync) {
+                    secureStorageSync.set(storageKey, event, { ttlMs: this.FOUR_HOURS_MS });
+                } else {
+                    // Fallback for environments without secure storage
+                    localStorage.setItem(storageKey, JSON.stringify(event));
+                }
             } catch (e) {
-                console.error('Failed to save event:', e);
+                console.error('Failed to save event via secure storage, falling back:', e);
+                try {
+                    localStorage.setItem(storageKey, JSON.stringify(event));
+                } catch (fallbackErr) {
+                    console.error('Fallback save to localStorage also failed:', fallbackErr);
+                }
             }
         });
 
@@ -217,16 +230,34 @@ class RecurringEvents {
     getEventInstances(parentEventId) {
         const instances = [];
 
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('event_')) {
-                try {
-                    const event = JSON.parse(localStorage.getItem(key));
-                    if (event.parentEventId === parentEventId) {
+        // Prefer secure storage if available
+        if (typeof secureStorageSync !== 'undefined' && secureStorageSync) {
+            try {
+                const keys = secureStorageSync.keys('event_') || [];
+                keys.forEach(key => {
+                    const event = secureStorageSync.get(key);
+                    if (event && event.parentEventId === parentEventId) {
                         instances.push(event);
                     }
-                } catch (e) {
-                    console.error('Error parsing event:', e);
+                });
+            } catch (e) {
+                console.error('Error reading instances from secure storage:', e);
+            }
+        }
+
+        // Fallback to localStorage if secure storage yielded no results
+        if (instances.length === 0) {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('event_')) {
+                    try {
+                        const event = JSON.parse(localStorage.getItem(key));
+                        if (event && event.parentEventId === parentEventId) {
+                            instances.push(event);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing event from localStorage:', e);
+                    }
                 }
             }
         }
@@ -260,9 +291,18 @@ class RecurringEvents {
             // Save updated instance
             const storageKey = `event_${instance.id}`;
             try {
-                localStorage.setItem(storageKey, JSON.stringify(instance));
+                if (typeof secureStorageSync !== 'undefined' && secureStorageSync) {
+                    secureStorageSync.set(storageKey, instance, { ttlMs: this.FOUR_HOURS_MS });
+                } else {
+                    localStorage.setItem(storageKey, JSON.stringify(instance));
+                }
             } catch (e) {
-                console.error('Failed to update instance:', e);
+                console.error('Failed to update instance via secure storage, falling back:', e);
+                try {
+                    localStorage.setItem(storageKey, JSON.stringify(instance));
+                } catch (fallbackErr) {
+                    console.error('Fallback update to localStorage also failed:', fallbackErr);
+                }
             }
         });
 
@@ -280,11 +320,37 @@ class RecurringEvents {
 
         instances.forEach(instance => {
             const storageKey = `event_${instance.id}`;
-            localStorage.removeItem(storageKey);
+            try {
+                if (typeof secureStorageSync !== 'undefined' && secureStorageSync) {
+                    secureStorageSync.remove(storageKey);
+                } else {
+                    localStorage.removeItem(storageKey);
+                }
+            } catch (e) {
+                console.error('Failed to remove instance from secure storage, falling back:', e);
+                try {
+                    localStorage.removeItem(storageKey);
+                } catch (fallbackErr) {
+                    console.error('Fallback remove from localStorage also failed:', fallbackErr);
+                }
+            }
         });
 
         // Also delete parent event
-        localStorage.removeItem(`event_${parentEventId}`);
+        try {
+            if (typeof secureStorageSync !== 'undefined' && secureStorageSync) {
+                secureStorageSync.remove(`event_${parentEventId}`);
+            } else {
+                localStorage.removeItem(`event_${parentEventId}`);
+            }
+        } catch (e) {
+            console.error('Failed to remove parent event from secure storage, falling back:', e);
+            try {
+                localStorage.removeItem(`event_${parentEventId}`);
+            } catch (fallbackErr) {
+                console.error('Fallback remove of parent event from localStorage also failed:', fallbackErr);
+            }
+        }
 
         return {
             success: true,

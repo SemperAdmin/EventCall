@@ -24,6 +24,10 @@ class ErrorHandler {
 
         // Catch general errors
         window.addEventListener('error', (event) => {
+            // Extra visibility to locate syntax errors: log filename and message
+            try {
+                console.error('🧭 Global error source:', event.filename, 'line', event.lineno, 'col', event.colno, '-', event.message);
+            } catch (_) { /* noop */ }
             this.handleError(event.error, 'Global Error', {
                 message: event.message,
                 filename: event.filename,

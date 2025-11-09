@@ -1,0 +1,15 @@
+{
+  "name": "eventcall",
+  "version": "0.0.0",
+  "private": true,
+  "description": "EventCall security test harness",
+  "scripts": {
+    "start": "http-server -p 8080",
+    "test": "node tests/run-tests.js"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "puppeteer": "^22.7.1"
+  }
+}
+

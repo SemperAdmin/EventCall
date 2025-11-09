@@ -113,7 +113,7 @@ class QRCheckIn {
      */
     async checkInRSVP(eventId, rsvpId, checkInToken) {
         // In production, this would call a GitHub workflow
-        // For now, store in localStorage
+        // For now, store in secure session storage (fallback to localStorage)
         const checkInKey = `checkin_${eventId}_${rsvpId}`;
         const checkInData = {
             rsvpId: rsvpId,
@@ -124,7 +124,12 @@ class QRCheckIn {
         };
 
         try {
-            localStorage.setItem(checkInKey, JSON.stringify(checkInData));
+            const storageSync = window.utils && window.utils.secureStorageSync;
+            if (storageSync) {
+                storageSync.set(checkInKey, checkInData, { ttl: 4 * 60 * 60 * 1000 });
+            } else {
+                localStorage.setItem(checkInKey, JSON.stringify(checkInData));
+            }
             return { success: true, checkInData };
         } catch (error) {
             console.error('Check-in failed:', error);
@@ -138,9 +143,13 @@ class QRCheckIn {
     getCheckInStatus(eventId, rsvpId) {
         const checkInKey = `checkin_${eventId}_${rsvpId}`;
         try {
-            const data = localStorage.getItem(checkInKey);
-            if (data) {
-                return JSON.parse(data);
+            const storageSync = window.utils && window.utils.secureStorageSync;
+            if (storageSync) {
+                const rec = storageSync.get(checkInKey);
+                if (rec) return rec;
+            } else {
+                const data = localStorage.getItem(checkInKey);
+                if (data) return JSON.parse(data);
             }
         } catch (error) {
             console.error('Error reading check-in status:', error);
@@ -153,14 +162,28 @@ class QRCheckIn {
      */
     getAllCheckIns(eventId) {
         const checkIns = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith(`checkin_${eventId}_`)) {
-                try {
-                    const data = JSON.parse(localStorage.getItem(key));
-                    checkIns.push(data);
-                } catch (error) {
-                    console.error('Error parsing check-in data:', error);
+        const prefix = `checkin_${eventId}_`;
+        const storageSync = window.utils && window.utils.secureStorageSync;
+        if (storageSync) {
+            try {
+                const keys = storageSync.keys(prefix);
+                keys.forEach(k => {
+                    const data = storageSync.get(k);
+                    if (data) checkIns.push(data);
+                });
+            } catch (e) {
+                console.error('Error reading secure check-ins:', e);
+            }
+        } else {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(prefix)) {
+                    try {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        checkIns.push(data);
+                    } catch (error) {
+                        console.error('Error parsing check-in data:', error);
+                    }
                 }
             }
         }
@@ -258,30 +281,30 @@ class QRCheckIn {
         const recentContainer = document.getElementById(`recent-checkins-list-${eventId}`);
 
         if (statsContainer) {
-            statsContainer.innerHTML = `
+            statsContainer.innerHTML = window.utils.sanitizeHTML(`
                 <div style="padding: 1rem; background: #dcfce7; border-radius: 0.5rem; text-align: center;">
-                    <div style="font-size: 2rem; font-weight: 700; color: #16a34a;">${checkIns.length}</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #16a34a;">${window.utils.escapeHTML(String(checkIns.length))}</div>
                     <div style="font-size: 0.875rem; color: #15803d;">Checked In</div>
                 </div>
-            `;
+            `);
         }
 
         if (recentContainer) {
             if (checkIns.length === 0) {
-                recentContainer.innerHTML = `
+                recentContainer.innerHTML = window.utils.sanitizeHTML(`
                     <div style="padding: 2rem; text-align: center; color: #6b7280;">
                         No check-ins yet
                     </div>
-                `;
+                `);
             } else {
-                recentContainer.innerHTML = checkIns.reverse().slice(0, 10).map(checkIn => `
+                recentContainer.innerHTML = window.utils.sanitizeHTML(checkIns.reverse().slice(0, 10).map(checkIn => `
                     <div style="padding: 1rem; margin-bottom: 0.5rem; background: #f9fafb; border-left: 4px solid #10b981; border-radius: 0.5rem;">
-                        <div style="font-weight: 600;">RSVP ID: ${checkIn.rsvpId.substring(0, 8)}...</div>
+                        <div style="font-weight: 600;">RSVP ID: ${window.utils.escapeHTML(checkIn.rsvpId.substring(0, 8))}...</div>
                         <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
                             ✅ ${new Date(checkIn.checkInTime).toLocaleString()}
                         </div>
                     </div>
-                `).join('');
+                `).join(''));
             }
         }
     }

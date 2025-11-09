@@ -451,3 +451,272 @@ function escapeHTML(str) {
 }
 window.utils = window.utils || {};
 window.utils.escapeHTML = escapeHTML;
+
+/**
+ * Sanitize HTML content using DOMPurify when available; fallback escapes all HTML
+ * @param {string} html - HTML string to sanitize
+ * @param {Object} options - Optional DOMPurify config
+ * @returns {string} Safe HTML string
+ */
+function sanitizeHTML(html, options = {}) {
+    if (html === null || html === undefined) return '';
+    const raw = String(html);
+    if (typeof window !== 'undefined' && window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
+        // Use DOMPurify with default safe tags to avoid breaking UI
+        try {
+            return window.DOMPurify.sanitize(raw, options);
+        } catch (e) {
+            console.warn('DOMPurify sanitize failed, falling back to escape:', e);
+        }
+    }
+    // Fallback: escape to plain text to prevent XSS
+    return escapeHTML(raw);
+}
+
+/**
+ * Safely set innerHTML on an element using sanitizeHTML
+ * @param {HTMLElement} el - Target element
+ * @param {string} html - HTML content
+ */
+function safeSetHTML(el, html) {
+    if (!el) return;
+    el.innerHTML = sanitizeHTML(html);
+}
+
+window.utils.sanitizeHTML = sanitizeHTML;
+window.utils.safeSetHTML = safeSetHTML;
+
+/**
+ * SecureStorage (Async) - AES-GCM 256 + HMAC-SHA256, TTL, audit logging
+ * Notes:
+ * - Key material is generated per-session and stored in sessionStorage
+ * - Methods return Promises; use await when calling
+ */
+class SecureStorage {
+    constructor(namespace = 'sec') {
+        this.ns = namespace;
+        this.encKey = null;
+        this.macKey = null;
+        this.auditKey = `${this.ns}_audit_log`;
+        this.defaultTTLms = 4 * 60 * 60 * 1000; // 4 hours
+        this.initialized = false;
+    }
+
+    async init() {
+        if (this.initialized) return;
+        // Load or generate key material (64 bytes base64)
+        let materialB64 = sessionStorage.getItem(`${this.ns}_key_material`);
+        if (!materialB64) {
+            const bytes = new Uint8Array(64);
+            crypto.getRandomValues(bytes);
+            materialB64 = btoa(String.fromCharCode(...bytes));
+            sessionStorage.setItem(`${this.ns}_key_material`, materialB64);
+        }
+        const materialBytes = Uint8Array.from(atob(materialB64), c => c.charCodeAt(0));
+        const encBytes = materialBytes.slice(0, 32);
+        const macBytes = materialBytes.slice(32, 64);
+        this.encKey = await crypto.subtle.importKey('raw', encBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+        this.macKey = await crypto.subtle.importKey('raw', macBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+        this.initialized = true;
+    }
+
+    _namespacedKey(key) { return `${this.ns}_${key}`; }
+
+    async set(key, value, opts = {}) {
+        await this.init();
+        const ttl = typeof opts.ttl === 'number' ? opts.ttl : this.defaultTTLms;
+        const wrapper = { v: 1, exp: Date.now() + ttl, data: value };
+        const plaintext = new TextEncoder().encode(JSON.stringify(wrapper));
+        const iv = new Uint8Array(12);
+        crypto.getRandomValues(iv);
+        const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, this.encKey, plaintext);
+        const ctBytes = new Uint8Array(ct);
+        // HMAC over iv|ct
+        const combined = new Uint8Array(iv.length + ctBytes.length);
+        combined.set(iv, 0); combined.set(ctBytes, iv.length);
+        const macBuf = await crypto.subtle.sign('HMAC', this.macKey, combined);
+        const macBytes = new Uint8Array(macBuf);
+
+        const record = {
+            v: 1,
+            iv: btoa(String.fromCharCode(...iv)),
+            ct: btoa(String.fromCharCode(...ctBytes)),
+            mac: btoa(String.fromCharCode(...macBytes)),
+            exp: wrapper.exp
+        };
+        sessionStorage.setItem(this._namespacedKey(key), JSON.stringify(record));
+        this._audit('set', key, true);
+    }
+
+    async get(key) {
+        await this.init();
+        const raw = sessionStorage.getItem(this._namespacedKey(key));
+        if (!raw) { this._audit('get', key, false); return null; }
+        try {
+            const rec = JSON.parse(raw);
+            if (typeof rec.exp === 'number' && Date.now() > rec.exp) {
+                sessionStorage.removeItem(this._namespacedKey(key));
+                this._audit('get_expired', key, false);
+                return null;
+            }
+            const iv = Uint8Array.from(atob(rec.iv), c => c.charCodeAt(0));
+            const ct = Uint8Array.from(atob(rec.ct), c => c.charCodeAt(0));
+            const combined = new Uint8Array(iv.length + ct.length);
+            combined.set(iv, 0); combined.set(ct, iv.length);
+            const macStored = Uint8Array.from(atob(rec.mac), c => c.charCodeAt(0));
+            const macValid = await crypto.subtle.verify('HMAC', this.macKey, macStored, combined);
+            if (!macValid) { this._audit('get_mac_invalid', key, false); return null; }
+            const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, this.encKey, ct);
+            const pt = new TextDecoder().decode(ptBuf);
+            const wrapper = JSON.parse(pt);
+            this._audit('get', key, true);
+            return wrapper.data;
+        } catch (e) {
+            console.warn('SecureStorage get failed:', e);
+            this._audit('get_error', key, false);
+            return null;
+        }
+    }
+
+    remove(key) {
+        sessionStorage.removeItem(this._namespacedKey(key));
+        this._audit('remove', key, true);
+    }
+
+    keys(prefix = '') {
+        const nsPrefix = this._namespacedKey(prefix);
+        const out = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const k = sessionStorage.key(i) || '';
+            if (k.startsWith(this.ns + '_') && (!prefix || k.startsWith(nsPrefix))) {
+                out.push(k.substring(this.ns.length + 1));
+            }
+        }
+        return out;
+    }
+
+    _audit(action, key, success) {
+        try {
+            const entry = { ts: Date.now(), action, key, success };
+            const raw = sessionStorage.getItem(this.auditKey);
+            const log = raw ? JSON.parse(raw) : [];
+            log.push(entry);
+            if (log.length > 1000) log.shift();
+            sessionStorage.setItem(this.auditKey, JSON.stringify(log));
+        } catch (e) {
+            // swallow audit errors
+        }
+    }
+}
+
+/**
+ * SecureStorageSync (No-crypto) - Synchronous TTL wrapper for modules that need sync access
+ * - Uses sessionStorage
+ * - Applies TTL and audit logging
+ * - Intended as transitional storage for synchronous rendering paths
+ */
+class SecureStorageSync {
+    constructor(namespace = 'sec') {
+        this.ns = namespace;
+        this.auditKey = `${this.ns}_audit_log_sync`;
+        this.defaultTTLms = 4 * 60 * 60 * 1000; // 4 hours
+    }
+    _namespacedKey(key) { return `${this.ns}_${key}`; }
+    set(key, value, opts = {}) {
+        const ttl = typeof opts.ttl === 'number' ? opts.ttl : this.defaultTTLms;
+        const wrapper = { v: 1, exp: Date.now() + ttl, data: value };
+        sessionStorage.setItem(this._namespacedKey(key), JSON.stringify(wrapper));
+        this._audit('set', key, true);
+    }
+    get(key) {
+        const raw = sessionStorage.getItem(this._namespacedKey(key));
+        if (!raw) { this._audit('get', key, false); return null; }
+        try {
+            const rec = JSON.parse(raw);
+            if (typeof rec.exp === 'number' && Date.now() > rec.exp) {
+                sessionStorage.removeItem(this._namespacedKey(key));
+                this._audit('get_expired', key, false);
+                return null;
+            }
+            this._audit('get', key, true);
+            return rec.data ?? rec; // backward compatible if plain array was stored
+        } catch (e) {
+            this._audit('get_error', key, false);
+            return null;
+        }
+    }
+    remove(key) { sessionStorage.removeItem(this._namespacedKey(key)); this._audit('remove', key, true); }
+    keys(prefix = '') {
+        const nsPrefix = this._namespacedKey(prefix);
+        const out = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const k = sessionStorage.key(i) || '';
+            if (k.startsWith(this.ns + '_') && (!prefix || k.startsWith(nsPrefix))) {
+                out.push(k.substring(this.ns.length + 1));
+            }
+        }
+        return out;
+    }
+    _audit(action, key, success) {
+        try {
+            const entry = { ts: Date.now(), action, key, success };
+            const raw = sessionStorage.getItem(this.auditKey);
+            const log = raw ? JSON.parse(raw) : [];
+            log.push(entry);
+            if (log.length > 1000) log.shift();
+            sessionStorage.setItem(this.auditKey, JSON.stringify(log));
+        } catch (e) {}
+    }
+}
+
+window.utils.secureStorage = new SecureStorage('sec');
+window.utils.secureStorageSync = new SecureStorageSync('sec');
+
+/**
+ * reCAPTCHA v3 Loader and Token Helper
+ */
+(function(){
+  function loadRecaptchaScript(siteKey) {
+    return new Promise((resolve, reject) => {
+      if (window.grecaptcha && window.grecaptcha.execute) return resolve();
+      const existing = document.querySelector('script[data-recaptcha="v3"]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve());
+        existing.addEventListener('error', reject);
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+      s.async = true;
+      s.defer = true;
+      s.setAttribute('data-recaptcha', 'v3');
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Failed to load reCAPTCHA script'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function getRecaptchaToken(action = 'submit') {
+    try {
+      const cfg = window.RECAPTCHA_CONFIG || {};
+      if (!cfg.enabled || !cfg.siteKey) {
+        console.warn('reCAPTCHA not configured; skipping token acquisition');
+        return null;
+      }
+      await loadRecaptchaScript(cfg.siteKey);
+      return new Promise((resolve, reject) => {
+        window.grecaptcha.ready(() => {
+          window.grecaptcha.execute(cfg.siteKey, { action }).then(resolve).catch(reject);
+        });
+      });
+    } catch (e) {
+      console.warn('reCAPTCHA token acquisition failed:', e);
+      return null;
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    window.utils = window.utils || {};
+    window.utils.getRecaptchaToken = getRecaptchaToken;
+  }
+})();

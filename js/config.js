@@ -26,7 +26,9 @@ const GITHUB_CONFIG = {
     repo: 'EventCall',
     branch: 'main',
     imageRepo: 'EventCall-Images',
-    token: assembleToken()
+    token: assembleToken(),
+    // Optional: provide multiple tokens to rotate under rate limiting
+    tokens: []
 };
 
 // Application Configuration
@@ -78,6 +80,28 @@ const AUTH_CONFIG = {
         // Example user (uncomment and customize as needed):
         // { username: 'demo', password: 'demo123', name: 'Demo User', rank: 'Guest', role: 'user' }
     ]
+};
+
+// Security Configuration (SEC-006)
+const SECURITY_CONFIG = {
+    allowedOrigins: [
+        // Fill with production origins, e.g., 'https://eventcall.example.com'
+        window.location.origin // include current origin by default
+    ],
+    csrfCookieName: 'eventcall_csrf',
+    csrfStorageKey: 'eventcall_csrf_token',
+    csrfRotateMs: 30 * 60 * 1000 // rotate every 30 minutes
+};
+
+// reCAPTCHA v3 Configuration (client-side only; server must validate tokens)
+const RECAPTCHA_CONFIG = {
+    enabled: true,
+    siteKey: '', // provide your site key to enable; empty disables token requests
+    enabledForms: ['rsvp'],
+    scoreThreshold: 0.5,
+    actionMap: {
+        rsvp: 'rsvp_submit'
+    }
 };
 
 // Messages
@@ -162,8 +186,10 @@ const CodeGenerator = {
 if (typeof window !== 'undefined') {
     window.GITHUB_CONFIG = GITHUB_CONFIG;
     window.APP_CONFIG = APP_CONFIG;
+    window.SECURITY_CONFIG = SECURITY_CONFIG;
     window.CODE_CONFIG = CODE_CONFIG;
     window.AUTH_CONFIG = AUTH_CONFIG;
+    window.RECAPTCHA_CONFIG = RECAPTCHA_CONFIG;
     window.MESSAGES = MESSAGES;
     window.VALIDATION = VALIDATION;
     window.CodeGenerator = CodeGenerator;

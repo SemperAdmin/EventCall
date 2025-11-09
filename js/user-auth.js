@@ -186,7 +186,7 @@ const userAuth = {
 
         // Show loading state
         const originalText = submitBtn.textContent;
-        submitBtn.innerHTML = '<div class="spinner"></div> Creating account...';
+        submitBtn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Creating account...');
         submitBtn.disabled = true;
         this.authInProgress = true;
 
@@ -284,7 +284,7 @@ const userAuth = {
 
         // Show loading state
         const originalText = submitBtn.textContent;
-        submitBtn.innerHTML = '<div class="spinner"></div> Signing in...';
+        submitBtn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Signing in...');
         submitBtn.disabled = true;
         this.authInProgress = true;
 
@@ -617,9 +617,16 @@ const userAuth = {
      */
     saveUserToStorage(user, rememberMe = false) {
         try {
-            const storageType = rememberMe ? localStorage : sessionStorage;
-            storageType.setItem('eventcall_user', JSON.stringify(user));
-            console.log(`💾 User saved to ${rememberMe ? 'localStorage' : 'sessionStorage'}`);
+            const storageSync = window.utils && window.utils.secureStorageSync;
+            if (storageSync) {
+                const ttl = 4 * 60 * 60 * 1000; // 4 hours
+                storageSync.set('eventcall_user', user, { ttl });
+                console.log('💾 User saved to secure session storage');
+            } else {
+                const storageType = rememberMe ? localStorage : sessionStorage;
+                storageType.setItem('eventcall_user', JSON.stringify(user));
+                console.log(`💾 User saved to ${rememberMe ? 'localStorage' : 'sessionStorage'}`);
+            }
         } catch (error) {
             console.error('Failed to save user to storage:', error);
         }
@@ -630,16 +637,21 @@ const userAuth = {
      */
     loadUserFromStorage() {
         try {
-            // Check localStorage first (remember me)
+            const storageSync = window.utils && window.utils.secureStorageSync;
+            if (storageSync) {
+                const user = storageSync.get('eventcall_user');
+                if (user) {
+                    console.log('📥 User loaded from secure session storage:', user.username);
+                    return user;
+                }
+            }
+            // Compatibility fallback
             let saved = localStorage.getItem('eventcall_user');
             let source = 'localStorage';
-
-            // Fall back to sessionStorage
             if (!saved) {
                 saved = sessionStorage.getItem('eventcall_user');
                 source = 'sessionStorage';
             }
-
             if (saved) {
                 const user = JSON.parse(saved);
                 console.log(`📥 User loaded from ${source}:`, user.username);
@@ -656,6 +668,10 @@ const userAuth = {
      */
     clearUserFromStorage() {
         try {
+            const storageSync = window.utils && window.utils.secureStorageSync;
+            if (storageSync) {
+                storageSync.remove('eventcall_user');
+            }
             localStorage.removeItem('eventcall_user');
             sessionStorage.removeItem('eventcall_user');
             console.log('🗑️ User cleared from all storage');
@@ -781,10 +797,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (regPassword && strengthIndicator) {
         regPassword.addEventListener('input', (e) => {
             const result = userAuth.checkPasswordStrength(e.target.value);
-            strengthIndicator.innerHTML = `
+            strengthIndicator.innerHTML = window.utils.sanitizeHTML(`
                 <div class="strength-bar" style="background: ${result.color}; width: ${(result.score / 6) * 100}%"></div>
-                <span class="strength-text" style="color: ${result.color}">${result.message}</span>
-            `;
+                <span class="strength-text" style="color: ${result.color}">${window.utils.escapeHTML(result.message)}</span>
+            `);
         });
     }
 });
