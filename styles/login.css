@@ -96,7 +96,7 @@
     align-items: center;
     gap: 0.5rem;
     font-weight: 600;
-    color: #94a3b8;
+    color: var(--text-color);
     margin-bottom: 0.5rem;
     font-size: 0.95rem;
 }
