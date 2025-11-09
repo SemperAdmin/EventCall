@@ -8,6 +8,8 @@
     <!-- Strengthen CSP by upgrading insecure requests and allowing workers safely -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: https://www.google.com https://www.gstatic.com https://dns.google; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
     <title>EventCall - Where Every Event Matters</title>
+    <!-- Explicit favicon to avoid default /favicon.ico on organization root -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%231a1f2e'/%3E%3Ccircle cx='32' cy='32' r='20' fill='%23d4af37'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/components.css">
     <link rel="stylesheet" href="styles/invite.css">
@@ -578,6 +580,24 @@ function switchAuthTab(tab) {
 -->
 
 <!-- Backend API (must load before auth if backend is used) -->
+<!-- Proxy configuration: set dispatchURL via localStorage or inline assignment -->
+<script>
+  (function () {
+    // Allow setting proxy URL without code changes:
+    // In DevTools, run: localStorage.setItem('eventcall_proxy_url', 'https://<your-render-service-url>');
+    var configured = (window.BACKEND_CONFIG && window.BACKEND_CONFIG.dispatchURL) || '';
+    var fromStorage = localStorage.getItem('eventcall_proxy_url') || '';
+    var dispatchURL = configured || fromStorage;
+    window.BACKEND_CONFIG = {
+      dispatchURL: dispatchURL,
+      // When hosted on *.github.io, prefer proxy to avoid CORS on GitHub API
+      useProxyOnGithubPages: true
+    };
+    if (!dispatchURL && (location.hostname || '').endsWith('github.io')) {
+      console.warn('[EventCall] Proxy dispatchURL not configured. Set localStorage.eventcall_proxy_url to your Render URL.');
+    }
+  })();
+</script>
 <script src="js/backend-api.js"></script>
 <!-- AUTHENTICATION - REPLACED manager-auth.js with user-auth.js -->
 <script src="js/user-auth.js?v=20251104-2"></script>
