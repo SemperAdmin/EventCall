@@ -88,6 +88,29 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Handle SPA navigation - serve index.html for HTML page requests
+    const isNavigationRequest = request.mode === 'navigate' ||
+                                request.destination === 'document' ||
+                                (request.method === 'GET' && request.headers.get('accept')?.includes('text/html'));
+
+    if (isNavigationRequest && request.method === 'GET') {
+        event.respondWith(
+            caches.open(CACHE_NAME).then(cache => {
+                return cache.match('/index.html').then(cachedResponse => {
+                    const networkFetch = fetch('/index.html').then(networkResponse => {
+                        if (networkResponse && networkResponse.status === 200) {
+                            cache.put('/index.html', networkResponse.clone());
+                        }
+                        return networkResponse;
+                    }).catch(() => cachedResponse);
+
+                    return cachedResponse || networkFetch;
+                });
+            })
+        );
+        return;
+    }
+
     // Static assets - cache first, network fallback
     if (request.method === 'GET') {
         event.respondWith(cacheFirstStrategy(request));
