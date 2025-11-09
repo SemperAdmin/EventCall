@@ -13,6 +13,19 @@ class GitHubAPI {
         this.issuesURL = `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/issues`;
         this.corsProxy = 'https://api.allorigins.win/raw?url=';
         this.useCorsProxy = false;
+
+        // Add caching for RSVP data to reduce API calls
+        this.rsvpCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000 // 5 minutes cache
+        };
+
+        this.eventsCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000 // 5 minutes cache
+        };
     }
 
     /**
@@ -189,13 +202,25 @@ class GitHubAPI {
     }
 
     /**
-     * Load all events from EventCall-Data repository for current user
+     * Load all events from EventCall-Data repository for current user (with caching)
      */
-    async loadEvents() {
+    async loadEvents(options = {}) {
         const token = this.getToken();
         if (!token) {
             console.warn('⚠️ No GitHub token - returning empty events');
             return {};
+        }
+
+        // Check cache first unless force refresh is requested
+        const now = Date.now();
+        const forceRefresh = options.forceRefresh || false;
+
+        if (!forceRefresh && this.eventsCache.data && this.eventsCache.timestamp) {
+            const cacheAge = now - this.eventsCache.timestamp;
+            if (cacheAge < this.eventsCache.ttl) {
+                console.log(`📦 Using cached events (${Math.floor(cacheAge / 1000)}s old)`);
+                return this.eventsCache.data;
+            }
         }
 
         try {
@@ -270,12 +295,39 @@ class GitHubAPI {
             }
 
             console.log(`✅ Loaded ${Object.keys(events).length} events from private repo for current user`);
+
+            // Update cache
+            this.eventsCache.data = events;
+            this.eventsCache.timestamp = now;
+
             return events;
 
         } catch (error) {
             console.error('Failed to load events from private repo:', error);
+            // Return cached data if available
+            if (this.eventsCache.data) {
+                console.warn('⚠️ Returning stale cached events due to error');
+                return this.eventsCache.data;
+            }
             return {};
         }
+    }
+
+    /**
+     * Clear all caches
+     */
+    clearCache() {
+        console.log('🧹 Clearing GitHubAPI caches');
+        this.rsvpCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000
+        };
+        this.eventsCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000
+        };
     }
 
     /**
@@ -406,17 +458,29 @@ class GitHubAPI {
     }
 
     /**
-     * Load RSVP issues from GitHub
+     * Load RSVP issues from GitHub (with caching)
      */
-    async loadRSVPIssues() {
+    async loadRSVPIssues(options = {}) {
         const token = this.getToken();
         if (!token) {
             throw new Error('GitHub token required to load RSVP issues');
         }
 
+        // Check cache first unless force refresh is requested
+        const now = Date.now();
+        const forceRefresh = options.forceRefresh || false;
+
+        if (!forceRefresh && this.rsvpCache.data && this.rsvpCache.timestamp) {
+            const cacheAge = now - this.rsvpCache.timestamp;
+            if (cacheAge < this.rsvpCache.ttl) {
+                console.log(`📦 Using cached RSVP issues (${Math.floor(cacheAge / 1000)}s old)`);
+                return this.rsvpCache.data;
+            }
+        }
+
         try {
             console.log('🔎 Loading RSVP issues from GitHub...');
-            
+
             // Get issues with RSVP label
             const response = await (window.rateLimiter ? window.rateLimiter.fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
                 headers: {
@@ -424,7 +488,7 @@ class GitHubAPI {
                     'Accept': 'application/vnd.github.v3+json',
                     'User-Agent': 'EventCall-App'
                 }
-            }, { endpointKey: 'github_issues', retry: { maxAttempts: 5, baseDelayMs: 1000, jitter: true } }) : fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
+            }, { endpointKey: 'github_issues', retry: { maxAttempts: 3, baseDelayMs: 1000, jitter: true } }) : fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
                 headers: {
                     'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json',
@@ -433,16 +497,30 @@ class GitHubAPI {
             }));
 
             if (!response.ok) {
+                // If we have cached data, return it even if stale
+                if (this.rsvpCache.data) {
+                    console.warn(`⚠️ GitHub API error, using stale cache (${response.status})`);
+                    return this.rsvpCache.data;
+                }
                 throw new Error(`Failed to load RSVP issues: ${response.status}`);
             }
 
             const issues = await response.json();
             console.log(`✅ Found ${issues.length} RSVP issues`);
-            
+
+            // Update cache
+            this.rsvpCache.data = issues;
+            this.rsvpCache.timestamp = now;
+
             return issues;
 
         } catch (error) {
             console.error('Failed to load RSVP issues:', error);
+            // Return cached data if available
+            if (this.rsvpCache.data) {
+                console.warn('⚠️ Returning stale cached RSVP data due to error');
+                return this.rsvpCache.data;
+            }
             throw error;
         }
     }

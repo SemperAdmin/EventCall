@@ -161,6 +161,8 @@ class BackendAPI {
             if (!response.ok) {
                 // Try to get error details from response
                 let errorMessage = 'Workflow dispatch failed: ' + response.status;
+                let shouldFallbackToIssues = false;
+
                 try {
                     const errorData = await response.json();
                     console.error('GitHub API Error Details:', errorData);
@@ -169,9 +171,32 @@ class BackendAPI {
                         console.error('Validation Errors:', errorData.errors);
                         errorMessage += ' - ' + JSON.stringify(errorData.errors);
                     }
+
+                    // Detect specific 404 cases that should fallback to Issues
+                    if (response.status === 404) {
+                        if (errorData.message && errorData.message.includes('Not Found')) {
+                            console.warn('⚠️ Repository dispatch endpoint not found - workflow may not be enabled');
+                            shouldFallbackToIssues = true;
+                            errorMessage = 'Workflow not found (404) - attempting fallback to GitHub Issues';
+                        }
+                    }
                 } catch (parseError) {
                     console.error('Could not parse error response');
+                    // If we can't parse and got 404, assume workflow issue
+                    if (response.status === 404) {
+                        shouldFallbackToIssues = true;
+                        errorMessage = 'Workflow dispatch failed (404) - attempting fallback';
+                    }
                 }
+
+                // For 404 errors, mark for fallback instead of throwing immediately
+                if (shouldFallbackToIssues) {
+                    const fallbackError = new Error(errorMessage);
+                    fallbackError.shouldFallback = true;
+                    fallbackError.status = 404;
+                    throw fallbackError;
+                }
+
                 throw new Error(errorMessage);
             }
 
@@ -235,8 +260,17 @@ class BackendAPI {
         try {
             return await this.triggerWorkflow('submit_rsvp', payload);
         } catch (workflowError) {
-            console.warn('Workflow dispatch failed, trying GitHub Issues fallback:', workflowError.message);
-            return await this.submitRSVPViaIssue(payload);
+            console.warn('⚠️ Workflow dispatch failed:', workflowError.message);
+
+            // Always fallback to Issues for better reliability
+            console.log('📋 Attempting GitHub Issues fallback...');
+            try {
+                return await this.submitRSVPViaIssue(payload);
+            } catch (issueError) {
+                console.error('❌ Both workflow and issue submission failed');
+                // Throw a comprehensive error
+                throw new Error(`RSVP submission failed: Workflow (${workflowError.message}), Issues (${issueError.message})`);
+            }
         }
     }
 

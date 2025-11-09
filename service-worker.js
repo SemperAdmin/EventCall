@@ -245,6 +245,10 @@ async function setCacheTimestamp(url, timestamp) {
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
+        // Send response to prevent message channel from closing
+        if (event.ports && event.ports[0]) {
+            event.ports[0].postMessage({ success: true, type: 'SKIP_WAITING' });
+        }
     }
 
     if (event.data && event.data.type === 'CLEAR_CACHE') {
@@ -252,7 +256,12 @@ self.addEventListener('message', (event) => {
             caches.keys().then((cacheNames) => {
                 return Promise.all(
                     cacheNames.map((cacheName) => caches.delete(cacheName))
-                );
+                ).then(() => {
+                    // Send response after clearing cache
+                    if (event.ports && event.ports[0]) {
+                        event.ports[0].postMessage({ success: true, type: 'CLEAR_CACHE' });
+                    }
+                });
             })
         );
     }
