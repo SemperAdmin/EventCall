@@ -68,6 +68,9 @@
 .user-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: var(--ux2-text-light); cursor: pointer; transition: all 0.2s ease; }
 .user-avatar { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; background: var(--ux2-gold); color: var(--ux2-navy-900); border-radius: 50%; font-weight: 700; font-size: 0.875rem; }
 
+/* Navigation active state */
+.nav button.active { color: var(--ux2-gold); border-bottom: 2px solid var(--ux2-gold); }
+
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
 .page-header__title { color: var(--semper-navy); font-size: 2rem; font-weight: 700; }
 .page-header__badge { font-size: 0.875rem; color: var(--semper-red); font-weight: 600; }

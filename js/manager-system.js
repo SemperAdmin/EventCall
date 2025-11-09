@@ -1002,7 +1002,9 @@ function handleManageClick(e, eventId) {
         e.stopPropagation();
         e.preventDefault();
     }
-    if (window.eventManager && window.eventManager.showEventManagement) {
+    if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
+        window.AppRouter.navigateToPage('manage', eventId);
+    } else if (window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
         window.eventManager.showEventManagement(eventId);
     }
 }

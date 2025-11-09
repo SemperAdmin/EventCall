@@ -193,14 +193,18 @@ function showPageContent(pageId) {
         if (navButton) navButton.classList.add('active');
     }
     
-    // Show/hide nav based on page
+    // Show/hide header and nav based on page
+    const header = document.querySelector('.header');
+    if (header) {
+        header.style.display = pageId === 'manage' ? 'none' : '';
+    }
     if (nav) {
-        nav.style.display = pageId === 'invite' ? 'none' : 'flex';
+        nav.style.display = pageId === 'invite' || pageId === 'manage' ? 'none' : 'flex';
     }
     
-    // Update URL hash (but don't override invite URLs)
-    if (!window.location.hash.includes('invite/')) {
-        window.location.hash = pageId;
+    // Sync URL via History API (no hash) when router is available
+    if (window.AppRouter && typeof window.AppRouter.updateURLForPage === 'function') {
+        window.AppRouter.updateURLForPage(pageId);
     }
     
     // Page-specific initializations
@@ -646,17 +650,21 @@ function checkURLHash() {
  * Navigate to dashboard - Available immediately for HTML onclick
  */
 function goToDashboard() {
-    showPage('dashboard');
+    if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
+        window.AppRouter.navigateToPage('dashboard');
+    } else {
+        showPage('dashboard');
+    }
 }
 
 /**
  * Initialize hash change listener
  */
 function initializeHashListener() {
-    window.addEventListener('hashchange', checkURLHash);
-    
-    // Check initial hash
-    setTimeout(checkURLHash, 100);
+    // Use History API popstate for navigation
+    window.addEventListener('popstate', handleURLPath);
+    // Check initial path
+    setTimeout(handleURLPath, 100);
 }
 
 // Make functions globally available immediately
@@ -669,6 +677,46 @@ window.exportEventData = exportEventData;
 window.deleteEvent = deleteEvent;
 window.mailAttendee = mailAttendee;
 window.checkURLHash = checkURLHash;
+// New path-based handler
+function handleURLPath() {
+    const pathname = window.location.pathname || '';
+    const path = pathname.replace(/^\/+/, '');
+    const hasInviteData = window.location.search.includes('data=');
+
+    if (path.startsWith('invite/') || hasInviteData) {
+        const eventId = path.split('/')[1];
+        showPageContent('invite');
+        if (window.uiComponents && window.uiComponents.showInvite) {
+            window.uiComponents.showInvite(eventId);
+        }
+        return;
+    }
+
+    if (path.startsWith('manage/')) {
+        const eventId = path.split('/')[1];
+        const isAuthenticated = window.userAuth?.isAuthenticated() || window.managerAuth?.isAuthenticated();
+        if (!isAuthenticated) {
+            showLoginPage();
+            return;
+        }
+        if (window.eventManager && window.eventManager.showEventManagement) {
+            window.eventManager.showEventManagement(eventId);
+        } else {
+            showPage('manage');
+        }
+        return;
+    }
+
+    if (!path || path === 'dashboard') {
+        showPage('dashboard');
+        return;
+    }
+    if (path === 'create') {
+        showPage('create');
+        return;
+    }
+}
+window.handleURLPath = handleURLPath;
 window.initializeHashListener = initializeHashListener;
 window.goToDashboard = goToDashboard;
 window.enforceLogin = enforceLogin;

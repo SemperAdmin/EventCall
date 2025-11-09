@@ -6,7 +6,7 @@
     <!-- Reduce referrer leakage to external sites -->
     <meta name="referrer" content="no-referrer">
     <!-- Strengthen CSP by upgrading insecure requests and allowing workers safely -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: https://www.google.com https://www.gstatic.com https://dns.google; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: https://www.google.com https://www.gstatic.com https://dns.google; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; upgrade-insecure-requests">
     <title>EventCall - Where Every Event Matters</title>
     <!-- Explicit favicon to avoid default /favicon.ico on organization root -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%231a1f2e'/%3E%3Ccircle cx='32' cy='32' r='20' fill='%23d4af37'/%3E%3C/svg%3E">
@@ -31,8 +31,7 @@
     <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
 </head>
 <body>
-<!-- Skip to main content link for keyboard users and screen readers -->
-<a href="#main-content" class="skip-to-main">Skip to main content</a>
+<!-- Removed skip-to-main anchor per request -->
 <!-- Updated Login Page HTML with Obfuscated Token -->
 
 <!-- ============================================
@@ -159,6 +158,11 @@
                     <option value="1stSgt">1stSgt - First Sergeant</option>
                     <option value="MGySgt">MGySgt - Master Gunnery Sergeant</option>
                     <option value="SgtMaj">SgtMaj - Sergeant Major</option>
+                    <option value="Pvt">WO - Warrant Officer</option>
+                    <option value="Pvt">CWO2 - Chief Warrant Officer 2</option>
+                    <option value="Pvt">CWO3 - Chief Warrant Officer 3</option>
+                    <option value="Pvt">CWO4 - Chief Warrant Officer 4</option>
+                    <option value="Pvt">CWO5 - Chief Warrant Officer 5</option>
                     <option value="2ndLt">2ndLt - Second Lieutenant</option>
                     <option value="1stLt">1stLt - First Lieutenant</option>
                     <option value="Capt">Capt - Captain</option>
@@ -529,10 +533,13 @@ const tabs = document.querySelectorAll('.auth__tab');
 <script src="js/csrf.js"></script>
 <script src="js/github-api.js"></script>
 <script src="js/rsvp-handler.js"></script>
-<script src="js/ui-components.js"></script>
-<script src="js/event-manager.js"></script>
+    <script src="js/ui-components.js"></script>
+    <!-- Charts library for dashboard visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="js/event-manager.js"></script>
 <script src="js/manager-system.js"></script>
 <script src="js/early-functions.js"></script>
+<script src="js/router.js"></script>
 <script src="js/rate-limiter.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/validator@13.9.0/validator.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.11.6/bundle/libphonenumber-js.min.js"></script>

@@ -175,6 +175,15 @@ css.mission-control-subtitle .status-badge {
     border: 2px solid #3a4556;
 }
 
+/* Special tab container visual parity with RSVP Dashboard */
+.seating-chart-section {
+    background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
+    border-radius: 1rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 2px solid #3a4556;
+}
+
 .rsvp-dashboard-title {
     color: #d4af37;
     font-size: 1.5rem;
@@ -477,6 +486,108 @@ css.mission-control-subtitle .status-badge {
 /* Hide legacy IE arrow */
 .filter-select::-ms-expand {
     display: none;
+}
+
+/* ===== UX-008: Tabs, Quick Actions, Charts, Timeline ===== */
+.quick-actions-toolbar .dropdown[hidden],
+[hidden] {
+  display: none !important;
+}
+.quick-actions-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-color, #111827);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #3a4556;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.quick-actions-toolbar .btn-primary,
+.quick-actions-toolbar .btn-secondary,
+.quick-actions-toolbar .btn-tertiary {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #3a4556;
+}
+.quick-actions-toolbar .btn-primary { background: #0f1419; color: #ffd700; border-color: #d4af37; }
+.quick-actions-toolbar .btn-secondary { background: #1f2937; color: #e5e7eb; }
+.quick-actions-toolbar .btn-tertiary { background: transparent; color: #e5e7eb; }
+.quick-actions-toolbar .btn-tertiary.danger { color: #fca5a5; }
+.quick-actions-toolbar .more-group { position: relative; }
+.quick-actions-toolbar .dropdown {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  background: #0b1020;
+  border: 1px solid #3a4556;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.25rem;
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+
+.manage-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #3a4556;
+}
+.manage-tabs .tab-btn {
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid transparent;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+.manage-tabs .tab-btn.active { border-color: #d4af37; color: #ffd700; font-weight: 700; }
+
+.overview-subtabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #0f1419;
+  border-bottom: 1px solid #3a4556;
+}
+.overview-subtabs .subtab-btn {
+  background: transparent;
+  border: none;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 2px solid transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+.overview-subtabs .subtab-btn.active { border-color: #d4af37; color: #ffd700; font-weight: 700; }
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.chart-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #3a4556;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+.time-filter { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+
+.timeline-section { margin: 1rem 0; }
+.timeline-list { display: grid; gap: 0.5rem; }
+.timeline-item { display: flex; gap: 0.75rem; font-size: 0.9rem; color: #e5e7eb; }
+.timeline-time { color: #94a3b8; min-width: 180px; }
+
+.hidden { display: none !important; }
+
+@media (max-width: 768px) {
+  .charts-grid { grid-template-columns: 1fr; }
+  .quick-actions-toolbar { flex-wrap: wrap; }
 }
 
 /* Option list fallback colors (browser-dependent) */
@@ -838,5 +949,3 @@ css.btn-attendee-action-email {
     background: rgba(100, 116, 139, 0.3);
     color: #cbd5e1;
 }
-
-

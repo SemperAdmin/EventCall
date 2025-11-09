@@ -67,16 +67,84 @@ class EventManager {
             `;
         }
 
-        document.getElementById('event-details').innerHTML = window.utils.sanitizeHTML(this.generateEventDetailsHTML(event, eventId, responseTableHTML));
-        showPage('manage');
-        
-        const targetHash = `#manage/${eventId}`;
-        if (window.location.hash !== targetHash) {
-            setTimeout(() => {
-                if (window.location.hash !== targetHash) {
-                    window.location.hash = targetHash;
+        const detailsContainer = document.getElementById('event-details');
+        detailsContainer.innerHTML = window.utils.sanitizeHTML(this.generateEventDetailsHTML(event, eventId, responseTableHTML));
+        // Ensure Back button works even if DOMPurify strips inline handlers
+        const backBtn = detailsContainer.querySelector('.btn-back');
+        if (backBtn) {
+            backBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof goToDashboard === 'function') {
+                    goToDashboard();
+                } else if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
+                    window.AppRouter.navigateToPage('dashboard');
+                } else if (typeof showPage === 'function') {
+                    showPage('dashboard');
                 }
-            }, 0);
+            }, { once: true });
+        }
+
+        // Wire Quick Actions
+        const qaReminder = document.getElementById('qa-send-reminder');
+        const qaExport = document.getElementById('qa-export-list');
+        const qaAddGuest = document.getElementById('qa-add-guest');
+        const qaMore = document.getElementById('qa-more');
+        const qaMoreMenu = document.getElementById('qa-more-menu');
+        if (qaReminder) qaReminder.addEventListener('click', () => this.showReminderOptionsModal(event, eventResponses));
+        if (qaExport) qaExport.addEventListener('click', () => {
+            if (window.exportEventData) { window.exportEventData(eventId); }
+            else if (window.calendarExport && window.calendarExport.exportEvent) { window.calendarExport.exportEvent(eventId); }
+            else showToast('Export not available', 'warning');
+        });
+        if (qaAddGuest) qaAddGuest.addEventListener('click', () => this.promptAddGuest(eventId));
+        if (qaMore && qaMoreMenu) {
+            qaMore.addEventListener('click', () => {
+                const expanded = qaMore.getAttribute('aria-expanded') === 'true';
+                qaMore.setAttribute('aria-expanded', String(!expanded));
+                qaMoreMenu.hidden = expanded;
+            });
+            qaMoreMenu.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const act = btn.dataset.action;
+                    if (act === 'copy-link') this.copyInviteLink(eventId);
+                    if (act === 'sync-rsvps') syncWithGitHub();
+                    if (act === 'delete-event') deleteEvent(eventId);
+                    qaMoreMenu.hidden = true;
+                    qaMore.setAttribute('aria-expanded', 'false');
+                });
+            });
+            document.addEventListener('click', (e) => {
+                if (!qaMoreMenu.contains(e.target) && e.target !== qaMore) {
+                    qaMoreMenu.hidden = true;
+                    qaMore.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        // Setup primary tabs
+        this.setupManageTabs();
+
+        // Setup overview subtabs mapping existing sections
+        this.setupOverviewSubtabs(event, eventResponses);
+
+        // Render charts if available
+        this.renderAttendanceChart(stats);
+        this.renderResponsesChart(eventResponses);
+        const rangeSel = document.getElementById('time-range');
+        if (rangeSel) rangeSel.addEventListener('change', () => this.renderResponsesChart(eventResponses));
+        // Show manage page content; URL updates should be orchestrated by the router, not here
+        showPage('manage');
+        // Legacy fallback: update hash only if router is unavailable
+        if (!(window.AppRouter && typeof window.AppRouter.navigateToPage === 'function')) {
+            const targetHash = `#manage/${eventId}`;
+            if (window.location.hash !== targetHash) {
+                setTimeout(() => {
+                    if (window.location.hash !== targetHash) {
+                        window.location.hash = targetHash;
+                    }
+                }, 0);
+            }
         }
     }
 
@@ -138,7 +206,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     </div>
                 </div>
                 <div class="mission-control-actions">
-                    <button class="btn-back" onclick="showPage('dashboard')">
+                    <button class="btn-back" onclick="goToDashboard()">
                         ← Back to Dashboard
                     </button>
                     <button class="btn-edit" onclick="eventManager.editEvent('${eventId}')">
@@ -147,6 +215,36 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 </div>
             </div>
 
+            <!-- Quick Actions Toolbar -->
+            <div class="quick-actions-toolbar" role="toolbar" aria-label="Quick actions">
+                <button class="btn-primary" id="qa-send-reminder">✉️ Send Reminder</button>
+                <button class="btn-primary" id="qa-export-list">📤 Export List</button>
+                <button class="btn-primary" id="qa-add-guest">➕ Add Guest</button>
+                <div class="btn-group more-group">
+                    <button class="btn-secondary" id="qa-more" aria-haspopup="true" aria-expanded="false">⋯ More</button>
+                    <div class="dropdown" id="qa-more-menu" hidden>
+                        <button class="btn-tertiary" data-action="copy-link">🔗 Copy Invite Link</button>
+                        <button class="btn-tertiary" data-action="sync-rsvps">🔄 Sync RSVPs</button>
+                        <button class="btn-tertiary danger" data-action="delete-event">🗑️ Delete Event</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Primary Tabs -->
+            <div class="manage-tabs" role="tablist" aria-label="Manage tabs">
+                <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-overview-btn">Overview</button>
+                <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-guests" id="tab-guests-btn">Guest List</button>
+                <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-special" id="tab-special-btn">Special</button>
+            </div>
+
+            <!-- Overview Secondary Tabs -->
+            <div class="overview-subtabs" role="tablist" aria-label="Overview sections">
+                <button class="subtab-btn active" role="tab" aria-selected="true" aria-controls="sub-attendance" id="sub-attendance-btn">Attendance Stats</button>
+                <button class="subtab-btn" role="tab" aria-selected="false" aria-controls="sub-timeline" id="sub-timeline-btn">Event Timeline</button>
+                <button class="subtab-btn" role="tab" aria-selected="false" aria-controls="sub-venue" id="sub-venue-btn">Venue Details</button>
+            </div>
+
+            
             <!-- Event Overview -->
             <div class="event-overview-section">
                 <div class="event-overview-grid">
@@ -274,84 +372,52 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     </div>
                 </div>
 
-                <!-- Invite Roster Baseline -->
-                <div class="rsvp-stats-cards">
-                    <div class="stat-card-large stat-card-headcount">
-                        <div class="stat-card-icon">📧</div>
-                        <div class="stat-card-number">${invitedTotal}</div>
-                        <div class="stat-card-label">Invited</div>
+                <!-- Attendance Charts -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3 style="margin-bottom:0.5rem">Attendance Breakdown</h3>
+                        <canvas id="attendanceChart" aria-label="Attendance breakdown chart"></canvas>
                     </div>
-                    <div class="stat-card-large stat-card-attending">
-                        <div class="stat-card-icon">✅</div>
-                        <div class="stat-card-number">${respondedFromRoster}</div>
-                        <div class="stat-card-label">Responded</div>
-                    </div>
-                    <div class="stat-card-large stat-card-pending">
-                        <div class="stat-card-icon">⏳</div>
-                        <div class="stat-card-number">${pendingFromRoster}</div>
-                        <div class="stat-card-label">Pending</div>
-                    </div>
-                    <div class="stat-card-large stat-card-declined">
-                        <div class="stat-card-icon">🧾</div>
-                        <div class="stat-card-number">${unlistedResponses}</div>
-                        <div class="stat-card-label">Unlisted Responses</div>
+                    <div class="chart-card">
+                        <div class="time-filter">
+                            <label for="time-range">Time range</label>
+                            <select id="time-range">
+                                <option value="7">7 days</option>
+                                <option value="14">14 days</option>
+                                <option value="30" selected>30 days</option>
+                                <option value="90">90 days</option>
+                            </select>
+                        </div>
+                        <h3 style="margin-bottom:0.5rem">Responses Over Time</h3>
+                        <canvas id="responsesOverTimeChart" aria-label="Responses over time chart"></canvas>
                     </div>
                 </div>
 
-                <!-- Invite Roster Import -->
-                <div class="invite-link-section">
-                    <h3 class="invite-link-title">📥 Invite Roster</h3>
-                    <div class="invite-link-actions" style="margin-bottom: 0.75rem;">
-                        <input type="file"
-                               id="roster-import-file-${eventId}"
-                               accept=".csv"
-                               style="display:none"
-                               onchange="window.csvImporter.handleRosterUpload(event, '${eventId}')">
-                        <button class="btn-action" onclick="document.getElementById('roster-import-file-${eventId}').click()">
-                            📤 Upload Roster CSV
-                        </button>
-                        <a href="#" onclick="window.csvImporter.downloadTemplate(); return false;" style="margin-left: 0.75rem; color: #60a5fa;">
-                            Download CSV Template
-                        </a>
-                    </div>
-                    <div id="roster-import-preview"></div>
-                </div>
-
-                <!-- Dashboard Actions -->
-                <div class="dashboard-actions">
-                    <button class="btn-action btn-sync" onclick="syncWithGitHub()">
-                        🔄 Sync RSVPs
-                    </button>
-                    <button class="btn-action btn-reminder" onclick="eventManager.showReminderOptionsModal('${eventId}')">
-                        ✉️ Send Reminders
-                    </button>
-                    <button class="btn-action btn-export" onclick="calendarExport.exportEvent('${eventId}')">
-                        📤 Export
-                    </button>
-                </div>
             </div>
 
-            <!-- Invite Link -->
-            <div class="invite-link-section">
-                <h3 class="invite-link-title">🔗 Invite Link</h3>
-                <div class="invite-link-input-wrapper">
-                    <input 
-                        type="text" 
-                        class="invite-link-input" 
-                        value="${inviteURL}" 
-                        readonly 
-                        onclick="this.select()" 
-                        id="invite-link-input"
-                    >
-                </div>
-                <div class="invite-link-actions">
-                    <button class="btn-action" onclick="eventManager.copyInviteLink('${eventId}')">
-                        📋 Copy Link
+            <!-- Event Timeline (moved outside RSVP Dashboard) -->
+            <div class="timeline-section" id="sub-timeline" hidden>
+                <h2>⏱️ Event Timeline</h2>
+                <div id="timeline-list" class="timeline-list"></div>
+            </div>
+
+            <!-- Invite Roster (moved to Guest List tab) -->
+            <div class="invite-roster-section" hidden>
+                <h3 class="invite-link-title">📥 Invite Roster</h3>
+                <div class="invite-link-actions" style="margin-bottom: 0.75rem;">
+                    <input type="file"
+                           id="roster-import-file-${eventId}"
+                           accept=".csv"
+                           style="display:none"
+                           onchange="window.csvImporter.handleRosterUpload(event, '${eventId}')">
+                    <button class="btn-action" onclick="document.getElementById('roster-import-file-${eventId}').click()">
+                        📤 Upload Roster CSV
                     </button>
-                    <button class="btn-action" onclick="alert('Email link feature coming soon!')">
-                        📧 Email Link
-                    </button>
+                    <a href="#" onclick="window.csvImporter.downloadTemplate(); return false;" style="margin-left: 0.75rem; color: #60a5fa;">
+                        Download CSV Template
+                    </a>
                 </div>
+                <div id="roster-import-preview"></div>
             </div>
 
             <!-- Attendee List -->
@@ -383,6 +449,277 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     `;
 }
 
+    // ----- UX-008 Helpers -----
+    setupManageTabs() {
+        const btnOverview = document.getElementById('tab-overview-btn');
+        const btnGuests = document.getElementById('tab-guests-btn');
+        const btnSpecial = document.getElementById('tab-special-btn');
+        // Do not include timeline container here; Timeline visibility is controlled by Overview subtabs
+        const overviewSelectors = ['.overview-subtabs', '.event-overview-section', '.rsvp-dashboard-section', '.charts-grid', '.timeline-section'];
+        const guestSelectors = ['.attendee-list-section', '.invite-roster-section'];
+        // Remove invite-link-section from Special; invite link should only appear under Event Timeline
+        const specialSelectors = ['.dashboard-actions', '.seating-chart-section'];
+
+        const showElems = (selectors) => selectors.forEach(sel => {
+            const el = document.querySelector(sel);
+            if (el) { el.classList.remove('hidden'); el.removeAttribute('hidden'); el.style.display = ''; }
+        });
+        const hideElems = (selectors) => selectors.forEach(sel => {
+            const el = document.querySelector(sel);
+            if (el) { el.classList.add('hidden'); el.setAttribute('hidden', ''); el.style.display = 'none'; }
+        });
+
+        const setActive = (activeBtn) => {
+            [btnOverview, btnGuests, btnSpecial].forEach(btn => {
+                if (!btn) return;
+                const isActive = btn === activeBtn;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', String(isActive));
+            });
+        };
+
+        const activateOverview = () => {
+            setActive(btnOverview);
+            showElems(overviewSelectors);
+            hideElems(guestSelectors);
+            hideElems(specialSelectors);
+        };
+        const activateGuests = () => {
+            setActive(btnGuests);
+            hideElems(overviewSelectors);
+            showElems(guestSelectors);
+            hideElems(specialSelectors);
+        };
+        const activateSpecial = () => {
+            setActive(btnSpecial);
+            hideElems(overviewSelectors);
+            hideElems(guestSelectors);
+            showElems(specialSelectors);
+            // Ensure invite link is hidden when Special tab is active
+            hideElems(['.invite-link-section']);
+        };
+
+        if (btnOverview) btnOverview.addEventListener('click', activateOverview);
+        if (btnGuests) btnGuests.addEventListener('click', activateGuests);
+        if (btnSpecial) btnSpecial.addEventListener('click', activateSpecial);
+
+        // Keyboard navigation for tabs
+        const tabs = Array.from(document.querySelectorAll('.manage-tabs .tab-btn'));
+        tabs.forEach((btn, idx) => {
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight') { (tabs[idx + 1] || tabs[0]).focus(); }
+                if (e.key === 'ArrowLeft') { (tabs[idx - 1] || tabs[tabs.length - 1]).focus(); }
+            });
+        });
+
+        // Default to Overview
+        activateOverview();
+    }
+
+    setupOverviewSubtabs(event, eventResponses) {
+        const btnAttendance = document.getElementById('sub-attendance-btn');
+        const btnTimeline = document.getElementById('sub-timeline-btn');
+        const btnVenue = document.getElementById('sub-venue-btn');
+        const attendanceSelectors = ['.rsvp-dashboard-section', '.charts-grid'];
+        // Keep the overall overview section visible across all subtabs
+        const overviewSection = document.querySelector('.event-overview-section');
+        const timelineSection = document.getElementById('sub-timeline');
+        const venueGrid = document.querySelector('.event-overview-grid');
+        const inviteLinkSection = document.querySelector('.invite-link-section');
+
+        const showElems = (selectors) => selectors.forEach(sel => {
+            const el = document.querySelector(sel);
+            if (el) { el.classList.remove('hidden'); el.removeAttribute('hidden'); el.style.display = ''; }
+        });
+        const hideElems = (selectors) => selectors.forEach(sel => {
+            const el = document.querySelector(sel);
+            if (el) { el.classList.add('hidden'); el.setAttribute('hidden', ''); el.style.display = 'none'; }
+        });
+        const clearActive = () => {
+            [btnAttendance, btnTimeline, btnVenue].forEach(btn => {
+                if (!btn) return;
+                btn.classList.remove('active');
+                btn.setAttribute('aria-selected', 'false');
+            });
+        };
+        const setActive = (activeBtn) => {
+            if (!activeBtn) return;
+            clearActive();
+            activeBtn.classList.add('active');
+            activeBtn.setAttribute('aria-selected', 'true');
+        };
+        const hideInvite = () => hideElems(['.invite-link-section']);
+        const showInvite = () => {
+            if (inviteLinkSection) {
+                inviteLinkSection.classList.remove('hidden');
+                inviteLinkSection.removeAttribute('hidden');
+                inviteLinkSection.style.display = '';
+            }
+        };
+
+        const activateAttendance = () => {
+            setActive(btnAttendance);
+            showElems(attendanceSelectors);
+            if (overviewSection) { overviewSection.classList.remove('hidden'); overviewSection.removeAttribute('hidden'); overviewSection.style.display = ''; }
+            if (timelineSection) { timelineSection.hidden = true; timelineSection.classList.add('hidden'); timelineSection.style.display = 'none'; }
+            if (venueGrid) { venueGrid.classList.add('hidden'); venueGrid.setAttribute('hidden', ''); venueGrid.style.display = 'none'; }
+            hideInvite();
+            // Render charts if available
+            try {
+                const stats = this.calculateAttendanceStats ? this.calculateAttendanceStats(eventResponses) : null;
+                if (stats) this.renderAttendanceChart(stats);
+                this.renderResponsesChart(eventResponses);
+            } catch (e) { /* no-op */ }
+        };
+
+        const activateTimeline = () => {
+            setActive(btnTimeline);
+            hideElems(attendanceSelectors);
+            if (overviewSection) { overviewSection.classList.remove('hidden'); overviewSection.removeAttribute('hidden'); overviewSection.style.display = ''; }
+            if (timelineSection) { timelineSection.hidden = false; timelineSection.classList.remove('hidden'); timelineSection.style.display = ''; this.populateTimeline(event, eventResponses); }
+            if (venueGrid) { venueGrid.classList.add('hidden'); venueGrid.setAttribute('hidden', ''); venueGrid.style.display = 'none'; }
+            showInvite();
+        };
+
+        const activateVenue = () => {
+            setActive(btnVenue);
+            hideElems(attendanceSelectors);
+            if (overviewSection) { overviewSection.classList.remove('hidden'); overviewSection.removeAttribute('hidden'); overviewSection.style.display = ''; }
+            if (timelineSection) { timelineSection.hidden = true; timelineSection.classList.add('hidden'); timelineSection.style.display = 'none'; }
+            if (venueGrid) { venueGrid.classList.remove('hidden'); venueGrid.removeAttribute('hidden'); venueGrid.style.display = ''; }
+            hideInvite();
+        };
+
+        if (btnAttendance) btnAttendance.addEventListener('click', activateAttendance);
+        if (btnTimeline) btnTimeline.addEventListener('click', activateTimeline);
+        if (btnVenue) btnVenue.addEventListener('click', activateVenue);
+
+        // Keyboard navigation between subtabs
+        const subtabs = [btnAttendance, btnTimeline, btnVenue].filter(Boolean);
+        subtabs.forEach((btn, idx) => {
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight') { e.preventDefault(); const nxt = subtabs[(idx + 1) % subtabs.length]; nxt && nxt.focus(); }
+                if (e.key === 'ArrowLeft') { e.preventDefault(); const prv = subtabs[(idx - 1 + subtabs.length) % subtabs.length]; prv && prv.focus(); }
+            });
+        });
+
+        // Default to Attendance Stats
+        activateAttendance();
+    }
+
+    populateTimeline(event, eventResponses) {
+        const list = document.getElementById('timeline-list');
+        if (!list) return;
+        list.innerHTML = '';
+
+        const entries = this.buildTimelineEntries(event, eventResponses);
+        if (!entries.length) {
+            list.innerHTML = '<div class="empty-timeline">No timeline data yet</div>';
+            return;
+        }
+
+        entries.slice(0, 50).forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'timeline-item';
+            el.innerHTML = `<span class="timeline-time">${item.time.toLocaleString()}</span><span class="timeline-text">${window.utils?.escapeHTML ? window.utils.escapeHTML(item.text) : item.text}</span>`;
+            list.appendChild(el);
+        });
+    }
+
+    buildTimelineEntries(event, eventResponses) {
+        const entries = [];
+
+        // Event creation
+        if (event && event.created) {
+            const createdBy = event.createdByName || event.createdBy || '';
+            const whoText = createdBy ? ` by ${createdBy}` : '';
+            entries.push({ time: new Date(event.created), text: `Event created${whoText}` });
+        }
+
+        // Event updates
+        if (event && event.lastModified) {
+            entries.push({ time: new Date(event.lastModified), text: 'Event details updated' });
+        }
+
+        // RSVP responses
+        const responses = Array.isArray(eventResponses) ? eventResponses : [];
+        responses.forEach(r => {
+            const whenMs = new Date(r.updatedAt || r.date || r.timestamp || Date.now()).getTime();
+            const time = new Date(whenMs);
+            const who = r.name || r.email || r.guestName || 'Guest';
+            let action = 'responded';
+            // Prefer explicit boolean attending flag when present
+            if (typeof r.attending === 'boolean') {
+                action = r.attending ? 'accepted RSVP' : 'declined RSVP';
+            } else {
+                const rawStatus = (r.status || r.response || '').toString().toLowerCase();
+                if (rawStatus.includes('accept') || rawStatus === 'attending' || rawStatus === 'yes') action = 'accepted RSVP';
+                else if (rawStatus.includes('decline') || rawStatus === 'not attending' || rawStatus === 'no') action = 'declined RSVP';
+                else if (rawStatus.includes('pending')) action = 'marked RSVP pending';
+                else if (rawStatus) action = `updated RSVP (${rawStatus})`;
+            }
+            entries.push({ time, text: `${who} ${action}` });
+        });
+
+        // Sort newest first
+        entries.sort((a, b) => b.time.getTime() - a.time.getTime());
+        return entries;
+    }
+
+    renderAttendanceChart(stats) {
+        try {
+            const canvas = document.getElementById('attendanceChart');
+            if (!canvas || !window.Chart) return;
+            if (this._attendanceChart) { this._attendanceChart.destroy(); }
+            const data = [stats.attending || 0, stats.notAttending || 0, stats.pending || 0];
+            this._attendanceChart = new Chart(canvas, {
+                type: 'pie',
+                data: {
+                    labels: ['Accepted', 'Declined', 'Pending'],
+                    datasets: [{ data, backgroundColor: ['#2ecc71', '#e74c3c', '#f1c40f'] }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            });
+        } catch (e) { /* no-op */ }
+    }
+
+    renderResponsesChart(eventResponses) {
+        try {
+            const canvas = document.getElementById('responsesOverTimeChart');
+            if (!canvas || !window.Chart) return;
+            const range = parseInt(document.getElementById('time-range')?.value || '30', 10);
+            const now = Date.now();
+            const start = now - range * 24 * 60 * 60 * 1000;
+            const buckets = new Map();
+            (eventResponses || []).forEach(r => {
+                const t = new Date(r.updatedAt || r.date || r.timestamp || now).getTime();
+                if (t < start) return;
+                const d = new Date(t);
+                const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                buckets.set(key, (buckets.get(key) || 0) + 1);
+            });
+            const labels = Array.from(buckets.keys()).sort();
+            const data = labels.map(l => buckets.get(l));
+            if (this._responsesChart) { this._responsesChart.destroy(); }
+            this._responsesChart = new Chart(canvas, {
+                type: 'line',
+                data: { labels, datasets: [{ label: 'Responses', data, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.2)', tension: 0.25 }] },
+                options: { responsive: true, plugins: { legend: { display: false }, tooltip: { enabled: true } }, scales: { x: { ticks: { maxRotation: 0 } }, y: { beginAtZero: true } } }
+            });
+        } catch (e) { /* no-op */ }
+    }
+
+    promptAddGuest(eventId) {
+        const name = prompt('Guest name');
+        if (!name) return;
+        const email = prompt('Guest email');
+        if (!email) return;
+        if (window.managerSystem && window.managerSystem.addGuestToEvent) {
+            window.managerSystem.addGuestToEvent(eventId, { name, email });
+        } else {
+            showToast('Adding guests is not yet available here', 'info');
+        }
+    }
     /**
      * Send email reminder to event attendees
      * @param {string} eventId - Event ID
@@ -1230,8 +1567,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         );
 
         return `
-            <!-- Seating Chart Section -->
-            <div class="rsvp-dashboard-section">
+            <!-- Seating Chart Section (Special Tab) -->
+            <div class="seating-chart-section">
                 <h2 class="rsvp-dashboard-title">🪑 Seating Chart</h2>
 
                 <!-- Seating Stats -->
@@ -2255,12 +2592,13 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      */
     async saveEventSeatingData(event) {
         try {
+            // Persist to GitHub if available
             if (window.githubAPI) {
                 await window.githubAPI.saveEvent(event);
-                // Update local state
-                if (window.events) {
-                    window.events[event.id] = event;
-                }
+            }
+            // Always update local state so UI refresh uses latest seating data
+            if (window.events) {
+                window.events[event.id] = event;
             }
         } catch (error) {
             console.error('Failed to save seating data:', error);
