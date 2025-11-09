@@ -172,30 +172,51 @@ async function copyToClipboard(text) {
  * @param {string} data - Data to download
  * @param {string} filename - File name
  * @param {string} mimeType - MIME type
+ * @param {function(number):void} [onProgress] - Optional progress callback (0-100)
  */
-function downloadFile(data, filename, mimeType = 'text/plain') {
+function downloadFile(data, filename, mimeType = 'text/plain', onProgress) {
     const blob = new Blob([data], { type: mimeType });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
+    if (typeof onProgress === 'function') {
+        try { onProgress(0); } catch (_) {}
+    }
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
+    if (typeof onProgress === 'function') {
+        // Schedule completion update to ensure visual progress can render
+        setTimeout(() => { try { onProgress(100); } catch (_) {} }, 0);
+    }
 }
 
 /**
  * Convert file to base64
  * @param {File} file - File to convert
+ * @param {function(number):void} [onProgress] - Optional progress callback (0-100)
  * @returns {Promise<string>} Base64 string
  */
-function fileToBase64(file) {
+function fileToBase64(file, onProgress) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
+        if (typeof onProgress === 'function') {
+            try { onProgress(0); } catch (_) {}
+        }
         reader.onload = () => {
             const base64 = reader.result.split(',')[1];
+            if (typeof onProgress === 'function') {
+                try { onProgress(100); } catch (_) {}
+            }
             resolve(base64);
+        };
+        reader.onprogress = (e) => {
+            if (e && e.lengthComputable && typeof onProgress === 'function') {
+                const p = Math.max(0, Math.min(100, (e.loaded / e.total) * 100));
+                try { onProgress(Math.round(p)); } catch (_) {}
+            }
         };
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(file);

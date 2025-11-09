@@ -134,74 +134,86 @@ class RSVPHandler {
         this.submissionInProgress = true;
         this.currentEventId = eventId;
 
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        const originalText = submitBtn.textContent;
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        let progressTimer = null;
+        let progressCtl = null;
 
         try {
-            submitBtn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Submitting...');
-            submitBtn.disabled = true;
+            await window.LoadingUI.withButtonLoading(submitBtn, 'Submitting...', async () => {
+                const rsvpData = this.collectFormData();
+                const validation = await this.validateRSVPData(rsvpData);
 
-            const rsvpData = this.collectFormData();
-            const validation = await this.validateRSVPData(rsvpData);
-
-            if (!validation.valid) {
-                validation.errors.forEach(error => {
-                    showToast(error, 'error');
-                });
-                return;
-            }
-
-            rsvpData.timestamp = Date.now();
-
-            // In edit mode, use existing RSVP ID, otherwise generate new
-            if (this.editMode && this.existingRsvpId) {
-                rsvpData.rsvpId = this.existingRsvpId;
-                rsvpData.editToken = this.editToken;
-                rsvpData.isUpdate = true;
-                rsvpData.lastModified = Date.now();
-            } else {
-                rsvpData.rsvpId = generateUUID();
-                rsvpData.editToken = generateUUID(); // Generate edit token for new RSVPs
-                rsvpData.isUpdate = false;
-            }
-
-            rsvpData.eventId = eventId;
-            rsvpData.validationHash = this.generateValidationHash(rsvpData);
-            rsvpData.submissionMethod = 'secure_backend';
-            rsvpData.userAgent = navigator.userAgent || '';
-
-            // Acquire reCAPTCHA v3 token if configured
-            try {
-                const cfg = window.RECAPTCHA_CONFIG || {};
-                const action = (cfg.actionMap && cfg.actionMap.rsvp) || 'rsvp_submit';
-                if (cfg.enabled && cfg.siteKey && (!cfg.enabledForms || cfg.enabledForms.includes('rsvp'))) {
-                    const token = await (window.utils && window.utils.getRecaptchaToken ? window.utils.getRecaptchaToken(action) : Promise.resolve(null));
-                    if (token) {
-                        rsvpData.captchaToken = token;
-                        rsvpData.captchaAction = action;
-                    } else {
-                        console.warn('reCAPTCHA token unavailable; proceeding without token');
-                    }
+                if (!validation.valid) {
+                    validation.errors.forEach(error => {
+                        showToast(error, 'error');
+                    });
+                    return;
                 }
-            } catch (captchaErr) {
-                console.warn('reCAPTCHA acquisition error:', captchaErr);
-            }
 
-            // Generate check-in token
-            if (window.qrCheckIn) {
-                rsvpData.checkInToken = window.qrCheckIn.generateCheckInToken(rsvpData.rsvpId);
-            }
+                rsvpData.timestamp = Date.now();
 
-            const submissionResult = await this.submitWithRetry(eventId, rsvpData);
-            this.showEnhancedConfirmation(rsvpData, submissionResult);
+                // In edit mode, use existing RSVP ID, otherwise generate new
+                if (this.editMode && this.existingRsvpId) {
+                    rsvpData.rsvpId = this.existingRsvpId;
+                    rsvpData.editToken = this.editToken;
+                    rsvpData.isUpdate = true;
+                    rsvpData.lastModified = Date.now();
+                } else {
+                    rsvpData.rsvpId = generateUUID();
+                    rsvpData.editToken = generateUUID(); // Generate edit token for new RSVPs
+                    rsvpData.isUpdate = false;
+                }
+
+                rsvpData.eventId = eventId;
+                rsvpData.validationHash = this.generateValidationHash(rsvpData);
+                rsvpData.submissionMethod = 'secure_backend';
+                rsvpData.userAgent = navigator.userAgent || '';
+
+                // Acquire reCAPTCHA v3 token if configured
+                try {
+                    const cfg = window.RECAPTCHA_CONFIG || {};
+                    const action = (cfg.actionMap && cfg.actionMap.rsvp) || 'rsvp_submit';
+                    if (cfg.enabled && cfg.siteKey && (!cfg.enabledForms || cfg.enabledForms.includes('rsvp'))) {
+                        const token = await (window.utils && window.utils.getRecaptchaToken ? window.utils.getRecaptchaToken(action) : Promise.resolve(null));
+                        if (token) {
+                            rsvpData.captchaToken = token;
+                            rsvpData.captchaAction = action;
+                        } else {
+                            console.warn('reCAPTCHA token unavailable; proceeding without token');
+                        }
+                    }
+                } catch (captchaErr) {
+                    console.warn('reCAPTCHA acquisition error:', captchaErr);
+                }
+
+                // Generate check-in token
+                if (window.qrCheckIn) {
+                    rsvpData.checkInToken = window.qrCheckIn.generateCheckInToken(rsvpData.rsvpId);
+                }
+
+                // Progress feedback (simulated incremental updates at 500ms intervals)
+                progressCtl = window.LoadingUI.Progress.create(form, { showETA: true });
+                let p = 0;
+                progressTimer = setInterval(() => {
+                    p = Math.min(p + 5, 95);
+                    progressCtl.update(p);
+                }, 500);
+
+                const submissionResult = await this.submitWithRetry(eventId, rsvpData);
+                this.showEnhancedConfirmation(rsvpData, submissionResult);
+
+                // Complete progress
+                if (progressCtl) progressCtl.complete();
+                if (progressTimer) clearInterval(progressTimer);
+            });
 
         } catch (error) {
             console.error('RSVP submission failed:', error);
             this.showSubmissionError(error);
 
         } finally {
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
+            if (progressTimer) clearInterval(progressTimer);
             this.submissionInProgress = false;
         }
     }

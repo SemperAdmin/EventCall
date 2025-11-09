@@ -184,13 +184,9 @@ const userAuth = {
             return;
         }
 
-        // Show loading state
-        const originalText = submitBtn.textContent;
-        submitBtn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Creating account...');
-        submitBtn.disabled = true;
+        // Standardized loading state
         this.authInProgress = true;
-
-        try {
+        await window.LoadingUI.withButtonLoading(submitBtn, 'Creating account...', async () => {
             // Generate unique client ID for tracking response
             const clientId = 'reg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
@@ -235,13 +231,13 @@ const userAuth = {
             } else {
                 throw new Error(response.error || 'Registration failed');
             }
-
+        });
+        try {
+            // No-op: handled in withButtonLoading block
         } catch (error) {
             console.error('❌ Registration failed:', error);
             showToast('❌ Registration failed: ' + error.message, 'error');
         } finally {
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
             this.authInProgress = false;
         }
     },
@@ -282,13 +278,9 @@ const userAuth = {
             return;
         }
 
-        // Show loading state
-        const originalText = submitBtn.textContent;
-        submitBtn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Signing in...');
-        submitBtn.disabled = true;
+        // Standardized loading state
         this.authInProgress = true;
-
-        try {
+        await window.LoadingUI.withButtonLoading(submitBtn, 'Signing in...', async () => {
             // Generate unique client ID for tracking response
             const clientId = 'login_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
@@ -331,13 +323,13 @@ const userAuth = {
             } else {
                 throw new Error(response.error || 'Login failed');
             }
-
+        });
+        try {
+            // No-op: handled in withButtonLoading block
         } catch (error) {
             console.error('❌ Login failed:', error);
             showToast('❌ Login failed: ' + error.message, 'error');
         } finally {
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
             this.authInProgress = false;
         }
     },

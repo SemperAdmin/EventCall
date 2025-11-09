@@ -242,6 +242,14 @@ async function loadManagerData() {
         renderDashboard();
         return;
     }
+
+    // Show skeleton while fetching data
+    try {
+        const list = document.getElementById('events-list');
+        if (list && window.LoadingUI && window.LoadingUI.Skeleton) {
+            window.LoadingUI.Skeleton.show(list, 'cards', 6);
+        }
+    } catch (_) {}
     
     if (window.githubAPI) {
         try {
