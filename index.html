@@ -553,9 +553,7 @@ function switchAuthTab(tab) {
 <script src="js/utils.js"></script>
 <!-- Re-enabling remaining modules for isolation testing -->
 <script src="js/validation.js"></script>
-<script src="js/manager-auth.js"></script>
 <script src="js/recurring-events.js"></script>
-<script src="js/login-ui.js"></script>
 <script src="js/main.js"></script>
 <script src="js/calendar-export.js"></script>
 <script src="js/csv-import.js"></script>
@@ -579,6 +577,8 @@ function switchAuthTab(tab) {
 <script src="js/validation.js"></script>
 -->
 
+<!-- Backend API (must load before auth if backend is used) -->
+<script src="js/backend-api.js"></script>
 <!-- AUTHENTICATION - REPLACED manager-auth.js with user-auth.js -->
 <script src="js/user-auth.js?v=20251104-2"></script>
 
