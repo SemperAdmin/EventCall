@@ -793,6 +793,12 @@ const userAuth = {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+    // Skip initialization in test mode
+    if (window.__TEST_MODE__) {
+        console.log('⚠️ Test mode detected - skipping auth initialization');
+        return;
+    }
+
     userAuth.init();
 
     // Attach login form handler
