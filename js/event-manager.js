@@ -206,7 +206,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 <div class="mission-control-title">
                     <h1>${h(event.title)}</h1>
                     <div class="mission-control-subtitle">
-                        ${isPast ? '🔴 Past Event' : '🟢 Active Event'} • Created ${formatRelativeTime(event.created)}
+                        ${isPast ? '🔴 Past Event' : '🟢 Active Event'} • Last Updated ${formatRelativeTime(event.updated || event.created)}
                     </div>
                 </div>
                 <div class="mission-control-actions">

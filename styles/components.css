@@ -48,7 +48,7 @@
 
 .nav button.active {
     background: linear-gradient(135deg, var(--semper-gold) 0%, #e6c200 100%);
-    color: var(--semper-navy);
+    color: white;
     border-color: var(--semper-navy);
     font-weight: 700;
 }
