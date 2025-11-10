@@ -464,6 +464,9 @@ async function setupRSVPForm() {
     // Setup datetime input synchronization
     setupDatetimeInputSync();
 
+    // Setup military rank dropdown
+    setupMilitaryRankDropdown();
+
     // Check for edit mode and pre-fill if editing
     if (window.rsvpHandler && window.rsvpHandler.initEditMode) {
         const existingRSVP = await window.rsvpHandler.initEditMode();
@@ -476,6 +479,27 @@ async function setupRSVPForm() {
     // Pre-fill form if URL parameters exist (for new RSVPs)
     if (window.rsvpHandler && window.rsvpHandler.prefillFormFromURL) {
         window.rsvpHandler.prefillFormFromURL();
+    }
+}
+
+/**
+ * Setup military rank dropdown change listener
+ */
+function setupMilitaryRankDropdown() {
+    const branchSelect = document.getElementById('branch');
+    if (branchSelect) {
+        // Remove any existing listeners by replacing the element
+        const newBranchSelect = branchSelect.cloneNode(true);
+        branchSelect.parentNode.replaceChild(newBranchSelect, branchSelect);
+
+        // Add the change event listener
+        newBranchSelect.addEventListener('change', function() {
+            if (window.updateRanksForBranch) {
+                window.updateRanksForBranch();
+            }
+        });
+
+        console.log('✅ Military rank dropdown listener attached');
     }
 }
 
