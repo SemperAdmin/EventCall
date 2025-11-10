@@ -112,6 +112,7 @@ class GitHubAPI {
                 endpointKey: 'github_contents',
                 retry: { maxAttempts: 5, baseDelayMs: 800, jitter: true }
               })
+            : window.safeFetchGitHub ? window.safeFetchGitHub(url, options, 'GitHub API request')
             : fetch(url, options));
         return await this.handleResponse(response);
     }
@@ -537,7 +538,13 @@ class GitHubAPI {
                     'Accept': 'application/vnd.github.v3+json',
                     'User-Agent': 'EventCall-App'
                 }
-            }, { endpointKey: 'github_issues', retry: { maxAttempts: 3, baseDelayMs: 1000, jitter: true } }) : fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
+            }, { endpointKey: 'github_issues', retry: { maxAttempts: 3, baseDelayMs: 1000, jitter: true } }) : window.safeFetchGitHub ? window.safeFetchGitHub(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
+                }
+            }, 'Load RSVP issues') : fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
                 headers: {
                     'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json',
@@ -738,16 +745,20 @@ class GitHubAPI {
                 createData.sha = existingSha;
             }
 
-            const createResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App'
+            const createResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify(createData)
                 },
-                body: JSON.stringify(createData)
-            });
+                'Save event RSVPs'
+            );
 
             if (!createResponse.ok) {
                 const errorText = await createResponse.text();
@@ -772,19 +783,23 @@ class GitHubAPI {
         }
 
         try {
-            const response = await fetch(`${this.issuesURL}/${issueNumber}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App'
+            const response = await window.safeFetchGitHub(
+                `${this.issuesURL}/${issueNumber}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify({
+                        state: 'closed',
+                        labels: ['rsvp', 'processed']
+                    })
                 },
-                body: JSON.stringify({
-                    state: 'closed',
-                    labels: ['rsvp', 'processed']
-                })
-            });
+                'Close processed RSVP issue'
+            );
 
             if (!response.ok) {
                 throw new Error(`Failed to close issue #${issueNumber}: ${response.status}`);
@@ -870,16 +885,20 @@ class GitHubAPI {
 
             // Note: Don't send X-CSRF-Token to GitHub API - it causes CORS errors
             // GitHub API has its own authentication via the Authorization token
-            const createResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App'
+            const createResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify(createData)
                 },
-                body: JSON.stringify(createData)
-            });
+                'Save event to EventCall-Data'
+            );
 
             if (!createResponse.ok) {
                 const errorText = await createResponse.text();
@@ -954,31 +973,39 @@ class GitHubAPI {
 
         try {
             // Get file info first
-            const fileResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const fileResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`,
+                {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Get file info for deletion'
+            );
 
             if (fileResponse.ok) {
                 const fileData = await fileResponse.json();
 
-                const deleteResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'EventCall-App'
+                const deleteResponse = await window.safeFetchGitHub(
+                    `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'EventCall-App'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            sha: fileData.sha,
+                            branch: this.config.branch
+                        })
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        sha: fileData.sha,
-                        branch: this.config.branch
-                    })
-                });
+                    'Delete file from main repo'
+                );
 
                 if (!deleteResponse.ok) {
                     throw new Error(`Failed to delete ${path}: ${deleteResponse.status}`);
@@ -1000,31 +1027,39 @@ class GitHubAPI {
 
         try {
             // Get file info first from EventCall-Data
-            const fileResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const fileResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Get file info from EventCall-Data for deletion'
+            );
 
             if (fileResponse.ok) {
                 const fileData = await fileResponse.json();
 
-                const deleteResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'EventCall-App'
+                const deleteResponse = await window.safeFetchGitHub(
+                    `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'EventCall-App'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            sha: fileData.sha,
+                            branch: 'main'
+                        })
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        sha: fileData.sha,
-                        branch: 'main'
-                    })
-                });
+                    'Delete file from EventCall-Data'
+                );
 
                 if (!deleteResponse.ok) {
                     throw new Error(`Failed to delete ${path} from EventCall-Data: ${deleteResponse.status}`);
@@ -1052,31 +1087,39 @@ class GitHubAPI {
 
         try {
             // Get file info first from EventCall-Images
-            const fileResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const fileResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`,
+                {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Get file info from image repo for deletion'
+            );
 
             if (fileResponse.ok) {
                 const fileData = await fileResponse.json();
 
-                const deleteResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'EventCall-App'
+                const deleteResponse = await window.safeFetchGitHub(
+                    `https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'EventCall-App'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            sha: fileData.sha,
+                            branch: 'main'
+                        })
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        sha: fileData.sha,
-                        branch: 'main'
-                    })
-                });
+                    'Delete file from image repo'
+                );
 
                 if (!deleteResponse.ok) {
                     throw new Error(`Failed to delete ${path} from ${this.config.imageRepo}: ${deleteResponse.status}`);
@@ -1138,16 +1181,20 @@ class GitHubAPI {
                 createData.sha = existingSha;
             }
 
-            const createResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App'
+            const createResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify(createData)
                 },
-                body: JSON.stringify(createData)
-            });
+                'Save user to EventCall-Data'
+            );
 
             if (!createResponse.ok) {
                 const errorText = await createResponse.text();
@@ -1178,13 +1225,17 @@ class GitHubAPI {
             console.log('🔍 Searching for user by email:', email);
 
             // Load user files from EventCall-Data
-            const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const treeResponse = await window.safeFetchGitHub(
+                'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1',
+                {
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Load tree to search for user by email'
+            );
 
             if (!treeResponse.ok) {
                 console.log('No users found or repository not accessible');
@@ -1357,16 +1408,20 @@ class GitHubAPI {
             }
 
             // Save to GitHub
-            const saveResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App'
+            const saveResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify(updateData)
                 },
-                body: JSON.stringify(updateData)
-            });
+                'Save responses to EventCall-Data'
+            );
 
             if (!saveResponse.ok) {
                 const errorText = await saveResponse.text();
@@ -1439,16 +1494,20 @@ class GitHubAPI {
             branch: 'main'
         };
 
-        const response = await fetch(url, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `token ${token}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json',
-                'User-Agent': 'EventCall-App'
+        const response = await window.safeFetchGitHub(
+            url,
+            {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'EventCall-App'
+                },
+                body: JSON.stringify(data)
             },
-            body: JSON.stringify(data)
-        });
+            'Upload file to GitHub'
+        );
 
         return this.handleResponse(response);
     }
