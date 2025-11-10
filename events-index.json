@@ -101,38 +101,21 @@
     "coverImage": ""
   },
   {
-    "id": "332566f5-2972-48c2-be2d-81a95b8de779",
     "title": "Promotion Ceremony",
-    "date": "2025-12-01",
+    "date": "2025-10-01",
     "time": "22:44",
     "location": "Hole 13",
-    "description": "Please join us in celebrating this significant milestone in a Marine&#x27;s career.",
+    "description": "Please join us in celebrating this significant milestone in a Marine&amp;#x27;s career.",
     "askReason": false,
     "allowGuests": true,
     "requiresMealChoice": false,
     "customQuestions": [],
-    "eventDetails": {
-      "honoree-name": {
-        "label": "Honoree Name",
-        "value": "John James"
-      },
-      "current-rank": {
-        "label": "Current Rank",
-        "value": "Sgt"
-      },
-      "new-rank": {
-        "label": "New Rank",
-        "value": "SSgt"
-      },
-      "promoter-name": {
-        "label": "Promoted By",
-        "value": "Col Maness"
-      }
-    },
+    "eventDetails": {},
+    "id": "332566f5-2972-48c2-be2d-81a95b8de779",
     "created": 1762677899722,
-    "status": "active",
     "createdBy": "furby203824",
     "createdByName": "STEPHEN SHORTER",
+    "lastModified": 1762811683003,
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/59c31e2b-1c85-41fc-93fb-cd99c5d814e9.jpg"
   },
   {
