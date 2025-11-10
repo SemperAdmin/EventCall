@@ -282,17 +282,9 @@ class BackendAPI {
                 console.log('🔄 Attempting workflow dispatch...');
                 return await this.triggerWorkflow('submit_rsvp', payload);
             } catch (workflowError) {
-                console.warn('⚠️ Workflow dispatch failed:', workflowError.message);
-
-                // Final fallback to GitHub Issues
-                console.log('📋 Attempting GitHub Issues fallback...');
-                try {
-                    return await this.submitRSVPViaIssue(payload);
-                } catch (issueError) {
-                    console.error('❌ All submission methods failed');
-                    // Throw a comprehensive error
-                    throw new Error(`RSVP submission failed: Direct (${directError.message}), Workflow (${workflowError.message}), Issues (${issueError.message})`);
-                }
+                console.error('❌ All submission methods failed');
+                // Throw a comprehensive error
+                throw new Error(`RSVP submission failed: Direct (${directError.message}), Workflow (${workflowError.message})`);
             }
         }
     }
@@ -407,109 +399,6 @@ class BackendAPI {
 
         } catch (error) {
             console.error('Failed to write RSVP to EventCall-Data:', error);
-            throw error;
-        }
-    }
-
-    async submitRSVPViaIssue(rsvpData) {
-        console.log('Submitting RSVP via GitHub Issue...');
-
-        const token = this.getToken();
-
-        if (!token) {
-            throw new Error('GitHub token not available');
-        }
-
-        // Format RSVP data for issue body
-        const issueTitle = `RSVP: ${rsvpData.name} - ${rsvpData.attending ? 'Attending' : 'Not Attending'}`;
-
-        // Build military info section without nested template literals
-        let militaryInfo = '';
-        if (rsvpData.rank || rsvpData.unit || rsvpData.branch) {
-            militaryInfo += '### Military Information\n';
-            if (rsvpData.rank) militaryInfo += `**Rank:** ${rsvpData.rank}\n`;
-            if (rsvpData.unit) militaryInfo += `**Unit:** ${rsvpData.unit}\n`;
-            if (rsvpData.branch) militaryInfo += `**Branch:** ${rsvpData.branch}\n`;
-        }
-
-        const reasonBlock = rsvpData.reason ? `**Reason:** ${rsvpData.reason}\n\n` : '';
-        const allergyBlock = rsvpData.allergyDetails ? `**Allergy Details:** ${rsvpData.allergyDetails}\n\n` : '';
-
-        const issueBody = `
-## RSVP Submission
-
-**Event ID:** ${rsvpData.eventId}
-**RSVP ID:** ${rsvpData.rsvpId}
-**Name:** ${rsvpData.name}
-**Email:** ${rsvpData.email}
-**Phone:** ${rsvpData.phone || 'Not provided'}
-**Attending:** ${rsvpData.attending ? '✅ Yes' : '❌ No'}
-**Guest Count:** ${rsvpData.guestCount}
-
-${militaryInfo}
-
-${reasonBlock}${allergyBlock}
----
-**Timestamp:** ${new Date(rsvpData.timestamp).toISOString()}
-**Validation Hash:** ${rsvpData.validationHash}
-**CSRF Token:** ${(window.csrf && window.csrf.getToken && window.csrf.getToken()) || ''}
-**Submission Method:** github_issue_fallback
-
-\`\`\`json
-${JSON.stringify(rsvpData, null, 2)}
-\`\`\`
-`;
-
-        try {
-            const response = await (window.rateLimiter ? window.rateLimiter.fetch(`${this.apiBase}/repos/${this.owner}/${this.repo}/issues`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    title: issueTitle,
-                    body: issueBody,
-                    labels: ['rsvp', 'automated', rsvpData.attending ? 'attending' : 'not-attending']
-                })
-            }, { endpointKey: 'github_issues', retry: { maxAttempts: 5, baseDelayMs: 1000, jitter: true } }) : fetch(`${this.apiBase}/repos/${this.owner}/${this.repo}/issues`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    title: issueTitle,
-                    body: issueBody,
-                    labels: ['rsvp', 'automated', rsvpData.attending ? 'attending' : 'not-attending']
-                })
-            }));
-
-            const remaining = parseInt(response.headers.get('x-ratelimit-remaining') || '-1', 10);
-            if (!isNaN(remaining) && remaining <= 0) {
-                this.advanceToken();
-            }
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error('GitHub Issue creation failed:', errorData);
-                throw new Error(`GitHub Issue creation failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
-            }
-
-            const issueData = await response.json();
-            console.log('✅ RSVP submitted via GitHub Issue:', issueData.number);
-
-            return {
-                success: true,
-                method: 'github_issue',
-                issueNumber: issueData.number,
-                issueUrl: issueData.html_url
-            };
-
-        } catch (error) {
-            console.error('Failed to submit RSVP via GitHub Issue:', error);
             throw error;
         }
     }
