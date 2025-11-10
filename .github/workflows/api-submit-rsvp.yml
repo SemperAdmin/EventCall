@@ -4,6 +4,10 @@ on:
   repository_dispatch:
     types: [submit_rsvp]
 
+env:
+  GITHUB_OWNER: SemperAdmin
+  DATA_REPO: EventCall-Data
+
 jobs:
   save-rsvp:
     runs-on: ubuntu-latest
@@ -43,7 +47,7 @@ jobs:
           curl -X PUT \
             -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${RSVP_ID}.json \
+            https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/rsvps/${RSVP_ID}.json \
             -d "{\"message\":\"Add RSVP\",\"content\":\"$CONTENT\"}"
           
           echo "✅ RSVP saved: ${RSVP_ID}"

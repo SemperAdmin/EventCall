@@ -8,6 +8,10 @@ permissions:
   contents: read
   issues: write
 
+env:
+  GITHUB_OWNER: SemperAdmin
+  DATA_REPO: EventCall-Data
+
 jobs:
   authenticate:
     runs-on: ubuntu-latest
@@ -16,7 +20,7 @@ jobs:
       - name: Checkout Data Repository
         uses: actions/checkout@v3
         with:
-          repository: SemperAdmin/EventCall-Data
+          repository: ${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}
           token: ${{ secrets.DATA_REPO_TOKEN }}
           path: data-repo
 

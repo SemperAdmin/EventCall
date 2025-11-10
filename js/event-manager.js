@@ -2275,7 +2275,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     const content = window.githubAPI.safeBase64Encode(JSON.stringify(eventResponses, null, 2));
                     
                     // Get existing file info
-                    const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall/contents/${path}`, {
+                    const existingResponse = await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
                         headers: {
                             'Authorization': `token ${window.githubAPI.getToken()}`,
                             'Accept': 'application/vnd.github.v3+json',
@@ -2294,7 +2294,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         createData.sha = existingData.sha;
                     }
 
-                    await fetch(`https://api.github.com/repos/SemperAdmin/EventCall/contents/${path}`, {
+                    await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
                         method: 'PUT',
                         headers: {
                             'Authorization': `token ${window.githubAPI.getToken()}`,

@@ -4,6 +4,10 @@ on:
   repository_dispatch:
     types: [create_event]
 
+env:
+  GITHUB_OWNER: SemperAdmin
+  DATA_REPO: EventCall-Data
+
 jobs:
   create-event:
     runs-on: ubuntu-latest
@@ -66,7 +70,7 @@ jobs:
           curl -X PUT \
             -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/events/${EVENT_ID}.json \
+            https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/events/${EVENT_ID}.json \
             -d "{\"message\":\"Create event: ${{ github.event.client_payload.title }}\",\"content\":\"$CONTENT\"}"
 
           echo "Event created: ${EVENT_ID}"

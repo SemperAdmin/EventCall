@@ -6,6 +6,10 @@ on:
   schedule:
     - cron: '*/5 * * * *'  # Run every 5 minutes to sync events
 
+env:
+  GITHUB_OWNER: SemperAdmin
+  DATA_REPO: EventCall-Data
+
 jobs:
   sync-events:
     runs-on: ubuntu-latest
@@ -15,9 +19,9 @@ jobs:
         id: fetch
         run: |
           echo "Fetching events from private repo..."
-          
+
           RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
-            "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/events")
+            "https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/events")
           
           echo "$RESPONSE" > events-list.json
           

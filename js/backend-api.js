@@ -1,7 +1,7 @@
 class BackendAPI {
     constructor() {
-        this.owner = 'SemperAdmin';
-        this.repo = 'EventCall';
+        this.owner = window.GITHUB_CONFIG?.owner || 'SemperAdmin';
+        this.repo = window.GITHUB_CONFIG?.repo || 'EventCall';
         this.apiBase = 'https://api.github.com';
         this.tokenIndex = parseInt(sessionStorage.getItem('github_token_index') || '0', 10);
         this.proxyCsrf = null; // { clientId, token, expires }
