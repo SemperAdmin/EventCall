@@ -159,11 +159,3 @@ jobs:
             -d "{\"message\":\"Create event: ${{ github.event.client_payload.title }}\",\"content\":\"$CONTENT\"}"
 
           echo "Event created: ${EVENT_ID}"
-
-      - name: Create Notification Issue
-        run: |
-          curl -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/issues \
-            -d "{\"title\":\"Event Created: ${{ github.event.client_payload.title }}\",\"body\":\"**Event ID:** ${{ github.event.client_payload.id }}\\n**Created by:** ${{ github.event.client_payload.managerEmail }}\\n**Date:** ${{ github.event.client_payload.date }}\\n**Location:** ${{ github.event.client_payload.location }}\",\"labels\":[\"event\",\"created\"]}"

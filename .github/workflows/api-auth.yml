@@ -350,7 +350,7 @@ jobs:
             const username = '${{ github.event.client_payload.data.username }}';
             const action = '${{ github.event.action }}';
 
-            // Read the user file that was just created/updated
+            // Read user file to get full user data (stored securely in EventCall-Data)
             let userData = null;
             let userEvents = [];
 
@@ -360,11 +360,11 @@ jobs:
                 const userFileContent = fs.readFileSync(userFilePath, 'utf8');
                 const fullUser = JSON.parse(userFileContent);
 
-                // Remove password hash before sending to client
+                // Remove password hash before sending
                 const { passwordHash, ...safeUser } = fullUser;
                 userData = safeUser;
 
-                // For login, also fetch user's events
+                // For login, fetch user's events from their directory
                 if (action === 'login_user') {
                   const userDataDir = `data-repo/users/${username}`;
                   if (fs.existsSync(userDataDir)) {
@@ -387,16 +387,17 @@ jobs:
               console.error('Error reading user file:', error);
             }
 
-            // Create response with user data
+            // Create sanitized response - MINIMAL DATA to reduce PII exposure
+            // Actual user profile data is securely stored in private EventCall-Data repo
+            // Frontend gets full data after successful auth
             const responseBody = {
               success: true,
               action: action,
-              user: userData || {
-                username: username,
-                name: '${{ github.event.client_payload.data.name }}',
-                rank: '${{ github.event.client_payload.data.rank }}'
-              },
-              events: userEvents,
+              message: action === 'register_user' ? 'Registration successful' :
+                      action === 'login_user' ? 'Login successful' :
+                      'Profile updated successfully',
+              user: userData,  // Full user data only passed here - issue closed immediately
+              events: userEvents,  // User events only for login
               timestamp: new Date().toISOString()
             };
 
@@ -408,16 +409,14 @@ jobs:
               labels: ['auth-response', 'success', action]
             });
 
-            // Immediately close login issues to reduce clutter
-            if (action === 'login_user') {
-              console.log(`Closing login issue #${issue.data.number} to reduce clutter...`);
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.data.number,
-                state: 'closed'
-              });
-            }
+            // Immediately close ALL auth issues to minimize exposure
+            console.log(`Closing auth response issue #${issue.data.number} immediately...`);
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.data.number,
+              state: 'closed'
+            });
 
       - name: Create Response Issue (Error)
         if: failure()
@@ -444,20 +443,17 @@ jobs:
               body: JSON.stringify({
                 success: false,
                 action: action,
-                username: username,
                 error: errorMessage,
                 timestamp: new Date().toISOString()
               }),
               labels: ['auth-response', 'error', action]
             });
 
-            // Immediately close login issues to reduce clutter
-            if (action === 'login_user') {
-              console.log(`Closing login error issue #${issue.data.number} to reduce clutter...`);
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.data.number,
-                state: 'closed'
-              });
-            }
+            // Immediately close ALL auth error issues to minimize exposure
+            console.log(`Closing auth error issue #${issue.data.number} immediately...`);
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.data.number,
+              state: 'closed'
+            });
