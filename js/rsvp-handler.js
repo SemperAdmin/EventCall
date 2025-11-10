@@ -79,62 +79,17 @@ class RSVPHandler {
         const phoneInput = document.getElementById('rsvp-phone');
         const reasonInput = document.getElementById('reason');
         const guestCountInput = document.getElementById('guest-count');
-        const branchSelect = document.getElementById('branch');
-        const rankSelect = document.getElementById('rank');
-        const unitInput = document.getElementById('unit');
-        const allergyDetailsInput = document.getElementById('allergy-details');
 
         if (nameInput) nameInput.value = rsvpData.name || '';
         if (emailInput) emailInput.value = rsvpData.email || '';
         if (phoneInput) phoneInput.value = rsvpData.phone || '';
         if (reasonInput) reasonInput.value = rsvpData.reason || '';
         if (guestCountInput) guestCountInput.value = rsvpData.guestCount || 0;
-        if (unitInput) unitInput.value = rsvpData.unit || '';
-        if (allergyDetailsInput) allergyDetailsInput.value = rsvpData.allergyDetails || '';
-
-        // Set branch and update ranks
-        if (branchSelect && rsvpData.branch) {
-            branchSelect.value = rsvpData.branch;
-            // Trigger rank update
-            if (window.updateRanksForBranch) {
-                window.updateRanksForBranch();
-            }
-            // Set rank after ranks are populated
-            setTimeout(() => {
-                if (rankSelect && rsvpData.rank) {
-                    rankSelect.value = rsvpData.rank;
-                }
-            }, 100);
-        }
 
         // Set attending radio button
         if (rsvpData.attending !== undefined) {
             const attendingRadio = document.querySelector(`input[name="attending"][value="${rsvpData.attending}"]`);
-            if (attendingRadio) {
-                attendingRadio.checked = true;
-                // Trigger guest count visibility
-                if (window.toggleGuestCount) {
-                    window.toggleGuestCount(rsvpData.attending);
-                }
-            }
-        }
-
-        // Set dietary restrictions checkboxes
-        if (rsvpData.dietaryRestrictions && Array.isArray(rsvpData.dietaryRestrictions)) {
-            rsvpData.dietaryRestrictions.forEach(restriction => {
-                const checkbox = document.querySelector(`input[name="dietary"][value="${restriction}"]`);
-                if (checkbox) checkbox.checked = true;
-            });
-        }
-
-        // Pre-fill custom questions if any
-        if (rsvpData.customAnswers) {
-            Object.entries(rsvpData.customAnswers).forEach(([questionId, answer]) => {
-                const answerElement = document.getElementById(questionId);
-                if (answerElement) {
-                    answerElement.value = answer;
-                }
-            });
+            if (attendingRadio) attendingRadio.checked = true;
         }
 
         // Show edit mode banner
