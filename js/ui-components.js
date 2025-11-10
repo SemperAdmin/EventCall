@@ -133,7 +133,7 @@ function createRSVPFormHTML(event, eventId) {
     return `
         <div class="rsvp-form">
             <h3>RSVP</h3>
-            <form id="rsvp-form" onsubmit="handleRSVP(event, '${eventId}'); return false;">
+            <form id="rsvp-form" data-event-id="${eventId}">
                 <div class="form-group">
                     <label for="rsvp-name">Full Name *</label>
                     <input type="text" id="rsvp-name" name="name" autocomplete="name" required placeholder="Enter your full name" style="min-height: 44px;">
@@ -466,6 +466,40 @@ async function setupRSVPForm() {
 
     // Setup military rank dropdown
     setupMilitaryRankDropdown();
+
+    // CRITICAL: Attach form submit handler to prevent navigation
+    const rsvpForm = document.getElementById('rsvp-form');
+    if (rsvpForm) {
+        // Remove inline handler to avoid conflicts
+        rsvpForm.removeAttribute('onsubmit');
+
+        // Get event ID from data attribute or URL
+        const eventId = rsvpForm.dataset.eventId || getEventFromURL()?.id;
+
+        if (eventId) {
+            // Use capture phase to intercept before any bubbling handlers
+            rsvpForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                console.log('🛑 Form submit intercepted - preventing navigation');
+
+                if (window.handleRSVP) {
+                    window.handleRSVP(e, eventId);
+                } else {
+                    console.error('❌ handleRSVP not available');
+                }
+
+                return false;
+            }, true); // Capture phase
+
+            console.log('✅ RSVP form submit handler attached via addEventListener for event:', eventId);
+        } else {
+            console.error('❌ Could not determine eventId for RSVP form');
+        }
+    } else {
+        console.warn('⚠️ RSVP form not found in DOM yet');
+    }
 
     // Check for edit mode and pre-fill if editing
     if (window.rsvpHandler && window.rsvpHandler.initEditMode) {
