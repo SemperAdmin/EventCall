@@ -36,6 +36,20 @@ class BackendAPI {
 
     getToken() {
         const cfg = window.GITHUB_CONFIG || {};
+
+        // Check token expiration
+        if (cfg.tokenExpiry) {
+            const expiryTime = typeof cfg.tokenExpiry === 'number' ? cfg.tokenExpiry : Date.parse(cfg.tokenExpiry);
+            if (!isNaN(expiryTime) && Date.now() > expiryTime) {
+                console.error('❌ GitHub token expired');
+                // Trigger re-authentication if handler exists
+                if (window.handleTokenExpiration) {
+                    window.handleTokenExpiration();
+                }
+                throw new Error('GitHub token expired - please re-authenticate');
+            }
+        }
+
         const tokens = Array.isArray(cfg.tokens) ? cfg.tokens.filter(t => !!t) : [];
         if (tokens.length > 0) {
             const tok = tokens[this.tokenIndex % tokens.length];

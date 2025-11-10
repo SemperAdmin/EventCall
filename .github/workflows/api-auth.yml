@@ -31,6 +31,24 @@ jobs:
           npm init -y
           npm install bcrypt
 
+      - name: Validate CSRF Token
+        run: |
+          CSRF_TOKEN="${{ github.event.client_payload.data.csrfToken }}"
+
+          if [ -z "$CSRF_TOKEN" ]; then
+            echo "❌ Security Error: Missing CSRF token"
+            echo "All authentication requests must include a valid CSRF token"
+            exit 1
+          fi
+
+          # Token format validation (should be non-empty alphanumeric)
+          if ! echo "$CSRF_TOKEN" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+            echo "❌ Security Error: Invalid CSRF token format"
+            exit 1
+          fi
+
+          echo "✅ CSRF token validated: ${CSRF_TOKEN:0:8}..."
+
       - name: Process Authentication Request
         id: auth
         env:
@@ -42,6 +60,7 @@ jobs:
           BRANCH: ${{ github.event.client_payload.data.branch }}
           RANK: ${{ github.event.client_payload.data.rank }}
           CLIENT_ID: ${{ github.event.client_payload.data.client_id }}
+          CSRF_TOKEN: ${{ github.event.client_payload.data.csrfToken }}
         run: |
           cd data-repo
           node << 'AUTHSCRIPT'
