@@ -471,3 +471,71 @@
 .event-card-v2:nth-child(3) {
     animation-delay: 0.2s;
 }
+
+/* ============================================
+   DASHBOARD TABS
+   ============================================ */
+
+.dashboard-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #3a4556;
+    padding-bottom: 0;
+}
+
+.dashboard-tab {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #94a3b8;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    position: relative;
+    bottom: -2px;
+}
+
+.dashboard-tab:hover {
+    color: #d4af37;
+    background: rgba(212, 175, 55, 0.05);
+}
+
+.dashboard-tab--active {
+    color: #d4af37;
+    border-bottom-color: #d4af37;
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.dashboard-tab-content {
+    display: none;
+    animation: fadeInUp 0.3s ease;
+}
+
+.dashboard-tab-content--active {
+    display: block;
+}
+
+/* Responsive tabs */
+@media (max-width: 768px) {
+    .dashboard-tabs {
+        flex-direction: column;
+        gap: 0;
+        border-bottom: none;
+    }
+
+    .dashboard-tab {
+        border-bottom: 1px solid #3a4556;
+        border-left: 3px solid transparent;
+        padding: 1rem;
+        bottom: 0;
+    }
+
+    .dashboard-tab--active {
+        border-bottom-color: #3a4556;
+        border-left-color: #d4af37;
+    }
+}
