@@ -488,6 +488,22 @@ const userAuth = {
             console.log('🚀 Triggering workflow:', actionType);
             console.log('📦 Payload:', { ...payload, password: '[REDACTED]' });
 
+            // For profile updates, try direct file update first (faster and doesn't require polling)
+            if (actionType === 'update_profile') {
+                try {
+                    console.log('📝 Attempting direct profile file update...');
+                    const result = await window.BackendAPI.updateUserProfile(payload);
+                    console.log('✅ Profile updated directly:', result);
+                    return {
+                        success: true,
+                        user: result.user
+                    };
+                } catch (directError) {
+                    console.warn('⚠️ Direct profile update failed, falling back to workflow:', directError.message);
+                    // Fall through to workflow dispatch
+                }
+            }
+
             // Trigger workflow via BackendAPI
             const result = await window.BackendAPI.triggerWorkflow(actionType, payload);
             console.log('✅ Workflow dispatch result:', result);

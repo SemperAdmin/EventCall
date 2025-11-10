@@ -521,6 +521,95 @@ ${JSON.stringify(rsvpData, null, 2)}
 
         return await this.triggerWorkflow('create_event', payload);
     }
+
+    async updateUserProfile(userData) {
+        console.log('Updating user profile in backend...');
+
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available');
+        }
+
+        const username = userData.username;
+        const filePath = `data/users/${username}.json`;
+
+        try {
+            // Get existing user file
+            const checkResponse = await fetch(
+                `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
+                {
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                }
+            );
+
+            if (!checkResponse.ok) {
+                throw new Error(`User file not found: ${username}`);
+            }
+
+            const fileData = await checkResponse.json();
+            const sha = fileData.sha;
+
+            // Decode existing content
+            const existingContent = JSON.parse(atob(fileData.content));
+
+            // Merge with new data, preserving critical fields
+            const updatedUser = {
+                ...existingContent,
+                name: userData.name || existingContent.name,
+                email: userData.email || existingContent.email || '',
+                branch: userData.branch || existingContent.branch || '',
+                rank: userData.rank || existingContent.rank || '',
+                lastUpdated: new Date().toISOString()
+            };
+
+            // Encode updated content
+            const content = btoa(JSON.stringify(updatedUser, null, 2));
+            const commitMessage = `Update profile for ${username}`;
+
+            // Update file
+            const response = await fetch(
+                `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: commitMessage,
+                        content: content,
+                        sha: sha,
+                        branch: 'main'
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('User profile update failed:', errorData);
+                throw new Error(`User profile update failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
+            }
+
+            const result = await response.json();
+            console.log('✅ User profile updated in backend:', filePath);
+
+            return {
+                success: true,
+                method: 'direct_file_update',
+                filePath: filePath,
+                commitSha: result.commit?.sha,
+                user: updatedUser
+            };
+
+        } catch (error) {
+            console.error('Failed to update user profile:', error);
+            throw error;
+        }
+    }
 }
 
 if (typeof window !== 'undefined') {
