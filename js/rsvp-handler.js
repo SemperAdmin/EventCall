@@ -822,4 +822,7 @@ function sanitizeText(text) {
 const rsvpHandler = new RSVPHandler();
 
 window.rsvpHandler = rsvpHandler;
-window.handleRSVP = (e, eventId) => rsvpHandler.handleRSVP(e, eventId);
+window.handleRSVP = (e, eventId) => {
+    rsvpHandler.handleRSVP(e, eventId);
+    return false; // Prevent form submission
+};
