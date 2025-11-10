@@ -298,7 +298,7 @@ class BackendAPI {
     }
 
     async submitRSVPDirectToFile(rsvpData) {
-        console.log('Writing RSVP directly to GitHub file...');
+        console.log('Writing RSVP directly to EventCall-Data repository...');
 
         const token = this.getToken();
         if (!token) {
@@ -306,40 +306,61 @@ class BackendAPI {
         }
 
         const eventId = rsvpData.eventId;
-        const rsvpId = rsvpData.rsvpId;
-        const filePath = `data/rsvps/${eventId}/${rsvpId}.json`;
+        const dataRepo = window.GITHUB_CONFIG?.dataRepo || 'EventCall-Data';
+        const filePath = `rsvps/${eventId}.json`;
+        const fileUrl = `${this.apiBase}/repos/${this.owner}/${dataRepo}/contents/${filePath}`;
 
         try {
-            // Check if file already exists (for updates)
+            // Try to get existing file
+            let existingRSVPs = [];
             let sha = null;
+
             try {
                 const checkResponse = await window.safeFetchGitHub(
-                    `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
+                    fileUrl,
                     {
                         headers: {
                             'Authorization': 'token ' + token,
                             'Accept': 'application/vnd.github.v3+json'
                         }
                     },
-                    'Check existing RSVP file'
+                    'Check existing RSVP file in EventCall-Data'
                 );
 
                 if (checkResponse.ok) {
                     const fileData = await checkResponse.json();
                     sha = fileData.sha;
-                    console.log('📝 Updating existing RSVP file');
-                } else {
-                    console.log('📄 Creating new RSVP file');
+
+                    // Decode existing content
+                    const decodedContent = atob(fileData.content);
+                    const parsedContent = JSON.parse(decodedContent);
+
+                    // Ensure it's an array
+                    existingRSVPs = Array.isArray(parsedContent) ? parsedContent : [parsedContent];
+                    console.log(`📝 Found existing file with ${existingRSVPs.length} RSVPs`);
                 }
             } catch (e) {
-                console.log('📄 Creating new RSVP file');
+                console.log('📄 No existing file found, will create new');
             }
 
-            // Prepare file content
-            const content = btoa(JSON.stringify(rsvpData, null, 2));
-            const commitMessage = rsvpData.isUpdate
-                ? `Update RSVP: ${rsvpData.name} - ${eventId}`
-                : `New RSVP: ${rsvpData.name} - ${eventId}`;
+            // Check if this is an update (same rsvpId exists)
+            const existingIndex = existingRSVPs.findIndex(r => r.rsvpId === rsvpData.rsvpId);
+
+            if (existingIndex >= 0) {
+                // Update existing RSVP
+                existingRSVPs[existingIndex] = rsvpData;
+                console.log(`🔄 Updating existing RSVP at index ${existingIndex}`);
+            } else {
+                // Add new RSVP
+                existingRSVPs.push(rsvpData);
+                console.log(`➕ Adding new RSVP (total: ${existingRSVPs.length})`);
+            }
+
+            // Encode updated array
+            const content = btoa(JSON.stringify(existingRSVPs, null, 2));
+            const commitMessage = existingIndex >= 0
+                ? `Update RSVP: ${rsvpData.name} for event ${eventId}`
+                : `Add RSVP: ${rsvpData.name} for event ${eventId}`;
 
             // Create or update file
             const body = {
@@ -353,7 +374,7 @@ class BackendAPI {
             }
 
             const response = await window.safeFetchGitHub(
-                `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
+                fileUrl,
                 {
                     method: 'PUT',
                     headers: {
@@ -363,7 +384,7 @@ class BackendAPI {
                     },
                     body: JSON.stringify(body)
                 },
-                'Save RSVP file'
+                'Save RSVP to EventCall-Data'
             );
 
             if (!response.ok) {
@@ -373,17 +394,19 @@ class BackendAPI {
             }
 
             const result = await response.json();
-            console.log('✅ RSVP written to GitHub file:', filePath);
+            console.log('✅ RSVP saved to EventCall-Data:', filePath);
 
             return {
                 success: true,
                 method: 'direct_file_write',
+                repository: dataRepo,
                 filePath: filePath,
-                commitSha: result.commit?.sha
+                commitSha: result.commit?.sha,
+                totalRSVPs: existingRSVPs.length
             };
 
         } catch (error) {
-            console.error('Failed to write RSVP file:', error);
+            console.error('Failed to write RSVP to EventCall-Data:', error);
             throw error;
         }
     }
