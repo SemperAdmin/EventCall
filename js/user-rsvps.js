@@ -226,11 +226,18 @@ function createRSVPCard(rsvp, event) {
                         ✏️ Edit RSVP
                     </button>
                     <button
-                        onclick="viewEventDetails('${utils.escapeHTML(rsvp.eventId)}')"
+                        onclick="window.print()"
                         class="btn btn-secondary"
                         style="font-size: 0.875rem; padding: 0.5rem 1rem;"
                     >
-                        👁️ View Event
+                        🖨️ Print
+                    </button>
+                    <button
+                        class="btn"
+                        type="button"
+                        style="font-size: 0.875rem; padding: 0.5rem 1rem;"
+                    >
+                        📅 Add to Calendar ▼
                     </button>
                 ` : ''}
             </div>
