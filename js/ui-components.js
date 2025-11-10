@@ -127,10 +127,40 @@ function createInviteWithoutImageHTML(event, eventId) {
 }
 
 /**
+ * Create RSVP lookup section HTML
+ */
+function createRSVPLookupSection(eventId) {
+    return `
+        <div id="rsvp-lookup-section" style="margin: 1.5rem 0; padding: 1.5rem; background: linear-gradient(135deg, #fef3c7, #fef9e7); border: 2px solid #fbbf24; border-radius: 0.75rem;">
+            <div style="margin-bottom: 1rem;">
+                <h3 style="margin: 0 0 0.5rem 0; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>✏️</span>
+                    <span>Already RSVP'd?</span>
+                </h3>
+                <p style="margin: 0; color: #78350f; font-size: 0.95rem;">
+                    Enter your email to view or edit your existing RSVP
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.75rem; align-items: end; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <label for="lookup-email" style="display: block; margin-bottom: 0.5rem; color: #92400e; font-weight: 600;">Email Address</label>
+                    <input type="email" id="lookup-email" placeholder="your.email@example.com" style="width: 100%; min-height: 44px; padding: 0.75rem; border: 2px solid #fbbf24; border-radius: 0.5rem; font-size: 1rem;">
+                </div>
+                <button type="button" onclick="window.lookupExistingRSVP('${eventId}')" style="min-height: 44px; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; white-space: nowrap; font-size: 1rem;">
+                    🔍 Find My RSVP
+                </button>
+            </div>
+            <div id="lookup-result" style="margin-top: 1rem; display: none;"></div>
+        </div>
+    `;
+}
+
+/**
  * Create RSVP form HTML with original working fields
  */
 function createRSVPFormHTML(event, eventId) {
     return `
+        ${createRSVPLookupSection(eventId)}
         <div class="rsvp-form">
             <h3>RSVP</h3>
             <form id="rsvp-form" onsubmit="handleRSVP(event, '${eventId}')">
@@ -740,6 +770,205 @@ function updateRanksForBranch() {
     rankSelect.appendChild(civilianOption);
 }
 
+/**
+ * Lookup existing RSVP by email
+ */
+async function lookupExistingRSVP(eventId) {
+    const emailInput = document.getElementById('lookup-email');
+    const resultDiv = document.getElementById('lookup-result');
+
+    if (!emailInput || !resultDiv) {
+        console.error('Lookup elements not found');
+        return;
+    }
+
+    const email = emailInput.value.trim().toLowerCase();
+
+    if (!email) {
+        showToast('❌ Please enter your email address', 'error');
+        emailInput.focus();
+        return;
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('❌ Please enter a valid email address', 'error');
+        emailInput.focus();
+        return;
+    }
+
+    showToast('🔍 Looking up your RSVP...', 'success');
+
+    // Search in localStorage
+    const storageKey = `eventcall_pending_rsvps_${eventId}`;
+    let foundRSVP = null;
+
+    try {
+        const storageSync = window.utils && window.utils.secureStorageSync;
+        let rsvps = null;
+
+        if (storageSync) {
+            rsvps = storageSync.get(storageKey);
+        } else {
+            const pending = localStorage.getItem(storageKey);
+            if (pending) {
+                rsvps = JSON.parse(pending);
+            }
+        }
+
+        if (rsvps && Array.isArray(rsvps)) {
+            foundRSVP = rsvps.find(r => r.email && r.email.toLowerCase() === email);
+        }
+    } catch (e) {
+        console.error('Error searching for RSVP:', e);
+        showToast('❌ Error searching for RSVP', 'error');
+        return;
+    }
+
+    if (foundRSVP) {
+        // Show found RSVP details
+        showFoundRSVP(foundRSVP, resultDiv);
+        showToast('✅ Found your RSVP!', 'success');
+    } else {
+        // Not found
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = window.utils.sanitizeHTML(`
+            <div style="padding: 1rem; background: #fef2f2; border: 2px solid #fca5a5; border-radius: 0.5rem; color: #991b1b;">
+                <strong>❌ No RSVP found</strong>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.95rem;">
+                    We couldn't find an RSVP with this email address. Please submit a new RSVP below.
+                </p>
+            </div>
+        `);
+        showToast('❌ No RSVP found for this email', 'error');
+    }
+}
+
+/**
+ * Show found RSVP details and provide edit option
+ */
+function showFoundRSVP(rsvp, resultDiv) {
+    const attendingText = rsvp.attending ? '✅ Attending' : '❌ Not Attending';
+    const attendingColor = rsvp.attending ? '#dcfce7' : '#fef2f2';
+    const attendingBorder = rsvp.attending ? '#86efac' : '#fca5a5';
+
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = window.utils.sanitizeHTML(`
+        <div style="padding: 1.5rem; background: ${attendingColor}; border: 2px solid ${attendingBorder}; border-radius: 0.5rem;">
+            <div style="margin-bottom: 1rem;">
+                <strong style="font-size: 1.1rem; color: #1a1f2e;">📋 Your Existing RSVP</strong>
+            </div>
+            <div style="display: grid; gap: 0.75rem; margin-bottom: 1.5rem;">
+                <div>
+                    <strong>Name:</strong> ${window.utils.escapeHTML(rsvp.name)}
+                </div>
+                <div>
+                    <strong>Email:</strong> ${window.utils.escapeHTML(rsvp.email)}
+                </div>
+                <div>
+                    <strong>Status:</strong> ${attendingText}
+                </div>
+                ${rsvp.guestCount > 0 ? `
+                    <div>
+                        <strong>Additional Guests:</strong> ${window.utils.escapeHTML(String(rsvp.guestCount))}
+                    </div>
+                ` : ''}
+                ${rsvp.phone ? `
+                    <div>
+                        <strong>Phone:</strong> ${window.utils.escapeHTML(rsvp.phone)}
+                    </div>
+                ` : ''}
+                ${rsvp.rank || rsvp.unit || rsvp.branch ? `
+                    <div style="margin-top: 0.5rem; padding: 0.75rem; background: rgba(255, 255, 255, 0.7); border-radius: 0.5rem;">
+                        <strong>🎖️ Military Info:</strong><br>
+                        ${rsvp.rank ? `Rank: ${window.utils.escapeHTML(rsvp.rank)}<br>` : ''}
+                        ${rsvp.unit ? `Unit: ${window.utils.escapeHTML(rsvp.unit)}<br>` : ''}
+                        ${rsvp.branch ? `Branch: ${window.utils.escapeHTML(rsvp.branch)}` : ''}
+                    </div>
+                ` : ''}
+                <div style="font-size: 0.875rem; color: #6b7280;">
+                    <strong>Submitted:</strong> ${new Date(rsvp.timestamp).toLocaleString()}
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+                <button type="button" onclick="window.editFoundRSVP('${window.utils.escapeHTML(rsvp.rsvpId || '')}')" style="min-height: 44px; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; font-size: 1rem;">
+                    ✏️ Edit This RSVP
+                </button>
+                <button type="button" onclick="document.getElementById('lookup-result').style.display='none'" style="min-height: 44px; padding: 0.75rem 1.5rem; background: #e5e7eb; color: #374151; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; font-size: 1rem;">
+                    ❌ Close
+                </button>
+            </div>
+        </div>
+    `);
+}
+
+/**
+ * Edit found RSVP - load data into form
+ */
+async function editFoundRSVP(rsvpId) {
+    const event = getEventFromURL();
+    if (!event) {
+        showToast('❌ Event data not found', 'error');
+        return;
+    }
+
+    const storageKey = `eventcall_pending_rsvps_${event.id}`;
+    let foundRSVP = null;
+
+    try {
+        const storageSync = window.utils && window.utils.secureStorageSync;
+        let rsvps = null;
+
+        if (storageSync) {
+            rsvps = storageSync.get(storageKey);
+        } else {
+            const pending = localStorage.getItem(storageKey);
+            if (pending) {
+                rsvps = JSON.parse(pending);
+            }
+        }
+
+        if (rsvps && Array.isArray(rsvps)) {
+            foundRSVP = rsvps.find(r => r.rsvpId === rsvpId);
+        }
+    } catch (e) {
+        console.error('Error loading RSVP:', e);
+        showToast('❌ Error loading RSVP', 'error');
+        return;
+    }
+
+    if (!foundRSVP) {
+        showToast('❌ RSVP not found', 'error');
+        return;
+    }
+
+    // Enable edit mode in rsvpHandler
+    if (window.rsvpHandler) {
+        window.rsvpHandler.editMode = true;
+        window.rsvpHandler.existingRsvpId = rsvpId;
+        window.rsvpHandler.editToken = foundRSVP.editToken || generateUUID();
+
+        // Prefill form
+        window.rsvpHandler.prefillEditForm(foundRSVP);
+
+        // Scroll to form
+        const form = document.getElementById('rsvp-form');
+        if (form) {
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Hide lookup result
+        const resultDiv = document.getElementById('lookup-result');
+        if (resultDiv) {
+            resultDiv.style.display = 'none';
+        }
+
+        showToast('✏️ Edit mode enabled - update your information below', 'success');
+    } else {
+        showToast('❌ RSVP handler not available', 'error');
+    }
+}
+
 // Make functions globally available
 window.loadInviteContentDirect = loadInviteContentDirect;
 window.toggleGuestCount = toggleGuestCount;
@@ -750,6 +979,8 @@ window.formatTime = formatTime;
 window.createPastEventHTML = createPastEventHTML;
 window.createInviteWithImageHTML = createInviteWithImageHTML;
 window.updateRanksForBranch = updateRanksForBranch;
+window.lookupExistingRSVP = lookupExistingRSVP;
+window.editFoundRSVP = editFoundRSVP;
 
 function createRSVPSettingsHTML(event) {
     const badges = [];
