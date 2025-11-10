@@ -335,8 +335,13 @@ async function loadManagerData() {
             console.error('❌ Failed to load from GitHub:', error);
         }
     }
-    
+
     renderDashboard();
+
+    // Load user's RSVPs
+    if (window.displayUserRSVPs) {
+        window.displayUserRSVPs();
+    }
 }
 
 async function deleteEvent(eventId) {
