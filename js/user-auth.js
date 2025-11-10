@@ -135,6 +135,7 @@ const userAuth = {
         const form = event.target;
         const usernameInput = document.getElementById('reg-username');
         const nameInput = document.getElementById('reg-name');
+        const emailInput = document.getElementById('reg-email');
         const branchInput = document.getElementById('reg-branch');
         const rankInput = document.getElementById('reg-rank');
         const passwordInput = document.getElementById('reg-password');
@@ -143,6 +144,7 @@ const userAuth = {
 
         const username = usernameInput?.value.trim().toLowerCase();
         const name = nameInput?.value.trim();
+        const email = emailInput?.value.trim().toLowerCase();
         const branch = branchInput?.value || '';
         const rank = rankInput?.value || '';
         const password = passwordInput?.value;
@@ -166,6 +168,12 @@ const userAuth = {
         if (!name || name.length < 2) {
             showToast('❌ Please enter your full name', 'error');
             nameInput?.focus();
+            return;
+        }
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showToast('❌ Please enter a valid email address', 'error');
+            emailInput?.focus();
             return;
         }
 
@@ -211,6 +219,7 @@ const userAuth = {
                 username,
                 password,
                 name,
+                email,
                 branch,
                 rank,
                 client_id: clientId

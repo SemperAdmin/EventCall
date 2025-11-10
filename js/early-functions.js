@@ -278,12 +278,14 @@ function showUserMenu() {
     const avatarEl = document.getElementById('profile-avatar');
     const usernameEl = document.getElementById('profile-username');
     const nameEl = document.getElementById('profile-name');
+    const emailEl = document.getElementById('profile-email');
     const branchEl = document.getElementById('profile-branch');
     const rankEl = document.getElementById('profile-rank');
 
     if (avatarEl) avatarEl.textContent = window.userAuth.getInitials ? window.userAuth.getInitials() : '👤';
     if (usernameEl) usernameEl.value = user.username || '';
     if (nameEl) nameEl.value = user.name || '';
+    if (emailEl) emailEl.value = user.email || '';
     if (branchEl) branchEl.value = user.branch || '';
 
     // Update ranks for selected branch
@@ -366,17 +368,25 @@ async function saveUserProfile() {
     }
 
     const nameEl = document.getElementById('profile-name');
+    const emailEl = document.getElementById('profile-email');
     const branchEl = document.getElementById('profile-branch');
     const rankEl = document.getElementById('profile-rank');
     const saveBtn = document.querySelector('#user-profile-modal button[onclick*="saveUserProfile"]');
 
     const name = nameEl?.value.trim();
+    const email = emailEl?.value.trim().toLowerCase();
     const branch = branchEl?.value || '';
     const rank = rankEl?.value || '';
 
     if (!name || name.length < 2) {
         showToast('❌ Please enter a valid name', 'error');
         nameEl?.focus();
+        return;
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('❌ Please enter a valid email address', 'error');
+        emailEl?.focus();
         return;
     }
 
@@ -392,6 +402,7 @@ async function saveUserProfile() {
                     username: user.username,
                     password: '', // Password not required for profile updates
                     name: name,
+                    email: email,
                     branch: branch,
                     rank: rank,
                     client_id: 'profile_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
@@ -400,6 +411,7 @@ async function saveUserProfile() {
                 if (response.success && response.user) {
                     // Update local user object with server response
                     user.name = response.user.name;
+                    user.email = response.user.email || '';
                     user.branch = response.user.branch || '';
                     user.rank = response.user.rank || '';
 
@@ -423,6 +435,7 @@ async function saveUserProfile() {
                 username: user.username,
                 password: '',
                 name: name,
+                email: email,
                 branch: branch,
                 rank: rank,
                 client_id: 'profile_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
@@ -430,6 +443,7 @@ async function saveUserProfile() {
 
             if (response.success && response.user) {
                 user.name = response.user.name;
+                user.email = response.user.email || '';
                 user.branch = response.user.branch || '';
                 user.rank = response.user.rank || '';
                 window.userAuth.saveUserToStorage(user);
