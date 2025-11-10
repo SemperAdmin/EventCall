@@ -488,6 +488,11 @@ const userAuth = {
             console.log('🚀 Triggering workflow:', actionType);
             console.log('📦 Payload:', { ...payload, password: '[REDACTED]' });
 
+            // Show loader immediately after triggering workflow
+            if (window.showAppLoader) {
+                window.showAppLoader();
+            }
+
             // For profile updates, try direct file update first (faster and doesn't require polling)
             if (actionType === 'update_profile') {
                 try {
@@ -516,6 +521,12 @@ const userAuth = {
             const response = await this.pollForAuthResponse(payload.client_id, timeoutMs, intervalMs);
 
             console.log('✅ Authentication response received:', response);
+
+            // Hide loader after receiving authentication response, before app content displays
+            if (window.hideAppLoader) {
+                window.hideAppLoader();
+            }
+
             return response;
 
         } catch (error) {
@@ -523,6 +534,11 @@ const userAuth = {
             console.error('Error type:', error.constructor.name);
             console.error('Error message:', error.message);
             console.error('Error stack:', error.stack);
+
+            // Hide loader on error
+            if (window.hideAppLoader) {
+                window.hideAppLoader();
+            }
 
             // Re-throw with more specific error message
             if (error.message.includes('timeout')) {
