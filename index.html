@@ -396,7 +396,9 @@ function updateRegRanksForBranch() {
 // Make function globally available
 window.updateRegRanksForBranch = updateRegRanksForBranch;
 
-// Dashboard tab switching functionality
+// Dashboard tab switching functionality - Version 2.0
+console.log('✅ Dashboard tab functions loaded - Version 2.0');
+
 function switchDashboardTab(tab) {
     console.log('🔄 Switching to tab:', tab);
 
@@ -421,6 +423,31 @@ function switchDashboardTab(tab) {
 
 // Make function globally available
 window.switchDashboardTab = switchDashboardTab;
+
+// Verify tabs exist when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', verifyDashboardTabs);
+} else {
+    verifyDashboardTabs();
+}
+
+function verifyDashboardTabs() {
+    console.log('🔍 Verifying dashboard tabs setup...');
+    const tabs = document.querySelectorAll('.dashboard-tab');
+    const contents = document.querySelectorAll('.dashboard-tab-content');
+    console.log('  Found', tabs.length, 'tab buttons');
+    console.log('  Found', contents.length, 'tab content areas');
+
+    tabs.forEach((tab, idx) => {
+        console.log(`  Tab ${idx + 1}:`, tab.getAttribute('data-tab'),
+                    tab.classList.contains('dashboard-tab--active') ? '[ACTIVE]' : '[inactive]');
+    });
+
+    contents.forEach((content, idx) => {
+        console.log(`  Content ${idx + 1}:`, content.id,
+                    content.classList.contains('dashboard-tab-content--active') ? '[VISIBLE]' : '[hidden]');
+    });
+}
 </script>
 
 <!-- ============================================
