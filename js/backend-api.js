@@ -256,21 +256,119 @@ class BackendAPI {
             if (window.errorHandler) window.errorHandler.handleError(err, 'Security-CSRF', { form: 'rsvp' });
         }
 
-        // Try workflow dispatch first, fall back to GitHub Issues if it fails
+        // Try direct file write first (most reliable), then fallback to workflow/issue
         try {
-            return await this.triggerWorkflow('submit_rsvp', payload);
-        } catch (workflowError) {
-            console.warn('⚠️ Workflow dispatch failed:', workflowError.message);
+            console.log('💾 Attempting direct RSVP file write to GitHub...');
+            return await this.submitRSVPDirectToFile(payload);
+        } catch (directError) {
+            console.warn('⚠️ Direct file write failed:', directError.message);
 
-            // Always fallback to Issues for better reliability
-            console.log('📋 Attempting GitHub Issues fallback...');
+            // Try workflow dispatch as fallback
             try {
-                return await this.submitRSVPViaIssue(payload);
-            } catch (issueError) {
-                console.error('❌ Both workflow and issue submission failed');
-                // Throw a comprehensive error
-                throw new Error(`RSVP submission failed: Workflow (${workflowError.message}), Issues (${issueError.message})`);
+                console.log('🔄 Attempting workflow dispatch...');
+                return await this.triggerWorkflow('submit_rsvp', payload);
+            } catch (workflowError) {
+                console.warn('⚠️ Workflow dispatch failed:', workflowError.message);
+
+                // Final fallback to GitHub Issues
+                console.log('📋 Attempting GitHub Issues fallback...');
+                try {
+                    return await this.submitRSVPViaIssue(payload);
+                } catch (issueError) {
+                    console.error('❌ All submission methods failed');
+                    // Throw a comprehensive error
+                    throw new Error(`RSVP submission failed: Direct (${directError.message}), Workflow (${workflowError.message}), Issues (${issueError.message})`);
+                }
             }
+        }
+    }
+
+    async submitRSVPDirectToFile(rsvpData) {
+        console.log('Writing RSVP directly to GitHub file...');
+
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available');
+        }
+
+        const eventId = rsvpData.eventId;
+        const rsvpId = rsvpData.rsvpId;
+        const filePath = `data/rsvps/${eventId}/${rsvpId}.json`;
+
+        try {
+            // Check if file already exists (for updates)
+            let sha = null;
+            try {
+                const checkResponse = await fetch(
+                    `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
+                    {
+                        headers: {
+                            'Authorization': 'token ' + token,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+
+                if (checkResponse.ok) {
+                    const fileData = await checkResponse.json();
+                    sha = fileData.sha;
+                    console.log('📝 Updating existing RSVP file');
+                } else {
+                    console.log('📄 Creating new RSVP file');
+                }
+            } catch (e) {
+                console.log('📄 Creating new RSVP file');
+            }
+
+            // Prepare file content
+            const content = btoa(JSON.stringify(rsvpData, null, 2));
+            const commitMessage = rsvpData.isUpdate
+                ? `Update RSVP: ${rsvpData.name} - ${eventId}`
+                : `New RSVP: ${rsvpData.name} - ${eventId}`;
+
+            // Create or update file
+            const body = {
+                message: commitMessage,
+                content: content,
+                branch: 'main'
+            };
+
+            if (sha) {
+                body.sha = sha;
+            }
+
+            const response = await fetch(
+                `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('GitHub file write failed:', errorData);
+                throw new Error(`GitHub file write failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
+            }
+
+            const result = await response.json();
+            console.log('✅ RSVP written to GitHub file:', filePath);
+
+            return {
+                success: true,
+                method: 'direct_file_write',
+                filePath: filePath,
+                commitSha: result.commit?.sha
+            };
+
+        } catch (error) {
+            console.error('Failed to write RSVP file:', error);
+            throw error;
         }
     }
 

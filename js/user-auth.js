@@ -106,6 +106,8 @@ const userAuth = {
                 id: 'user_' + uname,
                 username: uname,
                 name: match.name || uname,
+                email: match.email || '',
+                branch: match.branch || '',
                 rank: match.rank || '',
                 role: match.role || 'user'
             };
@@ -116,6 +118,8 @@ const userAuth = {
             id: 'user_' + uname,
             username: uname,
             name: uname,
+            email: '',
+            branch: '',
             rank: '',
             role: 'user'
         };
@@ -390,7 +394,29 @@ const userAuth = {
             // In simple auth mode, validate locally (works on GitHub Pages too)
             const simpleMode = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.simpleAuth);
             if (simpleMode) {
-                console.log('🔓 Simple auth enabled: validating locally without GitHub');
+                console.log('🔓 Simple auth enabled: processing locally without GitHub');
+
+                // Handle profile updates differently - don't require password revalidation
+                if (actionType === 'update_profile') {
+                    // Get current user and update with new fields
+                    const currentUser = this.getCurrentUser();
+                    if (!currentUser) {
+                        throw new Error('No authenticated user found');
+                    }
+
+                    // Create updated user object with new fields from payload
+                    const updatedUser = {
+                        ...currentUser,
+                        name: payload?.name || currentUser.name,
+                        email: payload?.email || currentUser.email || '',
+                        branch: payload?.branch || currentUser.branch || '',
+                        rank: payload?.rank || currentUser.rank || ''
+                    };
+
+                    return { success: true, user: updatedUser };
+                }
+
+                // For login/register, validate credentials
                 const user = this.simpleValidate(payload?.username, payload?.password);
                 if (!user) {
                     throw new Error('Invalid username or password');
@@ -411,12 +437,35 @@ const userAuth = {
             const forceBackendInDev = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.forceBackendInDev);
             if (isLocalDev && !forceBackendInDev) {
                 console.log('🧪 Local dev detected: skipping GitHub workflow dispatch and polling (set AUTH_CONFIG.forceBackendInDev=true to enable)');
+
+                // Handle profile updates differently in local dev
+                if (actionType === 'update_profile') {
+                    const currentUser = this.getCurrentUser();
+                    if (!currentUser) {
+                        throw new Error('No authenticated user found');
+                    }
+
+                    return {
+                        success: true,
+                        user: {
+                            ...currentUser,
+                            name: payload?.name || currentUser.name,
+                            email: payload?.email || currentUser.email || '',
+                            branch: payload?.branch || currentUser.branch || '',
+                            rank: payload?.rank || currentUser.rank || ''
+                        }
+                    };
+                }
+
+                // For login/register
                 return {
                     success: true,
                     user: {
                         id: 'user_' + (payload?.username || 'local'),
                         username: payload?.username || 'local_user',
                         name: payload?.name || payload?.username || 'Local User',
+                        email: payload?.email || '',
+                        branch: payload?.branch || '',
                         rank: payload?.rank || '',
                         role: 'manager'
                     }
