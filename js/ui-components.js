@@ -133,7 +133,7 @@ function createRSVPFormHTML(event, eventId) {
     return `
         <div class="rsvp-form">
             <h3>RSVP</h3>
-            <form id="rsvp-form" onsubmit="handleRSVP(event, '${eventId}')">
+            <form id="rsvp-form" onsubmit="handleRSVP(event, '${eventId}'); return false;">
                 <div class="form-group">
                     <label for="rsvp-name">Full Name *</label>
                     <input type="text" id="rsvp-name" name="name" autocomplete="name" required placeholder="Enter your full name" style="min-height: 44px;">
