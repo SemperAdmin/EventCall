@@ -23,7 +23,28 @@ async function getUserRSVPs() {
 
     const allRSVPs = [];
 
-    // Scan localStorage for all eventcall_pending_rsvps_* keys
+    // First, check window.responses (RSVPs loaded from GitHub by manager dashboard)
+    if (window.responses && typeof window.responses === 'object') {
+        console.log('🔍 Checking window.responses for user RSVPs...');
+
+        for (const [eventId, rsvps] of Object.entries(window.responses)) {
+            if (Array.isArray(rsvps)) {
+                // Filter RSVPs that match user's email
+                const userRSVPsInEvent = rsvps.filter(rsvp =>
+                    rsvp.email && rsvp.email.toLowerCase() === userEmail
+                );
+
+                if (userRSVPsInEvent.length > 0) {
+                    console.log(`✅ Found ${userRSVPsInEvent.length} RSVP(s) for user in event ${eventId}`);
+                    allRSVPs.push(...userRSVPsInEvent);
+                }
+            }
+        }
+    } else {
+        console.log('⚠️ window.responses not available, checking localStorage only');
+    }
+
+    // Also scan localStorage for pending/local RSVPs
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && key.startsWith('eventcall_pending_rsvps_')) {
@@ -36,7 +57,16 @@ async function getUserRSVPs() {
                         const userRSVPsInEvent = rsvps.filter(rsvp =>
                             rsvp.email && rsvp.email.toLowerCase() === userEmail
                         );
-                        allRSVPs.push(...userRSVPsInEvent);
+
+                        // Avoid duplicates - check if RSVP ID already exists
+                        const newRSVPs = userRSVPsInEvent.filter(localRSVP =>
+                            !allRSVPs.some(existingRSVP => existingRSVP.rsvpId === localRSVP.rsvpId)
+                        );
+
+                        if (newRSVPs.length > 0) {
+                            console.log(`✅ Found ${newRSVPs.length} local RSVP(s) for user`);
+                            allRSVPs.push(...newRSVPs);
+                        }
                     }
                 }
             } catch (e) {
@@ -45,11 +75,7 @@ async function getUserRSVPs() {
         }
     }
 
-    // Also check secure storage if available
-    if (window.utils && window.utils.secureStorageSync) {
-        // TODO: Implement secure storage scanning if needed
-    }
-
+    console.log(`📊 Total RSVPs found for user (${userEmail}): ${allRSVPs.length}`);
     return allRSVPs;
 }
 
@@ -57,20 +83,29 @@ async function getUserRSVPs() {
  * Load event data for an RSVP
  */
 async function getEventForRSVP(eventId) {
+    // First check if events are loaded in memory (from manager dashboard)
+    if (window.events && typeof window.events === 'object') {
+        // window.events is an object with eventId as keys
+        if (window.events[eventId]) {
+            return window.events[eventId];
+        }
+    }
+
+    // Also check if it's an array (fallback)
+    if (window.events && Array.isArray(window.events)) {
+        const event = window.events.find(e => e.id === eventId);
+        if (event) return event;
+    }
+
+    // Fallback: try to fetch from events-index.json if it exists
     try {
-        // Check if events-index.json exists and load it
         const response = await fetch('events-index.json');
         if (response.ok) {
             const eventsIndex = await response.json();
             return eventsIndex.events?.find(e => e.id === eventId);
         }
     } catch (e) {
-        console.error('Error loading event data:', e);
-    }
-
-    // Fallback: check if event data is in memory
-    if (window.events && Array.isArray(window.events)) {
-        return window.events.find(e => e.id === eventId);
+        // File doesn't exist or fetch failed, that's okay
     }
 
     return null;
