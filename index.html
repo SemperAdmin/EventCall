@@ -419,6 +419,16 @@ function switchDashboardTab(tab) {
         content.classList.toggle('dashboard-tab-content--active', shouldShow);
         console.log('  Content', contentId, ':', shouldShow ? 'VISIBLE' : 'hidden');
     });
+
+    // Load RSVPs when switching to Your RSVPs tab
+    if (tab === 'your-rsvps') {
+        console.log('📝 Loading Your RSVPs...');
+        if (window.displayUserRSVPs) {
+            window.displayUserRSVPs();
+        } else {
+            console.error('❌ displayUserRSVPs function not available');
+        }
+    }
 }
 
 // Make function globally available
