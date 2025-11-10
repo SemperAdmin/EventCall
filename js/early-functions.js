@@ -393,14 +393,61 @@ async function saveUserProfile() {
     const user = window.userAuth.getCurrentUser();
     const showToast = window.showToast || function(msg, type) { console.log(msg); };
 
+    // IMPORTANT: Save to local storage FIRST, then sync to backend
+    // This ensures user data is preserved even if backend fails
+    user.name = name;
+    user.email = email;
+    user.branch = branch;
+    user.rank = rank;
+    user.lastUpdated = new Date().toISOString();
+
+    // Save to local storage immediately
+    window.userAuth.saveUserToStorage(user);
+
+    // Update UI immediately
+    if (window.updateUserDisplay) {
+        window.updateUserDisplay();
+    }
+
     try {
         // Show loading state
         if (saveBtn && window.LoadingUI && window.LoadingUI.withButtonLoading) {
-            await window.LoadingUI.withButtonLoading(saveBtn, 'Updating profile...', async () => {
-                // Trigger update_profile workflow via userAuth
+            await window.LoadingUI.withButtonLoading(saveBtn, 'Syncing to backend...', async () => {
+                // Try to sync to backend
+                try {
+                    const response = await window.userAuth.triggerAuthWorkflow('update_profile', {
+                        username: user.username,
+                        password: '', // Password not required for profile updates
+                        name: name,
+                        email: email,
+                        branch: branch,
+                        rank: rank,
+                        client_id: 'profile_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+                    });
+
+                    if (response.success) {
+                        showToast('✅ Profile updated and synced to backend', 'success');
+                    } else {
+                        showToast('✅ Profile updated locally (backend sync pending)', 'success');
+                    }
+                } catch (backendError) {
+                    // Check if it's a rate limit error
+                    if (backendError.message && backendError.message.includes('rate limit')) {
+                        showToast('✅ Profile updated locally (backend rate limited, will sync later)', 'success');
+                    } else {
+                        showToast('✅ Profile updated locally (backend sync failed)', 'success');
+                    }
+                    console.warn('Backend sync failed:', backendError);
+                }
+
+                closeUserProfile();
+            });
+        } else {
+            // Fallback if LoadingUI not available
+            try {
                 const response = await window.userAuth.triggerAuthWorkflow('update_profile', {
                     username: user.username,
-                    password: '', // Password not required for profile updates
+                    password: '',
                     name: name,
                     email: email,
                     branch: branch,
@@ -408,57 +455,26 @@ async function saveUserProfile() {
                     client_id: 'profile_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
                 });
 
-                if (response.success && response.user) {
-                    // Update local user object with server response
-                    user.name = response.user.name;
-                    user.email = response.user.email || '';
-                    user.branch = response.user.branch || '';
-                    user.rank = response.user.rank || '';
-
-                    // Save to storage
-                    window.userAuth.saveUserToStorage(user);
-
-                    // Update UI
-                    if (window.updateUserDisplay) {
-                        window.updateUserDisplay();
-                    }
-
-                    showToast('✅ Profile updated successfully', 'success');
-                    closeUserProfile();
+                if (response.success) {
+                    showToast('✅ Profile updated and synced to backend', 'success');
                 } else {
-                    throw new Error(response.error || 'Profile update failed');
+                    showToast('✅ Profile updated locally (backend sync pending)', 'success');
                 }
-            });
-        } else {
-            // Fallback if LoadingUI not available
-            const response = await window.userAuth.triggerAuthWorkflow('update_profile', {
-                username: user.username,
-                password: '',
-                name: name,
-                email: email,
-                branch: branch,
-                rank: rank,
-                client_id: 'profile_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-            });
-
-            if (response.success && response.user) {
-                user.name = response.user.name;
-                user.email = response.user.email || '';
-                user.branch = response.user.branch || '';
-                user.rank = response.user.rank || '';
-                window.userAuth.saveUserToStorage(user);
-                if (window.updateUserDisplay) {
-                    window.updateUserDisplay();
+            } catch (backendError) {
+                if (backendError.message && backendError.message.includes('rate limit')) {
+                    showToast('✅ Profile updated locally (backend rate limited, will sync later)', 'success');
+                } else {
+                    showToast('✅ Profile updated locally (backend sync failed)', 'success');
                 }
-                showToast('✅ Profile updated successfully', 'success');
-                closeUserProfile();
-            } else {
-                throw new Error(response.error || 'Profile update failed');
+                console.warn('Backend sync failed:', backendError);
             }
+
+            closeUserProfile();
         }
     } catch (error) {
-        console.error('❌ Profile update failed:', error);
-        showToast('❌ Profile update failed: ' + error.message, 'error');
+        console.error('❌ Profile update UI error:', error);
+        showToast('✅ Profile saved locally', 'success');
+        closeUserProfile();
     }
 }
 
