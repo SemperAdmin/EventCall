@@ -38,6 +38,7 @@ jobs:
           USERNAME: ${{ github.event.client_payload.data.username }}
           PASSWORD: ${{ github.event.client_payload.data.password }}
           NAME: ${{ github.event.client_payload.data.name }}
+          EMAIL: ${{ github.event.client_payload.data.email }}
           BRANCH: ${{ github.event.client_payload.data.branch }}
           RANK: ${{ github.event.client_payload.data.rank }}
           CLIENT_ID: ${{ github.event.client_payload.data.client_id }}
@@ -56,6 +57,7 @@ jobs:
                   const username = process.env.USERNAME?.toLowerCase().trim();
                   const password = process.env.PASSWORD;
                   const name = process.env.NAME;
+                  const email = process.env.EMAIL?.toLowerCase().trim();
                   const branch = process.env.BRANCH;
                   const rank = process.env.RANK;
                   const clientId = process.env.CLIENT_ID;
@@ -103,6 +105,7 @@ jobs:
                           username: username,
                           passwordHash: passwordHash,
                           name: name || '',
+                          email: email || '',
                           branch: branch || '',
                           rank: rank || '',
                           createdAt: new Date().toISOString(),
@@ -203,6 +206,7 @@ jobs:
 
                       // Update fields
                       if (name) user.name = name;
+                      if (email !== undefined) user.email = email;
                       if (branch !== undefined) user.branch = branch;
                       if (rank !== undefined) user.rank = rank;
                       user.lastUpdated = new Date().toISOString();
