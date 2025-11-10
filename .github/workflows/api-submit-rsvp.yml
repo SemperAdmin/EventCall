@@ -7,8 +7,26 @@ on:
 jobs:
   save-rsvp:
     runs-on: ubuntu-latest
-    
+
     steps:
+      - name: Validate CSRF Token
+        run: |
+          CSRF_TOKEN="${{ github.event.client_payload.csrfToken }}"
+
+          if [ -z "$CSRF_TOKEN" ]; then
+            echo "❌ Security Error: Missing CSRF token"
+            echo "All RSVP submissions must include a valid CSRF token"
+            exit 1
+          fi
+
+          # Token format validation
+          if ! echo "$CSRF_TOKEN" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+            echo "❌ Security Error: Invalid CSRF token format"
+            exit 1
+          fi
+
+          echo "✅ CSRF token validated: ${CSRF_TOKEN:0:8}..."
+
       - name: Save RSVP to Private Repo
         run: |
           echo "Processing RSVP..."

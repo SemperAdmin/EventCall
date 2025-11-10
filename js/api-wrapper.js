@@ -58,6 +58,16 @@ async function fetchWithRetry(url, options, retryConfig, context) {
         try {
             const response = await fetch(url, options);
 
+            // Check for authentication errors (401 Unauthorized)
+            if (response.status === 401) {
+                console.error('❌ Authentication failed: 401 Unauthorized');
+                // Trigger re-authentication flow
+                if (window.handleAuthenticationFailure) {
+                    window.handleAuthenticationFailure();
+                }
+                throw new Error('Authentication required - please log in again');
+            }
+
             // Check for rate limiting
             if (response.status === 429 || response.status === 403) {
                 const remaining = response.headers.get('x-ratelimit-remaining');
@@ -69,6 +79,11 @@ async function fetchWithRetry(url, options, retryConfig, context) {
             return response;
         } catch (error) {
             lastError = error;
+
+            // Don't retry on authentication errors
+            if (error.message.includes('Authentication required')) {
+                throw error;
+            }
 
             if (attempt < retryConfig.maxAttempts - 1) {
                 const delay = retryConfig.baseDelayMs * Math.pow(2, attempt);
@@ -156,11 +171,61 @@ async function batchFetch(requests, config = {}) {
     return results;
 }
 
+/**
+ * Global authentication failure handler
+ * Called when API returns 401 Unauthorized
+ */
+function handleAuthenticationFailure() {
+    console.warn('🔐 Authentication failure detected - triggering re-login');
+
+    // Show user notification
+    if (window.showToast) {
+        window.showToast('Your session has expired. Please log in again.', 'error');
+    }
+
+    // Clear any cached authentication data
+    if (window.userAuth) {
+        window.userAuth.logout();
+    }
+
+    // Redirect to login after a short delay
+    setTimeout(() => {
+        if (window.router && window.router.navigate) {
+            window.router.navigate('login');
+        } else {
+            window.location.href = '#login';
+        }
+    }, 2000);
+}
+
+/**
+ * Token expiration handler
+ * Called when token expiry time is reached
+ */
+function handleTokenExpiration() {
+    console.warn('⏰ GitHub token expired');
+
+    if (window.showToast) {
+        window.showToast('Your GitHub token has expired. Please re-authenticate.', 'warning');
+    }
+
+    // Similar to authentication failure, redirect to login
+    setTimeout(() => {
+        if (window.router && window.router.navigate) {
+            window.router.navigate('login');
+        } else {
+            window.location.href = '#login';
+        }
+    }, 2000);
+}
+
 // Make available globally
 if (typeof window !== 'undefined') {
     window.safeFetch = safeFetch;
     window.safeFetchGitHub = safeFetchGitHub;
     window.batchFetch = batchFetch;
+    window.handleAuthenticationFailure = handleAuthenticationFailure;
+    window.handleTokenExpiration = handleTokenExpiration;
     console.log('✅ API wrapper utility loaded');
 }
 
