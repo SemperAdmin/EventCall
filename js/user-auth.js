@@ -204,11 +204,6 @@ const userAuth = {
             return;
         }
 
-        // Show app loader immediately
-        if (window.showAppLoader) {
-            window.showAppLoader();
-        }
-
         // Set authentication in progress
         this.authInProgress = true;
 
@@ -218,6 +213,11 @@ const userAuth = {
 
             // Trigger GitHub Actions workflow
             console.log('🚀 Triggering registration workflow...');
+
+            // Show app loader after workflow trigger to give user visual feedback
+            if (window.showAppLoader) {
+                window.showAppLoader();
+            }
 
             const response = await this.triggerAuthWorkflow('register_user', {
                 username,
@@ -315,11 +315,6 @@ const userAuth = {
             return;
         }
 
-        // Show app loader immediately
-        if (window.showAppLoader) {
-            window.showAppLoader();
-        }
-
         // Set authentication in progress
         this.authInProgress = true;
 
@@ -329,6 +324,11 @@ const userAuth = {
 
             // Trigger GitHub Actions workflow
             console.log('🚀 Triggering login workflow...');
+
+            // Show app loader after workflow trigger to give user visual feedback
+            if (window.showAppLoader) {
+                window.showAppLoader();
+            }
 
             const response = await this.triggerAuthWorkflow('login_user', {
                 username,
