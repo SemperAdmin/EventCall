@@ -395,6 +395,26 @@ function updateRegRanksForBranch() {
 
 // Make function globally available
 window.updateRegRanksForBranch = updateRegRanksForBranch;
+
+// Dashboard tab switching functionality
+function switchDashboardTab(tab) {
+    const tabs = document.querySelectorAll('.dashboard-tab');
+    const contents = document.querySelectorAll('.dashboard-tab-content');
+
+    tabs.forEach(btn => {
+        const isActive = btn.getAttribute('data-tab') === tab;
+        btn.classList.toggle('dashboard-tab--active', isActive);
+    });
+
+    contents.forEach(content => {
+        const contentId = content.id;
+        const shouldShow = contentId === tab + '-tab';
+        content.classList.toggle('dashboard-tab-content--active', shouldShow);
+    });
+}
+
+// Make function globally available
+window.switchDashboardTab = switchDashboardTab;
 </script>
 
 <!-- ============================================
@@ -434,21 +454,41 @@ window.updateRegRanksForBranch = updateRegRanksForBranch;
                 </div>
             </div>
 
-            <div class="page-header">
-                <h2 class="page-header__title">Your Events</h2>
+            <!-- Dashboard Tabs -->
+            <div class="dashboard-tabs">
+                <button type="button" class="dashboard-tab dashboard-tab--active" data-tab="active-events" onclick="switchDashboardTab('active-events')">
+                    🟢 Your Active Events
+                </button>
+                <button type="button" class="dashboard-tab" data-tab="past-events" onclick="switchDashboardTab('past-events')">
+                    🔴 Your Past Events
+                </button>
+                <button type="button" class="dashboard-tab" data-tab="your-rsvps" onclick="switchDashboardTab('your-rsvps')">
+                    📝 Your RSVPs
+                </button>
             </div>
-            <div id="events-list">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Loading events...
+
+            <!-- Active Events Tab Content -->
+            <div id="active-events-tab" class="dashboard-tab-content dashboard-tab-content--active">
+                <div id="active-events-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading events...
+                    </div>
                 </div>
             </div>
 
-            <!-- Your RSVPs Section -->
-            <div id="user-rsvps-section" style="margin-top: 3rem;">
-                <div class="page-header">
-                    <h2 class="page-header__title">📝 Your RSVPs</h2>
+            <!-- Past Events Tab Content -->
+            <div id="past-events-tab" class="dashboard-tab-content">
+                <div id="past-events-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading events...
+                    </div>
                 </div>
+            </div>
+
+            <!-- Your RSVPs Tab Content -->
+            <div id="your-rsvps-tab" class="dashboard-tab-content">
                 <div id="user-rsvps-list">
                     <div class="loading">
                         <div class="spinner"></div>

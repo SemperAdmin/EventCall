@@ -310,9 +310,13 @@ async function loadManagerData() {
 
     // Show skeleton while fetching data
     try {
-        const list = document.getElementById('events-list');
-        if (list && window.LoadingUI && window.LoadingUI.Skeleton) {
-            window.LoadingUI.Skeleton.show(list, 'cards', 6);
+        const activeList = document.getElementById('active-events-list');
+        const pastList = document.getElementById('past-events-list');
+        if (activeList && window.LoadingUI && window.LoadingUI.Skeleton) {
+            window.LoadingUI.Skeleton.show(activeList, 'cards', 3);
+        }
+        if (pastList && window.LoadingUI && window.LoadingUI.Skeleton) {
+            window.LoadingUI.Skeleton.show(pastList, 'cards', 3);
         }
     } catch (_) {}
     
@@ -395,11 +399,13 @@ async function deleteEvent(eventId) {
 }
 
 function renderDashboard() {
-    const eventsList = document.getElementById('events-list');
-    if (!eventsList) return;
+    const activeEventsList = document.getElementById('active-events-list');
+    const pastEventsList = document.getElementById('past-events-list');
+
+    if (!activeEventsList || !pastEventsList) return;
 
     if (!window.events || Object.keys(window.events).length === 0) {
-        eventsList.innerHTML = `
+        activeEventsList.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">🎖️</div>
                 <h3>No Events Created Yet</h3>
@@ -407,23 +413,30 @@ function renderDashboard() {
                 <button class="btn btn-primary" onclick="showPage('create')">➕ Create Event</button>
             </div>
         `;
+        pastEventsList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📁</div>
+                <h3>No Past Events</h3>
+                <p>Past events will appear here</p>
+            </div>
+        `;
         return;
     }
 
     const eventArray = Object.values(window.events);
     console.log('📊 Rendering dashboard with ' + eventArray.length + ' events');
-    
+
     // Separate active and past events
     const now = new Date();
     const activeEvents = eventArray.filter(event => !isEventInPast(event.date, event.time));
     const pastEvents = eventArray.filter(event => isEventInPast(event.date, event.time));
-    
+
     // Sort: active by date ascending, past by date descending
     activeEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
     pastEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    // Render active events section
-    let html = `
+
+    // Render active events
+    let activeHtml = `
         <div class="dashboard-header">
             <h2>🎖️ Command Center</h2>
             <div class="quick-actions">
@@ -436,31 +449,49 @@ function renderDashboard() {
             </div>
         </div>
     `;
-    
+
     if (activeEvents.length > 0) {
-        html += `
+        activeHtml += `
             <div class="events-section">
-                <h3 class="section-title">🟢 Active Events</h3>
                 <div class="events-grid">
                     ${activeEvents.map(event => renderEventCard(event, false)).join('')}
                 </div>
             </div>
         `;
+    } else {
+        activeHtml += `
+            <div class="empty-state">
+                <div class="empty-state-icon">📅</div>
+                <h3>No Active Events</h3>
+                <p>Create a new event to get started</p>
+                <button class="btn btn-primary" onclick="showPage('create')">➕ Create Event</button>
+            </div>
+        `;
     }
-    
+
+    // Render past events
+    let pastHtml = '';
     if (pastEvents.length > 0) {
-        html += `
+        pastHtml = `
             <div class="events-section">
-                <h3 class="section-title">🔴 Past Events</h3>
                 <div class="events-grid">
                     ${pastEvents.map(event => renderEventCard(event, true)).join('')}
                 </div>
             </div>
         `;
+    } else {
+        pastHtml = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📁</div>
+                <h3>No Past Events</h3>
+                <p>Completed events will appear here</p>
+            </div>
+        `;
     }
-    
-    eventsList.innerHTML = html;
-    console.log('✅ Dashboard rendered successfully with Command Center layout');
+
+    activeEventsList.innerHTML = activeHtml;
+    pastEventsList.innerHTML = pastHtml;
+    console.log('✅ Dashboard rendered successfully with tabbed layout');
 }
 
 function renderEventCard(event, isPast) {
