@@ -510,8 +510,9 @@ const userAuth = {
 
             console.log('⏳ Polling for authentication response...');
             // Poll for response via GitHub Issues using configurable timeouts
+            // Increased default interval from 2s to 5s to avoid GitHub's abuse detection limits
             const timeoutMs = (window.AUTH_CONFIG && window.AUTH_CONFIG.authTimeoutMs) || 30000;
-            const intervalMs = (window.AUTH_CONFIG && window.AUTH_CONFIG.pollIntervalMs) || 2000;
+            const intervalMs = (window.AUTH_CONFIG && window.AUTH_CONFIG.pollIntervalMs) || 5000;
             const response = await this.pollForAuthResponse(payload.client_id, timeoutMs, intervalMs);
 
             console.log('✅ Authentication response received:', response);
@@ -537,7 +538,7 @@ const userAuth = {
     /**
      * Poll GitHub Issues for authentication response
      */
-    async pollForAuthResponse(clientId, timeout = 30000, pollInterval = 2000) {
+    async pollForAuthResponse(clientId, timeout = 30000, pollInterval = 5000) {
         const startTime = Date.now();
         let pollCount = 0;
 
@@ -556,7 +557,12 @@ const userAuth = {
                 const url = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?state=open&per_page=100&sort=created&direction=desc&t=${Date.now()}`;
                 console.log(`🌐 Fetching: ${url}`);
 
-                const response = await fetch(url, {
+                // Use rate limiter to respect GitHub's limits
+                const fetchFunc = window.rateLimiter ?
+                    (u, opts) => window.rateLimiter.fetch(u, opts, { endpointKey: 'github_issues', retry: { maxAttempts: 2 } }) :
+                    fetch;
+
+                const response = await fetchFunc(url, {
                     headers: {
                         'Authorization': `token ${window.GITHUB_CONFIG.token}`,
                         'Accept': 'application/vnd.github.v3+json'
@@ -600,7 +606,7 @@ const userAuth = {
 
                         // Close the issue
                         console.log(`🔒 Closing issue #${matchingIssue.number}...`);
-                        await fetch(
+                        await fetchFunc(
                             `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues/${matchingIssue.number}`,
                             {
                                 method: 'PATCH',
@@ -623,43 +629,54 @@ const userAuth = {
                     }
                 } else {
                     // Fallback: check across all states in case client closed or visibility lag
-                    try {
-                        const fallbackUrl = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?state=all&per_page=100&sort=created&direction=desc&t=${Date.now()}`;
-                        console.log(`🔎 Fallback fetching: ${fallbackUrl}`);
-                        const fallbackResp = await fetch(fallbackUrl, {
-                            headers: {
-                                'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                                'Accept': 'application/vnd.github.v3+json'
-                            }
-                        });
+                    // Only do fallback check every 3rd poll to avoid rate limiting
+                    if (pollCount % 3 === 0) {
+                        try {
+                            const fallbackUrl = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?state=all&per_page=100&sort=created&direction=desc&t=${Date.now()}`;
+                            console.log(`🔎 Fallback fetching (poll #${pollCount}): ${fallbackUrl}`);
 
-                        if (fallbackResp.ok) {
-                            const allIssues = await fallbackResp.json();
-                            const fallbackMatch = allIssues.find(issue => issue.title && issue.title.includes(searchTitle));
-                            if (fallbackMatch) {
-                                console.log(`✅ Found matching issue in fallback #${fallbackMatch.number}`);
-                                const responseData = JSON.parse(fallbackMatch.body);
-                                // Close the issue to keep the queue clean
-                                await fetch(
-                                    `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues/${fallbackMatch.number}`,
-                                    {
-                                        method: 'PATCH',
-                                        headers: {
-                                            'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                                            'Accept': 'application/vnd.github.v3+json',
-                                            'Content-Type': 'application/json'
-                                        },
-                                        body: JSON.stringify({ state: 'closed' })
-                                    }
-                                );
-                                console.log(`✅ Fallback issue closed successfully`);
-                                return responseData;
+                            // Use rate limiter for fallback fetch too
+                            const fetchFunc = window.rateLimiter ?
+                                (u, opts) => window.rateLimiter.fetch(u, opts, { endpointKey: 'github_issues', retry: { maxAttempts: 2 } }) :
+                                fetch;
+
+                            const fallbackResp = await fetchFunc(fallbackUrl, {
+                                headers: {
+                                    'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                    'Accept': 'application/vnd.github.v3+json'
+                                }
+                            });
+
+                            if (fallbackResp.ok) {
+                                const allIssues = await fallbackResp.json();
+                                const fallbackMatch = allIssues.find(issue => issue.title && issue.title.includes(searchTitle));
+                                if (fallbackMatch) {
+                                    console.log(`✅ Found matching issue in fallback #${fallbackMatch.number}`);
+                                    const responseData = JSON.parse(fallbackMatch.body);
+                                    // Close the issue to keep the queue clean
+                                    await fetchFunc(
+                                        `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues/${fallbackMatch.number}`,
+                                        {
+                                            method: 'PATCH',
+                                            headers: {
+                                                'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                                'Accept': 'application/vnd.github.v3+json',
+                                                'Content-Type': 'application/json'
+                                            },
+                                            body: JSON.stringify({ state: 'closed' })
+                                        }
+                                    );
+                                    console.log(`✅ Fallback issue closed successfully`);
+                                    return responseData;
+                                }
+                            } else {
+                                console.warn(`⚠️ Fallback fetch failed: ${fallbackResp.status}`);
                             }
-                        } else {
-                            console.warn(`⚠️ Fallback fetch failed: ${fallbackResp.status}`);
+                        } catch (fallbackError) {
+                            console.warn('⚠️ Fallback check error:', fallbackError);
                         }
-                    } catch (fallbackError) {
-                        console.warn('⚠️ Fallback check error:', fallbackError);
+                    } else {
+                        console.log(`⏭️ Skipping fallback check on poll #${pollCount} (only checking every 3rd poll)`);
                     }
 
                     console.log(`⏳ No matching issue found yet, waiting ${pollInterval}ms...`);
