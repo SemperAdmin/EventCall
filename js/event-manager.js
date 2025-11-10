@@ -2171,11 +2171,12 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             eventData.createdByName = this.currentEvent.createdByName;
             eventData.lastModified = Date.now();
 
-            // Use BackendAPI to trigger workflow and save to EventCall-Data
-            if (window.BackendAPI) {
-                await window.BackendAPI.createEvent(eventData);
+            // Save directly to EventCall-Data using GitHub API
+            // github-api.js saveEvent handles both create and update operations
+            if (window.githubAPI) {
+                await window.githubAPI.saveEvent(eventData);
             } else {
-                throw new Error('Backend API not available');
+                throw new Error('GitHub API not available');
             }
 
             // Update local state
