@@ -65,10 +65,11 @@
                 const appPath = '/' + pathParts.slice(1).join('/');
 
                 console.log('Redirecting to:', basePath + 'index.html' + search + hash);
-                console.log('App will navigate to:', appPath);
+                console.log('App will navigate to:', path);
 
                 // Store the intended path in sessionStorage for the app to pick up
-                sessionStorage.setItem('redirectPath', appPath + search + hash);
+                // IMPORTANT: Use the full path including basePath to avoid routing issues
+                sessionStorage.setItem('redirectPath', path + search + hash);
 
                 // Redirect to index.html with the base path
                 window.location.replace(basePath + 'index.html' + search + hash);
