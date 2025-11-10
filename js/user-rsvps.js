@@ -250,23 +250,34 @@ async function openEditRSVPModal(rsvpId, eventId) {
     const modal = document.getElementById('edit-rsvp-modal');
     if (!modal) return;
 
-    // Find the RSVP
-    const storageKey = `eventcall_pending_rsvps_${eventId}`;
     let rsvp = null;
 
-    try {
-        const data = localStorage.getItem(storageKey);
-        if (data) {
-            const rsvps = JSON.parse(data);
+    // First check window.responses (RSVPs from GitHub backend)
+    if (window.responses && window.responses[eventId]) {
+        const rsvps = window.responses[eventId];
+        if (Array.isArray(rsvps)) {
             rsvp = rsvps.find(r => r.rsvpId === rsvpId);
+            console.log('🔍 Found RSVP in window.responses:', rsvp);
         }
-    } catch (e) {
-        console.error('Error loading RSVP:', e);
-        showToast('❌ Error loading RSVP', 'error');
-        return;
+    }
+
+    // Fallback to localStorage if not found in window.responses
+    if (!rsvp) {
+        const storageKey = `eventcall_pending_rsvps_${eventId}`;
+        try {
+            const data = localStorage.getItem(storageKey);
+            if (data) {
+                const rsvps = JSON.parse(data);
+                rsvp = rsvps.find(r => r.rsvpId === rsvpId);
+                console.log('🔍 Found RSVP in localStorage:', rsvp);
+            }
+        } catch (e) {
+            console.error('Error loading RSVP from localStorage:', e);
+        }
     }
 
     if (!rsvp) {
+        console.error('❌ RSVP not found in window.responses or localStorage');
         showToast('❌ RSVP not found', 'error');
         return;
     }
@@ -399,37 +410,41 @@ async function saveEditedRSVP() {
         isUpdate: true
     };
 
-    // Save to localStorage
-    const storageKey = `eventcall_pending_rsvps_${eventId}`;
+    // Submit update to backend
     try {
-        const data = localStorage.getItem(storageKey);
-        if (data) {
-            const rsvps = JSON.parse(data);
-            const index = rsvps.findIndex(r => r.rsvpId === rsvp.rsvpId);
-            if (index !== -1) {
-                rsvps[index] = updatedRSVP;
-                localStorage.setItem(storageKey, JSON.stringify(rsvps));
+        if (window.BackendAPI) {
+            await window.BackendAPI.submitRSVP(updatedRSVP);
+            console.log('✅ RSVP updated in backend');
 
-                // Submit update to backend if available
-                if (window.BackendAPI) {
-                    try {
-                        await window.BackendAPI.submitRSVP(updatedRSVP);
-                        showToast('✅ RSVP updated successfully', 'success');
-                    } catch (e) {
-                        console.error('Backend update failed:', e);
-                        showToast('✅ RSVP updated locally (backend sync may be pending)', 'success');
-                    }
-                } else {
-                    showToast('✅ RSVP updated successfully', 'success');
+            // Also update in window.responses if it exists there
+            if (window.responses && window.responses[eventId]) {
+                const index = window.responses[eventId].findIndex(r => r.rsvpId === rsvp.rsvpId);
+                if (index !== -1) {
+                    window.responses[eventId][index] = updatedRSVP;
                 }
-
-                // Close modal and refresh display
-                closeEditRSVPModal();
-                displayUserRSVPs();
-            } else {
-                throw new Error('RSVP not found in storage');
             }
+
+            // Also update localStorage if it exists there
+            const storageKey = `eventcall_pending_rsvps_${eventId}`;
+            const data = localStorage.getItem(storageKey);
+            if (data) {
+                const rsvps = JSON.parse(data);
+                const index = rsvps.findIndex(r => r.rsvpId === rsvp.rsvpId);
+                if (index !== -1) {
+                    rsvps[index] = updatedRSVP;
+                    localStorage.setItem(storageKey, JSON.stringify(rsvps));
+                }
+            }
+
+            showToast('✅ RSVP updated successfully', 'success');
+        } else {
+            throw new Error('Backend API not available');
         }
+
+        // Close modal and refresh display
+        closeEditRSVPModal();
+        displayUserRSVPs();
+
     } catch (error) {
         console.error('Error saving RSVP:', error);
         showToast('❌ Error saving RSVP: ' + error.message, 'error');
@@ -440,8 +455,9 @@ async function saveEditedRSVP() {
  * View event details (navigate to event page)
  */
 function viewEventDetails(eventId) {
-    // TODO: Implement navigation to event details/invite page
-    showToast('ℹ️ Event details view coming soon', 'info');
+    console.log('📍 Navigating to event details:', eventId);
+    // Navigate to the event's invite page
+    window.location.href = `invite.html?id=${eventId}`;
 }
 
 // Make functions globally available
