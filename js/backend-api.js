@@ -299,14 +299,15 @@ class BackendAPI {
             // Check if file already exists (for updates)
             let sha = null;
             try {
-                const checkResponse = await fetch(
+                const checkResponse = await window.safeFetchGitHub(
                     `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
                     {
                         headers: {
                             'Authorization': 'token ' + token,
                             'Accept': 'application/vnd.github.v3+json'
                         }
-                    }
+                    },
+                    'Check existing RSVP file'
                 );
 
                 if (checkResponse.ok) {
@@ -337,7 +338,7 @@ class BackendAPI {
                 body.sha = sha;
             }
 
-            const response = await fetch(
+            const response = await window.safeFetchGitHub(
                 `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
                 {
                     method: 'PUT',
@@ -347,7 +348,8 @@ class BackendAPI {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(body)
-                }
+                },
+                'Save RSVP file'
             );
 
             if (!response.ok) {
@@ -535,14 +537,15 @@ ${JSON.stringify(rsvpData, null, 2)}
 
         try {
             // Get existing user file
-            const checkResponse = await fetch(
+            const checkResponse = await window.safeFetchGitHub(
                 `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
                 {
                     headers: {
                         'Authorization': 'token ' + token,
                         'Accept': 'application/vnd.github.v3+json'
                     }
-                }
+                },
+                'Get existing user profile'
             );
 
             if (!checkResponse.ok) {
@@ -570,7 +573,7 @@ ${JSON.stringify(rsvpData, null, 2)}
             const commitMessage = `Update profile for ${username}`;
 
             // Update file
-            const response = await fetch(
+            const response = await window.safeFetchGitHub(
                 `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
                 {
                     method: 'PUT',
@@ -585,7 +588,8 @@ ${JSON.stringify(rsvpData, null, 2)}
                         sha: sha,
                         branch: 'main'
                     })
-                }
+                },
+                'Update user profile'
             );
 
             if (!response.ok) {
