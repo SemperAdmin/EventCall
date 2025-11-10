@@ -39,7 +39,7 @@ class RSVPHandler {
 
             // Load existing RSVP data from localStorage as fallback
             // In production, this would fetch from GitHub
-            const event = getEventFromURL();
+            const event = await getEventFromURL();
             if (event) {
                 const storageKey = `eventcall_pending_rsvps_${event.id}`;
                 try {
@@ -141,7 +141,7 @@ class RSVPHandler {
 
         try {
             await window.LoadingUI.withButtonLoading(submitBtn, 'Submitting...', async () => {
-                const rsvpData = this.collectFormData();
+                const rsvpData = await this.collectFormData();
                 const validation = await this.validateRSVPData(rsvpData);
 
                 if (!validation.valid) {
@@ -243,7 +243,7 @@ class RSVPHandler {
     }
 
     async submitToSecureBackend(eventId, rsvpData) {
-        const event = getEventFromURL();
+        const event = await getEventFromURL();
         if (!event) throw new Error('Event data not found');
 
         if (!window.BackendAPI) {
@@ -340,7 +340,7 @@ class RSVPHandler {
     }
 
     async showEnhancedConfirmation(rsvpData, submissionResult) {
-        const event = getEventFromURL();
+        const event = await getEventFromURL();
         let statusMessage = '';
         let statusColor = 'd1fae5';
         let borderColor = '10b981';
@@ -536,11 +536,11 @@ class RSVPHandler {
         }
     }
 
-    collectFormData() {
+    async collectFormData() {
         const attendingRadio = document.querySelector('input[name="attending"]:checked');
         const attendingValue = attendingRadio ? attendingRadio.value === 'true' : null;
 
-        const event = getEventFromURL();
+        const event = await getEventFromURL();
         const customAnswers = {};
 
         if (event && event.customQuestions) {
@@ -771,7 +771,7 @@ class RSVPHandler {
      * Copy edit link to clipboard
      */
     async copyEditLink(rsvpId, editToken) {
-        const event = getEventFromURL();
+        const event = await getEventFromURL();
         if (!event) {
             showToast('❌ Event data not found', 'error');
             return;

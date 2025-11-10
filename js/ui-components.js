@@ -34,8 +34,19 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * Direct invite content loader
  */
-function loadInviteContentDirect() {
-    const event = getEventFromURL();
+async function loadInviteContentDirect() {
+    // Show loading state
+    const inviteContent = document.getElementById('invite-content');
+    if (inviteContent) {
+        inviteContent.innerHTML = window.utils.sanitizeHTML(`
+            <div style="text-align: center; padding: 3rem;">
+                <div class="spinner" style="width: 50px; height: 50px; border: 4px solid rgba(212, 175, 55, 0.2); border-top-color: #d4af37; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                <p style="color: #9ca3af;">Loading event...</p>
+            </div>
+        `);
+    }
+
+    const event = await getEventFromURL();
     if (!event) {
         document.getElementById('invite-content').innerHTML = window.utils.sanitizeHTML(`
             <div style="text-align: center; padding: 3rem; color: #ef4444;">
@@ -45,17 +56,17 @@ function loadInviteContentDirect() {
         `);
         return;
     }
-    
+
     const eventId = event.id;
     const isPast = isEventInPast(event.date, event.time);
-    
+
     if (isPast) {
         document.getElementById('invite-content').innerHTML = window.utils.sanitizeHTML(createPastEventHTML(event));
         return;
     }
-    
+
     document.getElementById('invite-content').innerHTML = window.utils.sanitizeHTML(createInviteHTML(event, eventId));
-    
+
     // Setup form functionality
     setupRSVPForm();
 }

@@ -201,22 +201,72 @@ END:VCALENDAR`;
     }
 
     /**
+     * Async helper to open calendar
+     */
+    async openCalendarAsync(type) {
+        const event = await getEventFromURL();
+        if (event) {
+            this.openCalendar(type, event);
+        } else {
+            showToast('❌ Event data not found', 'error');
+        }
+    }
+
+    /**
+     * Async helper to download ICS
+     */
+    async downloadICSAsync() {
+        const event = await getEventFromURL();
+        if (event) {
+            this.downloadICS(event);
+        } else {
+            showToast('❌ Event data not found', 'error');
+        }
+    }
+
+    /**
      * Generate calendar button HTML
      */
     generateCalendarButtonsHTML(event, buttonClass = 'btn') {
         return `
             <div class="calendar-export-buttons" style="display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0;">
-                <button type="button" class="${buttonClass}" onclick="window.calendarExport.openCalendar('google', getEventFromURL())">
+                <button type="button" class="${buttonClass}" onclick="window.calendarExport.openCalendarAsync('google')">
                     📅 Add to Google Calendar
                 </button>
-                <button type="button" class="${buttonClass}" onclick="window.calendarExport.openCalendar('outlook', getEventFromURL())">
+                <button type="button" class="${buttonClass}" onclick="window.calendarExport.openCalendarAsync('outlook')">
                     📅 Add to Outlook
                 </button>
-                <button type="button" class="${buttonClass}" onclick="window.calendarExport.downloadICS(getEventFromURL())">
+                <button type="button" class="${buttonClass}" onclick="window.calendarExport.downloadICSAsync()">
                     📥 Download ICS File
                 </button>
             </div>
         `;
+    }
+
+    /**
+     * Async helper to open calendar from dropdown
+     */
+    async openCalendarFromDropdown(type) {
+        const event = await getEventFromURL();
+        if (event) {
+            this.openCalendar(type, event);
+        } else {
+            showToast('❌ Event data not found', 'error');
+        }
+        this.closeCalendarDropdown();
+    }
+
+    /**
+     * Async helper to download ICS from dropdown
+     */
+    async downloadICSFromDropdown() {
+        const event = await getEventFromURL();
+        if (event) {
+            this.downloadICS(event);
+        } else {
+            showToast('❌ Event data not found', 'error');
+        }
+        this.closeCalendarDropdown();
     }
 
     /**
@@ -229,16 +279,16 @@ END:VCALENDAR`;
                     📅 Add to Calendar ▼
                 </button>
                 <div class="calendar-dropdown" style="display: none; position: absolute; top: 100%; left: 0; min-width: 200px; background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 100; margin-top: 0.25rem;">
-                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendar('google', getEventFromURL()); window.calendarExport.closeCalendarDropdown()">
+                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendarFromDropdown('google')">
                         📅 Google Calendar
                     </button>
-                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendar('outlook', getEventFromURL()); window.calendarExport.closeCalendarDropdown()">
+                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendarFromDropdown('outlook')">
                         📅 Outlook
                     </button>
-                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendar('yahoo', getEventFromURL()); window.calendarExport.closeCalendarDropdown()">
+                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendarFromDropdown('yahoo')">
                         📅 Yahoo
                     </button>
-                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.downloadICS(getEventFromURL()); window.calendarExport.closeCalendarDropdown()">
+                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.downloadICSFromDropdown()">
                         📥 Download ICS
                     </button>
                 </div>

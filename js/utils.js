@@ -146,13 +146,15 @@ function generateInviteURL(event) {
 
 /**
  * Get event data from URL parameters
- * @returns {Object|null} Event data or null
+ * Falls back to loading from events-index.json if URL parameter is missing
+ * @returns {Promise<Object|null>} Event data or null
  */
 // function getEventFromURL() {
-function getEventFromURL() {
+async function getEventFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     const encodedData = urlParams.get('data');
 
+    // Try to get event from URL parameter first
     if (encodedData) {
         try {
             return JSON.parse(decodeURIComponent(encodedData));
@@ -161,10 +163,35 @@ function getEventFromURL() {
                 return JSON.parse(atob(encodedData));
             } catch (e2) {
                 console.error('Failed to decode event data from URL:', e1, e2);
-                return null;
+                // Fall through to try loading from events-index.json
             }
         }
     }
+
+    // Fallback: Try to load event from events-index.json using hash
+    const hash = window.location.hash;
+    if (hash && hash.includes('invite/')) {
+        const eventId = hash.split('/')[1];
+        if (eventId) {
+            try {
+                const response = await fetch('events-index.json');
+                if (response.ok) {
+                    const eventsData = await response.json();
+                    // events-index.json is an array with events as elements
+                    const event = Array.isArray(eventsData)
+                        ? eventsData.find(e => e && e.id === eventId)
+                        : null;
+                    if (event) {
+                        console.log('📋 Event loaded from events-index.json:', event.title);
+                        return event;
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not load event from events-index.json:', error);
+            }
+        }
+    }
+
     return null;
 }
 

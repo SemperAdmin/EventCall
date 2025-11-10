@@ -61,8 +61,14 @@ async function getEventForRSVP(eventId) {
         // Check if events-index.json exists and load it
         const response = await fetch('events-index.json');
         if (response.ok) {
-            const eventsIndex = await response.json();
-            return eventsIndex.events?.find(e => e.id === eventId);
+            const eventsData = await response.json();
+            // events-index.json is an array with events as elements
+            const event = Array.isArray(eventsData)
+                ? eventsData.find(e => e && e.id === eventId)
+                : null;
+            if (event) {
+                return event;
+            }
         }
     } catch (e) {
         console.error('Error loading event data:', e);
@@ -70,7 +76,7 @@ async function getEventForRSVP(eventId) {
 
     // Fallback: check if event data is in memory
     if (window.events && Array.isArray(window.events)) {
-        return window.events.find(e => e.id === eventId);
+        return window.events.find(e => e && e.id === eventId);
     }
 
     return null;
