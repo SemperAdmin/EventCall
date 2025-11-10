@@ -101,6 +101,24 @@
     "coverImage": ""
   },
   {
+    "id": "2edf0d21-0e44-4723-bd60-e2ce7f2f752f",
+    "title": "Unit Formation",
+    "date": "2025-11-12",
+    "time": "12:27",
+    "location": "MCB HAWAII",
+    "description": "Mandatory unit formation. All personnel are required to attend unless on approved leave or TDY.",
+    "askReason": false,
+    "allowGuests": false,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {},
+    "created": 1762813636830,
+    "status": "active",
+    "createdBy": "furby203824",
+    "createdByName": "STEPHEN SHORTER",
+    "coverImage": ""
+  },
+  {
     "title": "Promotion Ceremony",
     "date": "2025-10-01",
     "time": "22:44",
