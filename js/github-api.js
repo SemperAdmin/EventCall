@@ -156,13 +156,17 @@ class GitHubAPI {
         }
 
         try {
-            const response = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}`, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const response = await window.safeFetchGitHub(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.repo}`,
+                {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'GitHub connection test'
+            );
             
             if (response.ok) {
                 const repoData = await response.json();
@@ -227,13 +231,17 @@ class GitHubAPI {
             console.log('📥 Loading events from private EventCall-Data repo...');
 
             // Load from PRIVATE repo: EventCall-Data
-            const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const treeResponse = await window.safeFetchGitHub(
+                'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1',
+                {
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Load tree from EventCall-Data'
+            );
 
             if (!treeResponse.ok) {
                 if (treeResponse.status === 404) {
@@ -256,13 +264,17 @@ class GitHubAPI {
 
             for (const file of eventFiles) {
                 try {
-                    const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
-                        headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'User-Agent': 'EventCall-App'
-                        }
-                    });
+                    const fileResponse = await window.safeFetchGitHub(
+                        'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha,
+                        {
+                            headers: {
+                                'Authorization': 'token ' + token,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'User-Agent': 'EventCall-App'
+                            }
+                        },
+                        'Load file blob from EventCall-Data'
+                    );
 
                     if (fileResponse.ok) {
                         const fileData = await fileResponse.json();
@@ -344,13 +356,17 @@ class GitHubAPI {
             console.log('📥 Loading responses from private EventCall-Data repo...');
             
             // Load from PRIVATE repo: EventCall-Data
-            const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const treeResponse = await window.safeFetchGitHub(
+                'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1',
+                {
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Load tree from EventCall-Data'
+            );
 
             if (!treeResponse.ok) {
                 console.log('No responses found or repository not accessible');
@@ -384,13 +400,17 @@ class GitHubAPI {
                     let rsvpArray;
                     
                     // Fetch the file content first
-                    const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
-                        headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'User-Agent': 'EventCall-App'
-                        }
-                    });
+                    const fileResponse = await window.safeFetchGitHub(
+                        'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha,
+                        {
+                            headers: {
+                                'Authorization': 'token ' + token,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'User-Agent': 'EventCall-App'
+                            }
+                        },
+                        'Load file blob from EventCall-Data'
+                    );
 
                     if (!fileResponse.ok) continue;
 
@@ -638,13 +658,17 @@ class GitHubAPI {
             let existingSha = null;
             
             try {
-                const existingResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'EventCall-App'
-                    }
-                });
+                const existingResponse = await window.safeFetchGitHub(
+                    `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    },
+                    'Check existing file'
+                );
 
                 if (existingResponse.ok) {
                     const existingData = await existingResponse.json();
@@ -772,13 +796,17 @@ class GitHubAPI {
             // Check if file exists in EventCall-Data repo
             let existingSha = null;
             try {
-                const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'EventCall-App'
-                    }
-                });
+                const existingResponse = await window.safeFetchGitHub(
+                    `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    },
+                    'Check existing file in EventCall-Data'
+                );
 
                 if (existingResponse.ok) {
                     const existingData = await existingResponse.json();
@@ -1050,13 +1078,17 @@ class GitHubAPI {
             // Check if file exists
             let existingSha = null;
             try {
-                const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'EventCall-App'
-                    }
-                });
+                const existingResponse = await window.safeFetchGitHub(
+                    `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    },
+                    'Check existing file in EventCall-Data'
+                );
 
                 if (existingResponse.ok) {
                     const existingData = await existingResponse.json();
@@ -1144,13 +1176,17 @@ class GitHubAPI {
             // Search for user by email
             for (const file of userFiles) {
                 try {
-                    const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
-                        headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'User-Agent': 'EventCall-App'
-                        }
-                    });
+                    const fileResponse = await window.safeFetchGitHub(
+                        'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha,
+                        {
+                            headers: {
+                                'Authorization': 'token ' + token,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'User-Agent': 'EventCall-App'
+                            }
+                        },
+                        'Load file blob from EventCall-Data'
+                    );
 
                     if (fileResponse.ok) {
                         const fileData = await fileResponse.json();
@@ -1256,13 +1292,17 @@ class GitHubAPI {
             let existingSha = null;
 
             try {
-                const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'EventCall-App'
-                    }
-                });
+                const existingResponse = await window.safeFetchGitHub(
+                    `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    },
+                    'Check existing file in EventCall-Data'
+                );
 
                 if (existingResponse.ok) {
                     const existingData = await existingResponse.json();
