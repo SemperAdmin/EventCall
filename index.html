@@ -398,18 +398,24 @@ window.updateRegRanksForBranch = updateRegRanksForBranch;
 
 // Dashboard tab switching functionality
 function switchDashboardTab(tab) {
+    console.log('🔄 Switching to tab:', tab);
+
     const tabs = document.querySelectorAll('.dashboard-tab');
     const contents = document.querySelectorAll('.dashboard-tab-content');
+
+    console.log('📋 Found', tabs.length, 'tabs and', contents.length, 'content areas');
 
     tabs.forEach(btn => {
         const isActive = btn.getAttribute('data-tab') === tab;
         btn.classList.toggle('dashboard-tab--active', isActive);
+        console.log('  Tab', btn.getAttribute('data-tab'), ':', isActive ? 'ACTIVE' : 'inactive');
     });
 
     contents.forEach(content => {
         const contentId = content.id;
         const shouldShow = contentId === tab + '-tab';
         content.classList.toggle('dashboard-tab-content--active', shouldShow);
+        console.log('  Content', contentId, ':', shouldShow ? 'VISIBLE' : 'hidden');
     });
 }
 
