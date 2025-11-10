@@ -801,7 +801,7 @@ async function handleEventSubmit(e) {
 
             // Validate event data (title/date/time and location URL)
             if (window.eventManager && typeof window.eventManager.validateEventData === 'function') {
-                const validation = window.eventManager.validateEventData(baseData);
+                const validation = window.eventManager.validateEventData(baseData, true); // isUpdate = true
                 if (!validation.valid) {
                     validation.errors.forEach(err => showToast(err, 'error'));
                     throw new Error('Event validation failed');

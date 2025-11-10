@@ -2349,7 +2349,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      * @param {Object} eventData - Event data to validate
      * @returns {Object} Validation result
      */
-    validateEventData(eventData) {
+    validateEventData(eventData, isUpdate = false) {
         const result = {
             valid: true,
             errors: []
@@ -2365,14 +2365,16 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             result.errors.push('Please specify both date and time for the event');
         }
 
-        // Check if date is not too far in the past
-        const eventDate = new Date(`${eventData.date}T${eventData.time}`);
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
+        // Check if date is not too far in the past (only for new events, not updates)
+        if (!isUpdate) {
+            const eventDate = new Date(`${eventData.date}T${eventData.time}`);
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
 
-        if (eventDate < yesterday) {
-            result.valid = false;
-            result.errors.push('Event date cannot be more than 1 day in the past');
+            if (eventDate < yesterday) {
+                result.valid = false;
+                result.errors.push('Event date cannot be more than 1 day in the past');
+            }
         }
 
         // Location URL validation (SEC-005)
