@@ -233,7 +233,7 @@ class GitHubAPI {
 
             // Load from PRIVATE repo: EventCall-Data
             const treeResponse = await window.safeFetchGitHub(
-                'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1',
+                window.GITHUB_CONFIG.getTreeUrl('data'),
                 {
                     headers: {
                         'Authorization': 'token ' + token,
@@ -266,7 +266,7 @@ class GitHubAPI {
             for (const file of eventFiles) {
                 try {
                     const fileResponse = await window.safeFetchGitHub(
-                        'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha,
+                        window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
                         {
                             headers: {
                                 'Authorization': 'token ' + token,
@@ -376,7 +376,7 @@ class GitHubAPI {
             
             // Load from PRIVATE repo: EventCall-Data
             const treeResponse = await window.safeFetchGitHub(
-                'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1',
+                window.GITHUB_CONFIG.getTreeUrl('data'),
                 {
                     headers: {
                         'Authorization': 'token ' + token,
@@ -420,7 +420,7 @@ class GitHubAPI {
                     
                     // Fetch the file content first
                     const fileResponse = await window.safeFetchGitHub(
-                        'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha,
+                        window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
                         {
                             headers: {
                                 'Authorization': 'token ' + token,
@@ -841,7 +841,7 @@ class GitHubAPI {
             let existingSha = null;
             try {
                 const existingResponse = await window.safeFetchGitHub(
-                    `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                    window.GITHUB_CONFIG.getContentsUrl('data', path),
                     {
                         headers: {
                             'Authorization': `token ${token}`,
@@ -886,7 +886,7 @@ class GitHubAPI {
             // Note: Don't send X-CSRF-Token to GitHub API - it causes CORS errors
             // GitHub API has its own authentication via the Authorization token
             const createResponse = await window.safeFetchGitHub(
-                `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                window.GITHUB_CONFIG.getContentsUrl('data', path),
                 {
                     method: 'PUT',
                     headers: {
@@ -1028,7 +1028,7 @@ class GitHubAPI {
         try {
             // Get file info first from EventCall-Data
             const fileResponse = await window.safeFetchGitHub(
-                `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                window.GITHUB_CONFIG.getContentsUrl('data', path),
                 {
                     headers: {
                         'Authorization': `token ${token}`,
@@ -1043,7 +1043,7 @@ class GitHubAPI {
                 const fileData = await fileResponse.json();
 
                 const deleteResponse = await window.safeFetchGitHub(
-                    `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                    window.GITHUB_CONFIG.getContentsUrl('data', path),
                     {
                         method: 'DELETE',
                         headers: {
@@ -1151,7 +1151,7 @@ class GitHubAPI {
             let existingSha = null;
             try {
                 const existingResponse = await window.safeFetchGitHub(
-                    `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                    window.GITHUB_CONFIG.getContentsUrl('data', path),
                     {
                         headers: {
                             'Authorization': `token ${token}`,
@@ -1182,7 +1182,7 @@ class GitHubAPI {
             }
 
             const createResponse = await window.safeFetchGitHub(
-                `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                window.GITHUB_CONFIG.getContentsUrl('data', path),
                 {
                     method: 'PUT',
                     headers: {
@@ -1226,7 +1226,7 @@ class GitHubAPI {
 
             // Load user files from EventCall-Data
             const treeResponse = await window.safeFetchGitHub(
-                'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1',
+                window.GITHUB_CONFIG.getTreeUrl('data'),
                 {
                     headers: {
                         'Authorization': 'token ' + token,
@@ -1257,7 +1257,7 @@ class GitHubAPI {
             for (const file of userFiles) {
                 try {
                     const fileResponse = await window.safeFetchGitHub(
-                        'https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha,
+                        window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
                         {
                             headers: {
                                 'Authorization': 'token ' + token,
@@ -1373,7 +1373,7 @@ class GitHubAPI {
 
             try {
                 const existingResponse = await window.safeFetchGitHub(
-                    `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                    window.GITHUB_CONFIG.getContentsUrl('data', path),
                     {
                         headers: {
                             'Authorization': `token ${token}`,
@@ -1409,7 +1409,7 @@ class GitHubAPI {
 
             // Save to GitHub
             const saveResponse = await window.safeFetchGitHub(
-                `https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`,
+                window.GITHUB_CONFIG.getContentsUrl('data', path),
                 {
                     method: 'PUT',
                     headers: {
