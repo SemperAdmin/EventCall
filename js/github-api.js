@@ -316,11 +316,29 @@ class GitHubAPI {
 
         } catch (error) {
             console.error('Failed to load events from private repo:', error);
+
+            // Use enhanced error handler for user feedback
+            if (window.ErrorHandler) {
+                const userMessage = window.ErrorHandler.getUserFriendlyMessage(error, 'Loading events');
+                if (window.showToast) {
+                    window.showToast(userMessage, 'error');
+                }
+            }
+
             // Return cached data if available
             if (this.eventsCache.data) {
                 console.warn('⚠️ Returning stale cached events due to error');
+                if (window.showToast) {
+                    window.showToast('Showing cached events - unable to fetch latest', 'warning');
+                }
                 return this.eventsCache.data;
             }
+
+            // No cache available
+            if (window.showToast) {
+                window.showToast('Unable to load events. Please try again.', 'error');
+            }
+
             return {};
         }
     }
@@ -473,6 +491,17 @@ class GitHubAPI {
 
         } catch (error) {
             console.error('Failed to load responses from private repo:', error);
+
+            // Use enhanced error handler for user feedback
+            if (window.ErrorHandler) {
+                const userMessage = window.ErrorHandler.getUserFriendlyMessage(error, 'Loading RSVPs');
+                if (window.showToast) {
+                    window.showToast(userMessage, 'error');
+                }
+            } else if (window.showToast) {
+                window.showToast('Unable to load RSVPs. Please try again.', 'error');
+            }
+
             return {};
         }
     }
