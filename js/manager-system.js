@@ -402,7 +402,14 @@ function renderDashboard() {
     const activeEventsList = document.getElementById('active-events-list');
     const pastEventsList = document.getElementById('past-events-list');
 
-    if (!activeEventsList || !pastEventsList) return;
+    console.log('🎨 renderDashboard called');
+    console.log('📍 activeEventsList:', activeEventsList);
+    console.log('📍 pastEventsList:', pastEventsList);
+
+    if (!activeEventsList || !pastEventsList) {
+        console.error('❌ Tab containers not found!');
+        return;
+    }
 
     if (!window.events || Object.keys(window.events).length === 0) {
         activeEventsList.innerHTML = `

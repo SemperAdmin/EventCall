@@ -477,7 +477,7 @@
    ============================================ */
 
 .dashboard-tabs {
-    display: flex;
+    display: flex !important;
     gap: 0.5rem;
     margin-bottom: 2rem;
     border-bottom: 2px solid #3a4556;
@@ -485,38 +485,40 @@
 }
 
 .dashboard-tab {
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #94a3b8;
-    background: transparent;
-    border: none;
-    border-bottom: 3px solid transparent;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    padding: 1rem 1.5rem !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
     white-space: nowrap;
     position: relative;
     bottom: -2px;
+    text-transform: none !important;
+    letter-spacing: normal !important;
 }
 
 .dashboard-tab:hover {
-    color: #d4af37;
-    background: rgba(212, 175, 55, 0.05);
+    color: #d4af37 !important;
+    background: rgba(212, 175, 55, 0.05) !important;
 }
 
 .dashboard-tab--active {
-    color: #d4af37;
-    border-bottom-color: #d4af37;
-    background: rgba(212, 175, 55, 0.1);
+    color: #d4af37 !important;
+    border-bottom-color: #d4af37 !important;
+    background: rgba(212, 175, 55, 0.1) !important;
 }
 
 .dashboard-tab-content {
-    display: none;
+    display: none !important;
     animation: fadeInUp 0.3s ease;
 }
 
 .dashboard-tab-content--active {
-    display: block;
+    display: block !important;
 }
 
 /* Responsive tabs */
@@ -528,14 +530,14 @@
     }
 
     .dashboard-tab {
-        border-bottom: 1px solid #3a4556;
-        border-left: 3px solid transparent;
-        padding: 1rem;
+        border-bottom: 1px solid #3a4556 !important;
+        border-left: 3px solid transparent !important;
+        padding: 1rem !important;
         bottom: 0;
     }
 
     .dashboard-tab--active {
-        border-bottom-color: #3a4556;
-        border-left-color: #d4af37;
+        border-bottom-color: #3a4556 !important;
+        border-left-color: #d4af37 !important;
     }
 }
