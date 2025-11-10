@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Event Creation Request",
+  "description": "Schema for event creation requests",
+  "type": "object",
+  "required": ["id", "title", "date", "location", "createdBy", "csrfToken"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^evt-[0-9]+-[a-f0-9]+$",
+      "description": "Event ID (format: evt-timestamp-randomhex)"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200,
+      "description": "Event title"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 5000,
+      "description": "Event description"
+    },
+    "date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event date and time (ISO 8601)"
+    },
+    "endDate": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event end date and time (ISO 8601)"
+    },
+    "location": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "Event location"
+    },
+    "createdBy": {
+      "type": "string",
+      "description": "Creator email or username"
+    },
+    "createdByUsername": {
+      "type": "string",
+      "description": "Creator username"
+    },
+    "createdByName": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "Creator full name"
+    },
+    "managerEmail": {
+      "type": "string",
+      "format": "email",
+      "description": "Event manager email"
+    },
+    "managerToken": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Manager authorization token"
+    },
+    "coverImage": {
+      "type": "string",
+      "format": "uri",
+      "description": "Event cover image URL"
+    },
+    "rsvpRequired": {
+      "type": "boolean",
+      "description": "Whether RSVP is required"
+    },
+    "maxAttendees": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100000,
+      "description": "Maximum number of attendees"
+    },
+    "customQuestions": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["id", "question", "type"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "type": {
+            "enum": ["text", "select", "multiselect", "textarea", "number", "date"]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "description": "Custom RSVP questions"
+    },
+    "csrfToken": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "minLength": 16,
+      "maxLength": 128,
+      "description": "CSRF token for request validation"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event creation timestamp"
+    }
+  },
+  "additionalProperties": false
+}

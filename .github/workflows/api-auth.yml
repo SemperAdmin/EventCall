@@ -53,6 +53,69 @@ jobs:
 
           echo "✅ CSRF token validated: ${CSRF_TOKEN:0:8}..."
 
+      - name: Validate Input Data
+        run: |
+          echo "Validating authentication request data..."
+
+          # Create JSON payload from client_payload
+          cat > auth-request.json << 'EOF'
+          ${{ toJSON(github.event.client_payload.data) }}
+          EOF
+
+          # Validate required fields
+          USERNAME=$(jq -r '.username // empty' auth-request.json)
+          CLIENT_ID=$(jq -r '.client_id // empty' auth-request.json)
+
+          if [ -z "$USERNAME" ]; then
+            echo "❌ Validation Error: Missing required field 'username'"
+            exit 1
+          fi
+
+          if [ -z "$CLIENT_ID" ]; then
+            echo "❌ Validation Error: Missing required field 'client_id'"
+            exit 1
+          fi
+
+          # Validate username format (alphanumeric, dash, underscore, 3-50 chars)
+          if ! echo "$USERNAME" | grep -qE '^[a-zA-Z0-9_-]{3,50}$'; then
+            echo "❌ Validation Error: Username must be 3-50 alphanumeric characters, dashes, or underscores"
+            exit 1
+          fi
+
+          # Validate client_id format
+          if ! echo "$CLIENT_ID" | grep -qE '^[a-zA-Z0-9_-]{16,64}$'; then
+            echo "❌ Validation Error: Invalid client_id format"
+            exit 1
+          fi
+
+          # For register_user and login_user, password is required
+          ACTION="${{ github.event.action }}"
+          if [ "$ACTION" = "register_user" ] || [ "$ACTION" = "login_user" ]; then
+            PASSWORD=$(jq -r '.password // empty' auth-request.json)
+            if [ -z "$PASSWORD" ]; then
+              echo "❌ Validation Error: Password is required for $ACTION"
+              exit 1
+            fi
+
+            # Validate password length (8-128 characters)
+            PASSWORD_LENGTH=${#PASSWORD}
+            if [ $PASSWORD_LENGTH -lt 8 ] || [ $PASSWORD_LENGTH -gt 128 ]; then
+              echo "❌ Validation Error: Password must be 8-128 characters"
+              exit 1
+            fi
+          fi
+
+          # Validate email format if provided
+          EMAIL=$(jq -r '.email // empty' auth-request.json)
+          if [ -n "$EMAIL" ]; then
+            if ! echo "$EMAIL" | grep -qE '^[^@]+@[^@]+\.[^@]+$'; then
+              echo "❌ Validation Error: Invalid email format"
+              exit 1
+            fi
+          fi
+
+          echo "✅ Input data validated successfully"
+
       - name: Process Authentication Request
         id: auth
         env:

@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "User Authentication Request",
+  "description": "Schema for user registration, login, and profile update requests",
+  "type": "object",
+  "required": ["username", "csrfToken", "client_id"],
+  "properties": {
+    "username": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 50,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Username (alphanumeric, dash, underscore)"
+    },
+    "password": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "User password (required for register/login)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "Full name of the user"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "maxLength": 255,
+      "description": "User email address"
+    },
+    "branch": {
+      "type": "string",
+      "maxLength": 50,
+      "description": "Military branch"
+    },
+    "rank": {
+      "type": "string",
+      "maxLength": 50,
+      "description": "Military rank"
+    },
+    "csrfToken": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "minLength": 16,
+      "maxLength": 128,
+      "description": "CSRF token for request validation"
+    },
+    "client_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "minLength": 16,
+      "maxLength": 64,
+      "description": "Unique client identifier for polling"
+    }
+  },
+  "additionalProperties": false
+}
