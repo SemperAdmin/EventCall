@@ -1,7 +1,10 @@
 /**
  * Manager System - Enhanced with RSVP Sync Functionality and Email Auth
  * Added GitHub Issues processing, real-time sync capabilities, and userAuth support
+ * Version: 2.0 - Tabbed Dashboard UI
  */
+
+console.log('📦 manager-system.js loaded - Version 2.0 (Tabbed Dashboard)');
 
 // Global sync state
 let syncInProgress = false;

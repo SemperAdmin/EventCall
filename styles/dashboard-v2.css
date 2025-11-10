@@ -1,7 +1,14 @@
 /**
  * EventCall Dashboard V2 - Command Center Design
  * Improved UI/UX with better visual hierarchy and scannable stats
+ * Version: 2.0 - Tabbed Interface
  */
+
+/* Version marker for cache debugging */
+body::before {
+    content: "Dashboard CSS v2.0";
+    display: none;
+}
 
 /* ============================================
    DASHBOARD HEADER & QUICK ACTIONS
