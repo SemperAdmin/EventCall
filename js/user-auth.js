@@ -230,11 +230,19 @@ const userAuth = {
             });
 
             if (response.success) {
-                showToast(`✅ Account created! Welcome, ${response.user.name}!`, 'success');
+                // Fetch full user data from EventCall-Data (auth response only has userId/username)
+                console.log('📥 Fetching full user data from EventCall-Data...');
+                const userData = await this.fetchUserData(response.username);
+
+                if (!userData) {
+                    throw new Error('Failed to fetch user data');
+                }
+
+                showToast(`✅ Account created! Welcome, ${userData.name}!`, 'success');
 
                 // Save user to storage (without password)
-                this.currentUser = response.user;
-                this.saveUserToStorage(response.user);
+                this.currentUser = userData;
+                this.saveUserToStorage(userData);
 
                 // Update UI
                 if (window.updateUserDisplay) {
@@ -340,11 +348,19 @@ const userAuth = {
             });
 
             if (response.success) {
-                showToast(`✅ Welcome back, ${response.user.name}!`, 'success');
+                // Fetch full user data from EventCall-Data (auth response only has userId/username)
+                console.log('📥 Fetching full user data from EventCall-Data...');
+                const userData = await this.fetchUserData(response.username);
+
+                if (!userData) {
+                    throw new Error('Failed to fetch user data');
+                }
+
+                showToast(`✅ Welcome back, ${userData.name}!`, 'success');
 
                 // Save user to storage (without password)
-                this.currentUser = response.user;
-                this.saveUserToStorage(response.user, rememberMe);
+                this.currentUser = userData;
+                this.saveUserToStorage(userData, rememberMe);
 
                 // Update UI
                 if (window.updateUserDisplay) {
@@ -386,6 +402,44 @@ const userAuth = {
             }
         } finally {
             this.authInProgress = false;
+        }
+    },
+
+    /**
+     * Fetch full user data from EventCall-Data repository
+     */
+    async fetchUserData(username) {
+        try {
+            const dataRepoOwner = window.GITHUB_CONFIG.dataOwner || window.GITHUB_CONFIG.owner;
+            const dataRepo = window.GITHUB_CONFIG.dataRepo || 'EventCall-Data';
+            const userFilePath = `users/${username}.json`;
+
+            console.log(`📂 Fetching user data from ${dataRepoOwner}/${dataRepo}/${userFilePath}`);
+
+            const response = await fetch(
+                `https://api.github.com/repos/${dataRepoOwner}/${dataRepo}/contents/${userFilePath}`,
+                {
+                    headers: {
+                        'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch user data: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const content = atob(data.content);  // Decode base64
+            const userData = JSON.parse(content);
+
+            console.log('✅ User data fetched successfully');
+            return userData;
+
+        } catch (error) {
+            console.error('❌ Failed to fetch user data:', error);
+            return null;
         }
     },
 
