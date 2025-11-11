@@ -1034,7 +1034,15 @@ function showAppLoader() {
         console.log('  - classList:', loader.classList.toString());
         console.log('  - z-index:', window.getComputedStyle(loader).zIndex);
 
-        console.log('🔧 Removing "hidden" class...');
+        // CRITICAL: Hide login page to prevent it from covering the loader
+        // Both have z-index: 10000, so login page (later in DOM) would cover loader
+        const loginPage = document.getElementById('login-page');
+        if (loginPage) {
+            console.log('🔧 Hiding login page to show loader...');
+            loginPage.style.display = 'none';
+        }
+
+        console.log('🔧 Removing "hidden" class from loader...');
         loader.classList.remove('hidden');
 
         // Force style recalculation
@@ -1048,7 +1056,7 @@ function showAppLoader() {
         console.log('  - classList:', loader.classList.toString());
         console.log('  - z-index:', window.getComputedStyle(loader).zIndex);
 
-        console.log('✅ LOADER SHOULD NOW BE VISIBLE');
+        console.log('✅ LOADER SHOULD NOW BE VISIBLE (login page hidden)');
     } else {
         console.error('❌ LOADER ELEMENT NOT FOUND - #app-loader does not exist in DOM');
     }
