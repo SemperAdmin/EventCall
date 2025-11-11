@@ -66,16 +66,80 @@
         },
 
         /**
-         * Fetch all events from EventCall-Data
+         * Fetch all events from EventCall-Data (admin access - no user filtering)
          */
         async fetchAllEvents() {
-            // Use existing GitHub API functions
-            if (window.githubAPI && window.githubAPI.loadEvents) {
-                const eventsObject = await window.githubAPI.loadEvents();
-                // Convert object to array (loadEvents returns an object with event IDs as keys)
-                return Object.values(eventsObject);
+            try {
+                const token = window.GITHUB_CONFIG?.token || window.userAuth?.getGitHubToken?.();
+                if (!token) {
+                    console.warn('⚠️ No GitHub token - returning empty events');
+                    return [];
+                }
+
+                console.log('📥 Loading all events for admin dashboard...');
+
+                // Load from EventCall-Data repository
+                const treeResponse = await window.safeFetchGitHub(
+                    window.GITHUB_CONFIG.getTreeUrl('data'),
+                    {
+                        headers: {
+                            'Authorization': 'token ' + token,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    },
+                    'Load tree from EventCall-Data for admin'
+                );
+
+                if (!treeResponse.ok) {
+                    console.log('Repository or main branch not found, treating as empty');
+                    return [];
+                }
+
+                const treeData = await treeResponse.json();
+                const events = [];
+
+                const eventFiles = treeData.tree.filter(item =>
+                    item.path.startsWith('events/') &&
+                    item.path.endsWith('.json') &&
+                    item.type === 'blob'
+                );
+
+                console.log(`Found ${eventFiles.length} event files in private repo`);
+
+                // Load ALL events (no user filtering for admin)
+                for (const file of eventFiles) {
+                    try {
+                        const fileResponse = await window.safeFetchGitHub(
+                            window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
+                            {
+                                headers: {
+                                    'Authorization': 'token ' + token,
+                                    'Accept': 'application/vnd.github.v3+json',
+                                    'User-Agent': 'EventCall-App'
+                                }
+                            },
+                            'Load event file blob from EventCall-Data'
+                        );
+
+                        if (fileResponse.ok) {
+                            const fileData = await fileResponse.json();
+                            const content = JSON.parse(window.githubAPI.safeBase64Decode(fileData.content));
+                            events.push(content);
+                            console.log('✅ Loaded event for admin:', content.title);
+                        }
+                    } catch (error) {
+                        console.error('Failed to load event file ' + file.path + ':', error);
+                    }
+                }
+
+                console.log(`✅ Loaded ${events.length} total events for admin dashboard`);
+                return events;
+
+            } catch (error) {
+                console.error('Failed to load all events for admin:', error);
+                return [];
             }
-            return [];
         },
 
         /**
