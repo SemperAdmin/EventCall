@@ -446,19 +446,7 @@ function renderDashboard() {
     pastEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     // Render active events
-    let activeHtml = `
-        <div class="dashboard-header">
-            <h2>🎖️ Command Center</h2>
-            <div class="quick-actions">
-                <button class="btn btn-primary" onclick="showPage('create')">
-                    ➕ Create Event
-                </button>
-                <button class="btn" onclick="syncWithGitHub()">
-                    🔄 Sync RSVPs
-                </button>
-            </div>
-        </div>
-    `;
+    let activeHtml = '';
 
     if (activeEvents.length > 0) {
         activeHtml += `
