@@ -235,7 +235,9 @@ const userAuth = {
                 const userData = await this.fetchUserData(response.username);
 
                 if (!userData) {
-                    throw new Error('Failed to fetch user data');
+                    const errorMsg = 'Failed to fetch user data from EventCall-Data repository. Please check console for details.';
+                    console.error('❌ userData is null - check fetchUserData logs above');
+                    throw new Error(errorMsg);
                 }
 
                 showToast(`✅ Account created! Welcome, ${userData.name}!`, 'success');
@@ -353,7 +355,9 @@ const userAuth = {
                 const userData = await this.fetchUserData(response.username);
 
                 if (!userData) {
-                    throw new Error('Failed to fetch user data');
+                    const errorMsg = 'Failed to fetch user data from EventCall-Data repository. Please check console for details.';
+                    console.error('❌ userData is null - check fetchUserData logs above');
+                    throw new Error(errorMsg);
                 }
 
                 showToast(`✅ Welcome back, ${userData.name}!`, 'success');
@@ -427,18 +431,29 @@ const userAuth = {
             );
 
             if (!response.ok) {
-                throw new Error(`Failed to fetch user data: ${response.status}`);
+                const errorText = await response.text();
+                console.error(`❌ GitHub API error: ${response.status}`, errorText);
+                throw new Error(`Failed to fetch user data: ${response.status} - ${errorText}`);
             }
 
             const data = await response.json();
-            const content = atob(data.content);  // Decode base64
-            const userData = JSON.parse(content);
+            console.log('📦 GitHub API response received');
 
-            console.log('✅ User data fetched successfully');
+            // Decode base64 content (remove newlines first)
+            const content = atob(data.content.replace(/\n/g, ''));
+            console.log('🔓 Base64 decoded, parsing JSON...');
+
+            const userData = JSON.parse(content);
+            console.log('✅ User data fetched successfully:', { username: userData.username, name: userData.name });
+
             return userData;
 
         } catch (error) {
             console.error('❌ Failed to fetch user data:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack
+            });
             return null;
         }
     },
