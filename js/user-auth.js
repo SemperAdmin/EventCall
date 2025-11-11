@@ -318,17 +318,20 @@ const userAuth = {
         // Set authentication in progress
         this.authInProgress = true;
 
+        // Show loader IMMEDIATELY after validation succeeds (before any async operations)
+        if (window.showAppLoader) {
+            window.showAppLoader();
+            console.log('✅ Loader displayed');
+        } else {
+            console.warn('⚠️ showAppLoader not available');
+        }
+
         try {
             // Generate unique client ID for tracking response
             const clientId = 'login_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
             // Trigger GitHub Actions workflow
             console.log('🚀 Triggering login workflow...');
-
-            // Show app loader after workflow trigger to give user visual feedback
-            if (window.showAppLoader) {
-                window.showAppLoader();
-            }
 
             const response = await this.triggerAuthWorkflow('login_user', {
                 username,
