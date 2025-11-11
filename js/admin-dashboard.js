@@ -71,7 +71,9 @@
         async fetchAllEvents() {
             // Use existing GitHub API functions
             if (window.githubAPI && window.githubAPI.loadEvents) {
-                return await window.githubAPI.loadEvents();
+                const eventsObject = await window.githubAPI.loadEvents();
+                // Convert object to array (loadEvents returns an object with event IDs as keys)
+                return Object.values(eventsObject);
             }
             return [];
         },
