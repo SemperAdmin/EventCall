@@ -25,6 +25,8 @@
     <link rel="stylesheet" href="styles/styles.css">
     <!-- Feedback Widget -->
     <link rel="stylesheet" href="styles/feedback.css">
+    <!-- Admin Dashboard (Admin Only) -->
+    <link rel="stylesheet" href="styles/admin-dashboard.css">
     <!-- Scripts -->
     <!-- CSV Parser -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -674,6 +676,13 @@ function verifyDashboardTabs() {
         <div id="invite" class="page">
             <div id="invite-content"></div>
         </div>
+
+        <!-- Admin Dashboard (Admin Only) -->
+        <div id="admin" class="page">
+            <div id="admin-dashboard-content">
+                <!-- Admin dashboard content will be loaded here -->
+            </div>
+        </div>
         </main>
     </div>
 
@@ -953,6 +962,8 @@ function verifyDashboardTabs() {
 <script src="js/manager-system.js"></script>
 <script src="js/early-functions.js"></script>
 <script src="js/user-rsvps.js"></script>
+<!-- Admin Dashboard (Admin Only) -->
+<script src="js/admin-dashboard.js"></script>
 <script src="js/router.js"></script>
 <script src="js/rate-limiter.js"></script>
 <script src="js/api-wrapper.js"></script>
