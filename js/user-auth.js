@@ -328,12 +328,20 @@ const userAuth = {
         // Set authentication in progress
         this.authInProgress = true;
 
+        const startTime = Date.now();
+        console.log(`⏱️ [T+0ms] Login button clicked, starting authentication`);
+
         // Show loader IMMEDIATELY after validation succeeds (before any async operations)
+        console.log(`⏱️ [T+${Date.now() - startTime}ms] Attempting to show loader...`);
+        console.log('🔍 Checking window.showAppLoader availability:', typeof window.showAppLoader);
+
         if (window.showAppLoader) {
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Calling window.showAppLoader()...`);
             window.showAppLoader();
-            console.log('✅ Loader displayed');
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] showAppLoader() call completed`);
         } else {
-            console.warn('⚠️ showAppLoader not available');
+            console.error('❌ window.showAppLoader is not available!');
+            console.error('Type of window.showAppLoader:', typeof window.showAppLoader);
         }
 
         try {
@@ -341,7 +349,7 @@ const userAuth = {
             const clientId = 'login_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
             // Trigger GitHub Actions workflow
-            console.log('🚀 Triggering login workflow...');
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Triggering login workflow...`);
 
             const response = await this.triggerAuthWorkflow('login_user', {
                 username,
@@ -349,10 +357,14 @@ const userAuth = {
                 client_id: clientId
             });
 
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Auth workflow completed`);
+
             if (response.success) {
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Auth response received, success`);
                 // Fetch full user data from EventCall-Data (auth response only has userId/username)
-                console.log('📥 Fetching full user data from EventCall-Data...');
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Fetching full user data from EventCall-Data...`);
                 const userData = await this.fetchUserData(response.username);
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] User data fetch completed`);
 
                 if (!userData) {
                     const errorMsg = 'Failed to fetch user data from EventCall-Data repository. Please check console for details.';
@@ -360,6 +372,7 @@ const userAuth = {
                     throw new Error(errorMsg);
                 }
 
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Showing success toast and updating UI...`);
                 showToast(`✅ Welcome back, ${userData.name}!`, 'success');
 
                 // Save user to storage (without password)
@@ -388,7 +401,9 @@ const userAuth = {
                 }
 
                 // Hide loading screen after a brief delay to ensure smooth transition
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Scheduling loader hide in 800ms...`);
                 setTimeout(() => {
+                    console.log(`⏱️ [T+${Date.now() - startTime}ms] Hiding loader now`);
                     if (window.hideAppLoader) {
                         window.hideAppLoader();
                     }
@@ -397,10 +412,11 @@ const userAuth = {
                 throw new Error(response.error || 'Login failed');
             }
         } catch (error) {
-            console.error('❌ Login failed:', error);
+            console.error(`⏱️ [T+${Date.now() - startTime}ms] ❌ Login failed:`, error);
             showToast('❌ Login failed: ' + error.message, 'error');
 
             // Hide app loader on error
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Hiding loader due to error`);
             if (window.hideAppLoader) {
                 window.hideAppLoader();
             }

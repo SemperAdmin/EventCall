@@ -1019,9 +1019,38 @@ window.showUserMenu = showUserMenu;
  * Show the app loading screen (called on successful login)
  */
 function showAppLoader() {
+    const timestamp = new Date().toISOString();
+    console.log(`🔵 [${timestamp}] showAppLoader() CALLED`);
+    console.log('🔍 Searching for #app-loader element...');
+
     const loader = document.getElementById('app-loader');
+    console.log('📍 Element found:', loader ? 'YES' : 'NO');
+
     if (loader) {
+        console.log('📊 Current loader state BEFORE changes:');
+        console.log('  - display:', window.getComputedStyle(loader).display);
+        console.log('  - opacity:', window.getComputedStyle(loader).opacity);
+        console.log('  - visibility:', window.getComputedStyle(loader).visibility);
+        console.log('  - classList:', loader.classList.toString());
+        console.log('  - z-index:', window.getComputedStyle(loader).zIndex);
+
+        console.log('🔧 Removing "hidden" class...');
         loader.classList.remove('hidden');
+
+        // Force style recalculation
+        void loader.offsetHeight;
+
+        console.log('✅ "hidden" class removed');
+        console.log('📊 Current loader state AFTER changes:');
+        console.log('  - display:', window.getComputedStyle(loader).display);
+        console.log('  - opacity:', window.getComputedStyle(loader).opacity);
+        console.log('  - visibility:', window.getComputedStyle(loader).visibility);
+        console.log('  - classList:', loader.classList.toString());
+        console.log('  - z-index:', window.getComputedStyle(loader).zIndex);
+
+        console.log('✅ LOADER SHOULD NOW BE VISIBLE');
+    } else {
+        console.error('❌ LOADER ELEMENT NOT FOUND - #app-loader does not exist in DOM');
     }
 }
 window.showAppLoader = showAppLoader;
