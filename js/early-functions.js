@@ -231,6 +231,11 @@ function showPageContent(pageId) {
         if (typeof window.loadManagerData === 'function') {
             window.loadManagerData();
         }
+    } else if (pageId === 'admin') {
+        // Load admin dashboard (admin only)
+        if (window.AdminDashboard && typeof window.AdminDashboard.loadDashboard === 'function') {
+            window.AdminDashboard.loadDashboard();
+        }
     }
 
     console.log(`📄 Page changed to: ${pageId}`);
@@ -242,18 +247,29 @@ function showPageContent(pageId) {
 function updateUserDisplay() {
     if (window.userAuth && window.userAuth.isAuthenticated()) {
         const user = window.userAuth.getCurrentUser();
-        
+
         const displayName = document.getElementById('user-display-name');
         const avatar = document.getElementById('user-avatar');
-        
+
         if (displayName) {
             displayName.textContent = user.name || user.username || 'User';
         }
-        
+
         if (avatar) {
             avatar.textContent = window.userAuth.getInitials();
         }
-        
+
+        // Show/hide admin navigation based on user role
+        const adminNavBtn = document.getElementById('admin-nav-btn');
+        if (adminNavBtn) {
+            if (user.role === 'admin') {
+                adminNavBtn.style.display = 'inline-block';
+                console.log('👑 Admin navigation enabled for:', user.username);
+            } else {
+                adminNavBtn.style.display = 'none';
+            }
+        }
+
         console.log('👤 User display updated:', user.name);
     }
 }
