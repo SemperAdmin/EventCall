@@ -207,17 +207,25 @@ const userAuth = {
         // Set authentication in progress
         this.authInProgress = true;
 
+        const startTime = Date.now();
+        console.log(`⏱️ [T+0ms] Register button clicked, starting registration`);
+
+        // Show loader IMMEDIATELY after validation succeeds (before any async operations)
+        console.log(`⏱️ [T+${Date.now() - startTime}ms] Attempting to show loader...`);
+        if (window.showAppLoader) {
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Calling window.showAppLoader()...`);
+            window.showAppLoader();
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] showAppLoader() call completed`);
+        } else {
+            console.error('❌ window.showAppLoader is not available!');
+        }
+
         try {
             // Generate unique client ID for tracking response
             const clientId = 'reg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
             // Trigger GitHub Actions workflow
-            console.log('🚀 Triggering registration workflow...');
-
-            // Show app loader after workflow trigger to give user visual feedback
-            if (window.showAppLoader) {
-                window.showAppLoader();
-            }
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Triggering registration workflow...`);
 
             const response = await this.triggerAuthWorkflow('register_user', {
                 username,
@@ -229,10 +237,14 @@ const userAuth = {
                 client_id: clientId
             });
 
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Registration workflow completed`);
+
             if (response.success) {
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Registration response received, success`);
                 // Fetch full user data from EventCall-Data (auth response only has userId/username)
-                console.log('📥 Fetching full user data from EventCall-Data...');
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Fetching full user data from EventCall-Data...`);
                 const userData = await this.fetchUserData(response.username);
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] User data fetch completed`);
 
                 if (!userData) {
                     const errorMsg = 'Failed to fetch user data from EventCall-Data repository. Please check console for details.';
@@ -240,6 +252,7 @@ const userAuth = {
                     throw new Error(errorMsg);
                 }
 
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Showing success toast and updating UI...`);
                 showToast(`✅ Account created! Welcome, ${userData.name}!`, 'success');
 
                 // Save user to storage (without password)
@@ -268,7 +281,9 @@ const userAuth = {
                 }
 
                 // Hide loading screen after a brief delay to ensure smooth transition
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Scheduling loader hide in 800ms...`);
                 setTimeout(() => {
+                    console.log(`⏱️ [T+${Date.now() - startTime}ms] Hiding loader now`);
                     if (window.hideAppLoader) {
                         window.hideAppLoader();
                     }
@@ -277,10 +292,11 @@ const userAuth = {
                 throw new Error(response.error || 'Registration failed');
             }
         } catch (error) {
-            console.error('❌ Registration failed:', error);
+            console.error(`⏱️ [T+${Date.now() - startTime}ms] ❌ Registration failed:`, error);
             showToast('❌ Registration failed: ' + error.message, 'error');
 
             // Hide app loader on error
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Hiding loader due to error`);
             if (window.hideAppLoader) {
                 window.hideAppLoader();
             }
@@ -576,10 +592,8 @@ const userAuth = {
             console.log('🚀 Triggering workflow:', actionType);
             console.log('📦 Payload:', { ...payload, password: '[REDACTED]' });
 
-            // Show loader immediately after triggering workflow
-            if (window.showAppLoader) {
-                window.showAppLoader();
-            }
+            // NOTE: Loader should already be shown by the calling function (handleLogin/handleRegister)
+            // Do NOT call showAppLoader here to avoid duplicate calls
 
             // For profile updates, try direct file update first (faster and doesn't require polling)
             if (actionType === 'update_profile') {
