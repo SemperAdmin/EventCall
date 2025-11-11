@@ -426,6 +426,12 @@ async function saveUserProfile() {
                     });
 
                     if (response.success) {
+                        // Fetch fresh user data from EventCall-Data after successful backend sync
+                        const freshUserData = await window.userAuth.fetchUserData(response.username);
+                        if (freshUserData) {
+                            window.userAuth.saveUserToStorage(freshUserData);
+                            window.userAuth.currentUser = freshUserData;
+                        }
                         showToast('✅ Profile updated and synced to backend', 'success');
                     } else {
                         showToast('✅ Profile updated locally (backend sync pending)', 'success');
@@ -456,6 +462,12 @@ async function saveUserProfile() {
                 });
 
                 if (response.success) {
+                    // Fetch fresh user data from EventCall-Data after successful backend sync
+                    const freshUserData = await window.userAuth.fetchUserData(response.username);
+                    if (freshUserData) {
+                        window.userAuth.saveUserToStorage(freshUserData);
+                        window.userAuth.currentUser = freshUserData;
+                    }
                     showToast('✅ Profile updated and synced to backend', 'success');
                 } else {
                     showToast('✅ Profile updated locally (backend sync pending)', 'success');
