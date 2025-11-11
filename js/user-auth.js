@@ -70,7 +70,77 @@ const userAuth = {
             appContent.style.display = 'block';
         }
 
-        console.log('📱 App content displayed');
+        // Check if user is admin and show dedicated admin UI
+        if (this.currentUser && this.currentUser.role === 'admin') {
+            console.log('👑 Admin user detected - showing dedicated admin interface');
+            this.showAdminInterface();
+        } else {
+            console.log('📱 Regular user - showing standard app content');
+        }
+    },
+
+    /**
+     * Show dedicated admin interface (admins only see admin dashboard)
+     */
+    showAdminInterface() {
+        // Hide all regular user pages
+        const regularPages = ['dashboard', 'create', 'manage', 'invite'];
+        regularPages.forEach(pageId => {
+            const page = document.getElementById(pageId);
+            if (page) {
+                page.style.display = 'none';
+            }
+        });
+
+        // Hide the header navigation buttons (Create Event, Sync RSVPs, etc.)
+        const quickActions = document.querySelector('.quick-actions');
+        if (quickActions) {
+            const buttons = quickActions.querySelectorAll('button');
+            buttons.forEach(btn => {
+                // Only show admin dashboard button
+                if (btn.id !== 'admin-nav-btn') {
+                    btn.style.display = 'none';
+                }
+            });
+        }
+
+        // Hide dashboard header and welcome banner
+        const dashboardHeader = document.querySelector('.dashboard-header h2');
+        if (dashboardHeader) {
+            dashboardHeader.textContent = '👑 Admin Control Panel';
+        }
+
+        const welcomeBanner = document.querySelector('.welcome-banner');
+        if (welcomeBanner) {
+            welcomeBanner.style.display = 'none';
+        }
+
+        // Hide dashboard tabs (Active Events, Past Events, Your RSVPs)
+        const dashboardTabs = document.querySelector('.dashboard-tabs');
+        if (dashboardTabs) {
+            dashboardTabs.style.display = 'none';
+        }
+
+        // Hide all dashboard tab content
+        const tabContents = document.querySelectorAll('.dashboard-tab-content');
+        tabContents.forEach(content => {
+            content.style.display = 'none';
+        });
+
+        // Show admin page immediately
+        const adminPage = document.getElementById('admin');
+        if (adminPage) {
+            adminPage.classList.add('active');
+            adminPage.style.display = 'block';
+        }
+
+        // Load admin dashboard data
+        if (window.AdminDashboard && window.AdminDashboard.loadDashboard) {
+            console.log('📊 Loading admin dashboard data...');
+            window.AdminDashboard.loadDashboard();
+        }
+
+        console.log('✅ Admin interface initialized');
     },
 
     /**

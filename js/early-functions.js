@@ -105,33 +105,50 @@ function enforceLogin() {
  */
 function showPage(pageId) {
     console.log(`🧭 Attempting to navigate to: ${pageId}`);
-    
+
     // Allow access to invite page without login (for guests)
     if (pageId === 'invite') {
         console.log('🎟️ Guest invite access - no login required');
         showPageContent(pageId);
         return;
     }
-    
+
     // Check if this is an invite URL (guest access)
     if (window.location.hash.includes('invite/') || window.location.search.includes('data=')) {
         console.log('🎟️ Guest invite URL detected - bypassing login');
         showPageContent('invite');
         return;
     }
-    
+
     // Check if user is logged in for all other pages
     const isAuthenticated = window.userAuth?.isAuthenticated() || window.managerAuth?.isAuthenticated();
-    
+
     if (!isAuthenticated) {
         console.log('🔒 Access denied - user not logged in');
         enforceLogin();
         return;
     }
-    
-    // User is logged in, proceed to requested page
+
+    // User is logged in, check if admin
     const user = window.userAuth?.getCurrentUser() || window.managerAuth?.getCurrentManager();
-    console.log(`✅ Access granted to ${pageId} for user: ${user?.email}`);
+
+    // Admin users can ONLY access admin page
+    if (user && user.role === 'admin') {
+        if (pageId !== 'admin') {
+            console.log('👑 Admin user attempting to access non-admin page - redirecting to admin dashboard');
+            pageId = 'admin';
+        }
+        console.log(`✅ Admin access granted to ${pageId}`);
+    } else {
+        // Regular users cannot access admin page
+        if (pageId === 'admin') {
+            console.log('🚫 Regular user attempting to access admin page - access denied');
+            showToast('❌ Access denied - Admin privileges required', 'error');
+            pageId = 'dashboard';
+        }
+        console.log(`✅ Access granted to ${pageId} for user: ${user?.email}`);
+    }
+
     showPageContent(pageId);
 }
 
