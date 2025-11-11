@@ -172,6 +172,11 @@ async function displayUserRSVPs() {
 function createRSVPCard(rsvp, event) {
     const utils = window.utils || { escapeHTML: (s) => s, sanitizeHTML: (s) => s };
 
+    // Cache event data for calendar export
+    if (event) {
+        cacheRSVPEventData(rsvp.rsvpId, event);
+    }
+
     // Determine if event is past
     const isPast = event ? isEventInPast(event.date, event.time) : false;
     const eventDate = event ? new Date(event.date + ' ' + event.time) : null;
@@ -232,13 +237,30 @@ function createRSVPCard(rsvp, event) {
                     >
                         🖨️ Print
                     </button>
-                    <button
-                        class="btn"
-                        type="button"
-                        style="font-size: 0.875rem; padding: 0.5rem 1rem;"
-                    >
-                        📅 Add to Calendar ▼
-                    </button>
+                    <div class="calendar-dropdown-container" style="position: relative; display: inline-block;">
+                        <button
+                            class="btn"
+                            type="button"
+                            style="font-size: 0.875rem; padding: 0.5rem 1rem;"
+                            onclick="toggleRSVPCalendarDropdown('${rsvp.rsvpId}', event)"
+                        >
+                            📅 Add to Calendar ▼
+                        </button>
+                        <div id="calendar-dropdown-${rsvp.rsvpId}" class="calendar-dropdown rsvp-calendar-dropdown-${rsvp.rsvpId}" style="display: none; position: absolute; top: 100%; left: 0; min-width: 200px; background: white; color: #1f2937; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 100; margin-top: 0.25rem;">
+                            <button type="button" class="calendar-dropdown-item" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem; transition: background 0.2s; color: #1f2937; border-radius: 0.5rem 0.5rem 0 0;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'" onclick="openRSVPCalendar('google', '${rsvp.rsvpId}'); closeRSVPCalendarDropdown('${rsvp.rsvpId}')">
+                                📅 Google Calendar
+                            </button>
+                            <button type="button" class="calendar-dropdown-item" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem; transition: background 0.2s; color: #1f2937;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'" onclick="openRSVPCalendar('outlook', '${rsvp.rsvpId}'); closeRSVPCalendarDropdown('${rsvp.rsvpId}')">
+                                📅 Outlook
+                            </button>
+                            <button type="button" class="calendar-dropdown-item" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem; transition: background 0.2s; color: #1f2937;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'" onclick="openRSVPCalendar('yahoo', '${rsvp.rsvpId}'); closeRSVPCalendarDropdown('${rsvp.rsvpId}')">
+                                📅 Yahoo
+                            </button>
+                            <button type="button" class="calendar-dropdown-item" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem; transition: background 0.2s; color: #1f2937; border-radius: 0 0 0.5rem 0.5rem;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'" onclick="downloadRSVPCalendarICS('${rsvp.rsvpId}'); closeRSVPCalendarDropdown('${rsvp.rsvpId}')">
+                                📥 Download ICS
+                            </button>
+                        </div>
+                    </div>
                 ` : ''}
             </div>
 
@@ -467,6 +489,76 @@ function viewEventDetails(eventId) {
     window.location.href = `invite.html?id=${eventId}`;
 }
 
+// Cache for storing event data for calendar export
+const rsvpEventCache = {};
+
+/**
+ * Store event data for calendar export
+ */
+function cacheRSVPEventData(rsvpId, event) {
+    if (event) {
+        rsvpEventCache[rsvpId] = event;
+    }
+}
+
+/**
+ * Open calendar for RSVP
+ */
+function openRSVPCalendar(type, rsvpId) {
+    const event = rsvpEventCache[rsvpId];
+    if (event && window.calendarExport) {
+        window.calendarExport.openCalendar(type, event);
+    } else {
+        showToast('❌ Event data not available', 'error');
+    }
+}
+
+/**
+ * Download ICS for RSVP
+ */
+function downloadRSVPCalendarICS(rsvpId) {
+    const event = rsvpEventCache[rsvpId];
+    if (event && window.calendarExport) {
+        window.calendarExport.downloadICS(event);
+    } else {
+        showToast('❌ Event data not available', 'error');
+    }
+}
+
+/**
+ * Toggle calendar dropdown for RSVP cards
+ */
+function toggleRSVPCalendarDropdown(rsvpId, event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById(`calendar-dropdown-${rsvpId}`);
+    if (dropdown) {
+        const isVisible = dropdown.style.display === 'block';
+        // Close all other dropdowns first
+        closeAllRSVPCalendarDropdowns();
+        // Toggle this dropdown
+        dropdown.style.display = isVisible ? 'none' : 'block';
+    }
+}
+
+/**
+ * Close specific calendar dropdown
+ */
+function closeRSVPCalendarDropdown(rsvpId) {
+    const dropdown = document.getElementById(`calendar-dropdown-${rsvpId}`);
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+}
+
+/**
+ * Close all RSVP calendar dropdowns
+ */
+function closeAllRSVPCalendarDropdowns() {
+    document.querySelectorAll('.calendar-dropdown').forEach(dropdown => {
+        dropdown.style.display = 'none';
+    });
+}
+
 // Make functions globally available
 window.getUserRSVPs = getUserRSVPs;
 window.displayUserRSVPs = displayUserRSVPs;
@@ -474,6 +566,12 @@ window.openEditRSVPModal = openEditRSVPModal;
 window.closeEditRSVPModal = closeEditRSVPModal;
 window.saveEditedRSVP = saveEditedRSVP;
 window.viewEventDetails = viewEventDetails;
+window.cacheRSVPEventData = cacheRSVPEventData;
+window.openRSVPCalendar = openRSVPCalendar;
+window.downloadRSVPCalendarICS = downloadRSVPCalendarICS;
+window.toggleRSVPCalendarDropdown = toggleRSVPCalendarDropdown;
+window.closeRSVPCalendarDropdown = closeRSVPCalendarDropdown;
+window.closeAllRSVPCalendarDropdowns = closeAllRSVPCalendarDropdowns;
 
 // Auto-load RSVPs when dashboard loads
 document.addEventListener('DOMContentLoaded', () => {
@@ -483,6 +581,13 @@ document.addEventListener('DOMContentLoaded', () => {
             displayUserRSVPs();
         }, 1000);
     }
+
+    // Close calendar dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.calendar-dropdown-container')) {
+            closeAllRSVPCalendarDropdowns();
+        }
+    });
 });
 
 console.log('✅ User RSVPs module loaded');
