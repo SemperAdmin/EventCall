@@ -179,6 +179,18 @@
     background: rgba(212, 175, 55, 0.05);
 }
 
+/* Admin Tab Content */
+.admin-tab-content {
+    display: none;
+    padding: 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.admin-tab-content--active {
+    display: block;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .admin-header {
@@ -187,12 +199,17 @@
         padding: 1rem;
     }
 
-    .admin-content {
+    .admin-content,
+    .admin-tab-content {
         padding: 1rem;
     }
 
     .kpi-grid,
     .chart-grid {
         grid-template-columns: 1fr;
+    }
+
+    .dashboard-tabs {
+        overflow-x: auto;
     }
 }

@@ -233,7 +233,7 @@
                 <!-- Admin Header -->
                 <div class="admin-header">
                     <div class="admin-title">
-                        🎖️ EventCall Admin Dashboard
+                        👑 EventCall Admin Control Panel
                         <span class="admin-badge">Admin</span>
                     </div>
                     <button class="btn btn-primary" onclick="AdminDashboard.refresh()">
@@ -241,10 +241,29 @@
                     </button>
                 </div>
 
-                <!-- Admin Content -->
-                <div class="admin-content">
+                <!-- Admin Tabs -->
+                <div class="dashboard-tabs" style="margin-bottom: 2rem;">
+                    <button type="button" class="dashboard-tab dashboard-tab--active" data-tab="statistics" onclick="AdminDashboard.switchTab('statistics')">
+                        📊 App Statistics
+                    </button>
+                    <button type="button" class="dashboard-tab" data-tab="users" onclick="AdminDashboard.switchTab('users')">
+                        👥 User Management
+                    </button>
+                </div>
+
+                <!-- Statistics Tab Content -->
+                <div id="admin-statistics-tab" class="admin-tab-content admin-tab-content--active">
                     <!-- KPI Cards -->
                     <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-icon">👥</span>
+                            <div class="kpi-label">Total Users</div>
+                            <div class="kpi-value">${kpis.totalUsers}</div>
+                            <div class="kpi-trend trend-neutral">
+                                Registered accounts
+                            </div>
+                        </div>
+
                         <div class="kpi-card">
                             <span class="kpi-icon">📅</span>
                             <div class="kpi-label">Total Events</div>
@@ -264,15 +283,6 @@
                         </div>
 
                         <div class="kpi-card">
-                            <span class="kpi-icon">👥</span>
-                            <div class="kpi-label">Active Users</div>
-                            <div class="kpi-value">${kpis.totalUsers}</div>
-                            <div class="kpi-trend trend-neutral">
-                                Registered users
-                            </div>
-                        </div>
-
-                        <div class="kpi-card">
                             <span class="kpi-icon">📊</span>
                             <div class="kpi-label">Engagement Rate</div>
                             <div class="kpi-value">${kpis.engagementRate}%</div>
@@ -285,7 +295,7 @@
                     <!-- Charts -->
                     <div class="chart-grid">
                         <div class="chart-card">
-                            <div class="chart-title">Recent Events</div>
+                            <div class="chart-title">Event Activity (Last 6 Months)</div>
                             <div class="chart-container">
                                 <canvas id="adminEventsChart"></canvas>
                             </div>
@@ -299,23 +309,55 @@
                         </div>
                     </div>
 
-                    <!-- Recent Events Table -->
+                    <!-- App Usage Stats -->
+                    <div class="admin-table" style="margin-top: 2rem;">
+                        <div class="chart-title" style="margin-bottom: 1.5rem;">📈 App Usage Summary</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                            <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border-radius: 0.5rem;">
+                                <div style="font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.5rem;">Events per User</div>
+                                <div style="font-size: 1.75rem; font-weight: 700; color: var(--semper-gold);">
+                                    ${kpis.totalUsers > 0 ? (kpis.totalEvents / kpis.totalUsers).toFixed(1) : 0}
+                                </div>
+                            </div>
+                            <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05)); border-radius: 0.5rem;">
+                                <div style="font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.5rem;">RSVPs per Event</div>
+                                <div style="font-size: 1.75rem; font-weight: 700; color: #22c55e;">
+                                    ${kpis.totalEvents > 0 ? (kpis.totalRsvps / kpis.totalEvents).toFixed(1) : 0}
+                                </div>
+                            </div>
+                            <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)); border-radius: 0.5rem;">
+                                <div style="font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.5rem;">Active Event Rate</div>
+                                <div style="font-size: 1.75rem; font-weight: 700; color: #3b82f6;">
+                                    ${kpis.totalEvents > 0 ? Math.round((kpis.activeEvents / kpis.totalEvents) * 100) : 0}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Management Tab Content -->
+                <div id="admin-users-tab" class="admin-tab-content">
                     <div class="admin-table">
-                        <div class="chart-title" style="margin-bottom: 1.5rem;">Recent Events</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <div class="chart-title">👥 User Accounts (${users.length} total)</div>
+                            <input type="text" id="user-search" placeholder="🔍 Search users..." style="padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #e2e8f0; width: 300px;" oninput="AdminDashboard.filterUsers(this.value)">
+                        </div>
                         <div style="overflow-x: auto;">
-                            <table>
+                            <table id="users-table">
                                 <thead>
                                     <tr>
-                                        <th>Title</th>
-                                        <th>Date</th>
-                                        <th>Location</th>
-                                        <th>Creator</th>
-                                        <th>RSVPs</th>
-                                        <th>Actions</th>
+                                        <th>Username</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Branch</th>
+                                        <th>Rank</th>
+                                        <th>Role</th>
+                                        <th>Events Created</th>
+                                        <th>Last Active</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${this.renderEventsTableRows(events, rsvps)}
+                                    ${this.renderUsersTableRows(users, events)}
                                 </tbody>
                             </table>
                         </div>
@@ -330,31 +372,98 @@
         },
 
         /**
-         * Render events table rows
+         * Render users table rows
          */
-        renderEventsTableRows(events, rsvps) {
-            if (events.length === 0) {
-                return '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">No events found</td></tr>';
+        renderUsersTableRows(users, events) {
+            if (users.length === 0) {
+                return '<tr><td colspan="8" style="text-align: center; color: #94a3b8;">No users found</td></tr>';
             }
 
-            return events.slice(0, 10).map(event => {
-                const eventRsvps = rsvps.filter(r => r.eventId === event.id);
-                const rsvpCount = eventRsvps.length;
-                const attendingCount = eventRsvps.filter(r => r.willAttend === 'yes' || r.status === 'attending').length;
+            // Store for filtering
+            this.allUsers = users;
+            this.allEvents = events;
+
+            return users.map(user => {
+                // Count events created by this user
+                const userEvents = events.filter(e => {
+                    const createdBy = (e.createdBy || '').toLowerCase();
+                    const createdByUsername = (e.createdByUsername || '').toLowerCase();
+                    const username = (user.username || '').toLowerCase();
+                    return createdBy === username || createdByUsername === username;
+                });
+
+                const eventCount = userEvents.length;
+                const lastActive = user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'N/A';
+                const roleBadge = user.role === 'admin'
+                    ? '<span style="background: var(--semper-gold); color: var(--semper-navy); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 700;">ADMIN</span>'
+                    : '<span style="background: rgba(255,255,255,0.1); color: #94a3b8; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">USER</span>';
 
                 return `
-                    <tr>
-                        <td><strong>${event.title}</strong></td>
-                        <td>${new Date(event.datetime).toLocaleDateString()}</td>
-                        <td>${event.location || 'N/A'}</td>
-                        <td>${event.managerEmail || 'N/A'}</td>
-                        <td>${attendingCount}/${rsvpCount} RSVPs</td>
-                        <td>
-                            <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="showPage('manage', '${event.id}')">View</button>
-                        </td>
+                    <tr data-username="${user.username?.toLowerCase() || ''}" data-name="${user.name?.toLowerCase() || ''}" data-email="${user.email?.toLowerCase() || ''}">
+                        <td><strong>${user.username || 'N/A'}</strong></td>
+                        <td>${user.name || 'N/A'}</td>
+                        <td>${user.email || 'N/A'}</td>
+                        <td>${user.branch || 'N/A'}</td>
+                        <td>${user.rank || 'N/A'}</td>
+                        <td>${roleBadge}</td>
+                        <td style="text-align: center;">${eventCount}</td>
+                        <td>${lastActive}</td>
                     </tr>
                 `;
             }).join('');
+        },
+
+        /**
+         * Switch between admin tabs
+         */
+        switchTab(tab) {
+            console.log('🔄 Switching admin tab to:', tab);
+
+            // Update tab buttons
+            const tabs = document.querySelectorAll('.dashboard-tab');
+            tabs.forEach(btn => {
+                const isActive = btn.getAttribute('data-tab') === tab;
+                btn.classList.toggle('dashboard-tab--active', isActive);
+            });
+
+            // Update tab content
+            const statisticsTab = document.getElementById('admin-statistics-tab');
+            const usersTab = document.getElementById('admin-users-tab');
+
+            if (tab === 'statistics') {
+                if (statisticsTab) statisticsTab.classList.add('admin-tab-content--active');
+                if (usersTab) usersTab.classList.remove('admin-tab-content--active');
+            } else if (tab === 'users') {
+                if (statisticsTab) statisticsTab.classList.remove('admin-tab-content--active');
+                if (usersTab) usersTab.classList.add('admin-tab-content--active');
+            }
+        },
+
+        /**
+         * Filter users table based on search query
+         */
+        filterUsers(query) {
+            const searchQuery = query.toLowerCase().trim();
+            const rows = document.querySelectorAll('#users-table tbody tr');
+
+            rows.forEach(row => {
+                const username = row.getAttribute('data-username') || '';
+                const name = row.getAttribute('data-name') || '';
+                const email = row.getAttribute('data-email') || '';
+
+                const matches = username.includes(searchQuery) ||
+                               name.includes(searchQuery) ||
+                               email.includes(searchQuery);
+
+                row.style.display = matches ? '' : 'none';
+            });
+
+            // Update count
+            const visibleCount = Array.from(rows).filter(row => row.style.display !== 'none').length;
+            const title = document.querySelector('#admin-users-tab .chart-title');
+            if (title) {
+                title.textContent = `👥 User Accounts (${visibleCount} ${searchQuery ? 'matching' : 'total'})`;
+            }
         },
 
         /**
