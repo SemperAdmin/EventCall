@@ -102,21 +102,23 @@ function enforceLogin() {
 
 /**
  * Show page navigation - Updated to enforce login state
+ * @param {string} pageId - Page ID to show (dashboard, create, manage, etc.)
+ * @param {string} param - Optional parameter (e.g., eventId for manage page)
  */
-function showPage(pageId) {
-    console.log(`🧭 Attempting to navigate to: ${pageId}`);
+function showPage(pageId, param) {
+    console.log(`🧭 Attempting to navigate to: ${pageId}${param ? `/${param}` : ''}`);
 
     // Allow access to invite page without login (for guests)
     if (pageId === 'invite') {
         console.log('🎟️ Guest invite access - no login required');
-        showPageContent(pageId);
+        showPageContent(pageId, param);
         return;
     }
 
     // Check if this is an invite URL (guest access)
     if (window.location.hash.includes('invite/') || window.location.search.includes('data=')) {
         console.log('🎟️ Guest invite URL detected - bypassing login');
-        showPageContent('invite');
+        showPageContent('invite', param);
         return;
     }
 
@@ -149,7 +151,7 @@ function showPage(pageId) {
         console.log(`✅ Access granted to ${pageId} for user: ${user?.email}`);
     }
 
-    showPageContent(pageId);
+    showPageContent(pageId, param);
 }
 
 /**
@@ -189,17 +191,19 @@ function showLoginPage() {
 
 /**
  * Show specific page content (internal function)
+ * @param {string} pageId - Page ID to show
+ * @param {string} param - Optional parameter (e.g., eventId for manage/invite pages)
  */
-function showPageContent(pageId) {
+function showPageContent(pageId, param) {
     // Hide all pages
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
     });
-    
+
     // Show target page
     const targetPage = document.getElementById(pageId);
     if (targetPage) targetPage.classList.add('active');
-    
+
     // Update nav buttons (only if nav is visible)
     const nav = document.querySelector('.nav');
     if (nav && nav.style.display !== 'none') {
@@ -209,7 +213,7 @@ function showPageContent(pageId) {
         const navButton = document.getElementById(`nav-${pageId}`);
         if (navButton) navButton.classList.add('active');
     }
-    
+
     // Show/hide header and nav based on page
     const header = document.querySelector('.header');
     if (header) {
@@ -218,10 +222,21 @@ function showPageContent(pageId) {
     if (nav) {
         nav.style.display = pageId === 'invite' || pageId === 'manage' ? 'none' : 'flex';
     }
-    
+
     // Sync URL via History API (no hash) when router is available
     if (window.AppRouter && typeof window.AppRouter.updateURLForPage === 'function') {
-        window.AppRouter.updateURLForPage(pageId);
+        window.AppRouter.updateURLForPage(pageId, param);
+    }
+
+    // Handle page-specific loading with parameters
+    if (pageId === 'manage' && param) {
+        // Load event management page with eventId
+        if (window.eventManager && window.eventManager.showEventManagement) {
+            window.eventManager.showEventManagement(param);
+        } else {
+            console.warn('⚠️ Event manager not loaded yet');
+        }
+        return;
     }
     
     // Page-specific initializations
