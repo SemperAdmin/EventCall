@@ -241,7 +241,7 @@ async function updatePendingRSVPCount() {
             if (count > 0) {
                 updatesToBatch.push({
                     element: btn,
-                    innerHTML: window.utils.sanitizeHTML(`🔄 Sync RSVPs (${window.utils.escapeHTML(String(count))} pending)`),
+                    innerHTML: window.utils.sanitizeHTML(`🔄 Sync RSVPs (${String(count)} pending)`),
                     styles: {
                         background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                         animation: 'pulse 2s infinite'
