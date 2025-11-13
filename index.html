@@ -27,13 +27,21 @@
     <link rel="stylesheet" href="styles/feedback.css">
     <!-- Admin Dashboard (Admin Only) -->
     <link rel="stylesheet" href="styles/admin-dashboard.css">
+
+    <!-- PHASE 3 OPTIMIZATION: Resource hints for CDN libraries -->
+    <!-- Preconnect to CDN to reduce DNS/TCP/TLS overhead -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://www.google.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+
     <!-- Scripts -->
     <!-- CSV Parser -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <!-- DOMPurify for HTML sanitization -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous"></script>
-    <!-- zxcvbn for advanced password strength analysis -->
-    <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
+    <!-- PHASE 3: zxcvbn moved to lazy loading (250KB saved on initial load) -->
+
 </head>
 <body>
 <!-- App Loading Screen (hidden by default, shows only after login) -->
@@ -928,6 +936,9 @@ function verifyDashboardTabs() {
 </div>
 
 <!-- PERFORMANCE OPTIMIZATION: Scripts reorganized, duplicates removed, defer added -->
+<!-- PHASE 3: Lazy loading infrastructure -->
+<script defer src="js/lazy-loader.js"></script>
+
 <!-- Service Worker Registration -->
 <script defer src="js/service-worker-registration.js"></script>
 
@@ -969,8 +980,8 @@ function verifyDashboardTabs() {
 <!-- External Libraries -->
 <script defer src="https://cdn.jsdelivr.net/npm/validator@13.9.0/validator.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.11.6/bundle/libphonenumber-js.min.js"></script>
-<!-- Charts library for dashboard visualizations (Admin only - consider lazy loading) -->
-<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- PHASE 3: Chart.js (180KB) now lazy-loaded via LazyLoader (loads only for admin dashboard) -->
+<!-- PHASE 3: zxcvbn (250KB) now lazy-loaded via LazyLoader (loads only when password field focused) -->
 
 <!-- Backend API (must load before auth if backend is used) -->
 <!-- Proxy configuration: set dispatchURL via localStorage or inline assignment -->

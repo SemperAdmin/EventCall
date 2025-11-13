@@ -487,11 +487,22 @@
         },
 
         /**
-         * Render events chart
+         * Render events chart (PHASE 3: Lazy loads Chart.js)
          */
-        renderEventsChart(events) {
+        async renderEventsChart(events) {
             const ctx = document.getElementById('adminEventsChart');
             if (!ctx) return;
+
+            // PHASE 3 OPTIMIZATION: Lazy load Chart.js (180KB) only when needed
+            if (!window.Chart) {
+                try {
+                    await window.LazyLoader.loadChartJS();
+                } catch (error) {
+                    console.error('Failed to load Chart.js:', error);
+                    ctx.innerHTML = '<p style="color: #ef4444;">Failed to load charts library</p>';
+                    return;
+                }
+            }
 
             // Group events by month
             const eventsByMonth = {};
@@ -539,11 +550,22 @@
         },
 
         /**
-         * Render RSVPs chart
+         * Render RSVPs chart (PHASE 3: Lazy loads Chart.js)
          */
-        renderRsvpsChart(rsvps) {
+        async renderRsvpsChart(rsvps) {
             const ctx = document.getElementById('adminRsvpsChart');
             if (!ctx) return;
+
+            // PHASE 3 OPTIMIZATION: Lazy load Chart.js (180KB) only when needed
+            if (!window.Chart) {
+                try {
+                    await window.LazyLoader.loadChartJS();
+                } catch (error) {
+                    console.error('Failed to load Chart.js:', error);
+                    ctx.innerHTML = '<p style="color: #ef4444;">Failed to load charts library</p>';
+                    return;
+                }
+            }
 
             const attending = rsvps.filter(r => r.willAttend === 'yes' || r.status === 'attending').length;
             const notAttending = rsvps.filter(r => r.willAttend === 'no' || r.status === 'not-attending').length;
