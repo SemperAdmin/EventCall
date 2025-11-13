@@ -1130,7 +1130,6 @@ function updateLoaderMessage(message) {
         const statusLabel = loader.querySelector('.app-loader__status-label');
         if (statusLabel) {
             statusLabel.textContent = message;
-            console.log(`📝 Loader message updated: ${message}`);
         }
     }
 }
