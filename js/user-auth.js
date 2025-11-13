@@ -337,17 +337,23 @@ const userAuth = {
                 // Clear form
                 form.reset();
 
+                // PERFORMANCE: Show UI immediately, load data in background
                 // Hide login and show app
                 this.hideLoginScreen();
 
-                // Load user's events
-                if (window.loadManagerData) {
-                    await window.loadManagerData();
-                }
-
-                // Navigate to dashboard
+                // Navigate to dashboard immediately (shows skeleton)
                 if (window.showPage) {
                     window.showPage('dashboard');
+                }
+
+                // Load user's events in background (non-blocking)
+                if (window.loadManagerData) {
+                    window.loadManagerData().catch(err => {
+                        console.error('Failed to load manager data:', err);
+                        if (window.showToast) {
+                            window.showToast('Failed to load some data. Please refresh.', 'error');
+                        }
+                    });
                 }
 
                 // Hide loading screen after a brief delay to ensure smooth transition
@@ -473,17 +479,23 @@ const userAuth = {
                 // Clear password field
                 passwordInput.value = '';
 
+                // PERFORMANCE: Show UI immediately, load data in background
                 // Hide login and show app
                 this.hideLoginScreen();
 
-                // Load user's events
-                if (window.loadManagerData) {
-                    await window.loadManagerData();
-                }
-
-                // Navigate to dashboard
+                // Navigate to dashboard immediately (shows skeleton)
                 if (window.showPage) {
                     window.showPage('dashboard');
+                }
+
+                // Load user's events in background (non-blocking)
+                if (window.loadManagerData) {
+                    window.loadManagerData().catch(err => {
+                        console.error('Failed to load manager data:', err);
+                        if (window.showToast) {
+                            window.showToast('Failed to load some data. Please refresh.', 'error');
+                        }
+                    });
                 }
 
                 // Hide loading screen after a brief delay to ensure smooth transition
