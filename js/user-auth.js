@@ -3,6 +3,10 @@
  * Secure authentication with bcrypt password hashing via GitHub Actions
  */
 
+// Time constants for session management
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const ONE_WEEK_MS = 7 * ONE_DAY_MS;
+
 const userAuth = {
     currentUser: null,
     authInProgress: false,
@@ -995,8 +999,6 @@ const userAuth = {
                 // PERFORMANCE: Extended session TTL for better UX
                 // - 7 days if "remember me" checked
                 // - 24 hours for regular sessions (increased from 4 hours)
-                const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-                const ONE_WEEK_MS = 7 * ONE_DAY_MS;
                 const ttl = rememberMe ? ONE_WEEK_MS : ONE_DAY_MS;
                 storageSync.set('eventcall_user', user, { ttl });
                 console.log(`💾 User saved to secure storage (TTL: ${rememberMe ? '7 days' : '24 hours'})`);
