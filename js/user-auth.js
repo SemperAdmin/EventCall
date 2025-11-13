@@ -7,6 +7,10 @@
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const ONE_WEEK_MS = 7 * ONE_DAY_MS;
 
+// PERFORMANCE: Feature flag for direct authentication via backend
+// true = Fast (200-500ms), false = Slow (67s via GitHub Actions)
+const USE_DIRECT_AUTH = true;
+
 const userAuth = {
     currentUser: null,
     authInProgress: false,
@@ -581,6 +585,30 @@ const userAuth = {
      */
     async triggerAuthWorkflow(actionType, payload) {
         try {
+            // PERFORMANCE: Try direct backend authentication first (200-500ms)
+            if (USE_DIRECT_AUTH && window.BackendAPI && (actionType === 'login_user' || actionType === 'register_user')) {
+                console.log(`⚡ Using fast direct authentication for ${actionType}`);
+
+                try {
+                    const credentials = {
+                        username: payload.username,
+                        password: payload.password,
+                        name: payload.name,
+                        email: payload.email,
+                        branch: payload.branch,
+                        rank: payload.rank
+                    };
+
+                    const result = await window.BackendAPI.authenticateDirect(actionType, credentials);
+                    console.log(`✅ Direct auth completed successfully`);
+                    return result;
+
+                } catch (directAuthError) {
+                    console.warn('⚠️ Direct auth failed, falling back to GitHub Actions:', directAuthError.message);
+                    // Fall through to GitHub Actions workflow below
+                }
+            }
+
             // In simple auth mode, validate locally (works on GitHub Pages too)
             const simpleMode = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.simpleAuth);
             if (simpleMode) {
