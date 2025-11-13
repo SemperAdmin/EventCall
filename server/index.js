@@ -24,6 +24,45 @@ if (!CSRF_SHARED_SECRET) {
 }
 
 const app = express();
+
+// Helper functions for GitHub API interactions
+async function getUserFromGitHub(username) {
+  const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users/${username}.json`;
+  const response = await fetch(userUrl, {
+    headers: {
+      'Authorization': `token ${GITHUB_TOKEN}`,
+      'Accept': 'application/vnd.github+json',
+      'User-Agent': 'EventCall-Backend'
+    }
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const userData = await response.json();
+  return JSON.parse(Buffer.from(userData.content, 'base64').toString('utf-8'));
+}
+
+async function saveUserToGitHub(username, userData) {
+  const createUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users/${username}.json`;
+  const response = await fetch(createUrl, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `token ${GITHUB_TOKEN}`,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'User-Agent': 'EventCall-Backend'
+    },
+    body: JSON.stringify({
+      message: `Register user: ${username}`,
+      content: Buffer.from(JSON.stringify(userData, null, 2)).toString('base64')
+    })
+  });
+
+  return response;
+}
+
 // Configure Helmet with an explicit CSP including frame-ancestors.
 app.use(helmet({
   contentSecurityPolicy: {
@@ -155,25 +194,25 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Missing credentials' });
     }
 
-    // Load user from EventCall-Data repo
-    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users/${username}.json`;
-    const userResp = await fetch(userUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': 'EventCall-Backend'
-      }
-    });
+    // SECURITY: Validate username format to prevent path traversal
+    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username);
+    if (!isValidUsername) {
+      return res.status(400).json({ error: 'Invalid username format' });
+    }
 
-    if (!userResp.ok) {
+    // SECURITY: Enforce reasonable password length limit (DoS prevention)
+    if (password.length > 128) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+
+    // Load user from EventCall-Data repo
+    const user = await getUserFromGitHub(username);
+    if (!user) {
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
       });
     }
-
-    const userData = await userResp.json();
-    const user = JSON.parse(Buffer.from(userData.content, 'base64').toString('utf-8'));
 
     // Verify password with bcrypt
     const isValid = await bcrypt.compare(password, user.passwordHash);
@@ -216,16 +255,20 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Check if user exists
-    const checkUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users/${username}.json`;
-    const checkResp = await fetch(checkUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'User-Agent': 'EventCall-Backend'
-      }
-    });
+    // SECURITY: Validate username format to prevent path traversal
+    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username);
+    if (!isValidUsername) {
+      return res.status(400).json({ error: 'Invalid username format' });
+    }
 
-    if (checkResp.ok) {
+    // SECURITY: Enforce reasonable password length limit (DoS prevention)
+    if (password.length > 128) {
+      return res.status(400).json({ error: 'Invalid password length' });
+    }
+
+    // Check if user exists
+    const existingUser = await getUserFromGitHub(username);
+    if (existingUser) {
       return res.status(409).json({
         success: false,
         error: 'Username already exists'
@@ -249,20 +292,7 @@ app.post('/api/auth/register', async (req, res) => {
     };
 
     // Save to GitHub
-    const createUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users/${username}.json`;
-    const createResp = await fetch(createUrl, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github+json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'EventCall-Backend'
-      },
-      body: JSON.stringify({
-        message: `Register user: ${username}`,
-        content: Buffer.from(JSON.stringify(user, null, 2)).toString('base64')
-      })
-    });
+    const createResp = await saveUserToGitHub(username, user);
 
     if (!createResp.ok) {
       const error = await createResp.json();
