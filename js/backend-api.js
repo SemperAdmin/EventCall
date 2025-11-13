@@ -243,6 +243,7 @@ class BackendAPI {
 
         console.log(`🚀 Using direct authentication: ${endpoint}`);
 
+        const startTime = Date.now();
         try {
             const response = await fetch(url, {
                 method: 'POST',
@@ -258,11 +259,13 @@ class BackendAPI {
             }
 
             const result = await response.json();
-            console.log(`✅ Direct authentication successful in ${Date.now()}ms`);
+            const duration = Date.now() - startTime;
+            console.log(`✅ Direct authentication successful in ${duration}ms`);
             return result;
 
         } catch (error) {
-            console.error('❌ Direct authentication failed:', error);
+            const duration = Date.now() - startTime;
+            console.error(`❌ Direct authentication failed after ${duration}ms:`, error);
             throw error;
         }
     }
