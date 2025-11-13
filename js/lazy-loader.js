@@ -5,49 +5,22 @@
  */
 
 const LazyLoader = {
-    // Track loaded libraries to avoid duplicates
-    loadedLibraries: new Set(),
+    // Track in-flight requests to avoid duplicate loads
     loadingPromises: new Map(),
+
+    // CDN URLs for external libraries
+    CDN_URLS: {
+        CHARTJS: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+        ZXCVBN: 'https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js'
+    },
 
     /**
      * Lazy load Chart.js (180KB) - only for admin dashboard
      * @returns {Promise<Object>} Chart.js library
      */
     async loadChartJS() {
-        const libName = 'chartjs';
-
-        // Return if already loaded
-        if (window.Chart) {
-            console.log('📊 Chart.js already loaded');
-            return window.Chart;
-        }
-
-        // Return existing promise if loading
-        if (this.loadingPromises.has(libName)) {
-            return this.loadingPromises.get(libName);
-        }
-
-        console.log('📥 Lazy loading Chart.js...');
-        const loadPromise = new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
-            script.async = true;
-            script.onload = () => {
-                console.log('✅ Chart.js loaded successfully');
-                this.loadedLibraries.add(libName);
-                this.loadingPromises.delete(libName);
-                resolve(window.Chart);
-            };
-            script.onerror = () => {
-                console.error('❌ Failed to load Chart.js');
-                this.loadingPromises.delete(libName);
-                reject(new Error('Failed to load Chart.js'));
-            };
-            document.head.appendChild(script);
-        });
-
-        this.loadingPromises.set(libName, loadPromise);
-        return loadPromise;
+        console.log('📊 Loading Chart.js...');
+        return this.loadScript(this.CDN_URLS.CHARTJS, 'Chart');
     },
 
     /**
@@ -55,40 +28,8 @@ const LazyLoader = {
      * @returns {Promise<Function>} zxcvbn function
      */
     async loadZxcvbn() {
-        const libName = 'zxcvbn';
-
-        // Return if already loaded
-        if (window.zxcvbn) {
-            console.log('🔐 zxcvbn already loaded');
-            return window.zxcvbn;
-        }
-
-        // Return existing promise if loading
-        if (this.loadingPromises.has(libName)) {
-            return this.loadingPromises.get(libName);
-        }
-
-        console.log('📥 Lazy loading zxcvbn...');
-        const loadPromise = new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js';
-            script.async = true;
-            script.onload = () => {
-                console.log('✅ zxcvbn loaded successfully');
-                this.loadedLibraries.add(libName);
-                this.loadingPromises.delete(libName);
-                resolve(window.zxcvbn);
-            };
-            script.onerror = () => {
-                console.error('❌ Failed to load zxcvbn');
-                this.loadingPromises.delete(libName);
-                reject(new Error('Failed to load zxcvbn'));
-            };
-            document.head.appendChild(script);
-        });
-
-        this.loadingPromises.set(libName, loadPromise);
-        return loadPromise;
+        console.log('🔐 Loading zxcvbn...');
+        return this.loadScript(this.CDN_URLS.ZXCVBN, 'zxcvbn');
     },
 
     /**

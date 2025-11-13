@@ -624,44 +624,60 @@ function updateEventList(container, events, isPast, listType) {
 
 /**
  * PHASE 3: Add or update "Load More" button for pagination
+ * SECURITY: Uses addEventListener instead of inline onclick
  */
 function updateLoadMoreButton(container, listType, shown, total) {
     const existingBtn = container.querySelector('.load-more-btn');
 
     if (shown >= total) {
         // All events shown, remove button if exists
-        if (existingBtn) existingBtn.remove();
+        if (existingBtn) {
+            // Clean up listener before removing
+            const btnElement = existingBtn.querySelector('button');
+            if (btnElement && btnElement._loadMoreHandler) {
+                btnElement.removeEventListener('click', btnElement._loadMoreHandler);
+            }
+            existingBtn.remove();
+        }
         return;
     }
 
     if (!existingBtn) {
-        // Create new button
-        const button = document.createElement('div');
-        button.className = 'load-more-btn';
-        button.style.cssText = 'text-align: center; margin-top: 1.5rem;';
-        button.innerHTML = `
-            <button class="btn btn-secondary" onclick="loadMoreEvents('${listType}')">
-                📋 Load More Events (${total - shown} remaining)
-            </button>
-        `;
-        container.appendChild(button);
+        // Create new button with proper event listener (not inline onclick)
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'load-more-btn';
+        buttonContainer.style.cssText = 'text-align: center; margin-top: 1.5rem;';
+
+        const button = document.createElement('button');
+        button.className = 'btn btn-secondary';
+        button.textContent = `📋 Load More Events (${total - shown} remaining)`;
+
+        // Attach event listener instead of using inline onclick (security best practice)
+        const handler = () => loadMoreEvents(listType);
+        button.addEventListener('click', handler);
+        // Store reference for cleanup
+        button._loadMoreHandler = handler;
+
+        buttonContainer.appendChild(button);
+        container.appendChild(buttonContainer);
     } else {
         // Update existing button text
         const btn = existingBtn.querySelector('button');
         if (btn) {
-            btn.innerHTML = `📋 Load More Events (${total - shown} remaining)`;
+            btn.textContent = `📋 Load More Events (${total - shown} remaining)`;
         }
     }
 }
 
 /**
  * PHASE 3: Load more events (called from Load More button)
+ * No longer exposed on window - kept private to this module
  */
-window.loadMoreEvents = function(listType) {
+function loadMoreEvents(listType) {
     const pageSize = dashboardState.pagination[listType].pageSize;
     dashboardState.pagination[listType].shown += pageSize;
     renderDashboard();
-};
+}
 
 /**
  * PERFORMANCE OPTIMIZED: Create event card as DOM element instead of HTML string
