@@ -934,6 +934,24 @@
     "coverImage": ""
   },
   {
+    "id": "dae0ae5b-3bd4-4821-8b17-7b1f17c05e6f",
+    "title": "Marine Corps Birthday Ball",
+    "date": "2025-11-13",
+    "time": "17:00",
+    "location": "Sheraton",
+    "description": "Join us in celebrating the founding of the United States Marine Corps with tradition, camaraderie, and honor.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {},
+    "created": 1763063360619,
+    "status": "active",
+    "createdBy": "unknown",
+    "createdByName": "Axel Martinez",
+    "coverImage": ""
+  },
+  {
     "id": "e686a26a-a737-4e05-bc1a-c4f908c70218",
     "title": "Marine Corps Birthday Ball",
     "date": "2025-11-29",
