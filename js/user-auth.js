@@ -698,6 +698,12 @@ const userAuth = {
             console.log('✅ Workflow dispatch result:', result);
 
             console.log('⏳ Polling for authentication response...');
+
+            // PERFORMANCE: Show initial progress message
+            if (window.updateLoaderMessage) {
+                window.updateLoaderMessage('🔐 Starting authentication...');
+            }
+
             // Poll for response via GitHub Issues using configurable timeouts
             // Increased default interval from 2s to 5s to avoid GitHub's abuse detection limits
             const timeoutMs = (window.AUTH_CONFIG && window.AUTH_CONFIG.authTimeoutMs) || 30000;
@@ -741,13 +747,39 @@ const userAuth = {
     async pollForAuthResponse(clientId, timeout = 30000, pollInterval = 5000) {
         const startTime = Date.now();
         let pollCount = 0;
+        let lastProgressUpdate = 0;
 
         console.log(`🔄 Starting to poll for client_id: ${clientId}`);
         console.log(`⏰ Timeout: ${timeout}ms, Poll interval: ${pollInterval}ms`);
 
+        // Helper to show progress feedback
+        const showProgress = (seconds) => {
+            const messages = [
+                { threshold: 10, msg: '🔐 Authenticating with GitHub Actions...' },
+                { threshold: 20, msg: '⏳ Waiting for server response...' },
+                { threshold: 30, msg: '🔄 Processing credentials...' },
+                { threshold: 45, msg: '⏰ Almost there...' },
+                { threshold: 60, msg: '🔒 Finalizing authentication...' }
+            ];
+
+            const msg = messages.reverse().find(m => seconds >= m.threshold);
+            if (msg && window.updateLoaderMessage) {
+                window.updateLoaderMessage(msg.msg);
+            } else if (msg && window.showToast) {
+                window.showToast(msg.msg, 'info');
+            }
+        };
+
         while (Date.now() - startTime < timeout) {
             pollCount++;
             const elapsed = Date.now() - startTime;
+            const elapsedSeconds = Math.floor(elapsed / 1000);
+
+            // PERFORMANCE: Show progress updates every 10 seconds
+            if (elapsedSeconds - lastProgressUpdate >= 10) {
+                showProgress(elapsedSeconds);
+                lastProgressUpdate = elapsedSeconds;
+            }
 
             try {
                 console.log(`📡 Poll attempt #${pollCount} (${(elapsed / 1000).toFixed(1)}s elapsed)`);
@@ -959,9 +991,12 @@ const userAuth = {
         try {
             const storageSync = window.utils && window.utils.secureStorageSync;
             if (storageSync) {
-                const ttl = 4 * 60 * 60 * 1000; // 4 hours
+                // PERFORMANCE: Extended session TTL for better UX
+                // - 7 days if "remember me" checked
+                // - 24 hours for regular sessions (increased from 4 hours)
+                const ttl = rememberMe ? (7 * 24 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
                 storageSync.set('eventcall_user', user, { ttl });
-                console.log('💾 User saved to secure session storage');
+                console.log(`💾 User saved to secure storage (TTL: ${rememberMe ? '7 days' : '24 hours'})`);
             } else {
                 const storageType = rememberMe ? localStorage : sessionStorage;
                 storageType.setItem('eventcall_user', JSON.stringify(user));

@@ -1102,6 +1102,12 @@ window.showAppLoader = showAppLoader;
 function hideAppLoader() {
     const loader = document.getElementById('app-loader');
     if (loader) {
+        // Reset loader message to default before hiding
+        const statusLabel = loader.querySelector('.app-loader__status-label');
+        if (statusLabel) {
+            statusLabel.textContent = 'Loading';
+        }
+
         // Add hidden class to trigger fade out
         loader.classList.add('hidden');
         // Remove from DOM after transition completes
@@ -1113,6 +1119,22 @@ function hideAppLoader() {
     }
 }
 window.hideAppLoader = hideAppLoader;
+
+/**
+ * PERFORMANCE: Update loader message for progress feedback
+ * @param {string} message - Message to display
+ */
+function updateLoaderMessage(message) {
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+        const statusLabel = loader.querySelector('.app-loader__status-label');
+        if (statusLabel) {
+            statusLabel.textContent = message;
+            console.log(`📝 Loader message updated: ${message}`);
+        }
+    }
+}
+window.updateLoaderMessage = updateLoaderMessage;
 
 // Initialize hash listener when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
