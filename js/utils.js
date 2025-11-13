@@ -763,3 +763,81 @@ window.utils.secureStorageSync = new SecureStorageSync('sec');
     window.utils.getRecaptchaToken = getRecaptchaToken;
   }
 })();
+
+/**
+ * PERFORMANCE OPTIMIZATION: Batch DOM updates to prevent layout thrashing
+ * These utilities help avoid forced reflows by batching style changes
+ */
+(function() {
+  /**
+   * Batch update multiple element styles to avoid layout thrashing
+   * @param {Array} updates - Array of {element, styles} objects
+   * @example
+   * batchStyleUpdate([
+   *   { element: el1, styles: { display: 'block', opacity: '1' } },
+   *   { element: el2, styles: { display: 'none' } }
+   * ]);
+   */
+  function batchStyleUpdate(updates) {
+    // Use requestAnimationFrame to batch all style changes together
+    requestAnimationFrame(() => {
+      updates.forEach(({ element, styles }) => {
+        if (element && styles) {
+          Object.assign(element.style, styles);
+        }
+      });
+    });
+  }
+
+  /**
+   * Show/hide multiple elements efficiently
+   * @param {Array} elements - Array of {element, show} objects
+   * @example
+   * batchVisibilityUpdate([
+   *   { element: card1, show: true },
+   *   { element: card2, show: false }
+   * ]);
+   */
+  function batchVisibilityUpdate(elements) {
+    const updates = elements.map(({ element, show }) => ({
+      element,
+      styles: { display: show ? '' : 'none' }
+    }));
+    batchStyleUpdate(updates);
+  }
+
+  /**
+   * Add/remove CSS classes in batch to avoid layout thrashing
+   * @param {Array} updates - Array of {element, add, remove} objects
+   */
+  function batchClassUpdate(updates) {
+    requestAnimationFrame(() => {
+      updates.forEach(({ element, add, remove }) => {
+        if (element) {
+          if (remove) {
+            if (Array.isArray(remove)) {
+              element.classList.remove(...remove);
+            } else {
+              element.classList.remove(remove);
+            }
+          }
+          if (add) {
+            if (Array.isArray(add)) {
+              element.classList.add(...add);
+            } else {
+              element.classList.add(add);
+            }
+          }
+        }
+      });
+    });
+  }
+
+  // Export to window.utils
+  if (typeof window !== 'undefined') {
+    window.utils = window.utils || {};
+    window.utils.batchStyleUpdate = batchStyleUpdate;
+    window.utils.batchVisibilityUpdate = batchVisibilityUpdate;
+    window.utils.batchClassUpdate = batchClassUpdate;
+  }
+})();
