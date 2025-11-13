@@ -762,7 +762,8 @@ const userAuth = {
                 { threshold: 60, msg: '🔒 Finalizing authentication...' }
             ];
 
-            const msg = messages.reverse().find(m => seconds >= m.threshold);
+            // Reverse a copy to avoid mutating the original array
+            const msg = [...messages].reverse().find(m => seconds >= m.threshold);
             if (msg && window.updateLoaderMessage) {
                 window.updateLoaderMessage(msg.msg);
             } else if (msg && window.showToast) {
@@ -994,7 +995,8 @@ const userAuth = {
                 // PERFORMANCE: Extended session TTL for better UX
                 // - 7 days if "remember me" checked
                 // - 24 hours for regular sessions (increased from 4 hours)
-                const ttl = rememberMe ? (7 * 24 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+                const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+                const ttl = rememberMe ? (7 * ONE_DAY_MS) : ONE_DAY_MS;
                 storageSync.set('eventcall_user', user, { ttl });
                 console.log(`💾 User saved to secure storage (TTL: ${rememberMe ? '7 days' : '24 hours'})`);
             } else {
