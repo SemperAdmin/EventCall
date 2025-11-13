@@ -233,18 +233,36 @@ async function updatePendingRSVPCount() {
         pendingRSVPCount = count;
         
         // Update sync button text if pending RSVPs exist
+        // PERFORMANCE: Batch style updates to prevent layout thrashing
         const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
+        const styleUpdates = [];
+
         syncButtons.forEach(btn => {
             if (count > 0) {
                 btn.innerHTML = window.utils.sanitizeHTML(`🔄 Sync RSVPs (${window.utils.escapeHTML(String(count))} pending)`);
-                btn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-                btn.style.animation = 'pulse 2s infinite';
+                styleUpdates.push({
+                    element: btn,
+                    styles: {
+                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                        animation: 'pulse 2s infinite'
+                    }
+                });
             } else {
                 btn.innerHTML = window.utils.sanitizeHTML('🔄 Sync RSVPs');
-                btn.style.background = '';
-                btn.style.animation = '';
+                styleUpdates.push({
+                    element: btn,
+                    styles: {
+                        background: '',
+                        animation: ''
+                    }
+                });
             }
         });
+
+        // Apply all style changes at once
+        if (styleUpdates.length > 0 && window.utils?.batchStyleUpdate) {
+            window.utils.batchStyleUpdate(styleUpdates);
+        }
 
         // Add pending indicator to dashboard
         updateDashboardSyncStatus(count);
@@ -401,6 +419,29 @@ async function deleteEvent(eventId) {
     }
 }
 
+/**
+ * PHASE 2 PERFORMANCE OPTIMIZATION: Incremental dashboard rendering
+ * Track rendered events to avoid full re-renders
+ */
+const dashboardState = {
+    renderedEvents: new Map(), // Map of eventId -> { element, hash }
+    activeListeners: new Map()  // Map of eventId -> array of cleanup functions
+};
+
+/**
+ * Generate a hash of event data to detect changes
+ */
+function getEventHash(event) {
+    const eventResponses = window.responses?.[event.id] || [];
+    const stats = calculateEventStats(eventResponses);
+    // Hash includes title, date, time, location, and stats
+    return `${event.title}-${event.date}-${event.time}-${event.location}-${stats.attending}-${stats.notAttending}-${stats.totalHeadcount}`;
+}
+
+/**
+ * PERFORMANCE OPTIMIZED: Incremental dashboard render
+ * Only updates changed events instead of full re-render
+ */
 function renderDashboard() {
     const activeEventsList = document.getElementById('active-events-list');
     const pastEventsList = document.getElementById('past-events-list');
@@ -445,51 +486,255 @@ function renderDashboard() {
     activeEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
     pastEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // Render active events
-    let activeHtml = '';
+    // PERFORMANCE: Incremental updates instead of full innerHTML replacement
+    updateEventList(activeEventsList, activeEvents, false, 'active');
+    updateEventList(pastEventsList, pastEvents, true, 'past');
 
-    if (activeEvents.length > 0) {
-        activeHtml += `
-            <div class="events-section">
-                <div class="events-grid">
-                    ${activeEvents.map(event => renderEventCard(event, false)).join('')}
-                </div>
-            </div>
-        `;
-    } else {
-        activeHtml += `
+    console.log('✅ Dashboard rendered successfully with incremental updates');
+}
+
+/**
+ * PERFORMANCE OPTIMIZED: Update event list incrementally
+ * Uses DocumentFragment for batch DOM operations
+ */
+function updateEventList(container, events, isPast, listType) {
+    // Get or create events grid
+    let eventsSection = container.querySelector('.events-section');
+    let eventsGrid = eventsSection?.querySelector('.events-grid');
+
+    if (events.length === 0) {
+        // Show empty state
+        const emptyHtml = listType === 'active' ? `
             <div class="empty-state">
                 <div class="empty-state-icon">📅</div>
                 <h3>No Active Events</h3>
                 <p>Create a new event to get started</p>
                 <button class="btn btn-primary" onclick="showPage('create')">➕ Create Event</button>
             </div>
-        `;
-    }
-
-    // Render past events
-    let pastHtml = '';
-    if (pastEvents.length > 0) {
-        pastHtml = `
-            <div class="events-section">
-                <div class="events-grid">
-                    ${pastEvents.map(event => renderEventCard(event, true)).join('')}
-                </div>
-            </div>
-        `;
-    } else {
-        pastHtml = `
+        ` : `
             <div class="empty-state">
                 <div class="empty-state-icon">📁</div>
                 <h3>No Past Events</h3>
                 <p>Completed events will appear here</p>
             </div>
         `;
+        container.innerHTML = emptyHtml;
+        return;
     }
 
-    activeEventsList.innerHTML = activeHtml;
-    pastEventsList.innerHTML = pastHtml;
-    console.log('✅ Dashboard rendered successfully with tabbed layout');
+    // Create structure if needed
+    if (!eventsGrid) {
+        eventsSection = document.createElement('div');
+        eventsSection.className = 'events-section';
+        eventsGrid = document.createElement('div');
+        eventsGrid.className = 'events-grid';
+        eventsSection.appendChild(eventsGrid);
+        container.innerHTML = ''; // Clear existing content
+        container.appendChild(eventsSection);
+    }
+
+    // Track current event IDs
+    const currentEventIds = new Set(events.map(e => e.id));
+    const existingCards = Array.from(eventsGrid.querySelectorAll('[data-event-id]'));
+
+    // Remove cards for deleted events
+    existingCards.forEach(card => {
+        const eventId = card.getAttribute('data-event-id');
+        if (!currentEventIds.has(eventId)) {
+            // Clean up event listeners
+            cleanupEventListeners(eventId);
+            card.remove();
+            dashboardState.renderedEvents.delete(eventId);
+        }
+    });
+
+    // PERFORMANCE: Use DocumentFragment for batch insertions
+    const fragment = document.createDocumentFragment();
+    const cardsToUpdate = [];
+
+    events.forEach((event, index) => {
+        const hash = getEventHash(event);
+        const cached = dashboardState.renderedEvents.get(event.id);
+
+        // Check if event needs update
+        if (cached && cached.hash === hash) {
+            // Event unchanged, skip re-render
+            return;
+        }
+
+        // Event changed or new - create element
+        const card = createEventCardElement(event, isPast);
+        dashboardState.renderedEvents.set(event.id, { element: card, hash });
+
+        // Check if we need to replace existing card
+        const existingCard = eventsGrid.querySelector(`[data-event-id="${event.id}"]`);
+        if (existingCard) {
+            existingCard.replaceWith(card);
+        } else {
+            fragment.appendChild(card);
+        }
+    });
+
+    // Batch append new cards
+    if (fragment.children.length > 0) {
+        eventsGrid.appendChild(fragment);
+    }
+}
+
+/**
+ * PERFORMANCE OPTIMIZED: Create event card as DOM element instead of HTML string
+ * Properly attaches event listeners that can be cleaned up
+ */
+function createEventCardElement(event, isPast) {
+    const eventResponses = window.responses?.[event.id] || [];
+    const stats = calculateEventStats(eventResponses);
+
+    // Create card container
+    const card = document.createElement('div');
+    card.className = `event-card-v2 ${isPast ? 'event-past' : 'event-active'}`;
+    card.setAttribute('data-event-id', event.id);
+
+    // Use innerHTML for card content (complex structure)
+    // But attach listeners properly afterwards
+    const h = sanitizeHTML;
+    card.innerHTML = `
+        ${event.coverImage ? `
+            <div class="event-cover-wrapper">
+                <img src="${sanitizeURL(event.coverImage)}" alt="${h(event.title)}" class="event-cover">
+                <div class="event-badge ${isPast ? 'badge-past' : 'badge-active'}">
+                    ${isPast ? '🔴 Past' : '🟢 Active'}
+                </div>
+            </div>
+        ` : `
+            <div class="event-cover-placeholder">
+                <div class="placeholder-icon">🎖️</div>
+                <div class="event-badge ${isPast ? 'badge-past' : 'badge-active'}">
+                    ${isPast ? '🔴 Past' : '🟢 Active'}
+                </div>
+            </div>
+        `}
+
+        <div class="event-card-content">
+            <h3 class="event-title">${h(event.title)}</h3>
+
+            <div class="event-meta-v2">
+                <div class="meta-item">
+                    <span class="meta-icon">📅</span>
+                    <span class="meta-text">${formatDate(event.date)}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">⏰</span>
+                    <span class="meta-text">${formatTime(event.time)}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">📍</span>
+                    <span class="meta-text">${h(event.location)}</span>
+                </div>
+            </div>
+
+            <div class="rsvp-stats-v2">
+                <div class="stat-box stat-attending">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-number">${stats.attending}</div>
+                    <div class="stat-label">Attending</div>
+                </div>
+                <div class="stat-box stat-declined">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-number">${stats.notAttending}</div>
+                    <div class="stat-label">Declined</div>
+                </div>
+                <div class="stat-box stat-headcount">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-number">${stats.totalHeadcount}</div>
+                    <div class="stat-label">Total</div>
+                    ${event.allowGuests ? `
+                        <div class="stat-sublabel" style="font-size: 0.65rem; color: #6b7280; margin-top: 0.25rem;">
+                            ${stats.attending} + ${stats.attendingWithGuests}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+
+            <div class="event-actions-v2">
+                <button class="btn-primary-action" data-action="manage">
+                    📊 Manage Event
+                </button>
+                <div class="quick-actions-row">
+                    <button class="btn-quick" data-action="copy" title="Copy Invite Link">
+                        🔗 Copy Link
+                    </button>
+                    <button class="btn-quick" data-action="export" title="Export Data">
+                        📤 Export
+                    </button>
+                    <button class="btn-quick btn-danger-quick" data-action="delete" title="Delete Event">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // PERFORMANCE: Attach event listeners properly (can be cleaned up later)
+    attachCardListeners(card, event.id);
+
+    return card;
+}
+
+/**
+ * Attach event listeners to card with proper cleanup tracking
+ */
+function attachCardListeners(card, eventId) {
+    const cleanupFunctions = [];
+
+    // Manage button
+    const manageBtn = card.querySelector('[data-action="manage"]');
+    const manageHandler = (e) => {
+        e.stopPropagation();
+        showPage('manage', eventId);
+    };
+    manageBtn.addEventListener('click', manageHandler);
+    cleanupFunctions.push(() => manageBtn.removeEventListener('click', manageHandler));
+
+    // Copy link button
+    const copyBtn = card.querySelector('[data-action="copy"]');
+    const copyHandler = (e) => {
+        e.stopPropagation();
+        copyInviteLink(eventId);
+    };
+    copyBtn.addEventListener('click', copyHandler);
+    cleanupFunctions.push(() => copyBtn.removeEventListener('click', copyHandler));
+
+    // Export button
+    const exportBtn = card.querySelector('[data-action="export"]');
+    const exportHandler = (e) => {
+        e.stopPropagation();
+        exportEventData(eventId);
+    };
+    exportBtn.addEventListener('click', exportHandler);
+    cleanupFunctions.push(() => exportBtn.removeEventListener('click', exportHandler));
+
+    // Delete button
+    const deleteBtn = card.querySelector('[data-action="delete"]');
+    const deleteHandler = (e) => {
+        e.stopPropagation();
+        deleteEvent(eventId);
+    };
+    deleteBtn.addEventListener('click', deleteHandler);
+    cleanupFunctions.push(() => deleteBtn.removeEventListener('click', deleteHandler));
+
+    // Store cleanup functions
+    dashboardState.activeListeners.set(eventId, cleanupFunctions);
+}
+
+/**
+ * Clean up event listeners for a card
+ */
+function cleanupEventListeners(eventId) {
+    const cleanupFunctions = dashboardState.activeListeners.get(eventId);
+    if (cleanupFunctions) {
+        cleanupFunctions.forEach(fn => fn());
+        dashboardState.activeListeners.delete(eventId);
+    }
 }
 
 function renderEventCard(event, isPast) {
