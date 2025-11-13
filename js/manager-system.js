@@ -422,10 +422,16 @@ async function deleteEvent(eventId) {
 /**
  * PHASE 2 PERFORMANCE OPTIMIZATION: Incremental dashboard rendering
  * Track rendered events to avoid full re-renders
+ *
+ * PHASE 3: Added pagination for large event lists
  */
 const dashboardState = {
     renderedEvents: new Map(), // Map of eventId -> { element, hash }
-    activeListeners: new Map()  // Map of eventId -> array of cleanup functions
+    activeListeners: new Map(), // Map of eventId -> array of cleanup functions
+    pagination: {
+        active: { shown: 0, pageSize: 20 },
+        past: { shown: 0, pageSize: 20 }
+    }
 };
 
 /**
@@ -496,6 +502,7 @@ function renderDashboard() {
 /**
  * PERFORMANCE OPTIMIZED: Update event list incrementally
  * Uses DocumentFragment for batch DOM operations
+ * PHASE 3: Added pagination for better performance with many events
  */
 function updateEventList(container, events, isPast, listType) {
     // Get or create events grid
@@ -519,6 +526,8 @@ function updateEventList(container, events, isPast, listType) {
             </div>
         `;
         container.innerHTML = emptyHtml;
+        // Reset pagination
+        dashboardState.pagination[listType].shown = 0;
         return;
     }
 
@@ -531,13 +540,28 @@ function updateEventList(container, events, isPast, listType) {
         eventsSection.appendChild(eventsGrid);
         container.innerHTML = ''; // Clear existing content
         container.appendChild(eventsSection);
+        // Reset pagination on new render
+        dashboardState.pagination[listType].shown = 0;
     }
 
+    // PHASE 3 PAGINATION: Determine how many events to show
+    const pageSize = dashboardState.pagination[listType].pageSize;
+    let shownCount = dashboardState.pagination[listType].shown;
+
+    // Initialize if first time
+    if (shownCount === 0) {
+        shownCount = Math.min(events.length, pageSize);
+        dashboardState.pagination[listType].shown = shownCount;
+    }
+
+    const eventsToShow = events.slice(0, shownCount);
+    const hasMore = shownCount < events.length;
+
     // Track current event IDs
-    const currentEventIds = new Set(events.map(e => e.id));
+    const currentEventIds = new Set(eventsToShow.map(e => e.id));
     const existingCards = Array.from(eventsGrid.querySelectorAll('[data-event-id]'));
 
-    // Remove cards for deleted events
+    // Remove cards for deleted or hidden events
     existingCards.forEach(card => {
         const eventId = card.getAttribute('data-event-id');
         if (!currentEventIds.has(eventId)) {
@@ -550,9 +574,8 @@ function updateEventList(container, events, isPast, listType) {
 
     // PERFORMANCE: Use DocumentFragment for batch insertions
     const fragment = document.createDocumentFragment();
-    const cardsToUpdate = [];
 
-    events.forEach((event, index) => {
+    eventsToShow.forEach((event, index) => {
         const hash = getEventHash(event);
         const cached = dashboardState.renderedEvents.get(event.id);
 
@@ -579,7 +602,51 @@ function updateEventList(container, events, isPast, listType) {
     if (fragment.children.length > 0) {
         eventsGrid.appendChild(fragment);
     }
+
+    // PHASE 3: Add/update "Load More" button if needed
+    updateLoadMoreButton(eventsSection, listType, shownCount, events.length);
 }
+
+/**
+ * PHASE 3: Add or update "Load More" button for pagination
+ */
+function updateLoadMoreButton(container, listType, shown, total) {
+    const existingBtn = container.querySelector('.load-more-btn');
+
+    if (shown >= total) {
+        // All events shown, remove button if exists
+        if (existingBtn) existingBtn.remove();
+        return;
+    }
+
+    if (!existingBtn) {
+        // Create new button
+        const button = document.createElement('div');
+        button.className = 'load-more-btn';
+        button.style.cssText = 'text-align: center; margin-top: 1.5rem;';
+        button.innerHTML = `
+            <button class="btn btn-secondary" onclick="loadMoreEvents('${listType}')">
+                📋 Load More Events (${total - shown} remaining)
+            </button>
+        `;
+        container.appendChild(button);
+    } else {
+        // Update existing button text
+        const btn = existingBtn.querySelector('button');
+        if (btn) {
+            btn.innerHTML = `📋 Load More Events (${total - shown} remaining)`;
+        }
+    }
+}
+
+/**
+ * PHASE 3: Load more events (called from Load More button)
+ */
+window.loadMoreEvents = function(listType) {
+    const pageSize = dashboardState.pagination[listType].pageSize;
+    dashboardState.pagination[listType].shown += pageSize;
+    renderDashboard();
+};
 
 /**
  * PERFORMANCE OPTIMIZED: Create event card as DOM element instead of HTML string
