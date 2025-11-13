@@ -24,6 +24,27 @@
         },
 
         /**
+         * PHASE 3: DRY helper to ensure Chart.js is loaded
+         * Extracts duplicated logic from renderEventsChart and renderRsvpsChart
+         * @param {HTMLElement} canvasCtx - Canvas context element for error display
+         * @returns {Promise<boolean>} - True if loaded successfully, false otherwise
+         */
+        async _ensureChartJsLoaded(canvasCtx) {
+            if (window.Chart) return true;
+
+            try {
+                await window.LazyLoader.loadChartJS();
+                return true;
+            } catch (error) {
+                console.error('Failed to load Chart.js:', error);
+                if (canvasCtx) {
+                    canvasCtx.innerHTML = '<p style="color: #ef4444;">Failed to load charts library</p>';
+                }
+                return false;
+            }
+        },
+
+        /**
          * Load and render admin dashboard
          */
         async loadDashboard() {
@@ -493,16 +514,8 @@
             const ctx = document.getElementById('adminEventsChart');
             if (!ctx) return;
 
-            // PHASE 3 OPTIMIZATION: Lazy load Chart.js (180KB) only when needed
-            if (!window.Chart) {
-                try {
-                    await window.LazyLoader.loadChartJS();
-                } catch (error) {
-                    console.error('Failed to load Chart.js:', error);
-                    ctx.innerHTML = '<p style="color: #ef4444;">Failed to load charts library</p>';
-                    return;
-                }
-            }
+            // PHASE 3: Use DRY helper to load Chart.js
+            if (!await this._ensureChartJsLoaded(ctx)) return;
 
             // Group events by month
             const eventsByMonth = {};
@@ -556,16 +569,8 @@
             const ctx = document.getElementById('adminRsvpsChart');
             if (!ctx) return;
 
-            // PHASE 3 OPTIMIZATION: Lazy load Chart.js (180KB) only when needed
-            if (!window.Chart) {
-                try {
-                    await window.LazyLoader.loadChartJS();
-                } catch (error) {
-                    console.error('Failed to load Chart.js:', error);
-                    ctx.innerHTML = '<p style="color: #ef4444;">Failed to load charts library</p>';
-                    return;
-                }
-            }
+            // PHASE 3: Use DRY helper to load Chart.js
+            if (!await this._ensureChartJsLoaded(ctx)) return;
 
             const attending = rsvps.filter(r => r.willAttend === 'yes' || r.status === 'attending').length;
             const notAttending = rsvps.filter(r => r.willAttend === 'no' || r.status === 'not-attending').length;
