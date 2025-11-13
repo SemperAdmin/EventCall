@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import crypto from 'node:crypto';
+import bcrypt from 'bcryptjs';
 
 // Env configuration
 const PORT = process.env.PORT || 10000;
@@ -175,7 +176,6 @@ app.post('/api/auth/login', async (req, res) => {
     const user = JSON.parse(Buffer.from(userData.content, 'base64').toString('utf-8'));
 
     // Verify password with bcrypt
-    const bcrypt = await import('bcryptjs');
     const isValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isValid) {
@@ -233,7 +233,6 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     // Hash password
-    const bcrypt = await import('bcryptjs');
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Create user object
