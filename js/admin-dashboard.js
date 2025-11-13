@@ -34,6 +34,9 @@
 
             try {
                 await window.LazyLoader.loadChartJS();
+                if (!window.Chart) {
+                    throw new Error('Chart.js script loaded but `window.Chart` is not available.');
+                }
                 return true;
             } catch (error) {
                 console.error('Failed to load Chart.js:', error);
