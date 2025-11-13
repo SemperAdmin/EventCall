@@ -137,6 +137,29 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/59c31e2b-1c85-41fc-93fb-cd99c5d814e9.jpg"
   },
   {
+    "id": "99d2ca30-fc61-49cc-9d7f-f0e21726412f",
+    "title": "Sgt Agronomoff Going-Away",
+    "date": "2025-11-14",
+    "time": "11:00",
+    "location": "Klipper Grill, MCBH",
+    "description": "We gather to honor the CO&#x27;s Driver.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {
+      "honoree-name": {
+        "label": "In Memory Of",
+        "value": "Sgt Agronomoff"
+      }
+    },
+    "created": 1763063047768,
+    "status": "active",
+    "createdBy": "unknown",
+    "createdByName": "Axel Martinez",
+    "coverImage": ""
+  },
+  {
     "id": "aa1a72b5-3447-4822-9e52-e35a04635ac5",
     "title": "Cookout",
     "date": "2025-11-29",
@@ -819,6 +842,94 @@
       ],
       "unassignedGuests": [],
       "lastModified": 1762470546365
+    },
+    "coverImage": ""
+  },
+  {
+    "id": "d617bb6e-ea8e-4f20-b024-079b0ba5d791",
+    "title": "Testing MCBH Command Deck Invitation",
+    "date": "2025-11-14",
+    "time": "10:50",
+    "location": "B216",
+    "description": "Bring your families to celebrate and build camaraderie outside of duty hours.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {},
+    "created": 1763063281201,
+    "status": "active",
+    "createdBy": "unknown",
+    "createdByName": "Axel Martinez",
+    "seatingChart": {
+      "enabled": true,
+      "numberOfTables": 10,
+      "seatsPerTable": 8,
+      "totalCapacity": 80,
+      "tables": [
+        {
+          "tableNumber": 1,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": true
+        },
+        {
+          "tableNumber": 2,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 3,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 4,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 5,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 6,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 7,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 8,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 9,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 10,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        }
+      ],
+      "unassignedGuests": [],
+      "lastModified": 1763063281201
     },
     "coverImage": ""
   },
