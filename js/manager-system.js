@@ -233,24 +233,24 @@ async function updatePendingRSVPCount() {
         pendingRSVPCount = count;
         
         // Update sync button text if pending RSVPs exist
-        // PERFORMANCE: Batch style updates to prevent layout thrashing
+        // PERFORMANCE: Batch both innerHTML and style updates to prevent layout thrashing
         const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
-        const styleUpdates = [];
+        const updatesToBatch = [];
 
         syncButtons.forEach(btn => {
             if (count > 0) {
-                btn.innerHTML = window.utils.sanitizeHTML(`🔄 Sync RSVPs (${window.utils.escapeHTML(String(count))} pending)`);
-                styleUpdates.push({
+                updatesToBatch.push({
                     element: btn,
+                    innerHTML: window.utils.sanitizeHTML(`🔄 Sync RSVPs (${window.utils.escapeHTML(String(count))} pending)`),
                     styles: {
                         background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                         animation: 'pulse 2s infinite'
                     }
                 });
             } else {
-                btn.innerHTML = window.utils.sanitizeHTML('🔄 Sync RSVPs');
-                styleUpdates.push({
+                updatesToBatch.push({
                     element: btn,
+                    innerHTML: window.utils.sanitizeHTML('🔄 Sync RSVPs'),
                     styles: {
                         background: '',
                         animation: ''
@@ -259,9 +259,17 @@ async function updatePendingRSVPCount() {
             }
         });
 
-        // Apply all style changes at once
-        if (styleUpdates.length > 0 && window.utils?.batchStyleUpdate) {
-            window.utils.batchStyleUpdate(styleUpdates);
+        // Apply all DOM changes at once to prevent multiple reflows
+        if (updatesToBatch.length > 0) {
+            requestAnimationFrame(() => {
+                updatesToBatch.forEach(({ element, innerHTML, styles }) => {
+                    // Only update innerHTML if it has changed to avoid unnecessary DOM manipulation
+                    if (element.innerHTML !== innerHTML) {
+                        element.innerHTML = innerHTML;
+                    }
+                    Object.assign(element.style, styles);
+                });
+            });
         }
 
         // Add pending indicator to dashboard
@@ -559,18 +567,25 @@ function updateEventList(container, events, isPast, listType) {
 
     // Track current event IDs
     const currentEventIds = new Set(eventsToShow.map(e => e.id));
-    const existingCards = Array.from(eventsGrid.querySelectorAll('[data-event-id]'));
+
+    // PERFORMANCE: Create a Map of existing cards for O(1) lookups instead of querying DOM in loop
+    const existingCardsMap = new Map(
+        Array.from(eventsGrid.querySelectorAll('[data-event-id]')).map(card => [
+            card.getAttribute('data-event-id'),
+            card
+        ])
+    );
 
     // Remove cards for deleted or hidden events
-    existingCards.forEach(card => {
-        const eventId = card.getAttribute('data-event-id');
+    for (const [eventId, card] of existingCardsMap.entries()) {
         if (!currentEventIds.has(eventId)) {
             // Clean up event listeners
             cleanupEventListeners(eventId);
             card.remove();
             dashboardState.renderedEvents.delete(eventId);
+            existingCardsMap.delete(eventId); // Keep map in sync
         }
-    });
+    }
 
     // PERFORMANCE: Use DocumentFragment for batch insertions
     const fragment = document.createDocumentFragment();
@@ -589,9 +604,9 @@ function updateEventList(container, events, isPast, listType) {
         const card = createEventCardElement(event, isPast);
         dashboardState.renderedEvents.set(event.id, { element: card, hash });
 
-        // Check if we need to replace existing card
-        const existingCard = eventsGrid.querySelector(`[data-event-id="${event.id}"]`);
-        if (existingCard) {
+        // Check if we need to replace existing card using the map for O(1) lookup
+        if (existingCardsMap.has(event.id)) {
+            const existingCard = existingCardsMap.get(event.id);
             existingCard.replaceWith(card);
         } else {
             fragment.appendChild(card);
@@ -663,7 +678,8 @@ function createEventCardElement(event, isPast) {
 
     // Use innerHTML for card content (complex structure)
     // But attach listeners properly afterwards
-    const h = sanitizeHTML;
+    // Use utility sanitization for consistency and better security
+    const h = window.utils?.sanitizeHTML || sanitizeHTML;
     card.innerHTML = `
         ${event.coverImage ? `
             <div class="event-cover-wrapper">
@@ -715,7 +731,7 @@ function createEventCardElement(event, isPast) {
                     <div class="stat-number">${stats.totalHeadcount}</div>
                     <div class="stat-label">Total</div>
                     ${event.allowGuests ? `
-                        <div class="stat-sublabel" style="font-size: 0.65rem; color: #6b7280; margin-top: 0.25rem;">
+                        <div class="stat-sublabel">
                             ${stats.attending} + ${stats.attendingWithGuests}
                         </div>
                     ` : ''}
@@ -864,7 +880,7 @@ function renderEventCard(event, isPast) {
                         <div class="stat-number">${stats.totalHeadcount}</div>
                         <div class="stat-label">Total</div>
                         ${event.allowGuests ? `
-                            <div class="stat-sublabel" style="font-size: 0.65rem; color: #6b7280; margin-top: 0.25rem;">
+                            <div class="stat-sublabel">
                                 ${stats.attending} + ${stats.attendingWithGuests}
                             </div>
                         ` : ''}

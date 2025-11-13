@@ -26,6 +26,13 @@ class GitHubAPI {
             timestamp: null,
             ttl: 5 * 60 * 1000 // 5 minutes cache
         };
+
+        // PHASE 3: Response cache for RSVP responses
+        this.responsesCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000 // 5 minutes cache
+        };
     }
 
     /**
@@ -395,15 +402,7 @@ class GitHubAPI {
         const now = Date.now();
         const forceRefresh = options.forceRefresh || false;
 
-        // Use a dedicated cache for responses
-        if (!this.responsesCache) {
-            this.responsesCache = {
-                data: null,
-                timestamp: null,
-                ttl: 5 * 60 * 1000 // 5 minutes cache
-            };
-        }
-
+        // Check cache (initialized in constructor)
         if (!forceRefresh && this.responsesCache.data && this.responsesCache.timestamp) {
             const cacheAge = now - this.responsesCache.timestamp;
             if (cacheAge < this.responsesCache.ttl) {
