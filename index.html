@@ -927,53 +927,50 @@ function verifyDashboardTabs() {
     </div>
 </div>
 
+<!-- PERFORMANCE OPTIMIZATION: Scripts reorganized, duplicates removed, defer added -->
 <!-- Service Worker Registration -->
-<script src="js/service-worker-registration.js"></script>
+<script defer src="js/service-worker-registration.js"></script>
 
 <!-- EARLY FUNCTIONS FIRST -->
-<script src="js/error-handler.js"></script>
-<script src="js/error-handler-enhanced.js"></script>
-<!-- ============================================
-     SCRIPTS (UPDATED ORDER)
-     ============================================ -->
-<!-- Temporarily minimizing scripts to isolate a parse error -->
-<script src="js/config.js?v=20251104-2"></script>
-<!-- Isolation mode: other scripts temporarily disabled for debugging
-<script src="js/rate-limiter.js"></script>
-<script src="js/utils.js"></script>
-<!-- Re-enabling remaining modules for isolation testing -->
-<script src="js/validation.js"></script>
-<script src="js/recurring-events.js"></script>
-<script src="js/main.js"></script>
-<script src="js/calendar-export.js"></script>
-<script src="js/csv-import.js"></script>
-<script src="js/event-templates.js"></script>
-<script src="js/military-data.js"></script>
-<script src="js/qr-checkin.js"></script>
-<script src="js/seating-chart.js"></script>
-<script src="js/service-worker-registration.js"></script>
-<!-- Removed duplicate imports: keeping versioned user-auth and single backend-api later -->
-<script src="js/utils.js"></script>
-<script src="js/loading.js"></script>
-<script src="js/csrf.js"></script>
-<script src="js/github-api.js"></script>
-<script src="js/rsvp-handler.js"></script>
-<script src="js/feedback-handler.js"></script>
-    <script src="js/ui-components.js"></script>
-    <!-- Charts library for dashboard visualizations -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="js/event-manager.js"></script>
-<script src="js/manager-system.js"></script>
-<script src="js/early-functions.js"></script>
-<script src="js/user-rsvps.js"></script>
+<script defer src="js/error-handler.js"></script>
+<script defer src="js/error-handler-enhanced.js"></script>
+<script defer src="js/config.js?v=20251104-2"></script>
+<script defer src="js/utils.js"></script>
+<script defer src="js/rate-limiter.js"></script>
+<script defer src="js/validation.js"></script>
+<script defer src="js/loading.js"></script>
+<script defer src="js/csrf.js"></script>
+
+<!-- Core modules -->
+<script defer src="js/recurring-events.js"></script>
+<script defer src="js/main.js"></script>
+<script defer src="js/calendar-export.js"></script>
+<script defer src="js/csv-import.js"></script>
+<script defer src="js/event-templates.js"></script>
+<script defer src="js/military-data.js"></script>
+<script defer src="js/qr-checkin.js"></script>
+<script defer src="js/seating-chart.js"></script>
+
+<!-- GitHub and Event Management -->
+<script defer src="js/github-api.js"></script>
+<script defer src="js/rsvp-handler.js"></script>
+<script defer src="js/feedback-handler.js"></script>
+<script defer src="js/ui-components.js"></script>
+<script defer src="js/event-manager.js"></script>
+<script defer src="js/manager-system.js"></script>
+<script defer src="js/early-functions.js"></script>
+<script defer src="js/user-rsvps.js"></script>
+
 <!-- Admin Dashboard (Admin Only) -->
-<script src="js/admin-dashboard.js"></script>
-<script src="js/router.js"></script>
-<script src="js/rate-limiter.js"></script>
-<script src="js/api-wrapper.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/validator@13.9.0/validator.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.11.6/bundle/libphonenumber-js.min.js"></script>
-<script src="js/validation.js"></script>
+<script defer src="js/admin-dashboard.js"></script>
+<script defer src="js/router.js"></script>
+<script defer src="js/api-wrapper.js"></script>
+
+<!-- External Libraries -->
+<script defer src="https://cdn.jsdelivr.net/npm/validator@13.9.0/validator.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.11.6/bundle/libphonenumber-js.min.js"></script>
+<!-- Charts library for dashboard visualizations (Admin only - consider lazy loading) -->
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <!-- Backend API (must load before auth if backend is used) -->
 <!-- Proxy configuration: set dispatchURL via localStorage or inline assignment -->
@@ -995,11 +992,11 @@ function verifyDashboardTabs() {
     }
   })();
 </script>
-<script src="js/backend-api.js"></script>
+<script defer src="js/backend-api.js"></script>
 <!-- AUTHENTICATION - REPLACED manager-auth.js with user-auth.js -->
-<script src="js/user-auth.js?v=20251104-2"></script>
+<script defer src="js/user-auth.js?v=20251104-2"></script>
 <!-- UX-004: Form user experience enhancements -->
-<script src="js/form-ux.js"></script>
+<script defer src="js/form-ux.js"></script>
 
 <!-- GitHub and Event Management -->
 <!--

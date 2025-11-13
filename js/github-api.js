@@ -263,7 +263,19 @@ class GitHubAPI {
 
             console.log('Found ' + eventFiles.length + ' event files in private repo');
 
-            for (const file of eventFiles) {
+            // Get current user once before processing
+            const currentUser = window.userAuth?.getCurrentUser() || window.managerAuth?.getCurrentManager();
+            if (!currentUser) {
+                console.warn('🔒 Skipping event load: no authenticated user');
+                return {};
+            }
+
+            const userUsername = (currentUser.username || '').toLowerCase();
+            const userEmail = (currentUser.email || '').toLowerCase();
+
+            // PERFORMANCE OPTIMIZATION: Load all event blobs in parallel instead of sequentially
+            // This reduces load time from O(n * delay) to O(delay) for n events
+            const eventPromises = eventFiles.map(async (file) => {
                 try {
                     const fileResponse = await window.safeFetchGitHub(
                         window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
@@ -282,15 +294,6 @@ class GitHubAPI {
                         const content = JSON.parse(this.safeBase64Decode(fileData.content));
 
                         // Filter events by authenticated user (supports username-first, email fallback)
-                        const currentUser = window.userAuth?.getCurrentUser() || window.managerAuth?.getCurrentManager();
-                        if (!currentUser) {
-                            console.warn('🔒 Skipping event load: no authenticated user');
-                            continue;
-                        }
-
-                        const userUsername = (currentUser.username || '').toLowerCase();
-                        const userEmail = (currentUser.email || '').toLowerCase();
-
                         const createdBy = (content.createdBy || '').toLowerCase();
                         const createdByUsername = (content.createdByUsername || '').toLowerCase();
 
@@ -298,12 +301,24 @@ class GitHubAPI {
                         const matchesEmail = userEmail && createdBy === userEmail; // Backward-compat for older events
 
                         if (matchesUsername || matchesEmail) {
-                            events[content.id] = content;
                             console.log('✅ Loaded event for owner:', content.title);
+                            return content;
                         }
                     }
+                    return null;
                 } catch (error) {
                     console.error('Failed to load event file ' + file.path + ':', error);
+                    return null;
+                }
+            });
+
+            // Wait for all events to load in parallel
+            const loadedEvents = await Promise.all(eventPromises);
+
+            // Add non-null events to the events object
+            for (const event of loadedEvents) {
+                if (event && event.id) {
+                    events[event.id] = event;
                 }
             }
 
@@ -359,21 +374,47 @@ class GitHubAPI {
             timestamp: null,
             ttl: 5 * 60 * 1000
         };
+        this.responsesCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000
+        };
     }
 
     /**
-     * Load all RSVP responses from GitHub
+     * Load all RSVP responses from GitHub (with caching)
      */
-    async loadResponses() {
+    async loadResponses(options = {}) {
         const token = this.getToken();
         if (!token) {
             console.warn('⚠️ No GitHub token - returning empty responses');
             return {};
         }
 
+        // PERFORMANCE OPTIMIZATION: Check cache first unless force refresh is requested
+        const now = Date.now();
+        const forceRefresh = options.forceRefresh || false;
+
+        // Use a dedicated cache for responses
+        if (!this.responsesCache) {
+            this.responsesCache = {
+                data: null,
+                timestamp: null,
+                ttl: 5 * 60 * 1000 // 5 minutes cache
+            };
+        }
+
+        if (!forceRefresh && this.responsesCache.data && this.responsesCache.timestamp) {
+            const cacheAge = now - this.responsesCache.timestamp;
+            if (cacheAge < this.responsesCache.ttl) {
+                console.log(`📦 Using cached responses (${Math.floor(cacheAge / 1000)}s old)`);
+                return this.responsesCache.data;
+            }
+        }
+
         try {
             console.log('📥 Loading responses from private EventCall-Data repo...');
-            
+
             // Load from PRIVATE repo: EventCall-Data
             const treeResponse = await window.safeFetchGitHub(
                 window.GITHUB_CONFIG.getTreeUrl('data'),
@@ -389,6 +430,11 @@ class GitHubAPI {
 
             if (!treeResponse.ok) {
                 console.log('No responses found or repository not accessible');
+                // Return cached data if available
+                if (this.responsesCache.data) {
+                    console.warn('⚠️ Returning stale cached responses due to error');
+                    return this.responsesCache.data;
+                }
                 return {};
             }
 
@@ -413,12 +459,10 @@ class GitHubAPI {
 
             console.log('Found ' + responseFiles.length + ' RSVP files in private repo');
 
-            for (const file of responseFiles) {
+            // PERFORMANCE OPTIMIZATION: Load all response blobs in parallel instead of sequentially
+            const responsePromises = responseFiles.map(async (file) => {
                 try {
-                    let eventId;
-                    let rsvpArray;
-                    
-                    // Fetch the file content first
+                    // Fetch the file content
                     const fileResponse = await window.safeFetchGitHub(
                         window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
                         {
@@ -431,13 +475,14 @@ class GitHubAPI {
                         'Load file blob from EventCall-Data'
                     );
 
-                    if (!fileResponse.ok) continue;
+                    if (!fileResponse.ok) return null;
 
                     const fileData = await fileResponse.json();
                     const decoded = this.safeBase64Decode(fileData.content);
                     const rawJson = JSON.parse(decoded);
 
                     // Normalize to array and flatten "data" wrapper if present
+                    let rsvpArray;
                     if (Array.isArray(rawJson)) {
                         rsvpArray = rawJson.map(item =>
                             item && item.data
@@ -453,6 +498,7 @@ class GitHubAPI {
                     }
 
                     // Extract eventId from filename or content
+                    let eventId;
                     if (file.path.startsWith('rsvps/') && !file.path.includes('rsvp-')) {
                         // Format: rsvps/{eventId}.json
                         eventId = file.path.replace('rsvps/', '').replace('.json', '');
@@ -463,17 +509,28 @@ class GitHubAPI {
 
                     if (!eventId) {
                         console.warn(`⚠️ Could not extract eventId from RSVP file: ${file.path}`);
-                        continue;
+                        return null;
                     }
 
-                    // Append RSVPs to the event bucket
-                    if (!responses[eventId]) {
-                        responses[eventId] = [];
-                    }
-                    responses[eventId].push(...rsvpArray);
                     console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId} from ${file.path}`);
+                    return { eventId, rsvpArray };
+
                 } catch (error) {
                     console.error('Failed to load response file ' + file.path + ':', error);
+                    return null;
+                }
+            });
+
+            // Wait for all responses to load in parallel
+            const loadedResponses = await Promise.all(responsePromises);
+
+            // Aggregate responses by eventId
+            for (const result of loadedResponses) {
+                if (result && result.eventId && result.rsvpArray) {
+                    if (!responses[result.eventId]) {
+                        responses[result.eventId] = [];
+                    }
+                    responses[result.eventId].push(...result.rsvpArray);
                 }
             }
 
@@ -482,12 +539,16 @@ class GitHubAPI {
             const totalRSVPs = Object.values(responses).reduce((sum, arr) => sum + arr.length, 0);
             console.log(`✅ Loaded responses for ${eventCount} event(s) from private repo`);
             console.log(`📊 Total RSVPs loaded: ${totalRSVPs}`);
-            
+
             // Log per-event breakdown
             Object.entries(responses).forEach(([eventId, rsvps]) => {
                 console.log(`   Event ${eventId}: ${rsvps.length} RSVP(s)`);
             });
-            
+
+            // Update cache
+            this.responsesCache.data = responses;
+            this.responsesCache.timestamp = now;
+
             return responses;
 
         } catch (error) {
@@ -501,6 +562,15 @@ class GitHubAPI {
                 }
             } else if (window.showToast) {
                 window.showToast('Unable to load RSVPs. Please try again.', 'error');
+            }
+
+            // Return cached data if available
+            if (this.responsesCache && this.responsesCache.data) {
+                console.warn('⚠️ Returning stale cached responses due to error');
+                if (window.showToast) {
+                    window.showToast('Showing cached RSVPs - unable to fetch latest', 'warning');
+                }
+                return this.responsesCache.data;
             }
 
             return {};
