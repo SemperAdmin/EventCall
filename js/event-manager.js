@@ -53,14 +53,14 @@ class EventManager {
         } else {
             responseTableHTML = `
                 <div style="text-align: center; padding: 2rem; color: var(--text-color);">
-                    <h3 style="color: var(--semper-navy);">ðŸ“­ No RSVPs Yet</h3>
+                    <h3 style="color: var(--semper-navy);">🔭 No RSVPs Yet</h3>
                     <p>No RSVPs yet. Share your invite link to start collecting responses!</p>
                     <div style="margin-top: 1rem;">
                         <button class="btn btn-success" onclick="syncWithGitHub()" style="margin-right: 0.5rem;">
                             🔗„ Check for New RSVPs
                         </button>
                         <button class="btn" onclick="copyInviteLink('${eventId}')">
-                            🔗— Share Invite Link
+                            🔗 Share Invite Link
                         </button>
                     </div>
                 </div>
@@ -1753,7 +1753,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 <div class="response-stats">
                     <div class="stat">
                         <div class="stat-number" style="color: var(--semper-navy); font-size: 2rem; font-weight: 900;">${stats.totalHeadcount}</div>
-                        <div class="stat-label">ðŸŽ–ï¸ TOTAL HEADCOUNT</div>
+                        <div class="stat-label">🎖️ TOTAL HEADCOUNT</div>
                     </div>
                     <div class="stat">
                         <div class="stat-number" style="color: var(--success-color);">${stats.attending}</div>
@@ -1837,7 +1837,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             const email = response.email || 'N/A';
             const phone = response.phone || 'N/A';
             const source = response.issueNumber ? `GitHub Issue #${response.issueNumber}` : 'Direct Entry';
-            const sourceIcon = response.issueNumber ? '🔗—' : 'ðŸ“';
+            const sourceIcon = response.issueNumber ? '🔗' : '📝';
 
             html += `
                 <tr class="response-row" data-response-index="${index}"
@@ -1880,10 +1880,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <td>
                         <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" 
                                 onclick="eventManager.deleteResponse('${eventId}', ${index})" 
-                                title="Delete this RSVP">ðŸ—‘ï¸</button>
+                                title="Delete this RSVP">🗑️</button>
                         ${response.issueUrl ? `
                             <a href="${response.issueUrl}" target="_blank" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-left: 0.25rem;" title="View GitHub Issue">
-                                🔗—
+                                🔗
                             </a>
                         ` : ''}
                     </td>
@@ -1972,8 +1972,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         
         const statsElement = document.getElementById(`search-stats-${eventId}`);
         statsElement.innerHTML = window.utils.sanitizeHTML(`📊 Showing ${rows.length} of ${rows.length} responses`);
-        
-        showToast('ðŸ§¹ Search cleared', 'success');
+
+        showToast('🧹 Search cleared', 'success');
     }
 
     /**
@@ -1992,7 +1992,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             const success = await copyToClipboard(link);
             
             if (success) {
-                showToast('🔗— Invite link copied to clipboard!', 'success');
+                showToast('🔗 Invite link copied to clipboard!', 'success');
                 
                 // Briefly highlight the input field
                 const input = document.getElementById('invite-link-input');
@@ -2095,7 +2095,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             cancelBtn.type = 'button';
             cancelBtn.id = 'cancel-edit-btn';
             cancelBtn.className = 'btn btn-secondary';
-            cancelBtn.textContent = 'âŒ Cancel Edit';
+            cancelBtn.textContent = '❌ Cancel Edit';
             cancelBtn.style.marginLeft = '0.5rem';
             cancelBtn.onclick = () => this.cancelEdit();
             submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
@@ -2122,7 +2122,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 // Escape dynamic attribute value to prevent injection.
                 questionItem.innerHTML = `
                     <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${window.utils.escapeHTML(q.question || '')}">
-                    <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">ðŸ—‘ï¸</button>
+                    <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
                 `;
                 container.appendChild(questionItem);
             });
@@ -2143,7 +2143,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
         // Reset submit button
         const submitBtn = document.querySelector('#event-form button[type="submit"]');
-        submitBtn.textContent = 'ðŸš€ Deploy Event';
+        submitBtn.textContent = '🚀 Deploy Event';
         submitBtn.style.background = '';
 
         // Remove cancel button
@@ -2241,7 +2241,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         this.populateCustomQuestions(duplicatedEvent.customQuestions || []);
 
         showPage('create');
-        showToast('ðŸ“‹ Event duplicated - modify details and deploy', 'success');
+        showToast('📋 Event duplicated - modify details and deploy', 'success');
     }
 
     /**
@@ -2314,7 +2314,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
             // Refresh the event management view
             this.showEventManagement(eventId);
-            showToast('ðŸ—‘ï¸ RSVP response deleted successfully', 'success');
+            showToast('🗑️ RSVP response deleted successfully', 'success');
 
         } catch (error) {
             console.error('Failed to delete response:', error);
