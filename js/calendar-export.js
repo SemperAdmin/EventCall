@@ -204,15 +204,17 @@ END:VCALENDAR`;
      * Generate calendar button HTML
      */
     generateCalendarButtonsHTML(event, buttonClass = 'btn') {
+        const escapedEvent = JSON.stringify(event).replace(/"/g, '&quot;');
+
         return `
-            <div class="calendar-export-buttons" style="display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0;">
-                <button type="button" class="${buttonClass}" onclick="window.calendarExport.openCalendar('google', getEventFromURL())">
+            <div class="calendar-export-buttons" style="display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0;" data-event="${escapedEvent}">
+                <button type="button" class="${buttonClass}" onclick="window.calendarExport.openCalendarFromButtons(this, 'google')">
                     📅 Add to Google Calendar
                 </button>
-                <button type="button" class="${buttonClass}" onclick="window.calendarExport.openCalendar('outlook', getEventFromURL())">
+                <button type="button" class="${buttonClass}" onclick="window.calendarExport.openCalendarFromButtons(this, 'outlook')">
                     📅 Add to Outlook
                 </button>
-                <button type="button" class="${buttonClass}" onclick="window.calendarExport.downloadICS(getEventFromURL())">
+                <button type="button" class="${buttonClass}" onclick="window.calendarExport.openCalendarFromButtons(this, 'ics')">
                     📥 Download ICS File
                 </button>
             </div>
@@ -223,22 +225,26 @@ END:VCALENDAR`;
      * Generate dropdown calendar button HTML
      */
     generateCalendarDropdownHTML(event) {
+        // Store event data for calendar operations
+        const eventId = event?.id || 'calendar-event';
+        const escapedEvent = JSON.stringify(event).replace(/"/g, '&quot;');
+
         return `
-            <div class="calendar-dropdown-container" style="position: relative; display: inline-block;">
+            <div class="calendar-dropdown-container" style="position: relative; display: inline-block;" data-event-id="${eventId}">
                 <button type="button" class="btn" onclick="window.calendarExport.toggleCalendarDropdown(event)">
                     📅 Add to Calendar ▼
                 </button>
-                <div class="calendar-dropdown" style="display: none; position: absolute; top: 100%; left: 0; min-width: 200px; background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 100; margin-top: 0.25rem;">
-                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendar('google', getEventFromURL()); window.calendarExport.closeCalendarDropdown()">
+                <div class="calendar-dropdown" style="display: none; position: absolute; top: 100%; left: 0; min-width: 200px; background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 100; margin-top: 0.25rem;" data-event="${escapedEvent}">
+                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendarFromDropdown(this, 'google')">
                         📅 Google Calendar
                     </button>
-                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendar('outlook', getEventFromURL()); window.calendarExport.closeCalendarDropdown()">
+                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendarFromDropdown(this, 'outlook')">
                         📅 Outlook
                     </button>
-                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendar('yahoo', getEventFromURL()); window.calendarExport.closeCalendarDropdown()">
+                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendarFromDropdown(this, 'yahoo')">
                         📅 Yahoo
                     </button>
-                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.downloadICS(getEventFromURL()); window.calendarExport.closeCalendarDropdown()">
+                    <button type="button" class="calendar-dropdown-item" onclick="window.calendarExport.openCalendarFromDropdown(this, 'ics')">
                         📥 Download ICS
                     </button>
                 </div>
@@ -296,6 +302,71 @@ END:VCALENDAR`;
         document.querySelectorAll('.calendar-dropdown').forEach(dropdown => {
             dropdown.style.display = 'none';
         });
+    }
+
+    /**
+     * Open calendar from button list (retrieves event data from parent)
+     */
+    openCalendarFromButtons(buttonElement, type) {
+        try {
+            // Get the button container that has the event data
+            const container = buttonElement.closest('.calendar-export-buttons');
+            if (!container) {
+                console.error('Could not find calendar buttons container');
+                showToast('❌ Calendar export failed', 'error');
+                return;
+            }
+
+            // Retrieve event data from data attribute
+            const eventDataStr = container.getAttribute('data-event');
+            if (!eventDataStr) {
+                console.error('No event data found in container');
+                showToast('❌ No event data available', 'error');
+                return;
+            }
+
+            // Parse event data
+            const event = JSON.parse(eventDataStr);
+
+            // Open calendar
+            this.openCalendar(type, event);
+        } catch (error) {
+            console.error('Error opening calendar from buttons:', error);
+            showToast('❌ Calendar export failed', 'error');
+        }
+    }
+
+    /**
+     * Open calendar from dropdown item (retrieves event data from parent)
+     */
+    openCalendarFromDropdown(buttonElement, type) {
+        try {
+            // Get the dropdown parent that contains the event data
+            const dropdown = buttonElement.closest('.calendar-dropdown');
+            if (!dropdown) {
+                console.error('Could not find calendar dropdown parent');
+                showToast('❌ Calendar export failed', 'error');
+                return;
+            }
+
+            // Retrieve event data from data attribute
+            const eventDataStr = dropdown.getAttribute('data-event');
+            if (!eventDataStr) {
+                console.error('No event data found in dropdown');
+                showToast('❌ No event data available', 'error');
+                return;
+            }
+
+            // Parse event data
+            const event = JSON.parse(eventDataStr);
+
+            // Close dropdown and open calendar
+            this.closeCalendarDropdown();
+            this.openCalendar(type, event);
+        } catch (error) {
+            console.error('Error opening calendar from dropdown:', error);
+            showToast('❌ Calendar export failed', 'error');
+        }
     }
 }
 
