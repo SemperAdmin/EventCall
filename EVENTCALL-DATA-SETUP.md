@@ -44,11 +44,27 @@ Each user needs a JSON file in `users/` directory. Create `users/semperadmin.jso
 }
 ```
 
-### Critical Fields
+### Required Fields
 
+- **`id`** - Unique user identifier. Format: `user_<username>`
 - **`username`** - Must match login username (lowercase)
-- **`role`** - Set to `"admin"` for admin users, `"user"` for regular users
-- **`id`** - Format: `user_<username>`
+- **`name`** - User's full name for display
+- **`email`** - User's email address
+- **`role`** - User permission level:
+  - `"admin"` - Full access to admin dashboard and all features
+  - `"user"` - Standard user access (default for new registrations)
+- **`created`** - ISO 8601 timestamp when user was created
+
+### Optional Fields
+
+- **`branch`** - Military branch (e.g., "Army", "Navy", "Air Force", "Marines", "Coast Guard")
+  - Leave empty (`""`) if not applicable
+  - Used for display and filtering in military contexts
+- **`rank`** - Military rank (e.g., "E-4", "O-3", "SSG", "CPT")
+  - Leave empty (`""`) if not applicable
+  - Displayed with user's name when present
+- **`lastLogin`** - ISO 8601 timestamp of last successful login
+  - Updated automatically by the system
 
 ## Verify Setup
 
