@@ -110,11 +110,6 @@ function createInviteWithoutImageHTML(event, eventId) {
                 ${createEventDetailsHTML(event.eventDetails)}
                 ${createRSVPSettingsHTML(event)}
             </div>
-            <div style="margin: 1.5rem 0; text-align: center;">
-                <div style="display: inline-block;">
-                    ${window.calendarExport ? window.calendarExport.generateCalendarDropdownHTML(event) : ''}
-                </div>
-            </div>
             ${createRSVPFormHTML(event, eventId)}
             <div class="invite-powered-by">
                 <div class="powered-by-text">Powered by</div>
@@ -930,11 +925,6 @@ function createInviteWithImageHTML(event, eventId) {
                 ` : ''}
                 ${createEventDetailsHTML(event.eventDetails)}
                 ${createRSVPSettingsHTML(event)}
-            </div>
-            <div style="margin: 1.5rem 0; text-align: center;">
-                <div style="display: inline-block;">
-                    ${window.calendarExport ? window.calendarExport.generateCalendarDropdownHTML(event) : ''}
-                </div>
             </div>
             ${createRSVPFormHTML(event, eventId)}
             <div class="invite-powered-by">
