@@ -532,42 +532,50 @@ const userAuth = {
     },
 
     /**
-     * Fetch full user data from EventCall-Data repository
+     * Fetch full user data from published users-index.json (secure - no token needed)
      */
     async fetchUserData(username) {
         try {
-            const dataRepoOwner = window.GITHUB_CONFIG.dataOwner || window.GITHUB_CONFIG.owner;
-            const dataRepo = window.GITHUB_CONFIG.dataRepo || 'EventCall-Data';
-            const userFilePath = `users/${username}.json`;
+            const owner = window.GITHUB_CONFIG?.owner || 'SemperAdmin';
+            const repo = window.GITHUB_CONFIG?.repo || 'EventCall';
+            const indexUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/users-index.json`;
 
-            console.log(`📂 Fetching user data from ${dataRepoOwner}/${dataRepo}/${userFilePath}`);
+            console.log(`📂 Fetching user data for '${username}' from published users-index.json`);
 
-            const response = await fetch(
-                `https://api.github.com/repos/${dataRepoOwner}/${dataRepo}/contents/${userFilePath}`,
-                {
-                    headers: {
-                        'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
+            const response = await fetch(indexUrl, {
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'EventCall-App'
                 }
-            );
+            });
 
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`❌ GitHub API error: ${response.status}`, errorText);
-                throw new Error(`Failed to fetch user data: ${response.status} - ${errorText}`);
+                console.error(`❌ Failed to fetch users index: ${response.status}`);
+                throw new Error(`Failed to fetch users index: ${response.status}`);
             }
 
-            const data = await response.json();
-            console.log('📦 GitHub API response received');
+            const allUsers = await response.json();
+            console.log('📦 Users index loaded');
 
-            // Decode base64 content (remove newlines first)
-            const content = atob(data.content.replace(/\n/g, ''));
-            console.log('🔓 Base64 decoded, parsing JSON...');
+            // Ensure it's an array
+            const userArray = Array.isArray(allUsers) ? allUsers : [];
+            console.log(`🔍 Searching for user '${username}' in ${userArray.length} users`);
 
-            const userData = JSON.parse(content);
+            // Find the specific user (case-insensitive username match)
+            const userData = userArray.find(u =>
+                u && u.username && u.username.toLowerCase() === username.toLowerCase()
+            );
+
+            if (!userData) {
+                console.warn(`⚠️ User '${username}' not found in published index`);
+                console.warn('💡 This can happen if:');
+                console.warn('   1. User just registered (wait for workflow to sync)');
+                console.warn('   2. users-index.json is not yet published');
+                console.warn('   3. Username is incorrect');
+                return null;
+            }
+
             console.log('✅ User data fetched successfully:', { username: userData.username, name: userData.name });
-
             return userData;
 
         } catch (error) {

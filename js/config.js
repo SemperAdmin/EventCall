@@ -12,8 +12,10 @@ const GITHUB_CONFIG = {
     imageRepo: 'EventCall-Images',  // Public repository for event cover images
     branch: 'main',
 
-    // NO TOKEN IN CLIENT CODE - Token stored securely in GitHub Secrets
-    token: null,
+    // TODO: Add a dispatch token for triggering workflows
+    // This token ONLY needs 'public_repo' or 'workflow' scope for the EventCall repo
+    // It does NOT need access to EventCall-Data (that uses EVENTCALL_MANAGER_TOKEN in GitHub Secrets)
+    token: null,  // Set this to your dispatch token to enable workflow triggers
 
     // Use GitHub Actions workflows for all data operations
     useWorkflowBackend: true,
@@ -84,7 +86,8 @@ const AUTH_CONFIG = {
     // Simple client-side authentication mode (no GitHub workflow/polling)
     // When enabled, login validates locally and grants access on success.
     // Set to false to use server-side GitHub Actions for auth and persistence.
-    simpleAuth: false,
+    // TEMPORARY: Set to true until dispatch token is added
+    simpleAuth: true,
     // Force backend workflow dispatch and issue polling even on localhost.
     // Enable this in local dev to test real saving to EventCall-Data.
     forceBackendInDev: false,
@@ -96,7 +99,9 @@ const AUTH_CONFIG = {
     // Optional static users for simple auth. If empty, any non-empty
     // username/password pair will be accepted for demo purposes.
     users: [
-        // Example user (uncomment and customize as needed):
+        // Admin user
+        { username: 'semperadmin', password: 'admin', name: 'Admin', rank: 'Admin', role: 'admin' },
+        // Example users (customize as needed):
         // { username: 'demo', password: 'demo123', name: 'Demo User', rank: 'Guest', role: 'user' }
     ]
 };
