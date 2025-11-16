@@ -134,134 +134,168 @@ function createRSVPFormHTML(event, eventId) {
         <div class="rsvp-form">
             <h3>RSVP</h3>
             <form id="rsvp-form" data-event-id="${eventId}">
-                <div class="form-group">
-                    <label for="rsvp-name">Full Name *</label>
-                    <input type="text" id="rsvp-name" name="name" autocomplete="name" required placeholder="Enter your full name" style="min-height: 44px;">
-                </div>
-
-                <div class="form-group">
-                    <label for="rsvp-email">Email Address *</label>
-                    <input type="email" id="rsvp-email" name="email" autocomplete="email" required placeholder="your.email@example.com" inputmode="email" style="min-height: 44px;">
-                </div>
-
-                <div class="form-group">
-                    <label for="rsvp-phone">Phone Number</label>
-                    <div style="display:flex; gap:0.5rem; align-items:center;">
-                      <select id="rsvp-country" style="min-height:44px;">
-                        <option value="US">🇺🇸 US</option>
-                        <option value="CA">🇨🇦 CA</option>
-                        <option value="GB">🇬🇧 UK</option>
-                        <option value="AU">🇦🇺 AU</option>
-                        <option value="DE">🇩🇪 DE</option>
-                      </select>
-                      <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" style="min-height: 44px; flex:1;">
-                    </div>
-                </div>
-
-                <!-- Military Information (Optional) -->
-                <div style="margin: 1.5rem 0; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
-                    <div style="font-weight: 600; margin-bottom: 0.75rem; color: #1e40af;">🎖️ Military Information (Optional)</div>
-
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label for="branch">Service Branch</label>
-                        <select id="branch" onchange="window.updateRanksForBranch && window.updateRanksForBranch()" style="min-height: 44px; font-size: 16px;">
-                            <option value="">Select service branch...</option>
-                            ${window.MilitaryData ? window.MilitaryData.branches.map(b =>
-                                `<option value="${b.value}">${b.label}</option>`
-                            ).join('') : ''}
-                        </select>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label for="rank">Rank</label>
-                        <select id="rank" style="min-height: 44px; font-size: 16px;" disabled>
-                            <option value="">Select service branch first...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="unit">Unit</label>
-                        <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" style="min-height: 44px;">
-                    </div>
-                </div>
-
-                ${event.requiresMealChoice ? `
-                    <div class="form-group">
-                        <label>Dietary Restrictions (Optional)</label>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="vegetarian" style="margin-right: 0.5rem;">
-                                <span>🥗 Vegetarian</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="vegan" style="margin-right: 0.5rem;">
-                                <span>🌱 Vegan</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="gluten-free" style="margin-right: 0.5rem;">
-                                <span>🌾 Gluten-Free</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="dairy-free" style="margin-right: 0.5rem;">
-                                <span>🥛 Dairy-Free</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="halal" style="margin-right: 0.5rem;">
-                                <span>☪️ Halal</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="kosher" style="margin-right: 0.5rem;">
-                                <span>✡️ Kosher</span>
-                            </label>
-                        </div>
-                        <div style="margin-top: 0.75rem;">
-                            <input type="text" id="allergy-details" placeholder="Other allergies or dietary needs..." style="min-height: 44px;">
-                        </div>
-                    </div>
-                ` : ''}
-
-                ${event.askReason ? `
-                    <div class="form-group">
-                        <label for="reason">Why are you attending? (Optional)</label>
-                        <textarea id="reason" placeholder="Share your thoughts..." rows="3"></textarea>
-                    </div>
-                ` : ''}
-
-                <div class="form-group">
-                  <button type="button" id="rsvp-start-over" class="btn-secondary">Start Over</button>
-                </div>
-                
-                ${createCustomQuestionsHTML(event.customQuestions || [])}
-                
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Will you be attending? *</label>
-                    <div style="display: flex; gap: 1rem;">
-                        <label class="rsvp-radio-option">
-                            <input type="radio" name="attending" value="true" required onchange="toggleGuestCount(true)">
+                <!-- Attending Decision - MOVED TO TOP -->
+                <div style="margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 1rem; border: 3px solid #3b82f6;">
+                    <label style="font-weight: 700; margin-bottom: 1rem; display: block; font-size: 1.1rem; color: #1e40af; text-align: center;">Will you be attending? *</label>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <label class="rsvp-radio-option" style="flex: 1; min-width: 140px;">
+                            <input type="radio" name="attending" value="true" required onchange="toggleAttendingFields(true)">
                             <span>✅ Yes, I'll be there!</span>
                         </label>
-                        <label class="rsvp-radio-option">
-                            <input type="radio" name="attending" value="false" required onchange="toggleGuestCount(false)">
+                        <label class="rsvp-radio-option" style="flex: 1; min-width: 140px;">
+                            <input type="radio" name="attending" value="false" required onchange="toggleAttendingFields(false)">
                             <span>❌ Can't make it</span>
                         </label>
                     </div>
                 </div>
 
-                ${event.allowGuests ? `
-                    <div class="form-group" id="guest-count-group" style="display: none;">
-                        <label for="guest-count">How many additional guests will you bring?</label>
-                        <select id="guest-count" style="min-height: 44px; font-size: 16px;">
-                            <option value="0">Just me</option>
-                            <option value="1">+1 guest</option>
-                            <option value="2">+2 guests</option>
-                            <option value="3">+3 guests</option>
-                            <option value="4">+4 guests</option>
-                            <option value="5">+5 guests</option>
-                        </select>
-                    </div>
-                ` : ''}
+                <!-- Fields for DECLINE - Minimal info needed -->
+                <div id="decline-fields" style="display: none;">
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1.5rem; font-size: 0.95rem;">
+                        We're sorry you can't make it! Please provide your name and email so we can update our records.
+                    </p>
 
-                <div style="text-align: center; margin-top: 1.5rem;">
+                    <div class="form-group">
+                        <label for="rsvp-name-decline">Full Name *</label>
+                        <input type="text" id="rsvp-name-decline" name="name" autocomplete="name" placeholder="Enter your full name" style="min-height: 44px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rsvp-email-decline">Email Address *</label>
+                        <input type="email" id="rsvp-email-decline" name="email" autocomplete="email" placeholder="your.email@example.com" inputmode="email" style="min-height: 44px;">
+                    </div>
+
+                    ${event.askReason ? `
+                        <div class="form-group">
+                            <label for="reason-decline">Would you like to share why you can't attend? (Optional)</label>
+                            <textarea id="reason-decline" placeholder="Let us know if you'd like..." rows="3"></textarea>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Fields for ACCEPT - Full details needed -->
+                <div id="accept-fields" style="display: none;">
+                    <p style="text-align: center; color: #059669; margin-bottom: 1.5rem; font-size: 0.95rem; font-weight: 600;">
+                        Great! Please provide your details below.
+                    </p>
+
+                    <div class="form-group">
+                        <label for="rsvp-name">Full Name *</label>
+                        <input type="text" id="rsvp-name" name="name" autocomplete="name" placeholder="Enter your full name" style="min-height: 44px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rsvp-email">Email Address *</label>
+                        <input type="email" id="rsvp-email" name="email" autocomplete="email" placeholder="your.email@example.com" inputmode="email" style="min-height: 44px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rsvp-phone">Phone Number</label>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                          <select id="rsvp-country" style="min-height:44px;" aria-label="Country code">
+                            <option value="US">🇺🇸 US</option>
+                            <option value="CA">🇨🇦 CA</option>
+                            <option value="GB">🇬🇧 UK</option>
+                            <option value="AU">🇦🇺 AU</option>
+                            <option value="DE">🇩🇪 DE</option>
+                          </select>
+                          <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" style="min-height: 44px; flex:1;">
+                        </div>
+                    </div>
+
+                    ${event.allowGuests ? `
+                        <div class="form-group" id="guest-count-group">
+                            <label for="guest-count">How many additional guests will you bring?</label>
+                            <select id="guest-count" style="min-height: 44px; font-size: 16px;">
+                                <option value="0">Just me</option>
+                                <option value="1">+1 guest</option>
+                                <option value="2">+2 guests</option>
+                                <option value="3">+3 guests</option>
+                                <option value="4">+4 guests</option>
+                                <option value="5">+5 guests</option>
+                            </select>
+                        </div>
+                    ` : ''}
+
+                    ${event.requiresMealChoice ? `
+                        <div class="form-group">
+                            <label>Dietary Restrictions (Optional)</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="vegetarian" style="margin-right: 0.5rem;">
+                                    <span>Vegetarian</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="vegan" style="margin-right: 0.5rem;">
+                                    <span>Vegan</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="gluten-free" style="margin-right: 0.5rem;">
+                                    <span>Gluten-Free</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="dairy-free" style="margin-right: 0.5rem;">
+                                    <span>Dairy-Free</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="halal" style="margin-right: 0.5rem;">
+                                    <span>Halal</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="kosher" style="margin-right: 0.5rem;">
+                                    <span>Kosher</span>
+                                </label>
+                            </div>
+                            <div style="margin-top: 0.75rem;">
+                                <input type="text" id="allergy-details" placeholder="Other allergies or dietary needs..." style="min-height: 44px;">
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Military Information (Optional) - Collapsed by default -->
+                    <details style="margin: 1.5rem 0; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
+                        <summary style="font-weight: 600; margin-bottom: 0.75rem; color: #1e40af; cursor: pointer; list-style-position: outside;">
+                            🎖️ Military Information (Optional - Click to expand)
+                        </summary>
+
+                        <div class="form-group" style="margin-bottom: 1rem; margin-top: 1rem;">
+                            <label for="branch">Service Branch</label>
+                            <select id="branch" onchange="window.updateRanksForBranch && window.updateRanksForBranch()" style="min-height: 44px; font-size: 16px;">
+                                <option value="">Select service branch...</option>
+                                ${window.MilitaryData ? window.MilitaryData.branches.map(b =>
+                                    `<option value="${b.value}">${b.label}</option>`
+                                ).join('') : ''}
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="rank">Rank</label>
+                            <select id="rank" style="min-height: 44px; font-size: 16px;" disabled>
+                                <option value="">Select service branch first...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="unit">Unit</label>
+                            <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" style="min-height: 44px;">
+                        </div>
+                    </details>
+
+                    ${createCustomQuestionsHTML(event.customQuestions || [])}
+
+                    ${event.askReason ? `
+                        <div class="form-group">
+                            <label for="reason">Why are you attending? (Optional)</label>
+                            <textarea id="reason" placeholder="Share your thoughts..." rows="3"></textarea>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div class="form-group" id="start-over-container" style="display: none; text-align: center;">
+                  <button type="button" id="rsvp-start-over" class="btn-secondary" style="min-height: 44px;">🔄 Clear Form</button>
+                </div>
+
+                <div id="submit-container" style="display: none; text-align: center; margin-top: 1.5rem;">
                     <button type="submit" class="btn" style="min-height: 48px; padding: 0.875rem 2rem; font-size: 1.1rem;">📝 Submit RSVP</button>
                 </div>
             </form>
@@ -402,21 +436,79 @@ function createCustomQuestionsHTML(customQuestions) {
 }
 
 /**
- * Toggle guest count visibility
+ * Toggle attending/declining fields based on user selection
+ */
+function toggleAttendingFields(attending) {
+    const acceptFields = document.getElementById('accept-fields');
+    const declineFields = document.getElementById('decline-fields');
+    const submitContainer = document.getElementById('submit-container');
+    const startOverContainer = document.getElementById('start-over-container');
+
+    if (attending) {
+        // User is attending - show full form
+        if (acceptFields) acceptFields.style.display = 'block';
+        if (declineFields) declineFields.style.display = 'none';
+
+        // Smooth scroll to the accept fields
+        setTimeout(() => {
+            if (acceptFields) {
+                acceptFields.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                // Focus on first input
+                const firstInput = acceptFields.querySelector('input[type="text"], input[type="email"]');
+                if (firstInput) {
+                    setTimeout(() => firstInput.focus(), 300);
+                }
+            }
+        }, 100);
+    } else {
+        // User is declining - show minimal form
+        if (declineFields) declineFields.style.display = 'block';
+        if (acceptFields) acceptFields.style.display = 'none';
+
+        // Smooth scroll to the decline fields
+        setTimeout(() => {
+            if (declineFields) {
+                declineFields.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                // Focus on first input
+                const firstInput = declineFields.querySelector('input[type="text"]');
+                if (firstInput) {
+                    setTimeout(() => firstInput.focus(), 300);
+                }
+            }
+        }, 100);
+    }
+
+    // Show submit button and start over button once choice is made
+    if (submitContainer) submitContainer.style.display = 'block';
+    if (startOverContainer) startOverContainer.style.display = 'block';
+
+    // Clear validation states when switching
+    clearAllValidationStates();
+}
+
+/**
+ * Clear all validation states from form fields
+ */
+function clearAllValidationStates() {
+    const form = document.getElementById('rsvp-form');
+    if (!form) return;
+
+    form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
+        el.classList.remove('is-valid', 'is-invalid');
+        el.removeAttribute('aria-invalid');
+        el.removeAttribute('aria-describedby');
+    });
+
+    form.querySelectorAll('.form-error').forEach(err => err.remove());
+}
+
+/**
+ * Toggle guest count visibility (legacy - kept for compatibility)
  */
 function toggleGuestCount(attending) {
-    const guestCountGroup = document.getElementById('guest-count-group');
-    if (guestCountGroup) {
-        if (attending) {
-            guestCountGroup.style.display = 'block';
-        } else {
-            guestCountGroup.style.display = 'none';
-            const guestCountSelect = document.getElementById('guest-count');
-            if (guestCountSelect) {
-                guestCountSelect.value = '0';
-            }
-        }
-    }
+    // This function is now integrated into toggleAttendingFields
+    // Kept for backward compatibility but does nothing
+    console.log('toggleGuestCount called (legacy) - now handled by toggleAttendingFields');
 }
 
 /**
@@ -466,6 +558,48 @@ async function setupRSVPForm() {
 
     // Setup military rank dropdown
     setupMilitaryRankDropdown();
+
+    // Setup "Start Over" / "Clear Form" button
+    const startOverBtn = document.getElementById('rsvp-start-over');
+    if (startOverBtn) {
+        startOverBtn.addEventListener('click', function() {
+            const form = document.getElementById('rsvp-form');
+            if (form && confirm('Are you sure you want to clear the form and start over?')) {
+                // Reset the form
+                form.reset();
+
+                // Hide all conditional sections
+                const acceptFields = document.getElementById('accept-fields');
+                const declineFields = document.getElementById('decline-fields');
+                const submitContainer = document.getElementById('submit-container');
+                const startOverContainer = document.getElementById('start-over-container');
+
+                if (acceptFields) acceptFields.style.display = 'none';
+                if (declineFields) declineFields.style.display = 'none';
+                if (submitContainer) submitContainer.style.display = 'none';
+                if (startOverContainer) startOverContainer.style.display = 'none';
+
+                // Clear validation states
+                clearAllValidationStates();
+
+                // Scroll back to attending decision
+                const attendingSection = form.querySelector('[name="attending"]');
+                if (attendingSection) {
+                    attendingSection.closest('div').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                // Clear autosave if exists
+                try {
+                    const event = getEventFromURL();
+                    if (event && event.id) {
+                        localStorage.removeItem(`form:rsvp:${event.id}`);
+                    }
+                } catch (e) {
+                    console.warn('Could not clear autosave:', e);
+                }
+            }
+        });
+    }
 
     // CRITICAL: Attach form submit handler to prevent navigation
     const rsvpForm = document.getElementById('rsvp-form');
@@ -801,6 +935,8 @@ function updateRanksForBranch() {
 // Make functions globally available
 window.loadInviteContentDirect = loadInviteContentDirect;
 window.toggleGuestCount = toggleGuestCount;
+window.toggleAttendingFields = toggleAttendingFields;
+window.clearAllValidationStates = clearAllValidationStates;
 window.getEventFromURL = getEventFromURL;
 window.isEventInPast = isEventInPast;
 window.formatDate = formatDate;
