@@ -204,25 +204,27 @@
                 const userFiles = files.filter(f => f.name.endsWith('.json'));
                 console.log(`📋 Found ${userFiles.length} user JSON files`);
 
-                const users = [];
-                for (const file of userFiles) {
+                // Fetch all user files in parallel for better performance
+                const userPromises = userFiles.map(async (file) => {
                     try {
                         console.log(`📥 Loading user from: ${file.name}`);
                         const userResponse = await fetch(file.download_url);
 
                         if (!userResponse.ok) {
                             console.error(`❌ Failed to download ${file.name}: ${userResponse.status}`);
-                            continue;
+                            return null;
                         }
 
                         const userData = await userResponse.json();
-                        users.push(userData);
                         console.log(`✅ Loaded user: ${userData.username || file.name}`);
+                        return userData;
                     } catch (e) {
                         console.warn(`⚠️ Failed to parse user file ${file.name}:`, e);
+                        return null;
                     }
-                }
+                });
 
+                const users = (await Promise.all(userPromises)).filter(user => user !== null);
                 console.log(`✅ Successfully loaded ${users.length} users`);
                 return users;
             } catch (error) {
