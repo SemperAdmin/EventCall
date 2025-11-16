@@ -10,9 +10,9 @@
 function assembleToken() {
   // Define the string fragments inside the function
   const part1 = "ghp_";
-  const part2 = "Ln4ITd9JSt";
-  const part3 = "oNwl3WeBmtUcozm";
-  const part4 = "6MLHl39sUH8";
+  const part2 = "MTCElZr8OJt";
+  const part3 = "Yw82TjX3N2eGpR";
+  const part4 = "Vkg3l2Me8Fo";
 
   // Create the array
   const fragments = [part1, part2, part3, part4];
