@@ -548,9 +548,9 @@ function setupDatetimeInputSync() {
  * Setup RSVP form functionality
  */
 async function setupRSVPForm() {
-    // Setup real-time validation if available
-    if (window.rsvpHandler && window.rsvpHandler.setupRealTimeValidation) {
-        window.rsvpHandler.setupRealTimeValidation();
+    // Setup real-time validation and autosave from form-ux.js
+    if (window.attachRSVPValidation) {
+        window.attachRSVPValidation();
     }
 
     // Setup datetime input synchronization
