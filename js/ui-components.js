@@ -190,22 +190,13 @@ function createRSVPFormHTML(event, eventId) {
                     </div>
 
                     <div class="form-group">
-                        <label for="rsvp-phone">Phone Number</label>
-                        <div style="display:flex; gap:0.5rem; align-items:center;">
-                          <select id="rsvp-country" style="min-height:44px;" aria-label="Country code">
-                            <option value="US">🇺🇸 US</option>
-                            <option value="CA">🇨🇦 CA</option>
-                            <option value="GB">🇬🇧 UK</option>
-                            <option value="AU">🇦🇺 AU</option>
-                            <option value="DE">🇩🇪 DE</option>
-                          </select>
-                          <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" style="min-height: 44px; flex:1;">
-                        </div>
+                        <label for="rsvp-phone">Phone Number <span style="color: #6b7280; font-weight: 400;">(Optional)</span></label>
+                        <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" style="min-height: 44px;">
                     </div>
 
                     ${event.allowGuests ? `
                         <div class="form-group" id="guest-count-group">
-                            <label for="guest-count">How many additional guests will you bring?</label>
+                            <label for="guest-count">How many additional guests will you bring? <span style="color: #6b7280; font-weight: 400;">(Optional)</span></label>
                             <select id="guest-count" style="min-height: 44px; font-size: 16px;">
                                 <option value="0">Just me</option>
                                 <option value="1">+1 guest</option>
@@ -253,9 +244,9 @@ function createRSVPFormHTML(event, eventId) {
                     ` : ''}
 
                     <!-- Military Information (Optional) - Collapsed by default -->
-                    <details style="margin: 1.5rem 0; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
-                        <summary style="font-weight: 600; margin-bottom: 0.75rem; color: #1e40af; cursor: pointer; list-style-position: outside;">
-                            🎖️ Military Information (Optional - Click to expand)
+                    <details style="margin: 1.5rem 0; padding: 1rem; background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 0.5rem;">
+                        <summary style="font-weight: 500; margin-bottom: 0.75rem; color: #475569; cursor: pointer; list-style-position: outside;">
+                            🎖️ Military Information <span style="color: #94a3b8; font-weight: 400;">(Optional - Click to expand)</span>
                         </summary>
 
                         <div class="form-group" style="margin-bottom: 1rem; margin-top: 1rem;">
@@ -426,9 +417,10 @@ function createCustomQuestionsHTML(customQuestions) {
                 inputHTML = `<textarea id="${q.id}" class="custom-question-response" data-question-type="text" placeholder="Your answer..." rows="3"></textarea>`;
         }
 
+        const requiredIndicator = q.required ? ' *' : ' <span style="color: #6b7280; font-weight: 400;">(Optional)</span>';
         return `
             <div class="form-group">
-                <label for="${q.id}">${window.utils.escapeHTML(q.question)}</label>
+                <label for="${q.id}">${window.utils.escapeHTML(q.question)}${requiredIndicator}</label>
                 ${inputHTML}
             </div>
         `;
