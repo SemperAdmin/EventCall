@@ -20,27 +20,15 @@ jobs:
         run: |
           echo "Fetching events from private repo..."
 
-          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.EVENTCALL_MANAGER_TOKEN }}" \
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
             "https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/events")
-
-          if [ $? -ne 0 ]; then
-            echo "Failed to fetch events directory"
-            echo "[]" > combined-events.json
-            exit 0
-          fi
-
+          
           echo "$RESPONSE" > events-list.json
-
+          
           echo "[]" > all-events.json
-
-          # Fetch each event file using API endpoint (not download_url for private repos)
-          for url in $(echo "$RESPONSE" | jq -r '.[] | select(.name | endswith(".json")) | .url'); do
-            echo "Fetching: $url"
-            EVENT_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.EVENTCALL_MANAGER_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" "$url")
-
-            # Decode base64 content
-            EVENT_DATA=$(echo "$EVENT_RESPONSE" | jq -r '.content' | base64 -d)
+          
+          for file in $(echo "$RESPONSE" | jq -r '.[] | select(.name | endswith(".json")) | .download_url'); do
+            EVENT_DATA=$(curl -s -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" "$file")
             echo "$EVENT_DATA" >> all-events.json
           done
           
