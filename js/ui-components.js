@@ -133,6 +133,21 @@ function createRSVPFormHTML(event, eventId) {
     return `
         <div class="rsvp-form">
             <h3>RSVP</h3>
+
+            <!-- Progress Indicator -->
+            <div id="form-progress-container" style="margin-bottom: 1.5rem; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Form Progress</span>
+                        <span id="autosave-indicator" style="font-size: 0.75rem; color: #10b981; opacity: 0; transition: opacity 0.3s ease;">✓ Saved</span>
+                    </div>
+                    <span id="form-progress-text" style="font-size: 0.875rem; color: #059669; font-weight: 600;">0%</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                    <div id="form-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981 0%, #059669 100%); transition: width 0.3s ease; border-radius: 4px;"></div>
+                </div>
+            </div>
+
             <form id="rsvp-form" data-event-id="${eventId}">
                 <!-- Attending Decision - MOVED TO TOP -->
                 <div style="margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 1rem; border: 3px solid #3b82f6;">
@@ -157,18 +172,18 @@ function createRSVPFormHTML(event, eventId) {
 
                     <div class="form-group">
                         <label for="rsvp-name-decline">Full Name *</label>
-                        <input type="text" id="rsvp-name-decline" name="name" autocomplete="name" placeholder="Enter your full name" style="min-height: 44px;">
+                        <input type="text" id="rsvp-name-decline" name="name" autocomplete="name" placeholder="John Smith" style="min-height: 44px;">
                     </div>
 
                     <div class="form-group">
                         <label for="rsvp-email-decline">Email Address *</label>
-                        <input type="email" id="rsvp-email-decline" name="email" autocomplete="email" placeholder="your.email@example.com" inputmode="email" style="min-height: 44px;">
+                        <input type="email" id="rsvp-email-decline" name="email" autocomplete="email" placeholder="john.smith@email.com" inputmode="email" style="min-height: 44px;">
                     </div>
 
                     ${event.askReason ? `
                         <div class="form-group">
                             <label for="reason-decline">Would you like to share why you can't attend? (Optional)</label>
-                            <textarea id="reason-decline" placeholder="Let us know if you'd like..." rows="3"></textarea>
+                            <textarea id="reason-decline" placeholder="e.g., Prior commitment, traveling for work..." rows="3"></textarea>
                         </div>
                     ` : ''}
                 </div>
@@ -181,17 +196,17 @@ function createRSVPFormHTML(event, eventId) {
 
                     <div class="form-group">
                         <label for="rsvp-name">Full Name *</label>
-                        <input type="text" id="rsvp-name" name="name" autocomplete="name" placeholder="Enter your full name" style="min-height: 44px;">
+                        <input type="text" id="rsvp-name" name="name" autocomplete="name" placeholder="John Smith" style="min-height: 44px;">
                     </div>
 
                     <div class="form-group">
                         <label for="rsvp-email">Email Address *</label>
-                        <input type="email" id="rsvp-email" name="email" autocomplete="email" placeholder="your.email@example.com" inputmode="email" style="min-height: 44px;">
+                        <input type="email" id="rsvp-email" name="email" autocomplete="email" placeholder="john.smith@email.com" inputmode="email" style="min-height: 44px;">
                     </div>
 
                     <div class="form-group">
                         <label for="rsvp-phone">Phone Number <span style="color: #6b7280; font-weight: 400;">(Optional)</span></label>
-                        <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" style="min-height: 44px;">
+                        <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="555-123-4567" inputmode="tel" style="min-height: 44px;">
                     </div>
 
                     ${event.allowGuests ? `
@@ -238,7 +253,7 @@ function createRSVPFormHTML(event, eventId) {
                                 </label>
                             </div>
                             <div style="margin-top: 0.75rem;">
-                                <input type="text" id="allergy-details" placeholder="Other allergies or dietary needs..." style="min-height: 44px;">
+                                <input type="text" id="allergy-details" placeholder="e.g., Nut allergy, shellfish allergy..." style="min-height: 44px;">
                             </div>
                         </div>
                     ` : ''}
@@ -679,6 +694,81 @@ async function setupRSVPForm() {
     if (window.rsvpHandler && window.rsvpHandler.prefillFormFromURL) {
         window.rsvpHandler.prefillFormFromURL();
     }
+
+    // Setup form progress indicator
+    setupFormProgress();
+}
+
+/**
+ * Setup form progress tracking
+ */
+function setupFormProgress() {
+    const form = document.getElementById('rsvp-form');
+    const progressContainer = document.getElementById('form-progress-container');
+    const progressBar = document.getElementById('form-progress-bar');
+    const progressText = document.getElementById('form-progress-text');
+
+    if (!form || !progressContainer || !progressBar || !progressText) return;
+
+    function updateProgress() {
+        // Get all visible required fields
+        const requiredFields = Array.from(form.querySelectorAll('input[required], select[required], textarea[required]'))
+            .filter(field => {
+                // Only count visible fields
+                const parent = field.closest('#accept-fields, #decline-fields');
+                if (parent) {
+                    return parent.style.display !== 'none';
+                }
+                // For attending radio buttons, always count them
+                if (field.name === 'attending') return true;
+                return field.offsetParent !== null;
+            });
+
+        if (requiredFields.length === 0) return;
+
+        // Calculate unique required fields (dedup radio buttons)
+        const uniqueRequired = new Set();
+        const filledSet = new Set();
+
+        requiredFields.forEach(field => {
+            const fieldKey = field.type === 'radio' ? field.name : (field.id || field.name);
+            uniqueRequired.add(fieldKey);
+
+            // Check if filled
+            let isFilled = false;
+            if (field.type === 'radio') {
+                isFilled = form.querySelector(`input[name="${field.name}"]:checked`) !== null;
+            } else if (field.type === 'checkbox') {
+                isFilled = field.checked;
+            } else {
+                isFilled = field.value.trim() !== '';
+            }
+
+            if (isFilled) {
+                filledSet.add(fieldKey);
+            }
+        });
+
+        const totalRequired = uniqueRequired.size;
+        const totalFilled = filledSet.size;
+        const percentage = Math.round((totalFilled / totalRequired) * 100);
+
+        // Update progress bar
+        progressBar.style.width = `${percentage}%`;
+        progressText.textContent = `${percentage}%`;
+
+        // Show progress container once user starts filling
+        if (totalFilled > 0 && progressContainer.style.display === 'none') {
+            progressContainer.style.display = 'block';
+        }
+    }
+
+    // Update progress on any input change
+    form.addEventListener('input', updateProgress);
+    form.addEventListener('change', updateProgress);
+
+    // Initial update
+    updateProgress();
 }
 
 /**
