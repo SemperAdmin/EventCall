@@ -107,3 +107,47 @@
     margin-bottom: 1.5rem;
     font-size: 0.95rem;
 }
+
+/* Enhanced Focus States for Keyboard Navigation */
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    border-color: #3b82f6 !important;
+}
+
+/* Radio and checkbox focus states */
+input[type="radio"]:focus,
+input[type="checkbox"]:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Focus-visible for modern browsers (keyboard focus only) */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    border-color: #3b82f6 !important;
+}
+
+/* Hover states for interactive elements */
+button:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* Label focus when input is focused */
+.form-group:focus-within label {
+    color: #1e40af;
+    font-weight: 600;
+}

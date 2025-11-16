@@ -264,6 +264,15 @@
         }
       });
       localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+
+      // Show autosave indicator
+      const indicator = document.getElementById('autosave-indicator');
+      if (indicator) {
+        indicator.style.opacity = '1';
+        setTimeout(() => {
+          indicator.style.opacity = '0';
+        }, 2000);
+      }
     }, 200);
     form.addEventListener('input', save);
     form.addEventListener('change', save); // For radio buttons
