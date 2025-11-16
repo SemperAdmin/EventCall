@@ -71,7 +71,7 @@ class RSVPHandler {
     /**
      * Pre-fill form with existing RSVP data
      */
-    prefillEditForm(rsvpData) {
+    async prefillEditForm(rsvpData) {
         if (!rsvpData) return;
 
         // Set attending radio button first
@@ -79,70 +79,74 @@ class RSVPHandler {
             const attendingRadio = document.querySelector(`input[name="attending"][value="${rsvpData.attending}"]`);
             if (attendingRadio) {
                 attendingRadio.checked = true;
-                // Trigger the field display logic
+
+                // Trigger the field display logic and wait for it to complete
                 if (window.toggleAttendingFields) {
-                    window.toggleAttendingFields(rsvpData.attending);
+                    await window.toggleAttendingFields(rsvpData.attending);
                 }
             }
         }
 
-        // Wait for fields to be displayed, then fill them
-        setTimeout(() => {
-            let nameInput, emailInput, phoneInput, reasonInput;
+        // Fields are now displayed, fill them
+        let nameInput, emailInput, phoneInput, reasonInput;
 
-            if (rsvpData.attending === false) {
-                // Declining - use decline fields
-                nameInput = document.getElementById('rsvp-name-decline');
-                emailInput = document.getElementById('rsvp-email-decline');
-                reasonInput = document.getElementById('reason-decline');
-            } else {
-                // Attending - use accept fields
-                nameInput = document.getElementById('rsvp-name');
-                emailInput = document.getElementById('rsvp-email');
-                phoneInput = document.getElementById('rsvp-phone');
-                reasonInput = document.getElementById('reason');
+        if (rsvpData.attending === false) {
+            // Declining - use decline fields
+            nameInput = document.getElementById('rsvp-name-decline');
+            emailInput = document.getElementById('rsvp-email-decline');
+            reasonInput = document.getElementById('reason-decline');
+        } else {
+            // Attending - use accept fields
+            nameInput = document.getElementById('rsvp-name');
+            emailInput = document.getElementById('rsvp-email');
+            phoneInput = document.getElementById('rsvp-phone');
+            reasonInput = document.getElementById('reason');
 
-                const guestCountInput = document.getElementById('guest-count');
-                if (guestCountInput) guestCountInput.value = rsvpData.guestCount || 0;
+            const guestCountInput = document.getElementById('guest-count');
+            if (guestCountInput) guestCountInput.value = rsvpData.guestCount || 0;
 
-                // Fill military info if present
-                const branchInput = document.getElementById('branch');
-                const rankInput = document.getElementById('rank');
-                const unitInput = document.getElementById('unit');
+            // Fill military info if present
+            const branchInput = document.getElementById('branch');
+            const rankInput = document.getElementById('rank');
+            const unitInput = document.getElementById('unit');
 
-                if (branchInput && rsvpData.branch) {
-                    branchInput.value = rsvpData.branch;
-                    // Trigger rank update
-                    if (window.updateRanksForBranch) {
-                        window.updateRanksForBranch();
-                        // Set rank after ranks are loaded
-                        setTimeout(() => {
-                            if (rankInput && rsvpData.rank) rankInput.value = rsvpData.rank;
-                        }, 100);
+            if (branchInput && rsvpData.branch) {
+                branchInput.value = rsvpData.branch;
+
+                // Trigger rank update and wait for it
+                if (window.updateRanksForBranch) {
+                    // updateRanksForBranch is synchronous but we need to wait for DOM update
+                    window.updateRanksForBranch();
+
+                    // Wait for next frame to ensure ranks are populated
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+
+                    if (rankInput && rsvpData.rank) {
+                        rankInput.value = rsvpData.rank;
                     }
                 }
-                if (unitInput && rsvpData.unit) unitInput.value = rsvpData.unit;
+            }
+            if (unitInput && rsvpData.unit) unitInput.value = rsvpData.unit;
 
-                // Fill dietary restrictions if present
-                if (rsvpData.dietaryRestrictions && Array.isArray(rsvpData.dietaryRestrictions)) {
-                    rsvpData.dietaryRestrictions.forEach(restriction => {
-                        const checkbox = document.querySelector(`input[name="dietary"][value="${restriction}"]`);
-                        if (checkbox) checkbox.checked = true;
-                    });
-                }
-
-                const allergyDetailsInput = document.getElementById('allergy-details');
-                if (allergyDetailsInput && rsvpData.allergyDetails) {
-                    allergyDetailsInput.value = rsvpData.allergyDetails;
-                }
+            // Fill dietary restrictions if present
+            if (rsvpData.dietaryRestrictions && Array.isArray(rsvpData.dietaryRestrictions)) {
+                rsvpData.dietaryRestrictions.forEach(restriction => {
+                    const checkbox = document.querySelector(`input[name="dietary"][value="${restriction}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
             }
 
-            // Fill common fields
-            if (nameInput) nameInput.value = rsvpData.name || '';
-            if (emailInput) emailInput.value = rsvpData.email || '';
-            if (phoneInput) phoneInput.value = rsvpData.phone || '';
-            if (reasonInput) reasonInput.value = rsvpData.reason || '';
-        }, 150);
+            const allergyDetailsInput = document.getElementById('allergy-details');
+            if (allergyDetailsInput && rsvpData.allergyDetails) {
+                allergyDetailsInput.value = rsvpData.allergyDetails;
+            }
+        }
+
+        // Fill common fields
+        if (nameInput) nameInput.value = rsvpData.name || '';
+        if (emailInput) emailInput.value = rsvpData.email || '';
+        if (phoneInput) phoneInput.value = rsvpData.phone || '';
+        if (reasonInput) reasonInput.value = rsvpData.reason || '';
 
         // Show edit mode banner
         this.showEditModeBanner();

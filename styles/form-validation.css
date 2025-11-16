@@ -1,0 +1,109 @@
+/* Form Validation Styles */
+
+/* Error Summary at top of form */
+.form-error-summary {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border: 3px solid #ef4444;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.form-error-summary .error-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.form-error-summary .error-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #991b1b;
+    margin-bottom: 0.75rem;
+}
+
+.form-error-summary .error-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: #7f1d1d;
+}
+
+.form-error-summary .error-list li {
+    margin-bottom: 0.5rem;
+}
+
+/* Individual Field Errors */
+.form-error {
+    color: #dc2626;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #fef2f2;
+    border-left: 3px solid #ef4444;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Invalid field styling */
+.is-invalid {
+    border-color: #ef4444 !important;
+    border-width: 2px !important;
+}
+
+.is-valid {
+    border-color: #10b981 !important;
+}
+
+/* Focus state for invalid fields */
+.is-invalid:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Attending Decision Box */
+.attending-decision-box {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-radius: 1rem;
+    border: 3px solid #3b82f6;
+}
+
+.attending-decision-box label {
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: block;
+    font-size: 1.1rem;
+    color: #1e40af;
+    text-align: center;
+}
+
+.attending-decision-options {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.attending-decision-options .rsvp-radio-option {
+    flex: 1;
+    min-width: 140px;
+}
+
+/* Accept/Decline Fields Messages */
+.accept-message {
+    text-align: center;
+    color: #059669;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.decline-message {
+    text-align: center;
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
