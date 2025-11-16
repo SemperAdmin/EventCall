@@ -170,18 +170,49 @@
       if (p && v !== p.value) return 'Passwords do not match';
       return null;
     },
-    name: (v) => (!v ? 'Full name is required' : null)
+    name: (v) => {
+      if (!v) return 'Please enter your full name';
+      if (v.length < 2) return 'Name must be at least 2 characters';
+      if (!/^[a-zA-Z\s\-\.]{2,50}$/.test(v)) return 'Please use only letters, spaces, hyphens, and periods';
+      return null;
+    },
+    email: async (v) => {
+      if (!v) return 'Please enter your email address';
+      // Use the validation module if available
+      if (window.validation && window.validation.validateEmail) {
+        const result = await window.validation.validateEmail(v, { verifyDNS: false });
+        return result.valid ? null : (result.errors[0] || 'Invalid email address');
+      }
+      // Fallback
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Please enter a valid email address';
+      return null;
+    },
+    tel: (v, form) => {
+      if (!v) return null; // Phone is optional on RSVP
+      // Use the validation module if available
+      if (window.validation && window.validation.validatePhone) {
+        const country = form.querySelector('#rsvp-country')?.value || 'US';
+        const result = window.validation.validatePhone(v, country);
+        return result.valid ? null : (result.errors[0] || 'Invalid phone number');
+      }
+      // Fallback
+      const digits = v.replace(/\D+/g, '');
+      if (digits.length < 10 || digits.length > 15) return 'Phone number should be 10-15 digits';
+      return null;
+    }
   };
 
   function attachRealtimeValidation(form) {
     if (!form) return;
-    const handler = debounce((e) => {
+    const handler = debounce(async (e) => {
       const field = e.target;
       const name = field.getAttribute('name') || field.id;
       const val = (field.value || '').trim();
       const fn = validators[name];
-      const msg = fn ? fn(val, form) : null;
-      if (msg) setFieldError(field, msg); else clearFieldError(field);
+      if (fn) {
+        const msg = await fn(val, form);
+        if (msg) setFieldError(field, msg); else clearFieldError(field);
+      }
     });
     form.querySelectorAll('input, select, textarea').forEach(f => {
       f.addEventListener('input', handler);
@@ -256,11 +287,16 @@
         const name = f.name || f.id;
         if (!name) return;
         if (f.type === 'checkbox') data[name] = !!f.checked;
-        else data[name] = f.value;
+        else if (f.type === 'radio') {
+          if (f.checked) data[name] = f.value;
+        } else {
+          data[name] = f.value;
+        }
       });
       localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
     }, 200);
     form.addEventListener('input', save);
+    form.addEventListener('change', save); // For radio buttons
 
     // Recovery prompt if form is empty and saved exists
     const savedRaw = localStorage.getItem(key);
@@ -273,45 +309,50 @@
             Object.entries(saved.data).forEach(([name, value]) => {
               const f = form.querySelector(`[name="${name}"]`) || form.querySelector(`#${name}`);
               if (!f) return;
-              if (typeof value === 'boolean' && f.type === 'checkbox') f.checked = value; else f.value = value;
+              if (typeof value === 'boolean' && f.type === 'checkbox') {
+                f.checked = value;
+              } else if (f.type === 'radio') {
+                if (f.value === value) f.checked = true;
+              } else {
+                f.value = value;
+              }
             });
           }
         }
       } catch {}
     }
-
-    // Inject Start Over button
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = 'Start Over';
-    btn.className = 'btn-secondary';
-    btn.style.marginTop = '0.75rem';
-    btn.addEventListener('click', () => {
-      localStorage.removeItem(key);
-      form.reset();
-      form.querySelectorAll('.is-valid,.is-invalid,.form-error').forEach(el => { if (el.classList) { el.classList.remove('is-valid','is-invalid'); } if (el.classList && el.classList.contains('form-error')) el.remove(); });
-    });
-    const group = form.querySelector('.form-group:last-of-type') || form;
-    group.appendChild(btn);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // Attach validation
+    // Attach validation to login/register forms
     attachRealtimeValidation(document.getElementById('login-form'));
     attachRealtimeValidation(document.getElementById('register-form'));
 
-    // Strength meter
+    // Strength meter for registration
     bindPasswordStrength();
 
     // Phone handling for RSVP (when present)
     initPhoneHandling();
 
-    // Autosave
+    // Autosave for login/register only (RSVP handled in ui-components.js)
     enableAutosave(document.getElementById('login-form'), 'form:login');
     enableAutosave(document.getElementById('register-form'), 'form:register');
-    const rsvpForm = document.getElementById('rsvp-form');
-    if (rsvpForm) enableAutosave(rsvpForm, 'form:rsvp');
   });
+
+  // Export function for RSVP form (called from ui-components.js setupRSVPForm)
+  window.attachRSVPValidation = function() {
+    const rsvpForm = document.getElementById('rsvp-form');
+    if (rsvpForm) {
+      attachRealtimeValidation(rsvpForm);
+
+      // Get event from URL to create unique autosave key
+      const event = window.getEventFromURL ? window.getEventFromURL() : null;
+      const storageKey = event && event.id ? `form:rsvp:${event.id}` : 'form:rsvp';
+      enableAutosave(rsvpForm, storageKey);
+
+      console.log('✅ RSVP form validation and autosave enabled');
+    }
+  };
 })();
 
 console.log('✅ UX-004 form enhancements loaded');

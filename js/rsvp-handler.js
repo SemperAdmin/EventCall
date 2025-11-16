@@ -744,50 +744,6 @@ class RSVPHandler {
         `;
     }
 
-    setupRealTimeValidation() {
-        const emailInput = document.getElementById('rsvp-email');
-        if (emailInput) {
-            emailInput.addEventListener('blur', () => {
-                const email = emailInput.value;
-                if (email && !isValidEmail(email)) {
-                    emailInput.style.borderColor = 'var(--error-color)';
-                    emailInput.title = 'Please enter a valid email address';
-                } else {
-                    emailInput.style.borderColor = '';
-                    emailInput.title = '';
-                }
-            });
-        }
-
-        const phoneInput = document.getElementById('rsvp-phone');
-        if (phoneInput) {
-            phoneInput.addEventListener('blur', () => {
-                const phone = phoneInput.value;
-                if (phone && !isValidPhone(phone)) {
-                    phoneInput.style.borderColor = 'var(--error-color)';
-                    phoneInput.title = 'Please enter a valid phone number';
-                } else {
-                    phoneInput.style.borderColor = '';
-                    phoneInput.title = '';
-                }
-            });
-        }
-
-        const nameInput = document.getElementById('rsvp-name');
-        if (nameInput) {
-            nameInput.addEventListener('blur', () => {
-                const name = nameInput.value;
-                if (name && !isValidName(name)) {
-                    nameInput.style.borderColor = 'var(--error-color)';
-                    nameInput.title = 'Please enter a valid name (letters, spaces, hyphens, and periods only)';
-                } else {
-                    nameInput.style.borderColor = '';
-                    nameInput.title = '';
-                }
-            });
-        }
-    }
-
     prefillFormFromURL() {
         const urlParams = new URLSearchParams(window.location.search);
 
