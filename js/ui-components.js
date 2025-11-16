@@ -139,11 +139,11 @@ function createRSVPFormHTML(event, eventId) {
                     <label style="font-weight: 700; margin-bottom: 1rem; display: block; font-size: 1.1rem; color: #1e40af; text-align: center;">Will you be attending? *</label>
                     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                         <label class="rsvp-radio-option" style="flex: 1; min-width: 140px;">
-                            <input type="radio" name="attending" value="true" required onchange="toggleAttendingFields(true)">
+                            <input type="radio" name="attending" value="true" required id="attending-yes">
                             <span>✅ Yes, I'll be there!</span>
                         </label>
                         <label class="rsvp-radio-option" style="flex: 1; min-width: 140px;">
-                            <input type="radio" name="attending" value="false" required onchange="toggleAttendingFields(false)">
+                            <input type="radio" name="attending" value="false" required id="attending-no">
                             <span>❌ Can't make it</span>
                         </label>
                     </div>
@@ -577,6 +577,26 @@ async function setupRSVPForm() {
 
     // Setup military rank dropdown
     setupMilitaryRankDropdown();
+
+    // Attach event listeners to attending radio buttons
+    const attendingYes = document.getElementById('attending-yes');
+    const attendingNo = document.getElementById('attending-no');
+
+    if (attendingYes) {
+        attendingYes.addEventListener('change', () => {
+            if (attendingYes.checked) {
+                toggleAttendingFields(true);
+            }
+        });
+    }
+
+    if (attendingNo) {
+        attendingNo.addEventListener('change', () => {
+            if (attendingNo.checked) {
+                toggleAttendingFields(false);
+            }
+        });
+    }
 
     // Setup "Start Over" / "Clear Form" button
     const startOverBtn = document.getElementById('rsvp-start-over');
