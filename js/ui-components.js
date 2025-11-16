@@ -437,53 +437,64 @@ function createCustomQuestionsHTML(customQuestions) {
 
 /**
  * Toggle attending/declining fields based on user selection
+ * Returns a Promise that resolves when fields are displayed and focused
  */
 function toggleAttendingFields(attending) {
-    const acceptFields = document.getElementById('accept-fields');
-    const declineFields = document.getElementById('decline-fields');
-    const submitContainer = document.getElementById('submit-container');
-    const startOverContainer = document.getElementById('start-over-container');
+    return new Promise((resolve) => {
+        const acceptFields = document.getElementById('accept-fields');
+        const declineFields = document.getElementById('decline-fields');
+        const submitContainer = document.getElementById('submit-container');
+        const startOverContainer = document.getElementById('start-over-container');
 
-    if (attending) {
-        // User is attending - show full form
-        if (acceptFields) acceptFields.style.display = 'block';
-        if (declineFields) declineFields.style.display = 'none';
+        const targetFields = attending ? acceptFields : declineFields;
+        const hideFields = attending ? declineFields : acceptFields;
 
-        // Smooth scroll to the accept fields
-        setTimeout(() => {
-            if (acceptFields) {
-                acceptFields.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                // Focus on first input
-                const firstInput = acceptFields.querySelector('input[type="text"], input[type="email"]');
-                if (firstInput) {
-                    setTimeout(() => firstInput.focus(), 300);
-                }
-            }
-        }, 100);
-    } else {
-        // User is declining - show minimal form
-        if (declineFields) declineFields.style.display = 'block';
-        if (acceptFields) acceptFields.style.display = 'none';
+        // Show target fields, hide opposite
+        if (targetFields) targetFields.style.display = 'block';
+        if (hideFields) hideFields.style.display = 'none';
 
-        // Smooth scroll to the decline fields
-        setTimeout(() => {
-            if (declineFields) {
-                declineFields.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                // Focus on first input
-                const firstInput = declineFields.querySelector('input[type="text"]');
-                if (firstInput) {
-                    setTimeout(() => firstInput.focus(), 300);
-                }
-            }
-        }, 100);
-    }
+        // Show submit and start over buttons
+        if (submitContainer) submitContainer.style.display = 'block';
+        if (startOverContainer) startOverContainer.style.display = 'block';
 
-    // Show submit button and start over button once choice is made
-    if (submitContainer) submitContainer.style.display = 'block';
-    if (startOverContainer) startOverContainer.style.display = 'block';
+        // Clear validation states when switching
+        clearAllValidationStates();
 
-    // Clear validation states when switching
-    clearAllValidationStates();
+        // Handle scroll and focus using requestAnimationFrame + IntersectionObserver
+        if (targetFields) {
+            requestAnimationFrame(() => {
+                targetFields.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // Use IntersectionObserver to detect when element is in view
+                const observer = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting) {
+                        observer.disconnect();
+
+                        // Focus on first input after scroll completes
+                        const inputSelector = attending ?
+                            'input[type="text"], input[type="email"]' :
+                            'input[type="text"]';
+                        const firstInput = targetFields.querySelector(inputSelector);
+
+                        if (firstInput) {
+                            firstInput.focus();
+                        }
+                        resolve();
+                    }
+                }, { threshold: 0.5 });
+
+                observer.observe(targetFields);
+
+                // Fallback timeout in case observer doesn't fire (1 second max)
+                setTimeout(() => {
+                    observer.disconnect();
+                    resolve();
+                }, 1000);
+            });
+        } else {
+            resolve();
+        }
+    });
 }
 
 /**
@@ -503,12 +514,20 @@ function clearAllValidationStates() {
 }
 
 /**
- * Toggle guest count visibility (legacy - kept for compatibility)
+ * Toggle guest count visibility (DEPRECATED)
+ * This function has been replaced by toggleAttendingFields()
+ *
+ * Kept for backward compatibility in case any external code or bookmarked
+ * URLs reference this function. Will be removed in a future version.
+ *
+ * @deprecated Use toggleAttendingFields() instead
+ * @param {boolean} attending - Whether the user is attending
  */
 function toggleGuestCount(attending) {
-    // This function is now integrated into toggleAttendingFields
-    // Kept for backward compatibility but does nothing
-    console.log('toggleGuestCount called (legacy) - now handled by toggleAttendingFields');
+    // No-op - functionality moved to toggleAttendingFields
+    if (window.toggleAttendingFields) {
+        window.toggleAttendingFields(attending);
+    }
 }
 
 /**

@@ -48,14 +48,6 @@
       summary.className = 'form-error-summary';
       summary.setAttribute('role', 'alert');
       summary.setAttribute('aria-live', 'assertive');
-      summary.style.cssText = `
-        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-        border: 3px solid #ef4444;
-        border-radius: 0.75rem;
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-      `;
 
       // Insert at the top of the form
       const firstChild = form.firstElementChild;
@@ -69,17 +61,17 @@
     // Update summary content
     const title = errors.length === 1 ? 'Please fix this error:' : `Please fix these ${errors.length} errors:`;
     const errorList = errors.map(err =>
-      `<li style="margin-bottom: 0.5rem;">${window.utils ? window.utils.escapeHTML(err) : err}</li>`
+      `<li>${window.utils ? window.utils.escapeHTML(err) : err}</li>`
     ).join('');
 
     summary.innerHTML = `
       <div style="display: flex; align-items: start; gap: 1rem;">
-        <div style="font-size: 2rem; flex-shrink: 0;">⚠️</div>
+        <div class="error-icon">⚠️</div>
         <div style="flex: 1;">
-          <div style="font-weight: 700; font-size: 1.1rem; color: #991b1b; margin-bottom: 0.75rem;">
+          <div class="error-title">
             ${window.utils ? window.utils.escapeHTML(title) : title}
           </div>
-          <ul style="margin: 0; padding-left: 1.25rem; color: #7f1d1d;">
+          <ul class="error-list">
             ${errorList}
           </ul>
         </div>
@@ -101,31 +93,19 @@
     errorEl.id = errId;
     errorEl.setAttribute('role','alert');
     errorEl.setAttribute('aria-live','polite');
-    errorEl.style.cssText = `
-      color: #dc2626;
-      font-size: 0.9rem;
-      font-weight: 600;
-      margin-top: 0.5rem;
-      padding: 0.5rem;
-      background: #fef2f2;
-      border-left: 3px solid #ef4444;
-      border-radius: 0.25rem;
-    `;
     errorEl.innerHTML = window.utils ? window.utils.sanitizeHTML(`❌ <span>${window.utils.escapeHTML(msg)}</span>`) : `❌ ${msg}`;
     field.setAttribute('aria-invalid','true');
     field.setAttribute('aria-describedby', errId);
     field.classList.remove('is-valid');
     field.classList.add('is-invalid');
-    field.style.borderColor = '#ef4444';
-    field.style.borderWidth = '2px';
 
     // Insert just after field
     (field.parentElement || field.closest('.form-group') || field).appendChild(errorEl);
 
-    // Update error summary
+    // Update error summary (use RAF for next paint)
     const form = field.closest('form');
     if (form) {
-      setTimeout(() => updateErrorSummary(form), 100);
+      requestAnimationFrame(() => updateErrorSummary(form));
     }
   }
 
@@ -134,18 +114,16 @@
     field.removeAttribute('aria-describedby');
     field.classList.remove('is-invalid');
     field.classList.add('is-valid');
-    field.style.borderColor = '';
-    field.style.borderWidth = '';
 
     const group = field.parentElement || field.closest('.form-group');
     if (!group) return;
     const err = group.querySelector('.form-error');
     if (err) err.remove();
 
-    // Update error summary
+    // Update error summary (use RAF for next paint)
     const form = field.closest('form');
     if (form) {
-      setTimeout(() => updateErrorSummary(form), 100);
+      requestAnimationFrame(() => updateErrorSummary(form));
     }
   }
 
