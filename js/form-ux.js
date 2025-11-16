@@ -169,13 +169,12 @@
       if (!v) return null; // Phone is optional on RSVP
       // Use the validation module if available
       if (window.validation && window.validation.validatePhone) {
-        const country = form.querySelector('#rsvp-country')?.value || 'US';
-        const result = window.validation.validatePhone(v, country);
+        const result = window.validation.validatePhone(v, 'US');
         return result.valid ? null : (result.errors[0] || 'Invalid phone number');
       }
-      // Fallback
+      // Fallback: US phone format (10 digits)
       const digits = v.replace(/\D+/g, '');
-      if (digits.length < 10 || digits.length > 15) return 'Phone number should be 10-15 digits';
+      if (digits.length !== 10) return 'Please enter a 10-digit US phone number';
       return null;
     }
   };
@@ -218,42 +217,35 @@
     regPassword.addEventListener('input', (e) => render(e.target.value));
   }
 
-  // Phone input: country selector + formatting/masking
+  // Phone input: formatting/masking (US format)
   function initPhoneHandling() {
     const phone = document.getElementById('rsvp-phone');
-    const country = document.getElementById('rsvp-country');
     if (!phone) return;
     phone.setAttribute('autocomplete','tel-national');
     const format = debounce(() => {
       const raw = (phone.value || '').trim();
-      const c = country && country.value ? country.value : 'US';
+      if (!raw) return; // Don't format empty input
+
       try {
         if (window.libphonenumber && typeof window.libphonenumber.parsePhoneNumberFromString === 'function') {
-          const pn = window.libphonenumber.parsePhoneNumberFromString(raw, c);
-          if (pn) {
+          const pn = window.libphonenumber.parsePhoneNumberFromString(raw, 'US');
+          if (pn && pn.isValid()) {
             phone.value = pn.formatNational();
             clearFieldError(phone);
-          } else {
-            setFieldError(phone, 'Invalid phone number');
           }
         } else {
           // Minimal US mask fallback
-          if (c === 'US') {
-            const digits = raw.replace(/\D+/g,'').slice(0,10);
-            let masked = digits;
-            if (digits.length >= 4) masked = `(${digits.slice(0,3)}) ${digits.slice(3,6)}${digits.length>6?'-':''}${digits.slice(6,10)}`;
+          const digits = raw.replace(/\D+/g,'').slice(0,10);
+          if (digits.length >= 4) {
+            const masked = `(${digits.slice(0,3)}) ${digits.slice(3,6)}${digits.length>6?'-':''}${digits.slice(6,10)}`;
             phone.value = masked;
           }
         }
       } catch {
-        setFieldError(phone, 'Invalid phone number');
+        // Silently ignore formatting errors - validation will handle it
       }
     }, 120);
     phone.addEventListener('input', format);
-    if (country) {
-      country.setAttribute('autocomplete','tel-country-code');
-      country.addEventListener('change', format);
-    }
   }
 
   // Autosave + recovery
