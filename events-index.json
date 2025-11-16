@@ -101,6 +101,37 @@
     "coverImage": ""
   },
   {
+    "id": "18641d7a-bf27-4511-8b88-127d33bc0588",
+    "title": "Unit Formation",
+    "date": "2025-11-29",
+    "time": "18:17",
+    "location": "Battalion",
+    "description": "Mandatory unit formation. All personnel are required to attend unless on approved leave or TDY.",
+    "askReason": false,
+    "allowGuests": false,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "formation-type": {
+        "label": "Formation Type",
+        "value": "Batallion"
+      },
+      "uniform": {
+        "label": "Uniform",
+        "value": "Cammies"
+      },
+      "reporting-senior": {
+        "label": "Reporting Senior",
+        "value": "1stSgt Smith"
+      }
+    },
+    "created": 1763266662295,
+    "status": "active",
+    "createdBy": "furby203824",
+    "createdByName": "Stephen Shorter",
+    "coverImage": ""
+  },
+  {
     "id": "2edf0d21-0e44-4723-bd60-e2ce7f2f752f",
     "title": "Unit Formation",
     "date": "2025-11-12",
