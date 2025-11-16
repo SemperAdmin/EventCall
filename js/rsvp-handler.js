@@ -499,11 +499,11 @@ class RSVPHandler {
 
                 ${qrCodeHTML}
 
-                ${rsvpData.attending && window.calendarExport ? `
-                <div style="margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
+                ${rsvpData.attending ? `
+                <div id="calendar-export-placeholder" style="margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
                     <strong>📅 Add to Your Calendar</strong><br>
-                    <div style="margin-top: 0.75rem;">
-                        ${window.calendarExport.generateCalendarDropdownHTML(event)}
+                    <div id="calendar-dropdown-container" style="margin-top: 0.75rem;">
+                        <!-- Calendar dropdown will be inserted here via JavaScript -->
                     </div>
                 </div>
                 ` : ''}
@@ -525,6 +525,14 @@ class RSVPHandler {
                 </div>
             </div>
         `);
+
+        // Insert calendar dropdown after sanitization (to preserve onclick handlers)
+        if (rsvpData.attending && window.calendarExport) {
+            const calendarContainer = document.getElementById('calendar-dropdown-container');
+            if (calendarContainer) {
+                calendarContainer.innerHTML = window.calendarExport.generateCalendarDropdownHTML(event);
+            }
+        }
     }
 
     showSubmissionError(error) {
