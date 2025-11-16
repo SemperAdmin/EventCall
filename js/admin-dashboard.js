@@ -208,14 +208,34 @@
                 const userPromises = userFiles.map(async (file) => {
                     try {
                         console.log(`📥 Loading user from: ${file.name}`);
-                        const userResponse = await fetch(file.download_url);
+
+                        // For private repos, use GitHub API (file.url) instead of raw URL (file.download_url)
+                        const apiUrl = file.url || file.download_url;
+                        const userResponse = await fetch(apiUrl, {
+                            headers: {
+                                'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                'Accept': 'application/vnd.github.v3+json'
+                            }
+                        });
 
                         if (!userResponse.ok) {
                             console.error(`❌ Failed to download ${file.name}: ${userResponse.status}`);
                             return null;
                         }
 
-                        const userData = await userResponse.json();
+                        const fileData = await userResponse.json();
+
+                        // GitHub API returns base64 encoded content for private repos
+                        let userData;
+                        if (fileData.content) {
+                            // Decode base64 content (remove newlines first)
+                            const content = atob(fileData.content.replace(/\n/g, ''));
+                            userData = JSON.parse(content);
+                        } else {
+                            // Fallback for public repos using download_url
+                            userData = fileData;
+                        }
+
                         console.log(`✅ Loaded user: ${userData.username || file.name}`);
                         return userData;
                     } catch (e) {
