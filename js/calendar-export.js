@@ -280,7 +280,12 @@ END:VCALENDAR`;
      */
     toggleCalendarDropdown(event) {
         event.stopPropagation();
-        const dropdown = event.target.nextElementSibling;
+        event.preventDefault();
+
+        // Use currentTarget to always get the button, not the clicked child element
+        const button = event.currentTarget;
+        const dropdown = button.nextElementSibling;
+
         if (dropdown && dropdown.classList.contains('calendar-dropdown')) {
             const isVisible = dropdown.style.display === 'block';
             this.closeAllCalendarDropdowns();
