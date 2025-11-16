@@ -121,7 +121,6 @@
                 }
 
                 const treeData = await treeResponse.json();
-                const events = [];
 
                 const eventFiles = treeData.tree.filter(item =>
                     item.path.startsWith('events/') &&
