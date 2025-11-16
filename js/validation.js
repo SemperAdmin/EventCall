@@ -70,18 +70,18 @@
     }
 
     if (!isValidSyntax) {
-      result.errors.push('Invalid email format');
+      result.errors.push('Please enter a valid email address (e.g., name@example.com)');
     }
 
     if (domain) {
       if (isDisposableDomain(domain)) {
-        result.errors.push('Disposable email domains are not allowed');
+        result.errors.push('Temporary email addresses are not accepted. Please use your personal or work email');
       }
 
       if (opts.verifyDNS === true) {
         const dns = await checkDNSMX(domain);
         if (!dns.ok) {
-          result.errors.push('Email domain has no MX records');
+          result.errors.push('This email domain appears to be invalid. Please double-check your email address');
         }
       }
     }
@@ -110,9 +110,9 @@
           result.formatted = pn.formatInternational();
           return result;
         }
-        result.errors.push('Invalid phone number for selected country');
+        result.errors.push('Please enter a valid phone number for the selected country (e.g., (555) 123-4567)');
       } catch (e) {
-        result.errors.push('Unable to parse phone number');
+        result.errors.push('Please check your phone number format');
       }
     } else {
       // Fallback: digits length check
@@ -122,7 +122,7 @@
         result.e164 = `+${digits}`;
         result.formatted = result.e164;
       } else {
-        result.errors.push('Invalid phone number format');
+        result.errors.push('Phone number should contain 10-15 digits');
       }
     }
 
@@ -167,24 +167,24 @@
     }
 
     if (!u) {
-      result.errors.push('Invalid URL');
+      result.errors.push('Please enter a valid web address (e.g., https://example.com)');
       return result;
     }
 
     if (opts.requireHTTPS !== false && u.protocol !== 'https:') {
-      result.errors.push('URL must use https://');
+      result.errors.push('For security, please use a secure address starting with https://');
     }
 
     const hostname = u.hostname.toLowerCase();
     if (!/^[a-z0-9.-]+$/.test(hostname) || hostname.startsWith('-') || hostname.endsWith('-')) {
-      result.errors.push('Invalid domain name');
+      result.errors.push('This web address appears to be invalid. Please check and try again');
     }
 
     if (opts.verifyDNS === true) {
       const dns = await checkDNSMX(hostname.replace(/^www\./, ''));
       // For general URLs, A record would be better; MX check is a heuristic.
       if (!dns.ok) {
-        result.errors.push('Domain may be invalid or unreachable');
+        result.errors.push('This web address may not exist. Please verify the URL');
       }
     }
 
@@ -214,30 +214,31 @@
     const result = { valid: false, errors: [] };
 
     if (!file) {
-      result.errors.push('No file provided');
+      result.errors.push('Please select a file to upload');
       return result;
     }
 
     // Size check
     const maxSize = (window.APP_CONFIG && window.APP_CONFIG.maxFileSize) || 5 * 1024 * 1024;
+    const maxSizeMB = Math.round(maxSize / (1024 * 1024));
     if (file.size > maxSize) {
-      result.errors.push('File is too large');
+      result.errors.push(`Image is too large. Maximum file size is ${maxSizeMB}MB`);
     }
 
     // MIME check
     const allowed = (window.APP_CONFIG && window.APP_CONFIG.allowedImageTypes) || ['image/jpeg','image/png','image/gif','image/webp'];
     if (!allowed.includes(file.type)) {
-      result.errors.push('Invalid image type');
+      result.errors.push('Please upload a JPEG, PNG, GIF, or WebP image file');
     }
 
     // Magic number/signature check
     try {
       const sig = await getFileSignature(file);
       if (!isKnownImageSignature(sig)) {
-        result.errors.push('File signature does not match a supported image');
+        result.errors.push('This file does not appear to be a valid image. Please select a different file');
       }
     } catch (e) {
-      result.errors.push('Failed to read file signature');
+      result.errors.push('Unable to verify the image file. Please try a different file');
     }
 
     // Extension-MIME consistency
@@ -247,7 +248,7 @@
       jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp'
     };
     if (mimeByExt[ext] && mimeByExt[ext] !== file.type) {
-      result.errors.push('File extension does not match MIME type');
+      result.errors.push('The file extension doesn\'t match the image type. Please verify your file');
     }
 
     // Optional: virus scanning hook

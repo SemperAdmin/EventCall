@@ -5,24 +5,90 @@
  * - Phone input handling with country selector + masking
  * - Autocomplete optimization and ARIA for accessibility (WCAG 2.1 AA)
  * - LocalStorage autosave + recovery with Start Over
- * - 5% A/B gating via persisted feature flag
+ * - ENABLED FOR ALL USERS (A/B test removed)
  */
 (function(){
-  const FLAG_KEY = 'ux004_variant';
-  function getFeatureFlag() {
-    const existing = localStorage.getItem(FLAG_KEY);
-    if (existing === 'on') return true;
-    if (existing === 'off') return false;
-    const active = Math.random() < 0.05; // 5%
-    localStorage.setItem(FLAG_KEY, active ? 'on' : 'off');
-    return active;
+  // Real-time validation is now enabled for all users
+  const active = true;
+  window.UX004Active = active;
+
+  // Clean up old A/B test flag if it exists
+  try {
+    localStorage.removeItem('ux004_variant');
+  } catch (e) {
+    // Ignore if localStorage not available
   }
 
-  const active = getFeatureFlag();
-  window.UX004Active = active;
-  if (!active) return; // Gate enhancements
-
   const debounce = (fn, wait=150) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); }; };
+
+  // Error summary component
+  function updateErrorSummary(form) {
+    if (!form) return;
+
+    // Collect all current errors
+    const errors = [];
+    form.querySelectorAll('.form-error').forEach(errorEl => {
+      const text = errorEl.textContent.replace(/^❌\s*/, '').trim();
+      if (text) errors.push(text);
+    });
+
+    // Get or create error summary container
+    let summary = form.querySelector('#form-error-summary');
+
+    if (errors.length === 0) {
+      // No errors - remove summary if it exists
+      if (summary) summary.remove();
+      return;
+    }
+
+    if (!summary) {
+      // Create error summary
+      summary = document.createElement('div');
+      summary.id = 'form-error-summary';
+      summary.className = 'form-error-summary';
+      summary.setAttribute('role', 'alert');
+      summary.setAttribute('aria-live', 'assertive');
+      summary.style.cssText = `
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        border: 3px solid #ef4444;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+      `;
+
+      // Insert at the top of the form
+      const firstChild = form.firstElementChild;
+      if (firstChild) {
+        form.insertBefore(summary, firstChild);
+      } else {
+        form.appendChild(summary);
+      }
+    }
+
+    // Update summary content
+    const title = errors.length === 1 ? 'Please fix this error:' : `Please fix these ${errors.length} errors:`;
+    const errorList = errors.map(err =>
+      `<li style="margin-bottom: 0.5rem;">${window.utils ? window.utils.escapeHTML(err) : err}</li>`
+    ).join('');
+
+    summary.innerHTML = `
+      <div style="display: flex; align-items: start; gap: 1rem;">
+        <div style="font-size: 2rem; flex-shrink: 0;">⚠️</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 700; font-size: 1.1rem; color: #991b1b; margin-bottom: 0.75rem;">
+            ${window.utils ? window.utils.escapeHTML(title) : title}
+          </div>
+          <ul style="margin: 0; padding-left: 1.25rem; color: #7f1d1d;">
+            ${errorList}
+          </ul>
+        </div>
+      </div>
+    `;
+
+    // Scroll to summary
+    summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 
   // Error template rendering
   function setFieldError(field, msg) {
@@ -35,13 +101,32 @@
     errorEl.id = errId;
     errorEl.setAttribute('role','alert');
     errorEl.setAttribute('aria-live','polite');
+    errorEl.style.cssText = `
+      color: #dc2626;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: #fef2f2;
+      border-left: 3px solid #ef4444;
+      border-radius: 0.25rem;
+    `;
     errorEl.innerHTML = window.utils ? window.utils.sanitizeHTML(`❌ <span>${window.utils.escapeHTML(msg)}</span>`) : `❌ ${msg}`;
     field.setAttribute('aria-invalid','true');
     field.setAttribute('aria-describedby', errId);
     field.classList.remove('is-valid');
     field.classList.add('is-invalid');
+    field.style.borderColor = '#ef4444';
+    field.style.borderWidth = '2px';
+
     // Insert just after field
     (field.parentElement || field.closest('.form-group') || field).appendChild(errorEl);
+
+    // Update error summary
+    const form = field.closest('form');
+    if (form) {
+      setTimeout(() => updateErrorSummary(form), 100);
+    }
   }
 
   function clearFieldError(field) {
@@ -49,10 +134,19 @@
     field.removeAttribute('aria-describedby');
     field.classList.remove('is-invalid');
     field.classList.add('is-valid');
+    field.style.borderColor = '';
+    field.style.borderWidth = '';
+
     const group = field.parentElement || field.closest('.form-group');
     if (!group) return;
     const err = group.querySelector('.form-error');
     if (err) err.remove();
+
+    // Update error summary
+    const form = field.closest('form');
+    if (form) {
+      setTimeout(() => updateErrorSummary(form), 100);
+    }
   }
 
   // Simple validation rules
