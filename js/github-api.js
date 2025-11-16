@@ -1007,19 +1007,21 @@ class GitHubAPI {
             // Delete cover image if it exists
             if (coverImageUrl) {
                 try {
-                    // Extract the filename from the URL
-                    // Expected format: https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/filename.ext
-                    const urlParts = coverImageUrl.split('/');
-                    const fileName = urlParts[urlParts.length - 1];
+                    // Extract filename from URL with proper parsing
+                    const fileName = this._extractImageFileName(coverImageUrl);
 
                     if (fileName) {
                         const imagePath = `images/${fileName}`;
                         await this.deleteFileFromImageRepo(imagePath, `Delete cover image for event: ${this.cleanText(eventTitle)}`);
-                        console.log('✅ Cover image deleted:', fileName);
+                        console.log('✅ Cover image deleted successfully:', fileName);
+                    } else {
+                        console.warn('⚠️ Could not extract valid filename from cover image URL:', coverImageUrl);
                     }
                 } catch (imageError) {
-                    console.log('Could not delete cover image:', imageError.message);
+                    console.error('❌ Failed to delete cover image:', imageError.message);
+                    console.error('   Cover image URL:', coverImageUrl);
                     // Don't throw - we don't want image deletion failure to fail the entire event deletion
+                    // Note: This may leave an orphaned image in the repository
                 }
             }
 
@@ -1028,6 +1030,75 @@ class GitHubAPI {
         } catch (error) {
             console.error('Failed to delete event:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Private helper: Extract and validate image filename from URL
+     * Handles query parameters, fragments, and URL encoding
+     * @param {string} imageUrl - The full image URL
+     * @returns {string|null} - The extracted filename or null if invalid
+     */
+    _extractImageFileName(imageUrl) {
+        if (!imageUrl || typeof imageUrl !== 'string') {
+            return null;
+        }
+
+        try {
+            // Parse URL to handle query params and fragments properly
+            const url = new URL(imageUrl);
+
+            // Extract filename from pathname (last segment)
+            const pathSegments = url.pathname.split('/').filter(segment => segment.length > 0);
+            const fileName = pathSegments[pathSegments.length - 1];
+
+            // Validate filename
+            if (!fileName) {
+                console.warn('Empty filename extracted from URL');
+                return null;
+            }
+
+            // Check for valid file extension
+            const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
+            const hasValidExtension = validExtensions.some(ext =>
+                fileName.toLowerCase().endsWith(ext)
+            );
+
+            if (!hasValidExtension) {
+                console.warn('Invalid or missing file extension:', fileName);
+                return null;
+            }
+
+            // Decode URL encoding (e.g., %20 -> space)
+            const decodedFileName = decodeURIComponent(fileName);
+
+            // Basic security: reject filenames with path traversal attempts
+            if (decodedFileName.includes('..') || decodedFileName.includes('/') || decodedFileName.includes('\\')) {
+                console.error('Suspicious filename detected (path traversal attempt):', decodedFileName);
+                return null;
+            }
+
+            return decodedFileName;
+
+        } catch (error) {
+            // Fallback for invalid URLs - try simple extraction
+            console.warn('URL parsing failed, attempting fallback extraction:', error.message);
+
+            try {
+                // Remove query params and fragments manually
+                const cleanUrl = imageUrl.split('?')[0].split('#')[0];
+                const segments = cleanUrl.split('/');
+                const fileName = segments[segments.length - 1];
+
+                // Basic validation on fallback
+                if (fileName && fileName.includes('.')) {
+                    return decodeURIComponent(fileName);
+                }
+            } catch (fallbackError) {
+                console.error('Fallback extraction also failed:', fallbackError.message);
+            }
+
+            return null;
         }
     }
 
@@ -1155,6 +1226,8 @@ class GitHubAPI {
         }
 
         try {
+            console.log(`🗑️ Attempting to delete image from repo: ${path}`);
+
             // Get file info first from EventCall-Images
             const fileResponse = await window.safeFetchGitHub(
                 `https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`,
@@ -1168,36 +1241,53 @@ class GitHubAPI {
                 'Get file info from image repo for deletion'
             );
 
-            if (fileResponse.ok) {
-                const fileData = await fileResponse.json();
-
-                const deleteResponse = await window.safeFetchGitHub(
-                    `https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`,
-                    {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'Content-Type': 'application/json',
-                            'User-Agent': 'EventCall-App'
-                        },
-                        body: JSON.stringify({
-                            message: message,
-                            sha: fileData.sha,
-                            branch: 'main'
-                        })
-                    },
-                    'Delete file from image repo'
-                );
-
-                if (!deleteResponse.ok) {
-                    throw new Error(`Failed to delete ${path} from ${this.config.imageRepo}: ${deleteResponse.status}`);
+            if (!fileResponse.ok) {
+                if (fileResponse.status === 404) {
+                    console.warn(`⚠️ Image not found in repository (may have been deleted already): ${path}`);
+                    return; // Not an error - file doesn't exist
                 }
-
-                console.log(`✅ Deleted ${path} from ${this.config.imageRepo}`);
+                throw new Error(`Failed to get image file info: ${fileResponse.status} ${fileResponse.statusText}`);
             }
+
+            const fileData = await fileResponse.json();
+            console.log(`📄 Image file found, SHA: ${fileData.sha.substring(0, 7)}...`);
+
+            // Delete the file
+            const deleteResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sha: fileData.sha,
+                        branch: 'main'
+                    })
+                },
+                'Delete file from image repo'
+            );
+
+            if (!deleteResponse.ok) {
+                const errorText = await deleteResponse.text().catch(() => 'Unable to read error response');
+                throw new Error(`Failed to delete ${path} from ${this.config.imageRepo}: ${deleteResponse.status} ${deleteResponse.statusText} - ${errorText}`);
+            }
+
+            console.log(`✅ Successfully deleted image from ${this.config.imageRepo}: ${path}`);
+
         } catch (error) {
-            console.log(`File ${path} may not exist in ${this.config.imageRepo}, skipping deletion`);
+            // Enhanced error logging
+            console.error(`❌ Error deleting image from repository:`);
+            console.error(`   Path: ${path}`);
+            console.error(`   Repo: ${this.config.owner}/${this.config.imageRepo}`);
+            console.error(`   Error: ${error.message}`);
+
+            // Re-throw for caller to handle
+            throw error;
         }
     }
 
