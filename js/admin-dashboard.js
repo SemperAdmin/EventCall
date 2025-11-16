@@ -94,71 +94,36 @@
          */
         async fetchAllEvents() {
             try {
-                const token = window.GITHUB_CONFIG?.token || window.userAuth?.getGitHubToken?.();
-                if (!token) {
-                    console.warn('⚠️ No GitHub token - returning empty events');
-                    return [];
-                }
-
                 console.log('📥 Loading all events for admin dashboard...');
 
-                // Load from EventCall-Data repository
-                const treeResponse = await window.safeFetchGitHub(
-                    window.GITHUB_CONFIG.getTreeUrl('data'),
+                // Load from published events-index.json (synced by GitHub Actions)
+                const owner = window.GITHUB_CONFIG?.owner || 'SemperAdmin';
+                const repo = window.GITHUB_CONFIG?.repo || 'EventCall';
+                const indexUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/events-index.json`;
+
+                const response = await window.safeFetchGitHub(
+                    indexUrl,
                     {
                         headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json',
+                            'Accept': 'application/json',
                             'User-Agent': 'EventCall-App'
                         }
                     },
-                    'Load tree from EventCall-Data for admin'
+                    'Load events index for admin dashboard'
                 );
 
-                if (!treeResponse.ok) {
-                    console.log('Repository or main branch not found, treating as empty');
+                if (!response.ok) {
+                    console.log('Events index not found, treating as empty');
                     return [];
                 }
 
-                const treeData = await treeResponse.json();
-                const events = [];
+                const events = await response.json();
 
-                const eventFiles = treeData.tree.filter(item =>
-                    item.path.startsWith('events/') &&
-                    item.path.endsWith('.json') &&
-                    item.type === 'blob'
-                );
+                // Ensure it's an array
+                const eventArray = Array.isArray(events) ? events : [];
+                console.log(`✅ Loaded ${eventArray.length} total events for admin dashboard`);
 
-                console.log(`Found ${eventFiles.length} event files in private repo`);
-
-                // Load ALL events (no user filtering for admin)
-                for (const file of eventFiles) {
-                    try {
-                        const fileResponse = await window.safeFetchGitHub(
-                            window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
-                            {
-                                headers: {
-                                    'Authorization': 'token ' + token,
-                                    'Accept': 'application/vnd.github.v3+json',
-                                    'User-Agent': 'EventCall-App'
-                                }
-                            },
-                            'Load event file blob from EventCall-Data'
-                        );
-
-                        if (fileResponse.ok) {
-                            const fileData = await fileResponse.json();
-                            const content = JSON.parse(window.githubAPI.safeBase64Decode(fileData.content));
-                            events.push(content);
-                            console.log('✅ Loaded event for admin:', content.title);
-                        }
-                    } catch (error) {
-                        console.error('Failed to load event file ' + file.path + ':', error);
-                    }
-                }
-
-                console.log(`✅ Loaded ${events.length} total events for admin dashboard`);
-                return events;
+                return eventArray;
 
             } catch (error) {
                 console.error('Failed to load all events for admin:', error);
@@ -167,102 +132,51 @@
         },
 
         /**
-         * Fetch all users from EventCall-Data
+         * Fetch all users from published users-index.json (secure - no token needed)
+         * Users are synced from private EventCall-Data repo via GitHub Actions workflows
          */
         async fetchAllUsers() {
             try {
-                const token = window.GITHUB_CONFIG?.token || window.userAuth?.getGitHubToken?.();
-                if (!token) {
-                    console.warn('⚠️ No GitHub token - returning empty users');
-                    return [];
-                }
+                const owner = window.GITHUB_CONFIG?.owner || 'SemperAdmin';
+                const repo = window.GITHUB_CONFIG?.repo || 'EventCall';
+                const indexUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/users-index.json`;
 
-                const owner = window.GITHUB_CONFIG.dataOwner || window.GITHUB_CONFIG.owner;
-                const repo = window.GITHUB_CONFIG.dataRepo || 'EventCall-Data';
-                const url = `https://api.github.com/repos/${owner}/${repo}/contents/users`;
-
-                console.log('📂 Fetching users from:', url);
+                console.log('📂 Fetching users from published users-index.json');
 
                 const response = await window.safeFetchGitHub(
-                    url,
+                    indexUrl,
                     {
                         headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json'
+                            'Accept': 'application/json',
+                            'User-Agent': 'EventCall-App'
                         }
                     },
-                    'Fetch users directory from EventCall-Data'
+                    'Load users index from public repo'
                 );
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error(`❌ Failed to fetch users directory: ${response.status}`, errorText);
+                    console.error(`❌ Failed to fetch users index: ${response.status}`, errorText);
 
-                    // If users directory doesn't exist (404), return empty array
+                    // If users index doesn't exist (404), return empty array
                     if (response.status === 404) {
-                        console.warn('⚠️ users/ directory does not exist in EventCall-Data repository');
-                        console.warn('💡 To fix: Create users/ directory and add user JSON files');
+                        console.warn('⚠️ users-index.json does not exist - waiting for GitHub Actions to publish it');
+                        console.warn('💡 The api-get-users.yml workflow should create this file automatically');
                         return [];
                     }
 
                     throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
 
-                const files = await response.json();
-                console.log(`📋 Found ${files.length} files in users/ directory`);
+                const users = await response.json();
 
-                const userFiles = files.filter(f => f.name.endsWith('.json'));
-                console.log(`📋 Found ${userFiles.length} user JSON files`);
+                // Ensure it's an array
+                const userArray = Array.isArray(users) ? users : [];
+                console.log(`✅ Successfully loaded ${userArray.length} users from published index`);
 
-                // Fetch all user files in parallel for better performance
-                const userPromises = userFiles.map(async (file) => {
-                    try {
-                        console.log(`📥 Loading user from: ${file.name}`);
-
-                        // For private repos, use GitHub API (file.url) instead of raw URL (file.download_url)
-                        const apiUrl = file.url || file.download_url;
-                        const userResponse = await window.safeFetchGitHub(
-                            apiUrl,
-                            {
-                                headers: {
-                                    'Authorization': 'token ' + token,
-                                    'Accept': 'application/vnd.github.v3+json'
-                                }
-                            },
-                            `Load user file ${file.name}`
-                        );
-
-                        if (!userResponse.ok) {
-                            console.error(`❌ Failed to download ${file.name}: ${userResponse.status}`);
-                            return null;
-                        }
-
-                        const fileData = await userResponse.json();
-
-                        // GitHub API returns base64 encoded content for private repos
-                        let userData;
-                        if (fileData.content) {
-                            // Decode base64 content with Unicode support
-                            const content = window.githubAPI.safeBase64Decode(fileData.content);
-                            userData = JSON.parse(content);
-                        } else {
-                            // Fallback for public repos using download_url
-                            userData = fileData;
-                        }
-
-                        console.log(`✅ Loaded user: ${userData.username || file.name}`);
-                        return userData;
-                    } catch (e) {
-                        console.warn(`⚠️ Failed to parse user file ${file.name}:`, e);
-                        return null;
-                    }
-                });
-
-                const users = (await Promise.all(userPromises)).filter(user => user !== null);
-                console.log(`✅ Successfully loaded ${users.length} users`);
-                return users;
+                return userArray;
             } catch (error) {
-                console.error('❌ Error fetching users:', error);
+                console.error('❌ Error fetching users from published index:', error);
                 console.error('Error details:', {
                     message: error.message,
                     stack: error.stack

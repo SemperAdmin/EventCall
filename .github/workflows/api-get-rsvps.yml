@@ -1,0 +1,82 @@
+name: API - Get RSVPs
+
+on:
+  repository_dispatch:
+    types: [get_rsvps]
+  schedule:
+    - cron: '*/5 * * * *'  # Run every 5 minutes to sync RSVPs
+
+env:
+  GITHUB_OWNER: SemperAdmin
+  DATA_REPO: EventCall-Data
+
+jobs:
+  sync-rsvps:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch RSVPs from Private Repo
+        id: fetch
+        run: |
+          echo "Fetching RSVPs from private repo..."
+
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.EVENTCALL_MANAGER_TOKEN }}" \
+            "https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/responses")
+
+          if [ $? -ne 0 ]; then
+            echo "Failed to fetch responses directory"
+            echo "{}" > combined-rsvps.json
+            exit 0
+          fi
+
+          echo "$RESPONSE" > rsvps-list.json
+
+          # Initialize empty object for grouping by event
+          echo "{}" > all-rsvps.json
+
+          # Fetch each RSVP file
+          for url in $(echo "$RESPONSE" | jq -r '.[] | select(.name | endswith(".json")) | .url'); do
+            echo "Fetching: $url"
+            RSVP_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.EVENTCALL_MANAGER_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" "$url")
+
+            # Decode base64 content
+            RSVP_DATA=$(echo "$RSVP_RESPONSE" | jq -r '.content' | base64 -d)
+
+            # Group by event ID
+            EVENT_ID=$(echo "$RSVP_DATA" | jq -r '.[0].eventId // "unknown"')
+
+            # Append to grouped structure
+            jq --arg event_id "$EVENT_ID" --argjson data "$RSVP_DATA" \
+              '.[$event_id] = $data' all-rsvps.json > temp.json
+            mv temp.json all-rsvps.json
+          done
+
+          mv all-rsvps.json combined-rsvps.json
+
+          TOTAL_RSVPS=$(jq '[.[] | length] | add' combined-rsvps.json)
+          echo "Fetched $TOTAL_RSVPS total RSVPs"
+
+      - name: Save to Public Repo for Frontend Access
+        run: |
+          CONTENT=$(base64 -w 0 combined-rsvps.json)
+
+          # Get current file SHA if it exists
+          SHA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/contents/rsvps-index.json" \
+            | jq -r '.sha // empty')
+
+          # Prepare request body
+          if [ -z "$SHA" ]; then
+            BODY="{\"message\":\"Update RSVPs index\",\"content\":\"$CONTENT\"}"
+          else
+            BODY="{\"message\":\"Update RSVPs index\",\"content\":\"$CONTENT\",\"sha\":\"$SHA\"}"
+          fi
+
+          curl -X PUT \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/contents/rsvps-index.json \
+            -d "$BODY"
+
+          echo "RSVPs index updated"
