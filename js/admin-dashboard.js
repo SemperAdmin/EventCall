@@ -173,36 +173,64 @@
             try {
                 const owner = window.GITHUB_CONFIG.dataOwner || window.GITHUB_CONFIG.owner;
                 const repo = window.GITHUB_CONFIG.dataRepo || 'EventCall-Data';
+                const url = `https://api.github.com/repos/${owner}/${repo}/contents/users`;
 
-                const response = await fetch(
-                    `https://api.github.com/repos/${owner}/${repo}/contents/users`,
-                    {
-                        headers: {
-                            'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
+                console.log('📂 Fetching users from:', url);
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
                     }
-                );
+                });
 
-                if (!response.ok) throw new Error('Failed to fetch users');
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`❌ Failed to fetch users directory: ${response.status}`, errorText);
+
+                    // If users directory doesn't exist (404), return empty array
+                    if (response.status === 404) {
+                        console.warn('⚠️ users/ directory does not exist in EventCall-Data repository');
+                        console.warn('💡 To fix: Create users/ directory and add user JSON files');
+                        return [];
+                    }
+
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
 
                 const files = await response.json();
+                console.log(`📋 Found ${files.length} files in users/ directory`);
+
                 const userFiles = files.filter(f => f.name.endsWith('.json'));
+                console.log(`📋 Found ${userFiles.length} user JSON files`);
 
                 const users = [];
                 for (const file of userFiles) {
                     try {
+                        console.log(`📥 Loading user from: ${file.name}`);
                         const userResponse = await fetch(file.download_url);
+
+                        if (!userResponse.ok) {
+                            console.error(`❌ Failed to download ${file.name}: ${userResponse.status}`);
+                            continue;
+                        }
+
                         const userData = await userResponse.json();
                         users.push(userData);
+                        console.log(`✅ Loaded user: ${userData.username || file.name}`);
                     } catch (e) {
-                        console.warn('Failed to load user:', file.name, e);
+                        console.warn(`⚠️ Failed to parse user file ${file.name}:`, e);
                     }
                 }
 
+                console.log(`✅ Successfully loaded ${users.length} users`);
                 return users;
             } catch (error) {
-                console.error('Error fetching users:', error);
+                console.error('❌ Error fetching users:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
                 return [];
             }
         },
