@@ -109,14 +109,6 @@
 }
 
 /* Enhanced Focus States for Keyboard Navigation */
-input:focus,
-select:focus,
-textarea:focus,
-button:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-    border-color: #3b82f6 !important;
-}
 
 /* Radio and checkbox focus states */
 input[type="radio"]:focus,
@@ -135,11 +127,14 @@ button:focus-visible {
     border-color: #3b82f6 !important;
 }
 
-/* Hover states for interactive elements */
+/* Button interactions */
+button:not(:disabled) {
+    transition: all 0.2s ease;
+}
+
 button:hover:not(:disabled) {
     filter: brightness(1.1);
     transform: translateY(-1px);
-    transition: all 0.2s ease;
 }
 
 button:active:not(:disabled) {
@@ -150,4 +145,58 @@ button:active:not(:disabled) {
 .form-group:focus-within label {
     color: #1e40af;
     font-weight: 600;
+}
+
+/* Form Progress Indicator */
+.form-progress-container {
+    margin-bottom: 1.5rem;
+    display: none;
+}
+
+.form-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.form-progress-label-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-progress-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.autosave-indicator {
+    font-size: 0.75rem;
+    color: #10b981;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.form-progress-text {
+    font-size: 0.875rem;
+    color: #059669;
+    font-weight: 600;
+}
+
+.form-progress-bar-wrapper {
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.form-progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+    transition: width 0.3s ease;
+    border-radius: 4px;
 }

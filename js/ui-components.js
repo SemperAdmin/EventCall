@@ -130,16 +130,16 @@ function createRSVPFormHTML(event, eventId) {
             <h3>RSVP</h3>
 
             <!-- Progress Indicator -->
-            <div id="form-progress-container" style="margin-bottom: 1.5rem; display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">Form Progress</span>
-                        <span id="autosave-indicator" style="font-size: 0.75rem; color: #10b981; opacity: 0; transition: opacity 0.3s ease;">✓ Saved</span>
+            <div id="form-progress-container" class="form-progress-container">
+                <div class="form-progress-header">
+                    <div class="form-progress-label-group">
+                        <span class="form-progress-label">Form Progress</span>
+                        <span id="autosave-indicator" class="autosave-indicator">✓ Saved</span>
                     </div>
-                    <span id="form-progress-text" style="font-size: 0.875rem; color: #059669; font-weight: 600;">0%</span>
+                    <span id="form-progress-text" class="form-progress-text">0%</span>
                 </div>
-                <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
-                    <div id="form-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981 0%, #059669 100%); transition: width 0.3s ease; border-radius: 4px;"></div>
+                <div class="form-progress-bar-wrapper">
+                    <div id="form-progress-bar" class="form-progress-bar"></div>
                 </div>
             </div>
 
@@ -706,18 +706,9 @@ function setupFormProgress() {
     if (!form || !progressContainer || !progressBar || !progressText) return;
 
     function updateProgress() {
-        // Get all visible required fields
+        // Get all visible required fields (offsetParent is null for hidden elements)
         const requiredFields = Array.from(form.querySelectorAll('input[required], select[required], textarea[required]'))
-            .filter(field => {
-                // Only count visible fields
-                const parent = field.closest('#accept-fields, #decline-fields');
-                if (parent) {
-                    return parent.style.display !== 'none';
-                }
-                // For attending radio buttons, always count them
-                if (field.name === 'attending') return true;
-                return field.offsetParent !== null;
-            });
+            .filter(field => field.offsetParent !== null);
 
         if (requiredFields.length === 0) return;
 
