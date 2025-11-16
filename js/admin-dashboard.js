@@ -447,7 +447,17 @@
                 });
 
                 const eventCount = userEvents.length;
-                const lastActive = user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'N/A';
+                // Check both lastLogin and lastActive for backward compatibility
+                const lastLoginDate = user.lastLogin || user.lastActive;
+                const lastActive = lastLoginDate
+                    ? new Date(lastLoginDate).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                    : 'Never';
                 const roleBadge = user.role === 'admin'
                     ? '<span style="background: var(--semper-gold); color: var(--semper-navy); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 700;">ADMIN</span>'
                     : '<span style="background: rgba(255,255,255,0.1); color: #94a3b8; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">USER</span>';
