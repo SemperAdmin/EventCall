@@ -131,8 +131,8 @@
 
                 console.log(`Found ${eventFiles.length} event files in private repo`);
 
-                // Load ALL events (no user filtering for admin)
-                for (const file of eventFiles) {
+                // PERFORMANCE: Load ALL events in parallel (no user filtering for admin)
+                const eventPromises = eventFiles.map(async (file) => {
                     try {
                         const fileResponse = await window.safeFetchGitHub(
                             window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
@@ -149,13 +149,21 @@
                         if (fileResponse.ok) {
                             const fileData = await fileResponse.json();
                             const content = JSON.parse(window.githubAPI.safeBase64Decode(fileData.content));
-                            events.push(content);
                             console.log('✅ Loaded event for admin:', content.title);
+                            return content;
                         }
+                        return null;
                     } catch (error) {
                         console.error('Failed to load event file ' + file.path + ':', error);
+                        return null;
                     }
-                }
+                });
+
+                // Wait for all events to load in parallel
+                const loadedEvents = await Promise.all(eventPromises);
+
+                // Filter out null values
+                const events = loadedEvents.filter(event => event !== null);
 
                 console.log(`✅ Loaded ${events.length} total events for admin dashboard`);
                 return events;
