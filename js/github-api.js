@@ -3,6 +3,9 @@
  * Added RSVP issue processing, management capabilities, and email-based user authentication
  */
 
+// Valid image file extensions for upload and deletion
+const VALID_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
+
 class GitHubAPI {
     constructor() {
         this.config = GITHUB_CONFIG;
@@ -1059,8 +1062,7 @@ class GitHubAPI {
             }
 
             // Check for valid file extension
-            const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
-            const hasValidExtension = validExtensions.some(ext =>
+            const hasValidExtension = VALID_IMAGE_EXTENSIONS.some(ext =>
                 fileName.toLowerCase().endsWith(ext)
             );
 
@@ -1090,9 +1092,17 @@ class GitHubAPI {
                 const segments = cleanUrl.split('/');
                 const fileName = segments[segments.length - 1];
 
-                // Basic validation on fallback
+                // Validate and decode fallback filename
                 if (fileName && fileName.includes('.')) {
-                    return decodeURIComponent(fileName);
+                    const decodedFileName = decodeURIComponent(fileName);
+
+                    // Security: Prevent path traversal in fallback filenames
+                    if (decodedFileName.includes('..') || decodedFileName.includes('/') || decodedFileName.includes('\\')) {
+                        console.error('Suspicious filename detected in fallback (path traversal attempt):', decodedFileName);
+                        return null;
+                    }
+
+                    return decodedFileName;
                 }
             } catch (fallbackError) {
                 console.error('Fallback extraction also failed:', fallbackError.message);
