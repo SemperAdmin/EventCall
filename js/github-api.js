@@ -217,10 +217,15 @@ class GitHubAPI {
     }
 
     /**
-     * Load all events from published events-index.json (secure - no token needed)
-     * Events are synced from private EventCall-Data repo via GitHub Actions workflows
+     * Load all events from EventCall-Data repository for current user (with caching)
      */
     async loadEvents(options = {}) {
+        const token = this.getToken();
+        if (!token) {
+            console.warn('⚠️ No GitHub token - returning empty events');
+            return {};
+        }
+
         // Check cache first unless force refresh is requested
         const now = Date.now();
         const forceRefresh = options.forceRefresh || false;
@@ -234,67 +239,100 @@ class GitHubAPI {
         }
 
         try {
-            console.log('📥 Loading events from published events-index.json...');
+            console.log('📥 Loading events from private EventCall-Data repo...');
 
-            // Load from PUBLIC repo's published events-index.json (synced by GitHub Actions)
-            // No token needed - reading from public EventCall repo
-            const owner = window.GITHUB_CONFIG?.owner || 'SemperAdmin';
-            const repo = window.GITHUB_CONFIG?.repo || 'EventCall';
-            const indexUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/events-index.json`;
-
-            const response = await window.safeFetchGitHub(
-                indexUrl,
+            // Load from PRIVATE repo: EventCall-Data
+            const treeResponse = await window.safeFetchGitHub(
+                window.GITHUB_CONFIG.getTreeUrl('data'),
                 {
                     headers: {
-                        'Accept': 'application/json',
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
                         'User-Agent': 'EventCall-App'
                     }
                 },
-                'Load events index from public repo'
+                'Load tree from EventCall-Data'
             );
 
-            if (!response.ok) {
-                if (response.status === 404) {
-                    console.log('Events index not found, treating as empty');
+            if (!treeResponse.ok) {
+                if (treeResponse.status === 404) {
+                    console.log('Repository or main branch not found, treating as empty');
                     return {};
                 }
-                throw new Error(`Failed to load events index: ${response.status}`);
+                throw new Error(`Failed to load repository tree: ${treeResponse.status}`);
             }
 
-            const allEvents = await response.json();
+            const treeData = await treeResponse.json();
+            const events = {};
 
-            // Ensure it's an array
-            const eventArray = Array.isArray(allEvents) ? allEvents : [];
-            console.log(`Found ${eventArray.length} total events in index`);
+            const eventFiles = treeData.tree.filter(item =>
+                item.path.startsWith('events/') &&
+                item.path.endsWith('.json') &&
+                item.type === 'blob'
+            );
 
-            // Get current user for filtering
+            console.log('Found ' + eventFiles.length + ' event files in private repo');
+
+            // Get current user once before processing
             const currentUser = window.userAuth?.getCurrentUser() || window.managerAuth?.getCurrentManager();
             if (!currentUser) {
-                console.warn('🔒 Skipping event filtering: no authenticated user');
+                console.warn('🔒 Skipping event load: no authenticated user');
                 return {};
             }
 
             const userUsername = (currentUser.username || '').toLowerCase();
             const userEmail = (currentUser.email || '').toLowerCase();
 
-            // Filter events by authenticated user
-            const events = {};
-            for (const event of eventArray) {
-                if (!event || !event.id) continue;
+            // PERFORMANCE OPTIMIZATION: Load all event blobs in parallel instead of sequentially
+            // This reduces load time from O(n * delay) to O(delay) for n events
+            const eventPromises = eventFiles.map(async (file) => {
+                try {
+                    const fileResponse = await window.safeFetchGitHub(
+                        window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
+                        {
+                            headers: {
+                                'Authorization': 'token ' + token,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'User-Agent': 'EventCall-App'
+                            }
+                        },
+                        'Load file blob from EventCall-Data'
+                    );
 
-                const createdBy = (event.createdBy || '').toLowerCase();
-                const createdByUsername = (event.createdByUsername || '').toLowerCase();
+                    if (fileResponse.ok) {
+                        const fileData = await fileResponse.json();
+                        const content = JSON.parse(this.safeBase64Decode(fileData.content));
 
-                const matchesUsername = userUsername && (createdBy === userUsername || createdByUsername === userUsername);
-                const matchesEmail = userEmail && createdBy === userEmail; // Backward-compat
+                        // Filter events by authenticated user (supports username-first, email fallback)
+                        const createdBy = (content.createdBy || '').toLowerCase();
+                        const createdByUsername = (content.createdByUsername || '').toLowerCase();
 
-                if (matchesUsername || matchesEmail) {
-                    console.log('✅ Loaded event for owner:', event.title);
+                        const matchesUsername = userUsername && (createdBy === userUsername || createdByUsername === userUsername);
+                        const matchesEmail = userEmail && createdBy === userEmail; // Backward-compat for older events
+
+                        if (matchesUsername || matchesEmail) {
+                            console.log('✅ Loaded event for owner:', content.title);
+                            return content;
+                        }
+                    }
+                    return null;
+                } catch (error) {
+                    console.error('Failed to load event file ' + file.path + ':', error);
+                    return null;
+                }
+            });
+
+            // Wait for all events to load in parallel
+            const loadedEvents = await Promise.all(eventPromises);
+
+            // Add non-null events to the events object
+            for (const event of loadedEvents) {
+                if (event && event.id) {
                     events[event.id] = event;
                 }
             }
 
-            console.log(`✅ Loaded ${Object.keys(events).length} events for current user`);
+            console.log(`✅ Loaded ${Object.keys(events).length} events from private repo for current user`);
 
             // Update cache
             this.eventsCache.data = events;
@@ -303,7 +341,7 @@ class GitHubAPI {
             return events;
 
         } catch (error) {
-            console.error('Failed to load events from published index:', error);
+            console.error('Failed to load events from private repo:', error);
 
             // Use enhanced error handler for user feedback
             if (window.ErrorHandler) {
@@ -357,6 +395,12 @@ class GitHubAPI {
      * Load all RSVP responses from GitHub (with caching)
      */
     async loadResponses(options = {}) {
+        const token = this.getToken();
+        if (!token) {
+            console.warn('⚠️ No GitHub token - returning empty responses');
+            return {};
+        }
+
         // PERFORMANCE OPTIMIZATION: Check cache first unless force refresh is requested
         const now = Date.now();
         const forceRefresh = options.forceRefresh || false;
@@ -371,27 +415,23 @@ class GitHubAPI {
         }
 
         try {
-            console.log('📥 Loading RSVPs from published rsvps-index.json...');
+            console.log('📥 Loading responses from private EventCall-Data repo...');
 
-            // Load from PUBLIC repo's published rsvps-index.json (synced by GitHub Actions)
-            // No token needed - reading from public EventCall repo
-            const owner = window.GITHUB_CONFIG?.owner || 'SemperAdmin';
-            const repo = window.GITHUB_CONFIG?.repo || 'EventCall';
-            const indexUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/rsvps-index.json`;
-
-            const response = await window.safeFetchGitHub(
-                indexUrl,
+            // Load from PRIVATE repo: EventCall-Data
+            const treeResponse = await window.safeFetchGitHub(
+                window.GITHUB_CONFIG.getTreeUrl('data'),
                 {
                     headers: {
-                        'Accept': 'application/json',
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
                         'User-Agent': 'EventCall-App'
                     }
                 },
-                'Load RSVPs index from public repo'
+                'Load tree from EventCall-Data'
             );
 
-            if (!response.ok) {
-                console.log('RSVPs index not found, treating as empty');
+            if (!treeResponse.ok) {
+                console.log('No responses found or repository not accessible');
                 // Return cached data if available
                 if (this.responsesCache.data) {
                     console.warn('⚠️ Returning stale cached responses due to error');
@@ -400,32 +440,121 @@ class GitHubAPI {
                 return {};
             }
 
-            const responses = await response.json();
+            const treeData = await treeResponse.json();
+            const responses = {};
 
-            // Ensure it's an object grouped by eventId
-            const responsesObject = typeof responses === 'object' && !Array.isArray(responses) ? responses : {};
+            // Debug: log all files to see the actual structure
+            console.log('🔍 All files in tree:', treeData.tree.length);
+            const rsvpRelated = treeData.tree.filter(item => 
+                item.path.includes('rsvp') || item.path.includes('RSVP')
+            );
+            console.log('🔍 RSVP-related files:', rsvpRelated.map(f => f.path));
 
-            // Log summary
-            const eventCount = Object.keys(responsesObject).length;
-            const totalRSVPs = Object.values(responsesObject).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
-            console.log(`✅ Loaded responses for ${eventCount} event(s)`);
-            console.log(`📊 Total RSVPs loaded: ${totalRSVPs}`);
+            const responseFiles = treeData.tree.filter(item => 
+                (item.path.startsWith('rsvps/') || item.path.startsWith('rsvp-')) && 
+                item.path.endsWith('.json') && 
+                item.type === 'blob' &&
+                item.path !== 'rsvps/.gitkeep' &&
+                item.path !== '.gitkeep' &&
+                item.path !== 'rsvps/.json' // exclude malformed filename
+            );
 
-            // Log per-event breakdown
-            Object.entries(responsesObject).forEach(([eventId, rsvps]) => {
-                if (Array.isArray(rsvps)) {
-                    console.log(`   Event ${eventId}: ${rsvps.length} RSVP(s)`);
+            console.log('Found ' + responseFiles.length + ' RSVP files in private repo');
+
+            // PERFORMANCE OPTIMIZATION: Load all response blobs in parallel instead of sequentially
+            const responsePromises = responseFiles.map(async (file) => {
+                try {
+                    // Fetch the file content
+                    const fileResponse = await window.safeFetchGitHub(
+                        window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
+                        {
+                            headers: {
+                                'Authorization': 'token ' + token,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'User-Agent': 'EventCall-App'
+                            }
+                        },
+                        'Load file blob from EventCall-Data'
+                    );
+
+                    if (!fileResponse.ok) return null;
+
+                    const fileData = await fileResponse.json();
+                    const decoded = this.safeBase64Decode(fileData.content);
+                    const rawJson = JSON.parse(decoded);
+
+                    // Normalize to array and flatten "data" wrapper if present
+                    let rsvpArray;
+                    if (Array.isArray(rawJson)) {
+                        rsvpArray = rawJson.map(item =>
+                            item && item.data
+                                ? { ...item.data, sentAt: item.sentAt, source: item.source }
+                                : item
+                        );
+                    } else {
+                        rsvpArray = [
+                            rawJson && rawJson.data
+                                ? { ...rawJson.data, sentAt: rawJson.sentAt, source: rawJson.source }
+                                : rawJson
+                        ];
+                    }
+
+                    // Extract eventId from filename or content
+                    let eventId;
+                    if (file.path.startsWith('rsvps/') && !file.path.includes('rsvp-')) {
+                        // Format: rsvps/{eventId}.json
+                        eventId = file.path.replace('rsvps/', '').replace('.json', '');
+                    } else {
+                        const sample = rsvpArray[0] || {};
+                        eventId = sample.eventId || (rawJson && rawJson.data && rawJson.data.eventId) || null;
+                    }
+
+                    if (!eventId) {
+                        console.warn(`⚠️ Could not extract eventId from RSVP file: ${file.path}`);
+                        return null;
+                    }
+
+                    console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId} from ${file.path}`);
+                    return { eventId, rsvpArray };
+
+                } catch (error) {
+                    console.error('Failed to load response file ' + file.path + ':', error);
+                    return null;
                 }
             });
 
+            // Wait for all responses to load in parallel
+            const loadedResponses = await Promise.all(responsePromises);
+
+            // Aggregate responses by eventId
+            for (const result of loadedResponses) {
+                if (result && result.eventId && result.rsvpArray) {
+                    if (!responses[result.eventId]) {
+                        responses[result.eventId] = [];
+                    }
+                    responses[result.eventId].push(...result.rsvpArray);
+                }
+            }
+
+            // Log summary
+            const eventCount = Object.keys(responses).length;
+            const totalRSVPs = Object.values(responses).reduce((sum, arr) => sum + arr.length, 0);
+            console.log(`✅ Loaded responses for ${eventCount} event(s) from private repo`);
+            console.log(`📊 Total RSVPs loaded: ${totalRSVPs}`);
+
+            // Log per-event breakdown
+            Object.entries(responses).forEach(([eventId, rsvps]) => {
+                console.log(`   Event ${eventId}: ${rsvps.length} RSVP(s)`);
+            });
+
             // Update cache
-            this.responsesCache.data = responsesObject;
+            this.responsesCache.data = responses;
             this.responsesCache.timestamp = now;
 
-            return responsesObject;
+            return responses;
 
         } catch (error) {
-            console.error('Failed to load RSVPs from published index:', error);
+            console.error('Failed to load responses from private repo:', error);
 
             // Use enhanced error handler for user feedback
             if (window.ErrorHandler) {
