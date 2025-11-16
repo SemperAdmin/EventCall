@@ -171,18 +171,28 @@
          */
         async fetchAllUsers() {
             try {
+                const token = window.GITHUB_CONFIG?.token || window.userAuth?.getGitHubToken?.();
+                if (!token) {
+                    console.warn('⚠️ No GitHub token - returning empty users');
+                    return [];
+                }
+
                 const owner = window.GITHUB_CONFIG.dataOwner || window.GITHUB_CONFIG.owner;
                 const repo = window.GITHUB_CONFIG.dataRepo || 'EventCall-Data';
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/users`;
 
                 console.log('📂 Fetching users from:', url);
 
-                const response = await fetch(url, {
-                    headers: {
-                        'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
+                const response = await window.safeFetchGitHub(
+                    url,
+                    {
+                        headers: {
+                            'Authorization': 'token ' + token,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    },
+                    'Fetch users directory from EventCall-Data'
+                );
 
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -215,7 +225,7 @@
                             apiUrl,
                             {
                                 headers: {
-                                    'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                    'Authorization': 'token ' + token,
                                     'Accept': 'application/vnd.github.v3+json'
                                 }
                             },
