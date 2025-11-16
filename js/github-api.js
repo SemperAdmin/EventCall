@@ -1037,6 +1037,16 @@ class GitHubAPI {
     }
 
     /**
+     * Validate filename for security issues (path traversal)
+     * @param {string} filename - Filename to validate
+     * @returns {boolean} - True if filename is safe, false otherwise
+     * @private
+     */
+    _isSecureFilename(filename) {
+        return !filename.includes('..') && !filename.includes('/') && !filename.includes('\\');
+    }
+
+    /**
      * Private helper: Extract and validate image filename from URL
      * Handles query parameters, fragments, and URL encoding
      * @param {string} imageUrl - The full image URL
@@ -1075,7 +1085,7 @@ class GitHubAPI {
             const decodedFileName = decodeURIComponent(fileName);
 
             // Basic security: reject filenames with path traversal attempts
-            if (decodedFileName.includes('..') || decodedFileName.includes('/') || decodedFileName.includes('\\')) {
+            if (!this._isSecureFilename(decodedFileName)) {
                 console.error('Suspicious filename detected (path traversal attempt):', decodedFileName);
                 return null;
             }
@@ -1094,10 +1104,20 @@ class GitHubAPI {
 
                 // Validate and decode fallback filename
                 if (fileName && fileName.includes('.')) {
+                    // Check for valid file extension in fallback
+                    const hasValidExtension = VALID_IMAGE_EXTENSIONS.some(ext =>
+                        fileName.toLowerCase().endsWith(ext)
+                    );
+
+                    if (!hasValidExtension) {
+                        console.warn('Invalid or missing file extension in fallback:', fileName);
+                        return null;
+                    }
+
                     const decodedFileName = decodeURIComponent(fileName);
 
                     // Security: Prevent path traversal in fallback filenames
-                    if (decodedFileName.includes('..') || decodedFileName.includes('/') || decodedFileName.includes('\\')) {
+                    if (!this._isSecureFilename(decodedFileName)) {
                         console.error('Suspicious filename detected in fallback (path traversal attempt):', decodedFileName);
                         return null;
                     }

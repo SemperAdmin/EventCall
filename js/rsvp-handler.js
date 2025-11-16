@@ -500,7 +500,7 @@ class RSVPHandler {
                 ${qrCodeHTML}
 
                 ${rsvpData.attending ? `
-                <div id="calendar-export-placeholder" style="display: none; margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
+                <div id="calendar-export-placeholder" class="hidden" style="margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
                     <strong>📅 Add to Your Calendar</strong><br>
                     <div id="calendar-dropdown-container" style="margin-top: 0.75rem;">
                         <!-- Calendar dropdown will be inserted here via JavaScript -->
@@ -534,7 +534,7 @@ class RSVPHandler {
                 // Show the placeholder now that calendar content is injected
                 const placeholder = document.getElementById('calendar-export-placeholder');
                 if (placeholder) {
-                    placeholder.style.display = 'block';
+                    placeholder.classList.remove('hidden');
                 }
             }
         }
