@@ -268,8 +268,12 @@
       // Show autosave indicator
       const indicator = document.getElementById('autosave-indicator');
       if (indicator) {
+        // Clear any existing timeout to prevent overlapping fades
+        if (indicator.fadeTimeout) {
+          clearTimeout(indicator.fadeTimeout);
+        }
         indicator.style.opacity = '1';
-        setTimeout(() => {
+        indicator.fadeTimeout = setTimeout(() => {
           indicator.style.opacity = '0';
         }, 2000);
       }
