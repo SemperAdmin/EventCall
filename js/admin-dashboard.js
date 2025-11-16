@@ -211,12 +211,16 @@
 
                         // For private repos, use GitHub API (file.url) instead of raw URL (file.download_url)
                         const apiUrl = file.url || file.download_url;
-                        const userResponse = await fetch(apiUrl, {
-                            headers: {
-                                'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                                'Accept': 'application/vnd.github.v3+json'
-                            }
-                        });
+                        const userResponse = await window.safeFetchGitHub(
+                            apiUrl,
+                            {
+                                headers: {
+                                    'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                    'Accept': 'application/vnd.github.v3+json'
+                                }
+                            },
+                            `Load user file ${file.name}`
+                        );
 
                         if (!userResponse.ok) {
                             console.error(`❌ Failed to download ${file.name}: ${userResponse.status}`);
@@ -228,8 +232,8 @@
                         // GitHub API returns base64 encoded content for private repos
                         let userData;
                         if (fileData.content) {
-                            // Decode base64 content (remove newlines first)
-                            const content = atob(fileData.content.replace(/\n/g, ''));
+                            // Decode base64 content with Unicode support
+                            const content = window.githubAPI.safeBase64Decode(fileData.content);
                             userData = JSON.parse(content);
                         } else {
                             // Fallback for public repos using download_url
