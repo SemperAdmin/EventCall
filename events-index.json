@@ -150,6 +150,111 @@
     "coverImage": ""
   },
   {
+    "id": "613a4b5d-f0cb-4770-9899-21026a1351b5",
+    "title": "Retirement Ceremony",
+    "date": "2026-08-15",
+    "time": "15:00",
+    "location": "TBD",
+    "description": "Please join us in honoring the distinguished career and dedicated service of a fellow Marine.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "retiree-name": {
+        "label": "Retiree Name",
+        "value": "Gunnery Sergeant Steven J. Kalchik"
+      },
+      "years-service": {
+        "label": "Years of Service",
+        "value": "22 years"
+      },
+      "retiring-rank": {
+        "label": "Retiring Rank",
+        "value": "Gunnery Sergeant"
+      },
+      "reception-location": {
+        "label": "Reception Location",
+        "value": "TBD"
+      }
+    },
+    "created": 1763404616073,
+    "status": "active",
+    "createdBy": "steven.kalchik",
+    "createdByName": "Steven Kalchik",
+    "seatingChart": {
+      "enabled": true,
+      "numberOfTables": 10,
+      "seatsPerTable": 8,
+      "totalCapacity": 80,
+      "tables": [
+        {
+          "tableNumber": 1,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": true
+        },
+        {
+          "tableNumber": 2,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 3,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 4,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 5,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 6,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 7,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 8,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 9,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 10,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        }
+      ],
+      "unassignedGuests": [],
+      "lastModified": 1763404616073
+    },
+    "coverImage": ""
+  },
+  {
     "id": "99d2ca30-fc61-49cc-9d7f-f0e21726412f",
     "title": "Sgt Agronomoff Going-Away",
     "date": "2025-11-14",
@@ -170,6 +275,42 @@
     "status": "active",
     "createdBy": "unknown",
     "createdByName": "Axel Martinez",
+    "coverImage": ""
+  },
+  {
+    "title": "Family Day Event",
+    "date": "2025-12-07",
+    "time": "14:00",
+    "location": "Leatherneck Gallery, National Museum of the Marine Corps, 1775 Semper Fidelis Wy, Triangle, VA 22172",
+    "description": "Bring your families to celebrate and build camaraderie outside of duty hours.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {},
+    "id": "a7d34e70-6213-4a08-8f95-25cbf8493eb8",
+    "created": 1763404544829,
+    "createdBy": "rtwilson1",
+    "createdByName": "R.T. Wilson",
+    "lastModified": 1763404740627,
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/ddb7953a-0e3f-428a-8137-372fbe719a5b.jpg"
+  },
+  {
+    "title": "VMFAT-502 Change of Command Ceremony",
+    "date": "2025-12-05",
+    "time": "10:00",
+    "location": "MCAS Miramar, VMFAT-502, Bldg 9270",
+    "description": "Join us for the formal transfer of authority and responsibility.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {},
+    "id": "c8cfc7af-5c16-495e-8817-29ca9275d474",
+    "created": 1763404501066,
+    "createdBy": "uhrle502",
+    "createdByName": "Corderis  Brown",
+    "lastModified": 1763404562553,
     "coverImage": ""
   },
   {
