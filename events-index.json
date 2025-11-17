@@ -278,6 +278,41 @@
     "coverImage": ""
   },
   {
+    "id": "a2e7b933-b60b-4719-b7fd-db79b27f22ca",
+    "title": "Retirement Ceremony",
+    "date": "2025-11-20",
+    "time": "17:30",
+    "location": "bldg31",
+    "description": "Please join us in honoring the distinguished career and dedicated service of a fellow Marine.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {
+      "retiree-name": {
+        "label": "Retiree Name",
+        "value": "sdfgf"
+      },
+      "years-service": {
+        "label": "Years of Service",
+        "value": "sdgsdg"
+      },
+      "retiring-rank": {
+        "label": "Retiring Rank",
+        "value": "sgsdg"
+      },
+      "reception-location": {
+        "label": "Reception Location",
+        "value": "sgsdg"
+      }
+    },
+    "created": 1763415080573,
+    "status": "active",
+    "createdBy": "oliveira1818",
+    "createdByName": "Anthony Oliveira",
+    "coverImage": ""
+  },
+  {
     "title": "Family Day Event",
     "date": "2025-12-07",
     "time": "14:00",
