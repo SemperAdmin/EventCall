@@ -931,6 +931,24 @@
     "coverImage": ""
   },
   {
+    "id": "dffaeabb-f73e-41ed-adf1-377cbf82c004",
+    "title": "A D&amp;B Festive Holiday Celebration",
+    "date": "2025-12-05",
+    "time": "18:00",
+    "location": "Marine Barracks Washington SNCO Club",
+    "description": "Join the Commandant s Own as we celebrate the holiday season!",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {},
+    "created": 1763403398907,
+    "status": "active",
+    "createdBy": "bjohnson1812",
+    "createdByName": "Brandon Johnson",
+    "coverImage": ""
+  },
+  {
     "id": "e686a26a-a737-4e05-bc1a-c4f908c70218",
     "title": "Marine Corps Birthday Ball",
     "date": "2025-11-29",
