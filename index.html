@@ -316,6 +316,12 @@ const tabs = document.querySelectorAll('.auth__tab');
     const showLogin = tab === 'login';
     loginForm.classList.toggle('auth__form--active', showLogin);
     registerForm.classList.toggle('auth__form--active', !showLogin);
+
+    // Scroll to top of auth card to ensure header with icon is visible
+    const authCard = document.querySelector('.auth__card');
+    if (authCard) {
+        authCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 // Update rank dropdown based on selected service branch for registration form
