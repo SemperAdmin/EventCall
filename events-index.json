@@ -150,6 +150,37 @@
     "coverImage": ""
   },
   {
+    "id": "3dbd951c-a284-4d21-ac9a-1dfe212f2297",
+    "title": "US Army War College Joint Ball",
+    "date": "2026-05-09",
+    "time": "18:00",
+    "location": "Hershey, PA",
+    "description": "Join us in celebrating the end of the academic year.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {
+      "venue": {
+        "label": "Venue",
+        "value": "Hershey Lodge"
+      },
+      "dress-code": {
+        "label": "Dress Code",
+        "value": "Mess Dress"
+      },
+      "ticket-price": {
+        "label": "Ticket Price",
+        "value": "$75 per person"
+      }
+    },
+    "created": 1763465155030,
+    "status": "active",
+    "createdBy": "reese.johnson",
+    "createdByName": "Reese Johnson",
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/0219421a-806c-4a09-9708-426dddf525a0.png"
+  },
+  {
     "id": "613a4b5d-f0cb-4770-9899-21026a1351b5",
     "title": "Retirement Ceremony",
     "date": "2026-08-15",
