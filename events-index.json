@@ -286,6 +286,651 @@
     "coverImage": ""
   },
   {
+    "id": "7844d2f4-5a91-46c7-8026-647e4751ba83",
+    "title": "Marine Corps Birthday Ball",
+    "date": "2025-11-21",
+    "time": "17:00",
+    "location": "Wilmington convention center wilmington north carolina",
+    "description": "Join us in celebrating the founding of the United States Marine Corps with tradition, camaraderie, and honor.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {
+      "ball-year": {
+        "label": "Birthday Year",
+        "value": "2025"
+      },
+      "venue": {
+        "label": "Venue",
+        "value": "Grand ballroom"
+      },
+      "dress-code": {
+        "label": "Dress Code",
+        "value": "Just blew alphas et cetera et cetera"
+      },
+      "ticket-price": {
+        "label": "Ticket Price",
+        "value": "70"
+      }
+    },
+    "created": 1763472142274,
+    "status": "active",
+    "createdBy": "brokentorque",
+    "createdByName": "Bryan E Seay",
+    "seatingChart": {
+      "enabled": true,
+      "numberOfTables": 100,
+      "seatsPerTable": 10,
+      "totalCapacity": 1000,
+      "tables": [
+        {
+          "tableNumber": 1,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": true
+        },
+        {
+          "tableNumber": 2,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 3,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 4,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 5,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 6,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 7,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 8,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 9,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 10,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 11,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 12,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 13,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 14,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 15,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 16,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 17,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 18,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 19,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 20,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 21,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 22,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 23,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 24,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 25,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 26,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 27,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 28,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 29,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 30,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 31,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 32,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 33,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 34,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 35,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 36,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 37,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 38,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 39,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 40,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 41,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 42,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 43,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 44,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 45,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 46,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 47,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 48,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 49,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 50,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 51,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 52,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 53,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 54,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 55,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 56,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 57,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 58,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 59,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 60,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 61,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 62,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 63,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 64,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 65,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 66,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 67,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 68,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 69,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 70,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 71,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 72,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 73,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 74,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 75,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 76,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 77,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 78,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 79,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 80,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 81,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 82,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 83,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 84,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 85,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 86,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 87,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 88,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 89,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 90,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 91,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 92,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 93,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 94,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 95,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 96,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 97,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 98,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 99,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 100,
+          "capacity": 10,
+          "assignedGuests": [],
+          "vipTable": false
+        }
+      ],
+      "unassignedGuests": [],
+      "lastModified": 1763472142275
+    },
+    "coverImage": ""
+  },
+  {
     "id": "99d2ca30-fc61-49cc-9d7f-f0e21726412f",
     "title": "Sgt Agronomoff Going-Away",
     "date": "2025-11-14",
