@@ -318,7 +318,9 @@ const tabs = document.querySelectorAll('.auth__tab');
     registerForm.classList.toggle('auth__form--active', !showLogin);
 
     // Scroll to top of page to ensure header with icon is fully visible
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Respect user's motion preferences for accessibility
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    window.scrollTo({ top: 0, behavior: motionQuery.matches ? 'auto' : 'smooth' });
 }
 
 // Update rank dropdown based on selected service branch for registration form
