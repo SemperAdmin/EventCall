@@ -157,14 +157,14 @@
     "description": "After 20 incredible years of service in the United States Marine Corps, I will be retiring on December 19th, and I would be honored to have you join my family and me for this special occasion. The ceremony will take place at VMMT 204, with the formal proceedings beginning at 1030.While I m excited about the next chapter, I can t help but feel a bit nostalgic as I prepare to step away from the Corps. It s been more than just a career; it s been a way of life. I ve had the privilege of working a",
     "askReason": false,
     "allowGuests": true,
-    "requiresMealChoice": true,
+    "requiresMealChoice": false,
     "customQuestions": [],
     "eventDetails": {},
     "id": "1b1b367d-8326-4b31-9402-d6bb719adcd4",
     "created": 1763663435833,
     "createdBy": "bvraider54",
     "createdByName": "brent Vines",
-    "lastModified": 1763664046063,
+    "lastModified": 1763667227674,
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/ddbe6863-2438-421f-ab53-cf4920a811ca.jpg"
   },
   {
