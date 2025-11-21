@@ -305,43 +305,50 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                 </div>
                             </div>
                         ` : ''}
-                        ${event.customQuestions && event.customQuestions.length > 0 ? `
-                            <div class="meta-item-v2" style="grid-column: 1 / -1;">
+                        ${(() => {
+                            if (!event.customQuestions || event.customQuestions.length === 0) return '';
+
+                            const typeLabels = {
+                                'text': '📝 Text',
+                                'choice': '☑️ Multiple Choice',
+                                'date': '📅 Date',
+                                'datetime': '🕐 Date & Time'
+                            };
+
+                            const questionsHtml = event.customQuestions.map((q, index) => {
+                                const typeLabel = typeLabels[q.type] || '📝 Text';
+                                const requiredLabel = q.required ? '<span class="question-required-label">*Required</span>' : '<span class="question-optional-label">Optional</span>';
+
+                                return `
+                                    <div class="custom-question-item">
+                                        <div class="custom-question-header">
+                                            <div class="custom-question-title">Q${index + 1}: ${h(q.question)}</div>
+                                            <div class="custom-question-required">${requiredLabel}</div>
+                                        </div>
+                                        <div class="custom-question-meta">
+                                            <span>${typeLabel}</span>
+                                            ${q.type === 'choice' && q.options && q.options.length > 0 ? `
+                                                <span class="custom-question-options">• Options: ${q.options.map(opt => h(opt)).join(', ')}</span>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+
+                            return `
+                            <div class="meta-item-v2 meta-item-full-width">
                                 <span class="meta-icon-v2">❓</span>
                                 <div class="meta-content">
                                     <div class="meta-label">Custom RSVP Questions</div>
                                     <div class="meta-value">
-                                        <div style="display:flex;flex-direction:column;gap:0.75rem;">
-                                            ${event.customQuestions.map((q, index) => {
-                                                const typeLabels = {
-                                                    'text': '📝 Text',
-                                                    'choice': '☑️ Multiple Choice',
-                                                    'date': '📅 Date',
-                                                    'datetime': '🕐 Date & Time'
-                                                };
-                                                const typeLabel = typeLabels[q.type] || '📝 Text';
-                                                const requiredLabel = q.required ? '<span style="color:#dc2626;font-weight:600;">*Required</span>' : '<span style="color:#6b7280;">Optional</span>';
-
-                                                return `
-                                                    <div style="padding:0.75rem;background:#f8fafc;border-left:3px solid #3b82f6;border-radius:0.375rem;">
-                                                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:0.5rem;">
-                                                            <div style="font-weight:600;color:#1e40af;">Q${index + 1}: ${h(q.question)}</div>
-                                                            <div style="font-size:0.75rem;margin-left:1rem;">${requiredLabel}</div>
-                                                        </div>
-                                                        <div style="font-size:0.875rem;color:#475569;display:flex;align-items:center;gap:0.5rem;">
-                                                            <span>${typeLabel}</span>
-                                                            ${q.type === 'choice' && q.options && q.options.length > 0 ? `
-                                                                <span style="color:#6b7280;">• Options: ${q.options.map(opt => h(opt)).join(', ')}</span>
-                                                            ` : ''}
-                                                        </div>
-                                                    </div>
-                                                `;
-                                            }).join('')}
+                                        <div class="custom-questions-list">
+                                            ${questionsHtml}
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        ` : ''}
+                        `;
+                        })()}
                         ${event.eventDetails && Object.keys(event.eventDetails).length ? `
                             <div class="meta-item-v2" style="grid-column: 1 / -1;">
                                 <span class="meta-icon-v2">ℹ️</span>

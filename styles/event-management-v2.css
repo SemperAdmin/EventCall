@@ -1093,3 +1093,63 @@
     gap: 0.5rem;
     justify-content: flex-end;
 }
+
+/* ============================================
+   CUSTOM RSVP QUESTIONS DISPLAY
+   ============================================ */
+
+.meta-item-full-width {
+    grid-column: 1 / -1;
+}
+
+.custom-questions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.custom-question-item {
+    padding: 0.75rem;
+    background: var(--gray-50, #f8fafc);
+    border-left: 3px solid var(--ux2-info, #3b82f6);
+    border-radius: 0.375rem;
+}
+
+.custom-question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 0.5rem;
+}
+
+.custom-question-title {
+    font-weight: 600;
+    color: #1e40af;
+}
+
+.custom-question-required {
+    font-size: 0.75rem;
+    margin-left: 1rem;
+    white-space: nowrap;
+}
+
+.question-required-label {
+    color: var(--error-color, #dc2626);
+    font-weight: 600;
+}
+
+.question-optional-label {
+    color: #6b7280;
+}
+
+.custom-question-meta {
+    font-size: 0.875rem;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.custom-question-options {
+    color: #6b7280;
+}
