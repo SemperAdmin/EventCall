@@ -119,8 +119,7 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/3d00c2de-6d75-4498-9fa9-5f30f83db99c.png"
   },
   {
-    "id": "18641d7a-bf27-4511-8b88-127d33bc0588",
-    "title": "Unit Formation",
+    "title": "Unit Formation for Motivation",
     "date": "2025-11-29",
     "time": "18:17",
     "location": "Battalion",
@@ -128,25 +127,28 @@
     "askReason": false,
     "allowGuests": false,
     "requiresMealChoice": false,
-    "customQuestions": [],
-    "eventDetails": {
-      "formation-type": {
-        "label": "Formation Type",
-        "value": "Batallion"
+    "customQuestions": [
+      {
+        "id": "custom_0",
+        "question": "I live you",
+        "type": "text"
       },
-      "uniform": {
-        "label": "Uniform",
-        "value": "Cammies"
-      },
-      "reporting-senior": {
-        "label": "Reporting Senior",
-        "value": "1stSgt Smith"
+      {
+        "id": "custom_1",
+        "question": "What do you think",
+        "type": "choice",
+        "options": [
+          "Love me",
+          "Love you"
+        ]
       }
-    },
+    ],
+    "eventDetails": {},
+    "id": "18641d7a-bf27-4511-8b88-127d33bc0588",
     "created": 1763266662295,
-    "status": "active",
     "createdBy": "furby203824",
     "createdByName": "Stephen Shorter",
+    "lastModified": 1763702672812,
     "coverImage": ""
   },
   {
