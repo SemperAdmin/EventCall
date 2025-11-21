@@ -1045,6 +1045,41 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/ddb7953a-0e3f-428a-8137-372fbe719a5b.jpg"
   },
   {
+    "id": "b1c86ab3-ac94-4209-95b1-332f46346bc1",
+    "title": "Chief Warrant Officer 4 Gene C. Stone&#x27;s Retirement Ceremony",
+    "date": "2026-02-20",
+    "time": "12:00",
+    "location": "2nd Battalion 10th Marines Gun Bay",
+    "description": "Please join us in honoring the distinguished career and dedicated service of Chief Warrant Officer 4 Stone.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "retiree-name": {
+        "label": "Retiree Name",
+        "value": "CWO4 Gene C. Stone"
+      },
+      "years-service": {
+        "label": "Years of Service",
+        "value": "22+"
+      },
+      "retiring-rank": {
+        "label": "Retiring Rank",
+        "value": "Chief Warrant Officer 4"
+      },
+      "reception-location": {
+        "label": "Reception Location",
+        "value": "Fiddlers Green"
+      }
+    },
+    "created": 1763736158802,
+    "status": "active",
+    "createdBy": "craige83",
+    "createdByName": "Gene C. Stone",
+    "coverImage": ""
+  },
+  {
     "title": "VMFAT-502 Change of Command Ceremony",
     "date": "2025-12-05",
     "time": "10:00",
