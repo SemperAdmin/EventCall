@@ -616,13 +616,17 @@
   border: none;
   padding: 0.5rem 0.75rem;
   border-bottom: 2px solid transparent;
-  color: #e5e7eb;
+  color: #94a3b8;
   cursor: pointer;
   font-weight: 600;
+  transition: all 0.2s ease;
+}
+.manage-tabs .tab-btn:hover {
+  color: #e5e7eb;
 }
 .manage-tabs .tab-btn.active {
     border-color: #ffd700;
-    color: #1a1f2e;
+    color: #ffd700;
     font-weight: 700;
 }
 
