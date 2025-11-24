@@ -21,7 +21,7 @@
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; }
 
 /* Auth Block */
-.auth { width: 100%; max-width: 550px; min-height: max-content; margin: 2rem auto; box-sizing: border-box; }
+.auth { width: 100%; max-width: 550px; min-height: max-content; margin: 0 auto; box-sizing: border-box; }
 .auth__card { background: linear-gradient(135deg, var(--ux2-navy-800) 0%, var(--ux2-navy-700) 100%); border-radius: 1.5rem; padding: 3rem; box-shadow: var(--ux2-shadow-strong); border: 2px solid #3a4556; box-sizing: border-box; }
 
 .auth__header { text-align: center; margin-bottom: 2rem; display: block; visibility: visible; }
@@ -137,10 +137,11 @@ select option {
 @media (min-width: 769px) {
   #login-page {
     padding: 2rem;
+    align-items: center; /* Center vertically on desktop */
   }
 
   .auth {
-    margin: 3rem auto;
+    margin: 2rem auto;
   }
 
   .auth__card {
@@ -159,13 +160,21 @@ select option {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .auth { margin: 1rem auto; padding: 0 1rem; }
+  #login-page {
+    padding-top: 1.5rem; /* Ensure header is visible */
+  }
+
+  .auth { margin: 0 auto; padding: 0 1rem; }
   .auth__card { padding: 2rem; }
   .page-header__title { font-size: 1.5rem; }
 }
 
 @media (max-width: 640px) {
-  .auth { margin: 0.5rem auto; padding: 0 0.75rem; }
+  #login-page {
+    padding-top: 1rem;
+  }
+
+  .auth { margin: 0 auto; padding: 0 0.75rem; }
   .auth__card {
     padding: 1.5rem;
     border-radius: 1rem;
@@ -176,7 +185,11 @@ select option {
 }
 
 @media (max-width: 480px) {
-  .auth { margin: 0.25rem auto; padding: 0 0.5rem; }
+  #login-page {
+    padding-top: 0.5rem;
+  }
+
+  .auth { margin: 0 auto; padding: 0 0.5rem; }
   .auth__card {
     padding: 1rem;
     border-radius: 0.75rem;
