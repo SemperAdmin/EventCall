@@ -1717,7 +1717,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                         </div>
                                     </div>
                                     <div class="unassigned-guest-actions">
-                                        <select class="table-select" id="table-select-${guest.rsvpId}" onchange="if(this.value) eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}')">
+                                        <select class="table-select" id="table-select-${guest.rsvpId}" onchange="if(this.value) { eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}').catch(err => { console.error('Assignment error:', err); showToast('Failed to assign guest', 'error'); }); }">
                                             <option value="">Select Table...</option>
                                             ${event.seatingChart.tables.map(table => {
                                                 const occupancy = seatingChart.getTableOccupancy(table.tableNumber);
@@ -2673,31 +2673,56 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      * @param {string} eventId - Event ID
      */
     exportSeatingCSV(eventId) {
-        const event = window.events ? window.events[eventId] : null;
-        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+        try {
+            const event = window.events ? window.events[eventId] : null;
+            const eventResponses = window.responses ? window.responses[eventId] || [] : [];
 
-        if (!event || !event.seatingChart) {
-            showToast('Event or seating chart not found', 'error');
-            return;
+            if (!event || !event.seatingChart) {
+                showToast('Event or seating chart not found', 'error');
+                return;
+            }
+
+            if (!window.SeatingChart) {
+                showToast('Seating chart module not loaded', 'error');
+                return;
+            }
+
+            const seatingChart = new window.SeatingChart(eventId);
+            seatingChart.loadSeatingData(event);
+
+            if (typeof seatingChart.generateSeatingCSV !== 'function') {
+                showToast('Export function not available', 'error');
+                return;
+            }
+
+            const csv = seatingChart.generateSeatingCSV(eventResponses);
+
+            if (!csv || csv.length === 0) {
+                showToast('No seating data to export', 'warning');
+                return;
+            }
+
+            // Download CSV (compatible with Excel)
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `seating-chart-${event.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+
+            showToast('📥 Seating chart exported successfully', 'success');
+        } catch (error) {
+            console.error('Export seating chart error:', error);
+            showToast('Failed to export seating chart', 'error');
         }
-
-        const seatingChart = new window.SeatingChart(eventId);
-        seatingChart.loadSeatingData(event);
-
-        const csv = seatingChart.generateSeatingCSV(eventResponses);
-
-        // Download CSV
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `seating-chart-${event.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-
-        showToast('📥 Seating chart exported', 'success');
     }
 
     /**
