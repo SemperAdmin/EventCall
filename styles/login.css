@@ -6,7 +6,7 @@
 /* Login Container */
 #login-page {
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* Start from top to prevent cutoff */
     justify-content: center;
     position: fixed;
     top: 0;
@@ -22,14 +22,16 @@
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    padding-top: 1rem; /* Ensure content starts below viewport top */
 }
 
 .login-wrapper {
     min-height: 100vh;
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* Start from top to prevent cutoff */
     justify-content: center;
-    padding: 2rem;
+    padding: 1rem 2rem 2rem 2rem; /* More top padding */
+    width: 100%;
 }
 
 /* Login Box */
@@ -457,9 +459,23 @@
 }
 
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+    .login-wrapper {
+        padding: 1rem 1.5rem 2rem 1.5rem;
+    }
+
     .login-box {
         padding: 2rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .login-wrapper {
+        padding: 0.75rem 1rem 1.5rem 1rem;
+    }
+
+    .login-box {
+        padding: 1.5rem;
         border-radius: 1rem;
     }
 
@@ -473,6 +489,16 @@
 
     .code-box code {
         font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-wrapper {
+        padding: 0.5rem 0.75rem 1rem 0.75rem;
+    }
+
+    .login-box {
+        padding: 1rem;
     }
 }
 /* User Menu Dropdown */
