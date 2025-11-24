@@ -132,11 +132,13 @@ class EventManager {
         // Setup event delegation for remove buttons in seating chart
         this.setupSeatingChartEventDelegation();
 
-        // Render charts if available
-        this.renderAttendanceChart(stats);
-        this.renderResponsesChart(eventResponses);
+        // Render charts if available (async, non-blocking)
+        this.renderAttendanceChart(stats).catch(err => console.error('Failed to render attendance chart:', err));
+        this.renderResponsesChart(eventResponses).catch(err => console.error('Failed to render responses chart:', err));
         const rangeSel = document.getElementById('time-range');
-        if (rangeSel) rangeSel.addEventListener('change', () => this.renderResponsesChart(eventResponses));
+        if (rangeSel) rangeSel.addEventListener('change', () => {
+            this.renderResponsesChart(eventResponses).catch(err => console.error('Failed to render responses chart:', err));
+        });
         // Show manage page content; URL updates should be orchestrated by the router, not here
         showPage('manage');
         // Legacy fallback: update hash only if router is unavailable
@@ -610,12 +612,16 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             if (timelineSection) { timelineSection.hidden = true; timelineSection.classList.add('hidden'); timelineSection.style.display = 'none'; }
             if (venueGrid) { venueGrid.classList.add('hidden'); venueGrid.setAttribute('hidden', ''); venueGrid.style.display = 'none'; }
             hideInvite();
-            // Render charts if available
+            // Render charts if available (async, non-blocking)
             try {
                 const stats = this.calculateAttendanceStats ? this.calculateAttendanceStats(eventResponses) : null;
-                if (stats) this.renderAttendanceChart(stats);
-                this.renderResponsesChart(eventResponses);
-            } catch (e) { /* no-op */ }
+                if (stats) {
+                    this.renderAttendanceChart(stats).catch(err => console.error('Failed to render attendance chart:', err));
+                }
+                this.renderResponsesChart(eventResponses).catch(err => console.error('Failed to render responses chart:', err));
+            } catch (e) {
+                console.error('Error in chart rendering:', e);
+            }
         };
 
         const activateTimeline = () => {
@@ -736,10 +742,26 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         return entries;
     }
 
-    renderAttendanceChart(stats) {
+    async renderAttendanceChart(stats) {
         try {
             const canvas = document.getElementById('attendanceChart');
-            if (!canvas || !window.Chart) return;
+            if (!canvas) return;
+
+            // Lazy load Chart.js if not already loaded
+            if (!window.Chart) {
+                if (window.LazyLoader && typeof window.LazyLoader.loadChartJS === 'function') {
+                    await window.LazyLoader.loadChartJS();
+                } else {
+                    console.warn('LazyLoader not available, charts cannot be displayed');
+                    return;
+                }
+            }
+
+            if (!window.Chart) {
+                console.warn('Chart.js failed to load');
+                return;
+            }
+
             if (this._attendanceChart) { this._attendanceChart.destroy(); }
             const data = [stats.attending || 0, stats.notAttending || 0, stats.pending || 0];
             this._attendanceChart = new Chart(canvas, {
@@ -750,13 +772,31 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 },
                 options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
             });
-        } catch (e) { /* no-op */ }
+        } catch (e) {
+            console.error('Error rendering attendance chart:', e);
+        }
     }
 
-    renderResponsesChart(eventResponses) {
+    async renderResponsesChart(eventResponses) {
         try {
             const canvas = document.getElementById('responsesOverTimeChart');
-            if (!canvas || !window.Chart) return;
+            if (!canvas) return;
+
+            // Lazy load Chart.js if not already loaded
+            if (!window.Chart) {
+                if (window.LazyLoader && typeof window.LazyLoader.loadChartJS === 'function') {
+                    await window.LazyLoader.loadChartJS();
+                } else {
+                    console.warn('LazyLoader not available, charts cannot be displayed');
+                    return;
+                }
+            }
+
+            if (!window.Chart) {
+                console.warn('Chart.js failed to load');
+                return;
+            }
+
             const range = parseInt(document.getElementById('time-range')?.value || '30', 10);
             const now = Date.now();
             const start = now - range * 24 * 60 * 60 * 1000;
@@ -776,7 +816,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 data: { labels, datasets: [{ label: 'Responses', data, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.2)', tension: 0.25 }] },
                 options: { responsive: true, plugins: { legend: { display: false }, tooltip: { enabled: true } }, scales: { x: { ticks: { maxRotation: 0 } }, y: { beginAtZero: true } } }
             });
-        } catch (e) { /* no-op */ }
+        } catch (e) {
+            console.error('Error rendering responses chart:', e);
+        }
     }
 
     promptAddGuest(eventId) {
