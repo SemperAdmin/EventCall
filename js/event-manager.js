@@ -133,11 +133,11 @@ class EventManager {
         this.setupSeatingChartEventDelegation();
 
         // Render charts if available (async, non-blocking)
-        this.renderAttendanceChart(stats).catch(err => console.error('Failed to render attendance chart:', err));
-        this.renderResponsesChart(eventResponses).catch(err => console.error('Failed to render responses chart:', err));
+        this._renderChartSafe(() => this.renderAttendanceChart(stats), 'attendance chart');
+        this._renderChartSafe(() => this.renderResponsesChart(eventResponses), 'responses chart');
         const rangeSel = document.getElementById('time-range');
         if (rangeSel) rangeSel.addEventListener('change', () => {
-            this.renderResponsesChart(eventResponses).catch(err => console.error('Failed to render responses chart:', err));
+            this._renderChartSafe(() => this.renderResponsesChart(eventResponses), 'responses chart');
         });
         // Show manage page content; URL updates should be orchestrated by the router, not here
         showPage('manage');
@@ -616,9 +616,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             try {
                 const stats = this.calculateAttendanceStats ? this.calculateAttendanceStats(eventResponses) : null;
                 if (stats) {
-                    this.renderAttendanceChart(stats).catch(err => console.error('Failed to render attendance chart:', err));
+                    this._renderChartSafe(() => this.renderAttendanceChart(stats), 'attendance chart');
                 }
-                this.renderResponsesChart(eventResponses).catch(err => console.error('Failed to render responses chart:', err));
+                this._renderChartSafe(() => this.renderResponsesChart(eventResponses), 'responses chart');
             } catch (e) {
                 console.error('Error in chart rendering:', e);
             }
@@ -742,25 +742,49 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         return entries;
     }
 
+    /**
+     * Ensure Chart.js is loaded (DRY helper)
+     * @returns {Promise<boolean>} True if Chart.js is available
+     */
+    async _ensureChartJsLoaded() {
+        if (window.Chart) return true;
+
+        if (window.LazyLoader && typeof window.LazyLoader.loadChartJS === 'function') {
+            try {
+                await window.LazyLoader.loadChartJS();
+                if (window.Chart) return true;
+                console.warn('Chart.js failed to load');
+                return false;
+            } catch (error) {
+                console.error('Error loading Chart.js:', error);
+                return false;
+            }
+        }
+
+        console.warn('LazyLoader not available, charts cannot be displayed');
+        return false;
+    }
+
+    /**
+     * Helper to render chart with error handling (DRY)
+     * @param {Function} renderFn - Chart rendering function
+     * @param {string} chartName - Name of chart for error messages
+     */
+    async _renderChartSafe(renderFn, chartName) {
+        try {
+            await renderFn();
+        } catch (error) {
+            console.error(`Failed to render ${chartName}:`, error);
+        }
+    }
+
     async renderAttendanceChart(stats) {
         try {
             const canvas = document.getElementById('attendanceChart');
             if (!canvas) return;
 
-            // Lazy load Chart.js if not already loaded
-            if (!window.Chart) {
-                if (window.LazyLoader && typeof window.LazyLoader.loadChartJS === 'function') {
-                    await window.LazyLoader.loadChartJS();
-                } else {
-                    console.warn('LazyLoader not available, charts cannot be displayed');
-                    return;
-                }
-            }
-
-            if (!window.Chart) {
-                console.warn('Chart.js failed to load');
-                return;
-            }
+            // Ensure Chart.js is loaded
+            if (!(await this._ensureChartJsLoaded())) return;
 
             if (this._attendanceChart) { this._attendanceChart.destroy(); }
             const data = [stats.attending || 0, stats.notAttending || 0, stats.pending || 0];
@@ -782,20 +806,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             const canvas = document.getElementById('responsesOverTimeChart');
             if (!canvas) return;
 
-            // Lazy load Chart.js if not already loaded
-            if (!window.Chart) {
-                if (window.LazyLoader && typeof window.LazyLoader.loadChartJS === 'function') {
-                    await window.LazyLoader.loadChartJS();
-                } else {
-                    console.warn('LazyLoader not available, charts cannot be displayed');
-                    return;
-                }
-            }
-
-            if (!window.Chart) {
-                console.warn('Chart.js failed to load');
-                return;
-            }
+            // Ensure Chart.js is loaded
+            if (!(await this._ensureChartJsLoaded())) return;
 
             const range = parseInt(document.getElementById('time-range')?.value || '30', 10);
             const now = Date.now();
@@ -1526,6 +1538,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const unitValue = unitInput?.value.toLowerCase().trim() || '';
 
         let visibleCount = 0;
+        const visibilityUpdates = [];
 
         cards.forEach(card => {
             const name = (card.dataset.name || '').toLowerCase();
@@ -1559,9 +1572,19 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
             const isVisible = matchesSearch && matchesFilter && matchesBranch && matchesRank && matchesUnit;
 
-            card.style.display = isVisible ? 'block' : 'none';
+            visibilityUpdates.push({ element: card, show: isVisible });
             if (isVisible) visibleCount++;
         });
+
+        // Batch DOM updates for performance
+        if (window.utils?.batchVisibilityUpdate) {
+            window.utils.batchVisibilityUpdate(visibilityUpdates);
+        } else {
+            // Fallback if util is not present
+            visibilityUpdates.forEach(({ element, show }) => {
+                element.style.display = show ? 'block' : 'none';
+            });
+        }
 
         // Update count display if it exists
         const countDisplay = document.getElementById('attendee-count-display');
@@ -2522,12 +2545,14 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      * Assign a guest to a table
      * @param {string} eventId - Event ID
      * @param {string} rsvpId - RSVP ID
+     * @throws {Error} When assignment fails
      */
     async assignGuestToTable(eventId, rsvpId) {
         const event = window.events ? window.events[eventId] : null;
         if (!event || !event.seatingChart) {
-            showToast('Event or seating chart not found', 'error');
-            return;
+            const error = 'Event or seating chart not found';
+            showToast(error, 'error');
+            throw new Error(error);
         }
 
         // Look up guest details from responses
@@ -2535,8 +2560,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const guest = eventResponses.find(r => r.rsvpId === rsvpId);
 
         if (!guest) {
-            showToast('Guest not found', 'error');
-            return;
+            const error = 'Guest not found';
+            showToast(error, 'error');
+            throw new Error(error);
         }
 
         const guestName = guest.name;
@@ -2545,14 +2571,16 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         // Get selected table from dropdown
         const selectElement = document.getElementById(`table-select-${rsvpId}`);
         if (!selectElement) {
-            showToast('Table selection not found', 'error');
-            return;
+            const error = 'Table selection not found';
+            showToast(error, 'error');
+            throw new Error(error);
         }
 
         const tableNumber = parseInt(selectElement.value);
         if (!tableNumber) {
-            showToast('Please select a table', 'warning');
-            return;
+            const error = 'Please select a table';
+            showToast(error, 'warning');
+            throw new Error(error);
         }
 
         // Create seating chart instance and assign
@@ -2574,6 +2602,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             this.refreshSeatingChart(eventId);
         } else {
             showToast(result.message, 'error');
+            throw new Error(result.message);
         }
     }
 
@@ -2739,13 +2768,14 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
             const csv = seatingChart.generateSeatingCSV(eventResponses);
 
-            if (!csv || csv.length === 0) {
+            // Check if CSV contains actual data (more than just header)
+            if (!csv || csv.split('\n').filter(line => line.trim()).length <= 1) {
                 showToast('No seating data to export', 'warning');
                 return;
             }
 
-            // Download CSV (compatible with Excel)
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            // Download CSV (compatible with Excel) - BOM for better compatibility
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
