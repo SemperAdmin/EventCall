@@ -21,8 +21,8 @@
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; }
 
 /* Auth Block */
-.auth { width: 100%; max-width: 550px; min-height: max-content; margin: 2rem auto; }
-.auth__card { background: linear-gradient(135deg, var(--ux2-navy-800) 0%, var(--ux2-navy-700) 100%); border-radius: 1.5rem; padding: 3rem; box-shadow: var(--ux2-shadow-strong); border: 2px solid #3a4556; }
+.auth { width: 100%; max-width: 550px; min-height: max-content; margin: 2rem auto; box-sizing: border-box; }
+.auth__card { background: linear-gradient(135deg, var(--ux2-navy-800) 0%, var(--ux2-navy-700) 100%); border-radius: 1.5rem; padding: 3rem; box-shadow: var(--ux2-shadow-strong); border: 2px solid #3a4556; box-sizing: border-box; }
 
 .auth__header { text-align: center; margin-bottom: 2rem; display: block; visibility: visible; }
 .auth__icon { font-size: 4rem; margin-bottom: 1rem; }
@@ -118,8 +118,75 @@
 /* Upload input */
 .file-input { display: none; }
 
+/* Select optgroup styling for military rank categories */
+select optgroup {
+  font-weight: 700;
+  font-style: normal;
+  color: var(--ux2-gold);
+  background: var(--ux2-navy-800);
+  padding: 0.5rem;
+}
+
+select option {
+  background: var(--ux2-navy-700);
+  color: var(--ux2-text-light);
+  padding: 0.5rem;
+}
+
+/* Desktop adjustments for optimal form display */
+@media (min-width: 769px) {
+  #login-page {
+    padding: 2rem;
+  }
+
+  .auth {
+    margin: 3rem auto;
+  }
+
+  .auth__card {
+    padding: 3rem;
+    max-width: 550px;
+  }
+
+  .form-control {
+    transition: all 0.3s ease;
+  }
+
+  .form-control:hover {
+    border-color: rgba(212, 175, 55, 0.5);
+  }
+}
+
 /* Responsive adjustments */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .auth { margin: 1rem auto; padding: 0 1rem; }
   .auth__card { padding: 2rem; }
   .page-header__title { font-size: 1.5rem; }
+}
+
+@media (max-width: 640px) {
+  .auth { margin: 0.5rem auto; padding: 0 0.75rem; }
+  .auth__card {
+    padding: 1.5rem;
+    border-radius: 1rem;
+  }
+  .auth__icon { font-size: 3rem; }
+  .auth__title { font-size: 1.5rem; }
+  .form-group { margin-bottom: 1rem; }
+}
+
+@media (max-width: 480px) {
+  .auth { margin: 0.25rem auto; padding: 0 0.5rem; }
+  .auth__card {
+    padding: 1rem;
+    border-radius: 0.75rem;
+  }
+  .auth__icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+  .auth__title { font-size: 1.25rem; }
+  .auth__subtitle { font-size: 0.875rem; }
+  .auth__tabs { margin-bottom: 1rem; }
+  .form-control { padding: 0.75rem; font-size: 0.95rem; }
+  .btn--primary { padding: 0.875rem 1.5rem; font-size: 0.95rem; }
+  .auth__info { padding: 1rem; margin-top: 1rem; }
+  .branding-footer { margin-top: 1rem; padding-top: 1rem; }
 }
