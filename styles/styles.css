@@ -118,6 +118,45 @@
 /* Upload input */
 .file-input { display: none; }
 
+/* Select optgroup styling for military rank categories */
+select optgroup {
+  font-weight: 700;
+  font-style: normal;
+  color: var(--ux2-gold);
+  background: var(--ux2-navy-800);
+  padding: 0.5rem;
+}
+
+select option {
+  background: var(--ux2-navy-700);
+  color: var(--ux2-text-light);
+  padding: 0.5rem;
+}
+
+/* Desktop adjustments for optimal form display */
+@media (min-width: 769px) {
+  #login-page {
+    padding: 2rem;
+  }
+
+  .auth {
+    margin: 3rem auto;
+  }
+
+  .auth__card {
+    padding: 3rem;
+    max-width: 550px;
+  }
+
+  .form-control {
+    transition: all 0.3s ease;
+  }
+
+  .form-control:hover {
+    border-color: rgba(212, 175, 55, 0.5);
+  }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .auth { margin: 1rem auto; padding: 0 1rem; }
