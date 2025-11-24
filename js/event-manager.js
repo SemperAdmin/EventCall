@@ -1476,35 +1476,56 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const rankSelect = document.getElementById('filter-rank');
         const unitInput = document.getElementById('filter-unit');
         const cards = document.querySelectorAll('.attendee-card');
-        
-        const searchTerm = searchInput?.value.toLowerCase() || '';
+
+        const searchTerm = searchInput?.value.toLowerCase().trim() || '';
         const filterValue = filterSelect?.value || 'all';
         const branchValue = branchSelect?.value || '';
         const rankValue = rankSelect?.value || '';
-        const unitValue = unitInput?.value.toLowerCase() || '';
-        
+        const unitValue = unitInput?.value.toLowerCase().trim() || '';
+
+        let visibleCount = 0;
+
         cards.forEach(card => {
-            const name = card.dataset.name || '';
+            const name = (card.dataset.name || '').toLowerCase();
+            const email = (card.dataset.email || '').toLowerCase();
+            const phone = (card.dataset.phone || '').toLowerCase();
             const status = card.dataset.status || '';
-            const branch = card.dataset.branch || '';
-            const rank = card.dataset.rank || '';
-            const unit = card.dataset.unit || '';
-            const extra = [
-                branch,
-                rank,
-                unit,
-                card.dataset.email || '',
-                card.dataset.phone || ''
-            ].join(' ');
-            
-            const matchesSearch = searchTerm === '' || name.includes(searchTerm) || extra.includes(searchTerm);
+            const branch = (card.dataset.branch || '').toLowerCase();
+            const rank = (card.dataset.rank || '').toLowerCase();
+            const unit = (card.dataset.unit || '').toLowerCase();
+
+            // Search matches name, email, or phone
+            const matchesSearch = searchTerm === '' ||
+                                  name.includes(searchTerm) ||
+                                  email.includes(searchTerm) ||
+                                  phone.includes(searchTerm) ||
+                                  branch.includes(searchTerm) ||
+                                  rank.includes(searchTerm) ||
+                                  unit.includes(searchTerm);
+
+            // Filter by attendance status
             const matchesFilter = filterValue === 'all' || status === filterValue;
+
+            // Filter by branch
             const matchesBranch = branchValue === '' || branch === branchValue;
+
+            // Filter by rank
             const matchesRank = rankValue === '' || rank === rankValue;
+
+            // Filter by unit
             const matchesUnit = unitValue === '' || unit.includes(unitValue);
-            
-            card.style.display = (matchesSearch && matchesFilter && matchesBranch && matchesRank && matchesUnit) ? 'block' : 'none';
+
+            const isVisible = matchesSearch && matchesFilter && matchesBranch && matchesRank && matchesUnit;
+
+            card.style.display = isVisible ? 'block' : 'none';
+            if (isVisible) visibleCount++;
         });
+
+        // Update count display if it exists
+        const countDisplay = document.getElementById('attendee-count-display');
+        if (countDisplay) {
+            countDisplay.textContent = `Showing ${visibleCount} of ${cards.length} attendees`;
+        }
     }
     
     /**
