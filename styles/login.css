@@ -464,13 +464,13 @@
 @media (min-width: 769px) {
     #login-page,
     #login-container {
-        align-items: center; /* Center vertically on desktop */
+        align-items: flex-start;; /* Center vertically on desktop */
         padding-top: 2rem;
         padding-bottom: 2rem; /* Ensure bottom spacing */
     }
 
     .login-wrapper {
-        align-items: center; /* Center vertically on desktop */
+        align-items: flex-start;; /* Center vertically on desktop */
         min-height: auto; /* Allow wrapper to size to content on desktop */
     }
 }
