@@ -1796,7 +1796,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                         </div>
                                     </div>
                                     <div class="unassigned-guest-actions">
-<select class="table-select" id="table-select-${guest.rsvpId}" onchange="eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}', this.value).catch(err => { console.error('Assignment error:', err); showToast('Failed to assign guest', 'error'); })">                                            <option value="">Select Table...</option>
+                                    <select class="table-select" id="table-select-${guest.rsvpId}" onchange="eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}', this.value).catch(err => { console.error('Assignment error:', err); showToast('Failed to assign guest', 'error'); })">                                            <option value="">Select Table...</option>
                                             ${event.seatingChart.tables.map(table => {
                                                 const occupancy = seatingChart.getTableOccupancy(table.tableNumber);
                                                 const available = table.capacity - occupancy;
@@ -2610,12 +2610,12 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             event.seatingChart = seatingChart.exportSeatingData();
             await this.saveEventSeatingData(event);
             showToast(result.message, 'success');
-
             // Refresh the seating chart display
             this.refreshSeatingChart(eventId);
         } else {
-            showToast(result.message, 'error');
-            throw new Error(result.message);
+            // CRITICAL ADDITION: Report the failure message back to the user/console
+            console.error('Assignment failed:', result.message);
+            showToast(result.message || 'Failed to assign guest: Unknown reason.', 'error');
         }
     }
 
