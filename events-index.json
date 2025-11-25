@@ -42,7 +42,14 @@
         {
           "tableNumber": 3,
           "capacity": 8,
-          "assignedGuests": [],
+          "assignedGuests": [
+            {
+              "rsvpId": "7721449c-9819-44b8-a851-9589192dbc7a",
+              "name": "paul",
+              "guestCount": 0,
+              "assignedAt": 1764055134730
+            }
+          ],
           "vipTable": false
         },
         {
@@ -95,10 +102,8 @@
           "vipTable": false
         }
       ],
-      "unassignedGuests": [
-        "7721449c-9819-44b8-a851-9589192dbc7a"
-      ],
-      "lastModified": 1764053518789
+      "unassignedGuests": [],
+      "lastModified": 1764055134730
     },
     "coverImage": ""
   },
