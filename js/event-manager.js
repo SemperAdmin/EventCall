@@ -1850,7 +1850,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                 ${guest.guestCount > 0 ? `<span class="table-guest-count">+${guest.guestCount}</span>` : ''}
                                             </div>
                                             <div class="table-guest-actions">
-                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" onchange="eventManager.reassignGuestToTable('${eventId}', '${guest.rsvpId}', this.value).catch(err => { console.error('Reassignment error:', err); this.value = ''; })">
+                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" onchange="eventManager.assignGuestToTable('${eventId}'.replace(/'/g, '&#39;'), '${guest.rsvpId}'.replace(/'/g, '&#39;'), this.value).catch(err => { console.error('Assignment error:', err); showToast('Failed to assign guest', 'error'); })">
                                                     <option value="">Move to...</option>
                                                     ${event.seatingChart.tables.map(t => {
                                                         if (t.tableNumber === table.tableNumber) return ''; // Skip current table
