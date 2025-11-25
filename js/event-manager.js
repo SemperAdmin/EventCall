@@ -2555,12 +2555,13 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     }
 
     /**
-     * Assign a guest to a table
-     * @param {string} eventId - Event ID
-     * @param {string} rsvpId - RSVP ID
-     * @throws {Error} When assignment fails
-     */
-    async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
+ * Assign a guest to a table
+ * @param {string} eventId - Event ID
+ * @param {string} rsvpId - RSVP ID
+ * @param {string} tableNumberStr - The table number selected from the dropdown
+ */
+async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
+    try {
         const event = window.events ? window.events[eventId] : null;
         if (!event || !event.seatingChart) {
             const error = 'Event or seating chart not found';
@@ -2588,22 +2589,23 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const guestName = guest.name;
         const guestCount = guest.guestCount || 0;
 
-        // Get selected table from dropdown
         // Use the table number passed directly from the dropdown
-        const tableNumber = parseInt(tableNumberStr); 
-        if (!tableNumber) { 
-            showToast('Please select a table', 'warning'); 
-            return; 
+        const tableNumber = parseInt(tableNumberStr);
+        if (!tableNumber) {
+            showToast('Please select a table', 'warning');
+            return;
         }
 
         // Create seating chart instance and assign
         const seatingChart = new window.SeatingChart(eventId);
         seatingChart.loadSeatingData(event);
 
+        // *** THIS IS THE CRITICAL ASSIGNMENT CALL ***
         const result = seatingChart.assignGuestToTable(rsvpId, tableNumber, {
             name: guestName,
             guestCount: guestCount
         });
+        // ********************************************
 
         if (result.success) {
             // Update event data
@@ -2613,12 +2615,17 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             // Refresh the seating chart display
             this.refreshSeatingChart(eventId);
         } else {
-            // CRITICAL ADDITION: Report the failure message back to the user/console
-            console.error('Assignment failed:', result.message);
+            // Failure logging is now safe within the try block
+            console.error('Assignment failed (Handled by SeatingChart logic):', result.message);
             showToast(result.message || 'Failed to assign guest: Unknown reason.', 'error');
         }
+    } catch (error) {
+        // *** THIS CATCHES THE INVISIBLE CRASH ***
+        console.error('CRITICAL ASSIGNMENT CRASH (Function failed to execute):', error);
+        showToast('A critical error occurred during assignment. Check console.', 'error');
+        throw error; // Re-throw to propagate to the HTML onchange handler
     }
-
+}
     /**
      * Unassign a guest from their table
      * @param {string} eventId - Event ID
