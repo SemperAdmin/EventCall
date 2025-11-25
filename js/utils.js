@@ -22,16 +22,24 @@ function generateUUID() {
  * @returns {string} Formatted date
  */
 function formatDate(date, options = {}) {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    
+    // Parse date string with timezone-safe approach
+    let dateObj;
+    if (typeof date === 'string') {
+        // Add time component to parse in local timezone instead of UTC
+        dateObj = date.includes('T') ? new Date(date) : new Date(`${date}T00:00:00`);
+    } else {
+        dateObj = date;
+    }
+
     const defaultOptions = {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         ...options
     };
-    
-    return dateObj.toLocaleDateString('en-US', defaultOptions);
+
+    // Use undefined to respect user's locale instead of hardcoded 'en-US'
+    return dateObj.toLocaleDateString(undefined, defaultOptions);
 }
 
 /**
