@@ -1767,7 +1767,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
                 <!-- Seating Actions -->
                 <div class="invite-actions-section">
-                    <button class="btn-action" onclick="eventManager.autoAssignSeats('${eventId}')">
+                    <button class="btn-action" onclick="eventManager.autoAssignSeats('${eventId}').catch(err => { console.error('Auto-assign error:', err); showToast('Auto-assign failed', 'error'); })">
                         🎯 Auto-Assign All
                     </button>
                     <button class="btn-action" onclick="eventManager.exportSeatingCSV('${eventId}')">
@@ -1850,7 +1850,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                 ${guest.guestCount > 0 ? `<span class="table-guest-count">+${guest.guestCount}</span>` : ''}
                                             </div>
                                             <div class="table-guest-actions">
-                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" onchange="eventManager.reassignGuestToTable('${eventId}', '${guest.rsvpId}', this.value)">
+                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" onchange="eventManager.reassignGuestToTable('${eventId}', '${guest.rsvpId}', this.value).catch(err => { console.error('Reassignment error:', err); this.value = ''; })">
                                                     <option value="">Move to...</option>
                                                     ${event.seatingChart.tables.map(t => {
                                                         if (t.tableNumber === table.tableNumber) return ''; // Skip current table
