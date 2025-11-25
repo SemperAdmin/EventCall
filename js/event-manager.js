@@ -2555,6 +2555,13 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             throw new Error(error);
         }
 
+        // Check if SeatingChart class is loaded
+        if (!window.SeatingChart) {
+            const error = 'Seating chart module not loaded';
+            showToast(error, 'error');
+            throw new Error(error);
+        }
+
         // Look up guest details from responses
         const eventResponses = window.responses ? window.responses[eventId] || [] : [];
         const guest = eventResponses.find(r => r.rsvpId === rsvpId);

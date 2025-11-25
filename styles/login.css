@@ -459,6 +459,18 @@
 }
 
 /* Responsive */
+/* Desktop - center the form vertically */
+@media (min-width: 769px) {
+    #login-page {
+        align-items: center; /* Center vertically on desktop */
+        padding-top: 2rem;
+    }
+
+    .login-wrapper {
+        align-items: center; /* Center vertically on desktop */
+    }
+}
+
 @media (max-width: 768px) {
     .login-wrapper {
         padding: 1rem 1.5rem 2rem 1.5rem;
