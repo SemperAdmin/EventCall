@@ -1497,9 +1497,11 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                             ✏️ Edit
                         </button>
                         
-                        <button 
-                            class="btn-attendee-action btn-attendee-action-email" 
-                            onclick="mailAttendee('${response.email || ''}', '${this.currentEvent?.title || 'Event'}')"
+                        <button
+                            class="btn-attendee-action btn-attendee-action-email"
+                            data-action="email-attendee"
+                            data-rsvp-id="${response.rsvpId}"
+                            data-event-id="${eventId}"
                             ${!response.email ? 'disabled title="No email address available"' : 'title="Send email to attendee"'}>
                             📧 Email
                         </button>
@@ -1635,10 +1637,73 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         });
         
         rankSelect.addEventListener('change', () => this.filterAttendees());
-        
+
         const unitInput = document.getElementById('filter-unit');
         if (unitInput) {
             unitInput.addEventListener('input', () => this.filterAttendees());
+        }
+    }
+
+    /**
+     * Open email dialog for a specific attendee
+     * Opens the default email client with pre-populated subject and body
+     * @param {string} rsvpId - RSVP ID of the attendee
+     * @param {string} eventId - Event ID
+     */
+    openEmailDialog(rsvpId, eventId) {
+        const event = window.events ? window.events[eventId] : null;
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+        const response = eventResponses.find(r => r.rsvpId === rsvpId);
+
+        if (!response || !response.email || !event) {
+            showToast('Guest email or event data missing.', 'error');
+            return;
+        }
+
+        // 1. Define Email Content
+        const emailTo = response.email;
+        const guestName = response.name || 'Guest';
+        const eventName = event.title || event.name || 'Event';
+
+        // Format event date and time if available
+        let eventDateTime = '';
+        if (event.date) {
+            const eventDate = new Date(event.date);
+            const formattedDate = eventDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            eventDateTime = event.time ? `${formattedDate} at ${event.time}` : formattedDate;
+        }
+
+        // Format location if available
+        const location = event.location ? `\n\nLocation: ${event.location}` : '';
+
+        // Create personalized email body
+        const subject = `Regarding Your RSVP for ${eventName}`;
+        const body = `Dear ${guestName},
+
+Thank you for your RSVP to ${eventName}!${eventDateTime ? `\n\nEvent Details:\nDate & Time: ${eventDateTime}` : ''}${location}
+
+We look forward to seeing you there!
+
+Best regards`;
+
+        // 2. Build the Mailto URL
+        const mailtoUrl = `mailto:${encodeURIComponent(emailTo)}` +
+                          `?subject=${encodeURIComponent(subject)}` +
+                          `&body=${encodeURIComponent(body)}`;
+
+        // 3. Open the Email Client
+        try {
+            window.open(mailtoUrl, '_blank');
+            console.log(`📧 Opening email client for: ${emailTo}`);
+            showToast(`📧 Opening email to ${guestName}`, 'success');
+        } catch (error) {
+            console.error('Failed to open email client:', error);
+            showToast('Failed to open email client', 'error');
         }
     }
 
@@ -3146,6 +3211,35 @@ document.addEventListener('input', function(event) {
     if (event.target.matches('[data-filter-action="search-attendees"]')) {
         if (eventManager && typeof eventManager.filterAttendees === 'function') {
             eventManager.filterAttendees();
+        }
+    }
+});
+
+// ================================================
+// EVENT DELEGATION: Email Attendee Button
+// ================================================
+// Handle email button clicks in attendee cards
+document.addEventListener('click', function(event) {
+    if (event.target.matches('[data-action="email-attendee"]') ||
+        event.target.closest('[data-action="email-attendee"]')) {
+
+        const button = event.target.matches('[data-action="email-attendee"]')
+            ? event.target
+            : event.target.closest('[data-action="email-attendee"]');
+
+        // Skip if button is disabled
+        if (button.disabled) {
+            return;
+        }
+
+        const rsvpId = button.dataset.rsvpId;
+        const eventId = button.dataset.eventId;
+
+        if (eventManager && typeof eventManager.openEmailDialog === 'function' && rsvpId && eventId) {
+            eventManager.openEmailDialog(rsvpId, eventId);
+        } else {
+            console.error('Email functionality not available or missing data');
+            showToast('Unable to open email', 'error');
         }
     }
 });
