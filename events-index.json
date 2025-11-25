@@ -1785,24 +1785,6 @@
     "coverImage": ""
   },
   {
-    "title": "Retirement Ceremony",
-    "date": "2025-12-20",
-    "time": "10:30",
-    "location": "",
-    "description": "Please join us in honoring the distinguished career and dedicated service of a fellow Marine.",
-    "askReason": false,
-    "allowGuests": true,
-    "requiresMealChoice": true,
-    "customQuestions": [],
-    "eventDetails": {},
-    "id": "cf04b40a-e664-4372-aac6-9f7479740047",
-    "created": 1763675063240,
-    "createdBy": "bvraider54",
-    "createdByName": "brent Vines",
-    "lastModified": 1763676425403,
-    "coverImage": "https://semperadmin.github.io/EventCall/create"
-  },
-  {
     "id": "d617bb6e-ea8e-4f20-b024-079b0ba5d791",
     "title": "Testing MCBH Command Deck Invitation",
     "date": "2025-11-14",
