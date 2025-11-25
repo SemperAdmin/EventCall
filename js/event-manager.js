@@ -1668,8 +1668,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         // Format event date and time if available
         let eventDateTime = '';
         if (event.date) {
-            const eventDate = new Date(event.date);
-            const formattedDate = eventDate.toLocaleDateString('en-US', {
+            const eventDate = new Date(`${event.date}T00:00:00`);
+            const formattedDate = eventDate.toLocaleDateString(undefined, {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
@@ -1864,7 +1864,7 @@ Best regards`;
                                         </div>
                                     </div>
                                     <div class="unassigned-guest-actions">
-                                    <select class="table-move-select" id="table-move-${guest.rsvpId}" data-action="assign-unassigned" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}">
+                                    <select class="table-move-select" data-action="assign-table" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}">
                                     <option value="">Select Table...</option>
                                             ${event.seatingChart.tables.map(table => {
                                                 const occupancy = seatingChart.getTableOccupancy(table.tableNumber);
@@ -1918,7 +1918,7 @@ Best regards`;
                                                 ${guest.guestCount > 0 ? `<span class="table-guest-count">+${guest.guestCount}</span>` : ''}
                                             </div>
                                             <div class="table-guest-actions">
-                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" data-action="assign-unassigned" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}">
+                                                <select class="table-move-select" data-action="assign-table" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}">
                                                     <option value="">Move to...</option>
                                                     ${event.seatingChart.tables.map(t => {
                                                         if (t.tableNumber === table.tableNumber) return ''; // Skip current table
@@ -3162,7 +3162,7 @@ window.eventManager = eventManager;
 // due to unescaped characters in event/RSVP IDs.
 document.addEventListener('change', async function(event) {
     // Check if the changed element is a table assignment dropdown
-    if (event.target.matches('[data-action="assign-unassigned"]')) {
+    if (event.target.matches('[data-action="assign-table"]')) {
         const target = event.target;
 
         // Extract data from HTML5 data attributes (safe from escaping issues)
