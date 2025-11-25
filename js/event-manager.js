@@ -1796,7 +1796,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                         </div>
                                     </div>
                                     <div class="unassigned-guest-actions">
-                                        <select class="table-select" id="table-select-${guest.rsvpId}" onchange="if(this.value) { eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}').catch(err => { console.error('Assignment error:', err); showToast('Failed to assign guest', 'error'); }); }">
+                                        <select class="table-select" id="table-select-${guest.rsvpId}" onchange="if(this.value) { eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}', **this.value**).catch(err => { console.error('Assignment error:', err); showToast('Failed to assign guest', 'error'); }); }">
                                             <option value="">Select Table...</option>
                                             ${event.seatingChart.tables.map(table => {
                                                 const occupancy = seatingChart.getTableOccupancy(table.tableNumber);
