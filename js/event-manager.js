@@ -1675,7 +1675,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 month: 'long',
                 day: 'numeric'
             });
-            eventDateTime = event.time ? `${formattedDate} at ${event.time}` : formattedDate;
+            // Use formatTime helper for consistent time formatting
+            const formattedTime = event.time && typeof formatTime === 'function' ? formatTime(event.time) : event.time;
+            eventDateTime = formattedTime ? `${formattedDate} at ${formattedTime}` : formattedDate;
         }
 
         // Format location if available
@@ -1835,13 +1837,13 @@ Best regards`;
 
                 <!-- Seating Actions -->
                 <div class="invite-actions-section">
-                    <button class="btn-action" onclick="eventManager.autoAssignSeats('${eventId}').catch(err => { console.error('Auto-assign error:', err); showToast('Auto-assign failed', 'error'); })">
+                    <button class="btn-action" data-action="auto-assign-seats" data-event-id="${eventId}">
                         🎯 Auto-Assign All
                     </button>
-                    <button class="btn-action" onclick="eventManager.exportSeatingCSV('${eventId}')">
+                    <button class="btn-action" data-action="export-seating" data-event-id="${eventId}">
                         📥 Export Seating Chart
                     </button>
-                    <button class="btn-action" onclick="eventManager.refreshSeatingChart('${eventId}')">
+                    <button class="btn-action" data-action="refresh-seating" data-event-id="${eventId}">
                         🔄 Refresh
                     </button>
                 </div>
@@ -2679,10 +2681,20 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
         if (result.success) {
             // Update event data
             event.seatingChart = seatingChart.exportSeatingData();
-            await this.saveEventSeatingData(event);
+
+            // Update local state immediately
+            if (window.events) {
+                window.events[eventId] = event;
+            }
+
+            // Show success feedback immediately (before GitHub save)
             showToast(result.message, 'success');
-            // Refresh the seating chart display
+
+            // Refresh the seating chart display immediately
             this.refreshSeatingChart(eventId);
+
+            // Save to GitHub in background (non-blocking)
+            this.saveEventSeatingDataBackground(event);
         } else {
             // Failure logging is now safe within the try block
             console.error('Assignment failed (Handled by SeatingChart logic):', result.message);
@@ -3146,6 +3158,21 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
             showToast('Failed to save seating data', 'error');
         }
     }
+
+    /**
+     * Save event seating data to GitHub in background (non-blocking)
+     * Used for immediate UI updates while persisting data asynchronously
+     * @param {Object} event - Event object with updated seating data
+     */
+    saveEventSeatingDataBackground(event) {
+        // Fire and forget - don't await, don't block UI
+        if (window.githubAPI) {
+            window.githubAPI.saveEvent(event).catch(error => {
+                console.error('Background save failed:', error);
+                // Don't show toast for background saves to avoid interrupting user
+            });
+        }
+    }
 }
 
 // Create global instance
@@ -3240,6 +3267,45 @@ document.addEventListener('click', function(event) {
         } else {
             console.error('Email functionality not available or missing data');
             showToast('Unable to open email', 'error');
+        }
+    }
+
+    // ================================================
+    // EVENT DELEGATION: Seating Chart Action Buttons
+    // ================================================
+    // Handle auto-assign, export, and refresh buttons
+    const actionButton = event.target.closest('[data-action^="auto-assign-"], [data-action^="export-seating"], [data-action^="refresh-seating"]');
+
+    if (actionButton) {
+        const action = actionButton.dataset.action;
+        const eventId = actionButton.dataset.eventId;
+
+        if (!eventManager || !eventId) {
+            console.error('EventManager or eventId not available');
+            return;
+        }
+
+        switch (action) {
+            case 'auto-assign-seats':
+                if (typeof eventManager.autoAssignSeats === 'function') {
+                    eventManager.autoAssignSeats(eventId).catch(err => {
+                        console.error('Auto-assign error:', err);
+                        showToast('Auto-assign failed', 'error');
+                    });
+                }
+                break;
+
+            case 'export-seating':
+                if (typeof eventManager.exportSeatingCSV === 'function') {
+                    eventManager.exportSeatingCSV(eventId);
+                }
+                break;
+
+            case 'refresh-seating':
+                if (typeof eventManager.refreshSeatingChart === 'function') {
+                    eventManager.refreshSeatingChart(eventId);
+                }
+                break;
         }
     }
 });
