@@ -1796,7 +1796,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                         </div>
                                     </div>
                                     <div class="unassigned-guest-actions">
-                                    <select class="table-move-select" id="table-move-${guest.rsvpId}" onchange="eventManager.assignGuestToTable('${eventId}'.replace(/'/g, '&#39;'), '${guest.rsvpId}'.replace(/'/g, '&#39;'), this.value).catch(err => { console.error('Assignment error:', err); showToast('Failed to assign guest', 'error'); })">
+                                    <select class="table-move-select" id="table-move-${guest.rsvpId}" data-action="assign-unassigned" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}">
                                     <option value="">Select Table...</option>
                                             ${event.seatingChart.tables.map(table => {
                                                 const occupancy = seatingChart.getTableOccupancy(table.tableNumber);
@@ -1850,7 +1850,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                 ${guest.guestCount > 0 ? `<span class="table-guest-count">+${guest.guestCount}</span>` : ''}
                                             </div>
                                             <div class="table-guest-actions">
-                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" onchange="eventManager.assignGuestToTable('${eventId}'.replace(/'/g, '&#39;'), '${guest.rsvpId}'.replace(/'/g, '&#39;'), this.value).catch(err => { console.error('Assignment error:', err); showToast('Failed to assign guest', 'error'); })">
+                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" data-action="assign-unassigned" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}">
                                                     <option value="">Move to...</option>
                                                     ${event.seatingChart.tables.map(t => {
                                                         if (t.tableNumber === table.tableNumber) return ''; // Skip current table
@@ -3085,3 +3085,42 @@ const eventManager = new EventManager();
 
 // Make functions available globally for HTML onclick handlers
 window.eventManager = eventManager;
+
+// ================================================
+// EVENT DELEGATION: Seating Chart Table Assignment
+// ================================================
+// This listener handles all table assignment dropdowns via event delegation,
+// eliminating inline onchange handlers that were causing silent failures
+// due to unescaped characters in event/RSVP IDs.
+document.addEventListener('change', async function(event) {
+    // Check if the changed element is a table assignment dropdown
+    if (event.target.matches('[data-action="assign-unassigned"]')) {
+        const target = event.target;
+
+        // Extract data from HTML5 data attributes (safe from escaping issues)
+        const eventId = target.dataset.eventId;
+        const rsvpId = target.dataset.rsvpId;
+        const tableNumberStr = target.value;
+
+        // Validate that a table was actually selected
+        if (!tableNumberStr) {
+            return; // User selected the placeholder option, do nothing
+        }
+
+        try {
+            // Call the assignment function with proper error handling
+            await eventManager.assignGuestToTable(eventId, rsvpId, tableNumberStr);
+
+            // Success toast is shown inside assignGuestToTable
+            // The UI will refresh via refreshSeatingChart() call in that method
+
+        } catch (error) {
+            // Handle any errors that weren't caught inside assignGuestToTable
+            console.error('Assignment error (caught by event delegation):', error);
+            showToast('Failed to assign guest', 'error');
+
+            // Reset the dropdown to prevent confusion
+            target.value = '';
+        }
+    }
+});
