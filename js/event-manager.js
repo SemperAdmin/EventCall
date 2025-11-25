@@ -132,6 +132,9 @@ class EventManager {
         // Setup event delegation for remove buttons in seating chart
         this.setupSeatingChartEventDelegation();
 
+        // Initialize filter controls for Guest List tab
+        this.initFilterControls();
+
         // Render charts if available (async, non-blocking)
         this._renderChartSafe(() => this.renderAttendanceChart(stats), 'attendance chart');
         this._renderChartSafe(() => this.renderResponsesChart(eventResponses), 'responses chart');
@@ -477,9 +480,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                             class="search-input"
                             placeholder="🔍 Search attendees..."
                             id="attendee-search"
-                            oninput="eventManager.filterAttendees()"
+                            data-filter-action="search-attendees"
                         >
-                        <select class="filter-select" id="attendee-filter" onchange="eventManager.filterAttendees()">
+                        <select class="filter-select" id="attendee-filter" data-filter-action="filter-attendees">
                             <option value="all">All People</option>
                             <option value="attending">Attending Only</option>
                             <option value="declined">Declined Only</option>
@@ -3121,6 +3124,28 @@ document.addEventListener('change', async function(event) {
 
             // Reset the dropdown to prevent confusion
             target.value = '';
+        }
+    }
+
+    // ================================================
+    // EVENT DELEGATION: Guest List Filters
+    // ================================================
+    // Handle filter dropdown changes
+    if (event.target.matches('[data-filter-action="filter-attendees"]')) {
+        if (eventManager && typeof eventManager.filterAttendees === 'function') {
+            eventManager.filterAttendees();
+        }
+    }
+});
+
+// ================================================
+// EVENT DELEGATION: Guest List Search
+// ================================================
+// Handle search input changes
+document.addEventListener('input', function(event) {
+    if (event.target.matches('[data-filter-action="search-attendees"]')) {
+        if (eventManager && typeof eventManager.filterAttendees === 'function') {
+            eventManager.filterAttendees();
         }
     }
 });
