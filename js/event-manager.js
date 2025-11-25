@@ -1397,10 +1397,16 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     tableAssignment = seatingChart.findGuestAssignment(response.rsvpId);
                 }
 
+                // Normalize attending status (handle both boolean and string values)
+                const isAttending = response.attending === true || response.attending === 'true';
+                const isDeclined = response.attending === false || response.attending === 'false';
+                const isInvited = response.attending === null || response.attending === undefined;
+                const attendingStatus = isInvited ? 'invited' : (isAttending ? 'attending' : 'declined');
+
                 return `
                 <div class="attendee-card ${response.isInvitedOnly ? 'attendee-invited-only' : ''}"
                      data-name="${(response.name || '').toLowerCase()}"
-                     data-status="${response.attending === null ? 'invited' : (response.attending ? 'attending' : 'declined')}"
+                     data-status="${attendingStatus}"
                      data-branch="${(response.branch || '').toLowerCase()}"
                      data-rank="${(response.rank || '').toLowerCase()}"
                      data-unit="${(response.unit || '').toLowerCase()}"
@@ -1411,14 +1417,14 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                             <div class="attendee-name">
                                 ${h(response.name) || 'Anonymous'}
                                 ${tableAssignment ? `<span class="attendee-table-badge ${tableAssignment.vipTable ? 'vip' : ''}">Table ${tableAssignment.tableNumber}</span>` :
-                                  (seatingChart && response.attending ? '<span class="attendee-table-badge unassigned">No Table</span>' : '')}
+                                  (seatingChart && isAttending ? '<span class="attendee-table-badge unassigned">No Table</span>' : '')}
                             </div>
                             <span class="attendee-status ${
-                                response.attending === null ? 'status-invited' :
-                                (response.attending ? 'status-attending' : 'status-declined')
+                                isInvited ? 'status-invited' :
+                                (isAttending ? 'status-attending' : 'status-declined')
                             }">
-                                ${response.attending === null ? '📧 Invited' :
-                                  (response.attending ? '✅ Attending' : '❌ Declined')}
+                                ${isInvited ? '📧 Invited' :
+                                  (isAttending ? '✅ Attending' : '❌ Declined')}
                             </span>
                         </div>
                     </div>
@@ -1761,7 +1767,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
                 <!-- Seating Actions -->
                 <div class="invite-actions-section">
-                    <button class="btn-action" onclick="eventManager.autoAssignSeats('${eventId}')">
+                    <button class="btn-action" onclick="eventManager.autoAssignSeats('${eventId}').catch(err => { console.error('Auto-assign error:', err); showToast('Auto-assign failed', 'error'); })">
                         🎯 Auto-Assign All
                     </button>
                     <button class="btn-action" onclick="eventManager.exportSeatingCSV('${eventId}')">
@@ -1844,7 +1850,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                 ${guest.guestCount > 0 ? `<span class="table-guest-count">+${guest.guestCount}</span>` : ''}
                                             </div>
                                             <div class="table-guest-actions">
-                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" onchange="eventManager.reassignGuestToTable('${eventId}', '${guest.rsvpId}', this.value)">
+                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" onchange="eventManager.reassignGuestToTable('${eventId}', '${guest.rsvpId}', this.value).catch(err => { console.error('Reassignment error:', err); this.value = ''; })">
                                                     <option value="">Move to...</option>
                                                     ${event.seatingChart.tables.map(t => {
                                                         if (t.tableNumber === table.tableNumber) return ''; // Skip current table
