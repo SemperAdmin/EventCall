@@ -137,7 +137,7 @@ select option {
 @media (min-width: 769px) {
   #login-page {
     padding: 2rem;
-    align-items: center; /* Center vertically on desktop */
+    /* Keep flex-start to prevent top cutoff when form is tall */
   }
 
   .auth {

@@ -1358,9 +1358,13 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         // Get event for seating chart info
         const event = window.events ? window.events[eventId] : null;
         let seatingChart = null;
-        if (event && event.seatingChart && event.seatingChart.enabled) {
-            seatingChart = new window.SeatingChart(eventId);
-            seatingChart.loadSeatingData(event);
+        if (event && event.seatingChart && event.seatingChart.enabled && window.SeatingChart) {
+            try {
+                seatingChart = new window.SeatingChart(eventId);
+                seatingChart.loadSeatingData(event);
+            } catch (error) {
+                console.error('Error loading seating chart for attendee cards:', error);
+            }
         }
 
         // Get invite roster
@@ -1703,6 +1707,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      */
     generateSeatingChartSection(event, eventId, eventResponses) {
         if (!event.seatingChart || !event.seatingChart.enabled) return '';
+        if (!window.SeatingChart) {
+            console.error('SeatingChart class not loaded');
+            return '<div class="error-message">Seating chart module not loaded. Please refresh the page.</div>';
+        }
 
         const h = window.utils.escapeHTML;
         const seatingChart = new window.SeatingChart(eventId);
