@@ -1796,8 +1796,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                         </div>
                                     </div>
                                     <div class="unassigned-guest-actions">
-                                        <select class="table-select" id="table-select-${guest.rsvpId}" onchange="if(this.value) { eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}', **this.value**).catch(err => { console.error('Assignment error:', err); showToast('Failed to assign guest', 'error'); }); }">
-                                            <option value="">Select Table...</option>
+<select class="table-select" id="table-select-${guest.rsvpId}" onchange="eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}', this.value).catch(err => { console.error('Assignment error:', err); showToast('Failed to assign guest', 'error'); })">                                            <option value="">Select Table...</option>
                                             ${event.seatingChart.tables.map(table => {
                                                 const occupancy = seatingChart.getTableOccupancy(table.tableNumber);
                                                 const available = table.capacity - occupancy;
@@ -2561,7 +2560,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      * @param {string} rsvpId - RSVP ID
      * @throws {Error} When assignment fails
      */
-    async assignGuestToTable(eventId, rsvpId) {
+    async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
         const event = window.events ? window.events[eventId] : null;
         if (!event || !event.seatingChart) {
             const error = 'Event or seating chart not found';
@@ -2590,18 +2589,11 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const guestCount = guest.guestCount || 0;
 
         // Get selected table from dropdown
-        const selectElement = document.getElementById(`table-select-${rsvpId}`);
-        if (!selectElement) {
-            const error = 'Table selection not found';
-            showToast(error, 'error');
-            throw new Error(error);
-        }
-
-        const tableNumber = parseInt(selectElement.value);
-        if (!tableNumber) {
-            const error = 'Please select a table';
-            showToast(error, 'warning');
-            throw new Error(error);
+        // Use the table number passed directly from the dropdown
+        const tableNumber = parseInt(tableNumberStr); 
+        if (!tableNumber) { 
+            showToast('Please select a table', 'warning'); 
+            return; 
         }
 
         // Create seating chart instance and assign
