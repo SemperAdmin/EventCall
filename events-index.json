@@ -177,6 +177,41 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/ddbe6863-2438-421f-ab53-cf4920a811ca.jpg"
   },
   {
+    "id": "20539968-8fa5-44b0-97f5-a15ebd37cd76",
+    "title": "Promotion Ceremony",
+    "date": "2025-12-01",
+    "time": "13:00",
+    "location": "Detachment HQ",
+    "description": "Please join us in celebrating this significant milestone in a Marine&#x27;s career.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "honoree-name": {
+        "label": "Honoree Name",
+        "value": "Sgt"
+      },
+      "current-rank": {
+        "label": "Current Rank",
+        "value": "Cpl"
+      },
+      "new-rank": {
+        "label": "New Rank",
+        "value": "Sgt"
+      },
+      "promoter-name": {
+        "label": "Promoted By",
+        "value": "Cwo"
+      }
+    },
+    "created": 1764177910678,
+    "status": "active",
+    "createdBy": "tonyjcedeno",
+    "createdByName": "Tony Cedeno",
+    "coverImage": ""
+  },
+  {
     "id": "2edf0d21-0e44-4723-bd60-e2ce7f2f752f",
     "title": "Unit Formation",
     "date": "2025-11-12",
