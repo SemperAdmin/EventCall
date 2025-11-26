@@ -36,12 +36,6 @@
               "name": "paul",
               "guestCount": 0,
               "assignedAt": 1764132430265
-            },
-            {
-              "rsvpId": "6b54428c-9a3b-481f-85e8-39eb7adfb11b",
-              "name": "Stephen Shorter",
-              "guestCount": 5,
-              "assignedAt": 1764132430265
             }
           ],
           "vipTable": true
@@ -67,7 +61,14 @@
         {
           "tableNumber": 5,
           "capacity": 8,
-          "assignedGuests": [],
+          "assignedGuests": [
+            {
+              "rsvpId": "6b54428c-9a3b-481f-85e8-39eb7adfb11b",
+              "name": "Stephen Shorter",
+              "guestCount": 5,
+              "assignedAt": 1764132935736
+            }
+          ],
           "vipTable": false
         },
         {
@@ -102,7 +103,7 @@
         }
       ],
       "unassignedGuests": [],
-      "lastModified": 1764132430265
+      "lastModified": 1764132935736
     },
     "coverImage": ""
   },
