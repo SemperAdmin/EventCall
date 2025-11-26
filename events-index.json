@@ -30,20 +30,20 @@
         {
           "tableNumber": 1,
           "capacity": 8,
-          "assignedGuests": [
-            {
-              "rsvpId": "7721449c-9819-44b8-a851-9589192dbc7a",
-              "name": "paul",
-              "guestCount": 0,
-              "assignedAt": 1764132430265
-            }
-          ],
+          "assignedGuests": [],
           "vipTable": true
         },
         {
           "tableNumber": 2,
           "capacity": 8,
-          "assignedGuests": [],
+          "assignedGuests": [
+            {
+              "rsvpId": "7721449c-9819-44b8-a851-9589192dbc7a",
+              "name": "paul",
+              "guestCount": 0,
+              "assignedAt": 1764133636894
+            }
+          ],
           "vipTable": false
         },
         {
@@ -103,7 +103,7 @@
         }
       ],
       "unassignedGuests": [],
-      "lastModified": 1764132935736
+      "lastModified": 1764133636894
     },
     "coverImage": ""
   },
