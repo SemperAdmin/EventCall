@@ -30,20 +30,26 @@
         {
           "tableNumber": 1,
           "capacity": 8,
-          "assignedGuests": [],
-          "vipTable": true
-        },
-        {
-          "tableNumber": 2,
-          "capacity": 8,
           "assignedGuests": [
             {
               "rsvpId": "7721449c-9819-44b8-a851-9589192dbc7a",
               "name": "paul",
               "guestCount": 0,
-              "assignedAt": 1764133636894
+              "assignedAt": 1764134517045
+            },
+            {
+              "rsvpId": "6b54428c-9a3b-481f-85e8-39eb7adfb11b",
+              "name": "Stephen Shorter",
+              "guestCount": 5,
+              "assignedAt": 1764134517045
             }
           ],
+          "vipTable": true
+        },
+        {
+          "tableNumber": 2,
+          "capacity": 8,
+          "assignedGuests": [],
           "vipTable": false
         },
         {
@@ -61,14 +67,7 @@
         {
           "tableNumber": 5,
           "capacity": 8,
-          "assignedGuests": [
-            {
-              "rsvpId": "6b54428c-9a3b-481f-85e8-39eb7adfb11b",
-              "name": "Stephen Shorter",
-              "guestCount": 5,
-              "assignedAt": 1764132935736
-            }
-          ],
+          "assignedGuests": [],
           "vipTable": false
         },
         {
@@ -103,7 +102,7 @@
         }
       ],
       "unassignedGuests": [],
-      "lastModified": 1764133636894
+      "lastModified": 1764134517045
     },
     "coverImage": ""
   },
