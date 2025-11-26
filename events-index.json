@@ -1011,6 +1011,41 @@
     "coverImage": ""
   },
   {
+    "id": "86523b84-bb46-471e-a53b-b1c6fc3a886a",
+    "title": "Promotion Ceremony",
+    "date": "2025-11-26",
+    "time": "04:45",
+    "location": "Base Chapel",
+    "description": "Please join us in celebrating this significant milestone in a Marine&#x27;s career.",
+    "askReason": false,
+    "allowGuests": false,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "honoree-name": {
+        "label": "Honoree Name",
+        "value": "LCpl John Shmuckatelli"
+      },
+      "current-rank": {
+        "label": "Current Rank",
+        "value": "LCpl"
+      },
+      "new-rank": {
+        "label": "New Rank",
+        "value": "Corporal"
+      },
+      "promoter-name": {
+        "label": "Promoted By",
+        "value": "Sgt Smith"
+      }
+    },
+    "created": 1764150369527,
+    "status": "active",
+    "createdBy": "haley.j.spence",
+    "createdByName": "Haley Spence",
+    "coverImage": ""
+  },
+  {
     "title": "Retirement Ceremony",
     "date": "2026-02-20",
     "time": "12:00",
