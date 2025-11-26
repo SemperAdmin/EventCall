@@ -30,13 +30,27 @@
         {
           "tableNumber": 1,
           "capacity": 8,
-          "assignedGuests": [],
+          "assignedGuests": [
+            {
+              "rsvpId": "6b54428c-9a3b-481f-85e8-39eb7adfb11b",
+              "name": "Stephen Shorter",
+              "guestCount": 5,
+              "assignedAt": 1764134517045
+            }
+          ],
           "vipTable": true
         },
         {
           "tableNumber": 2,
           "capacity": 8,
-          "assignedGuests": [],
+          "assignedGuests": [
+            {
+              "rsvpId": "7721449c-9819-44b8-a851-9589192dbc7a",
+              "name": "paul",
+              "guestCount": 0,
+              "assignedAt": 1764136416176
+            }
+          ],
           "vipTable": false
         },
         {
@@ -84,21 +98,12 @@
         {
           "tableNumber": 10,
           "capacity": 8,
-          "assignedGuests": [
-            {
-              "rsvpId": "6b54428c-9a3b-481f-85e8-39eb7adfb11b",
-              "name": "Stephen Shorter",
-              "guestCount": 5,
-              "assignedAt": 1764051710820
-            }
-          ],
+          "assignedGuests": [],
           "vipTable": false
         }
       ],
-      "unassignedGuests": [
-        "7721449c-9819-44b8-a851-9589192dbc7a"
-      ],
-      "lastModified": 1764053518789
+      "unassignedGuests": [],
+      "lastModified": 1764136416176
     },
     "coverImage": ""
   },
@@ -1778,24 +1783,6 @@
       "lastModified": 1762470546365
     },
     "coverImage": ""
-  },
-  {
-    "title": "Retirement Ceremony",
-    "date": "2025-12-20",
-    "time": "10:30",
-    "location": "",
-    "description": "Please join us in honoring the distinguished career and dedicated service of a fellow Marine.",
-    "askReason": false,
-    "allowGuests": true,
-    "requiresMealChoice": true,
-    "customQuestions": [],
-    "eventDetails": {},
-    "id": "cf04b40a-e664-4372-aac6-9f7479740047",
-    "created": 1763675063240,
-    "createdBy": "bvraider54",
-    "createdByName": "brent Vines",
-    "lastModified": 1763676425403,
-    "coverImage": "https://semperadmin.github.io/EventCall/create"
   },
   {
     "id": "d617bb6e-ea8e-4f20-b024-079b0ba5d791",
