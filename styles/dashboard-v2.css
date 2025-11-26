@@ -1,7 +1,14 @@
 /**
  * EventCall Dashboard V2 - Command Center Design
  * Improved UI/UX with better visual hierarchy and scannable stats
+ * Version: 2.0 - Tabbed Interface
  */
+
+/* Version marker for cache debugging */
+body::before {
+    content: "Dashboard CSS v2.0";
+    display: none;
+}
 
 /* ============================================
    DASHBOARD HEADER & QUICK ACTIONS
@@ -261,6 +268,12 @@
     color: #94a3b8;
 }
 
+.stat-sublabel {
+    font-size: 0.65rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
 /* ============================================
    EVENT ACTIONS V2 - IMPROVED HIERARCHY
    ============================================ */
@@ -470,4 +483,74 @@
 
 .event-card-v2:nth-child(3) {
     animation-delay: 0.2s;
+}
+
+/* ============================================
+   DASHBOARD TABS
+   ============================================ */
+
+.dashboard-tabs {
+    display: flex !important;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #3a4556;
+    padding-bottom: 0;
+}
+
+.dashboard-tab {
+    padding: 1rem 1.5rem !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap;
+    position: relative;
+    bottom: -2px;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+}
+
+.dashboard-tab:hover {
+    color: #d4af37 !important;
+    background: rgba(212, 175, 55, 0.05) !important;
+}
+
+.dashboard-tab--active {
+    color: #d4af37 !important;
+    border-bottom-color: #d4af37 !important;
+    background: rgba(212, 175, 55, 0.1) !important;
+}
+
+.dashboard-tab-content {
+    display: none !important;
+    animation: fadeInUp 0.3s ease;
+}
+
+.dashboard-tab-content--active {
+    display: block !important;
+}
+
+/* Responsive tabs */
+@media (max-width: 768px) {
+    .dashboard-tabs {
+        flex-direction: column;
+        gap: 0;
+        border-bottom: none;
+    }
+
+    .dashboard-tab {
+        border-bottom: 1px solid #3a4556 !important;
+        border-left: 3px solid transparent !important;
+        padding: 1rem !important;
+        bottom: 0;
+    }
+
+    .dashboard-tab--active {
+        border-bottom-color: #3a4556 !important;
+        border-left-color: #d4af37 !important;
+    }
 }

@@ -4,6 +4,10 @@ on:
   repository_dispatch:
     types: [create_event]
 
+env:
+  GITHUB_OWNER: SemperAdmin
+  DATA_REPO: EventCall-Data
+
 jobs:
   create-event:
     runs-on: ubuntu-latest
@@ -12,15 +16,118 @@ jobs:
       - name: Validate Manager Token
         run: |
           echo "Validating manager authorization..."
-          
+
           MANAGER_TOKEN="${{ github.event.client_payload.managerToken }}"
-          
+
           if [ -z "$MANAGER_TOKEN" ]; then
             echo "No manager token provided"
             exit 1
           fi
-          
+
           echo "Manager authorized"
+
+      - name: Validate CSRF Token
+        run: |
+          CSRF_TOKEN="${{ github.event.client_payload.csrfToken }}"
+
+          if [ -z "$CSRF_TOKEN" ]; then
+            echo "❌ Security Error: Missing CSRF token"
+            echo "All event creation requests must include a valid CSRF token"
+            exit 1
+          fi
+
+          # Token format validation
+          if ! echo "$CSRF_TOKEN" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+            echo "❌ Security Error: Invalid CSRF token format"
+            exit 1
+          fi
+
+          echo "✅ CSRF token validated: ${CSRF_TOKEN:0:8}..."
+
+      - name: Validate Event Data
+        run: |
+          echo "Validating event creation data..."
+
+          # Create JSON payload from client_payload
+          cat > event-data.json << 'EOF'
+          ${{ toJSON(github.event.client_payload) }}
+          EOF
+
+          # Validate required fields
+          EVENT_ID=$(jq -r '.id // empty' event-data.json)
+          TITLE=$(jq -r '.title // empty' event-data.json)
+          DATE=$(jq -r '.date // empty' event-data.json)
+          LOCATION=$(jq -r '.location // empty' event-data.json)
+          CREATED_BY=$(jq -r '.createdBy // empty' event-data.json)
+
+          if [ -z "$EVENT_ID" ]; then
+            echo "❌ Validation Error: Missing required field 'id'"
+            exit 1
+          fi
+
+          if [ -z "$TITLE" ]; then
+            echo "❌ Validation Error: Missing required field 'title'"
+            exit 1
+          fi
+
+          if [ -z "$DATE" ]; then
+            echo "❌ Validation Error: Missing required field 'date'"
+            exit 1
+          fi
+
+          if [ -z "$LOCATION" ]; then
+            echo "❌ Validation Error: Missing required field 'location'"
+            exit 1
+          fi
+
+          if [ -z "$CREATED_BY" ]; then
+            echo "❌ Validation Error: Missing required field 'createdBy'"
+            exit 1
+          fi
+
+          # Validate event ID format (evt-timestamp-randomhex)
+          if ! echo "$EVENT_ID" | grep -qE '^evt-[0-9]+-[a-f0-9]+$'; then
+            echo "❌ Validation Error: Invalid event ID format (expected: evt-timestamp-randomhex)"
+            exit 1
+          fi
+
+          # Validate title length (3-200 characters)
+          TITLE_LENGTH=${#TITLE}
+          if [ $TITLE_LENGTH -lt 3 ] || [ $TITLE_LENGTH -gt 200 ]; then
+            echo "❌ Validation Error: Title must be 3-200 characters"
+            exit 1
+          fi
+
+          # Validate location length (1-500 characters)
+          LOCATION_LENGTH=${#LOCATION}
+          if [ $LOCATION_LENGTH -lt 1 ] || [ $LOCATION_LENGTH -gt 500 ]; then
+            echo "❌ Validation Error: Location must be 1-500 characters"
+            exit 1
+          fi
+
+          # Validate date is a valid ISO 8601 format
+          if ! date -d "$DATE" &>/dev/null; then
+            echo "❌ Validation Error: Invalid date format (expected ISO 8601)"
+            exit 1
+          fi
+
+          # Validate maxAttendees if provided
+          MAX_ATTENDEES=$(jq -r '.maxAttendees // empty' event-data.json)
+          if [ -n "$MAX_ATTENDEES" ]; then
+            if ! [[ "$MAX_ATTENDEES" =~ ^[0-9]+$ ]] || [ "$MAX_ATTENDEES" -lt 1 ] || [ "$MAX_ATTENDEES" -gt 100000 ]; then
+              echo "❌ Validation Error: maxAttendees must be between 1 and 100000"
+              exit 1
+            fi
+          fi
+
+          # Validate customQuestions array size if provided
+          CUSTOM_Q_COUNT=$(jq '.customQuestions | length' event-data.json 2>/dev/null || echo "0")
+          if [ "$CUSTOM_Q_COUNT" -gt 20 ]; then
+            echo "❌ Validation Error: Maximum 20 custom questions allowed"
+            exit 1
+          fi
+
+          echo "✅ Event data validated successfully"
 
       - name: Generate Event ID
         id: generate
@@ -48,15 +155,7 @@ jobs:
           curl -X PUT \
             -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/events/${EVENT_ID}.json \
+            https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/events/${EVENT_ID}.json \
             -d "{\"message\":\"Create event: ${{ github.event.client_payload.title }}\",\"content\":\"$CONTENT\"}"
 
           echo "Event created: ${EVENT_ID}"
-
-      - name: Create Notification Issue
-        run: |
-          curl -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/issues \
-            -d "{\"title\":\"Event Created: ${{ github.event.client_payload.title }}\",\"body\":\"**Event ID:** ${{ github.event.client_payload.id }}\\n**Created by:** ${{ github.event.client_payload.managerEmail }}\\n**Date:** ${{ github.event.client_payload.date }}\\n**Location:** ${{ github.event.client_payload.location }}\",\"labels\":[\"event\",\"created\"]}"

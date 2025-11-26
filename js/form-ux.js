@@ -5,24 +5,88 @@
  * - Phone input handling with country selector + masking
  * - Autocomplete optimization and ARIA for accessibility (WCAG 2.1 AA)
  * - LocalStorage autosave + recovery with Start Over
- * - 5% A/B gating via persisted feature flag
+ * - ENABLED FOR ALL USERS (A/B test removed)
  */
 (function(){
-  const FLAG_KEY = 'ux004_variant';
-  function getFeatureFlag() {
-    const existing = localStorage.getItem(FLAG_KEY);
-    if (existing === 'on') return true;
-    if (existing === 'off') return false;
-    const active = Math.random() < 0.05; // 5%
-    localStorage.setItem(FLAG_KEY, active ? 'on' : 'off');
-    return active;
+  // Real-time validation is now enabled for all users
+  const active = true;
+  window.UX004Active = active;
+
+  // Clean up old A/B test flag if it exists
+  try {
+    localStorage.removeItem('ux004_variant');
+  } catch (e) {
+    // Ignore if localStorage not available
   }
 
-  const active = getFeatureFlag();
-  window.UX004Active = active;
-  if (!active) return; // Gate enhancements
-
   const debounce = (fn, wait=150) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); }; };
+
+  // Visibility gate for errors
+  function shouldShowErrors(form) {
+    try { return form && form.dataset && form.dataset.showErrors === 'true'; } catch (_) { return false; }
+  }
+
+  // Error summary component
+  function updateErrorSummary(form) {
+    if (!form) return;
+    if (!shouldShowErrors(form)) return;
+
+    // Collect all current errors
+    const errors = [];
+    form.querySelectorAll('.form-error').forEach(errorEl => {
+      const text = errorEl.textContent.replace(/^❌\s*/, '').trim();
+      if (text) errors.push(text);
+    });
+
+    // Get or create error summary container
+    let summary = form.querySelector('#form-error-summary');
+
+    if (errors.length === 0) {
+      // No errors - remove summary if it exists
+      if (summary) summary.remove();
+      return;
+    }
+
+    if (!summary) {
+      // Create error summary
+      summary = document.createElement('div');
+      summary.id = 'form-error-summary';
+      summary.className = 'form-error-summary';
+      summary.setAttribute('role', 'alert');
+      summary.setAttribute('aria-live', 'assertive');
+
+      // Insert at the top of the form
+      const firstChild = form.firstElementChild;
+      if (firstChild) {
+        form.insertBefore(summary, firstChild);
+      } else {
+        form.appendChild(summary);
+      }
+    }
+
+    // Update summary content
+    const title = errors.length === 1 ? 'Please fix this error:' : `Please fix these ${errors.length} errors:`;
+    const errorList = errors.map(err =>
+      `<li>${window.utils ? window.utils.escapeHTML(err) : err}</li>`
+    ).join('');
+
+    summary.innerHTML = `
+      <div style="display: flex; align-items: start; gap: 1rem;">
+        <div class="error-icon">⚠️</div>
+        <div style="flex: 1;">
+          <div class="error-title">
+            ${window.utils ? window.utils.escapeHTML(title) : title}
+          </div>
+          <ul class="error-list">
+            ${errorList}
+          </ul>
+        </div>
+      </div>
+    `;
+
+    // Scroll to summary
+    summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 
   // Error template rendering
   function setFieldError(field, msg) {
@@ -30,6 +94,8 @@
     if (!msg) return;
     const id = field.id || field.name || 'field';
     const errId = `${id}-error`;
+    const form = field.closest('form');
+    if (!shouldShowErrors(form)) return;
     const errorEl = document.createElement('div');
     errorEl.className = 'form-error';
     errorEl.id = errId;
@@ -40,8 +106,12 @@
     field.setAttribute('aria-describedby', errId);
     field.classList.remove('is-valid');
     field.classList.add('is-invalid');
+
     // Insert just after field
     (field.parentElement || field.closest('.form-group') || field).appendChild(errorEl);
+
+    // Update error summary (use RAF for next paint)
+    if (form) { requestAnimationFrame(() => updateErrorSummary(form)); }
   }
 
   function clearFieldError(field) {
@@ -49,10 +119,17 @@
     field.removeAttribute('aria-describedby');
     field.classList.remove('is-invalid');
     field.classList.add('is-valid');
+
     const group = field.parentElement || field.closest('.form-group');
     if (!group) return;
     const err = group.querySelector('.form-error');
     if (err) err.remove();
+
+    // Update error summary (use RAF for next paint)
+    const form = field.closest('form');
+    if (form) {
+      requestAnimationFrame(() => updateErrorSummary(form));
+    }
   }
 
   // Simple validation rules
@@ -76,23 +153,69 @@
       if (p && v !== p.value) return 'Passwords do not match';
       return null;
     },
-    name: (v) => (!v ? 'Full name is required' : null)
+    name: (v) => {
+      if (!v) return 'Please enter your full name';
+      if (v.length < 2) return 'Name must be at least 2 characters';
+      if (!/^[a-zA-Z\s\-\.]{2,50}$/.test(v)) return 'Please use only letters, spaces, hyphens, and periods';
+      return null;
+    },
+    email: async (v) => {
+      if (!v) return 'Please enter your email address';
+      // Use the validation module if available
+      if (window.validation && window.validation.validateEmail) {
+        const result = await window.validation.validateEmail(v, { verifyDNS: false });
+        return result.valid ? null : (result.errors[0] || 'Invalid email address');
+      }
+      // Fallback
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Please enter a valid email address';
+      return null;
+    },
+    tel: (v, form) => {
+      if (!v) return null; // Phone is optional on RSVP
+      // Use the validation module if available
+      if (window.validation && window.validation.validatePhone) {
+        const result = window.validation.validatePhone(v, 'US');
+        return result.valid ? null : (result.errors[0] || 'Invalid phone number');
+      }
+      // Fallback: US phone format (10 digits)
+      const digits = v.replace(/\D+/g, '');
+      if (digits.length !== 10) return 'Please enter a 10-digit US phone number';
+      return null;
+    }
   };
 
   function attachRealtimeValidation(form) {
     if (!form) return;
-    const handler = debounce((e) => {
+    const handler = debounce(async (e) => {
       const field = e.target;
       const name = field.getAttribute('name') || field.id;
       const val = (field.value || '').trim();
       const fn = validators[name];
-      const msg = fn ? fn(val, form) : null;
-      if (msg) setFieldError(field, msg); else clearFieldError(field);
+      if (fn) {
+        const msg = await fn(val, form);
+        if (msg) setFieldError(field, msg); else clearFieldError(field);
+      }
     });
     form.querySelectorAll('input, select, textarea').forEach(f => {
       f.addEventListener('input', handler);
       f.addEventListener('blur', handler);
     });
+  }
+
+  // Validate all fields in a form (for initial submit click)
+  async function validateForm(form) {
+    if (!form) return;
+    const fields = Array.from(form.querySelectorAll('input, select, textarea'));
+    for (const field of fields) {
+      const name = field.getAttribute('name') || field.id;
+      const val = (field.value || '').trim();
+      const fn = validators[name];
+      if (fn) {
+        const msg = await fn(val, form);
+        if (msg) setFieldError(field, msg); else clearFieldError(field);
+      }
+    }
+    updateErrorSummary(form);
   }
 
   // Password strength UI
@@ -115,42 +238,35 @@
     regPassword.addEventListener('input', (e) => render(e.target.value));
   }
 
-  // Phone input: country selector + formatting/masking
+  // Phone input: formatting/masking (US format)
   function initPhoneHandling() {
     const phone = document.getElementById('rsvp-phone');
-    const country = document.getElementById('rsvp-country');
     if (!phone) return;
     phone.setAttribute('autocomplete','tel-national');
     const format = debounce(() => {
       const raw = (phone.value || '').trim();
-      const c = country && country.value ? country.value : 'US';
+      if (!raw) return; // Don't format empty input
+
       try {
         if (window.libphonenumber && typeof window.libphonenumber.parsePhoneNumberFromString === 'function') {
-          const pn = window.libphonenumber.parsePhoneNumberFromString(raw, c);
-          if (pn) {
+          const pn = window.libphonenumber.parsePhoneNumberFromString(raw, 'US');
+          if (pn && pn.isValid()) {
             phone.value = pn.formatNational();
             clearFieldError(phone);
-          } else {
-            setFieldError(phone, 'Invalid phone number');
           }
         } else {
           // Minimal US mask fallback
-          if (c === 'US') {
-            const digits = raw.replace(/\D+/g,'').slice(0,10);
-            let masked = digits;
-            if (digits.length >= 4) masked = `(${digits.slice(0,3)}) ${digits.slice(3,6)}${digits.length>6?'-':''}${digits.slice(6,10)}`;
+          const digits = raw.replace(/\D+/g,'').slice(0,10);
+          if (digits.length >= 4) {
+            const masked = `(${digits.slice(0,3)}) ${digits.slice(3,6)}${digits.length>6?'-':''}${digits.slice(6,10)}`;
             phone.value = masked;
           }
         }
       } catch {
-        setFieldError(phone, 'Invalid phone number');
+        // Silently ignore formatting errors - validation will handle it
       }
     }, 120);
     phone.addEventListener('input', format);
-    if (country) {
-      country.setAttribute('autocomplete','tel-country-code');
-      country.addEventListener('change', format);
-    }
   }
 
   // Autosave + recovery
@@ -162,11 +278,29 @@
         const name = f.name || f.id;
         if (!name) return;
         if (f.type === 'checkbox') data[name] = !!f.checked;
-        else data[name] = f.value;
+        else if (f.type === 'radio') {
+          if (f.checked) data[name] = f.value;
+        } else {
+          data[name] = f.value;
+        }
       });
       localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+
+      // Show autosave indicator
+      const indicator = document.getElementById('autosave-indicator');
+      if (indicator) {
+        // Clear any existing timeout to prevent overlapping fades
+        if (indicator.fadeTimeout) {
+          clearTimeout(indicator.fadeTimeout);
+        }
+        indicator.style.opacity = '1';
+        indicator.fadeTimeout = setTimeout(() => {
+          indicator.style.opacity = '0';
+        }, 2000);
+      }
     }, 200);
     form.addEventListener('input', save);
+    form.addEventListener('change', save); // For radio buttons
 
     // Recovery prompt if form is empty and saved exists
     const savedRaw = localStorage.getItem(key);
@@ -179,46 +313,70 @@
             Object.entries(saved.data).forEach(([name, value]) => {
               const f = form.querySelector(`[name="${name}"]`) || form.querySelector(`#${name}`);
               if (!f) return;
-              if (typeof value === 'boolean' && f.type === 'checkbox') f.checked = value; else f.value = value;
+              if (typeof value === 'boolean' && f.type === 'checkbox') {
+                f.checked = value;
+              } else if (f.type === 'radio') {
+                if (f.value === value) f.checked = true;
+              } else {
+                f.value = value;
+              }
             });
           }
         }
       } catch {}
     }
-
-    // Inject Start Over button
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = 'Start Over';
-    btn.className = 'btn-secondary';
-    btn.style.marginTop = '0.75rem';
-    btn.addEventListener('click', () => {
-      localStorage.removeItem(key);
-      form.reset();
-      form.querySelectorAll('.is-valid,.is-invalid,.form-error').forEach(el => { if (el.classList) { el.classList.remove('is-valid','is-invalid'); } if (el.classList && el.classList.contains('form-error')) el.remove(); });
-    });
-    const group = form.querySelector('.form-group:last-of-type') || form;
-    group.appendChild(btn);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // Attach validation
-    attachRealtimeValidation(document.getElementById('login-form'));
-    attachRealtimeValidation(document.getElementById('register-form'));
+    // Attach validation to login/register forms
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    if (loginForm) loginForm.dataset.showErrors = 'false';
+    if (registerForm) registerForm.dataset.showErrors = 'false';
+    attachRealtimeValidation(loginForm);
+    attachRealtimeValidation(registerForm);
 
-    // Strength meter
+    // Only reveal errors on submit button click
+    const loginBtn = loginForm ? loginForm.querySelector('button[type="submit"]') : null;
+    const registerBtn = registerForm ? registerForm.querySelector('button[type="submit"]') : null;
+    if (loginBtn && loginForm) {
+      loginBtn.addEventListener('click', async () => {
+        loginForm.dataset.showErrors = 'true';
+        await validateForm(loginForm);
+      });
+    }
+    if (registerBtn && registerForm) {
+      registerBtn.addEventListener('click', async () => {
+        registerForm.dataset.showErrors = 'true';
+        await validateForm(registerForm);
+      });
+    }
+
+    // Strength meter for registration
     bindPasswordStrength();
 
     // Phone handling for RSVP (when present)
     initPhoneHandling();
 
-    // Autosave
-    enableAutosave(document.getElementById('login-form'), 'form:login');
-    enableAutosave(document.getElementById('register-form'), 'form:register');
-    const rsvpForm = document.getElementById('rsvp-form');
-    if (rsvpForm) enableAutosave(rsvpForm, 'form:rsvp');
+    // Autosave for login/register only (RSVP handled in ui-components.js)
+    enableAutosave(loginForm, 'form:login');
+    enableAutosave(registerForm, 'form:register');
   });
+
+  // Export function for RSVP form (called from ui-components.js setupRSVPForm)
+  window.attachRSVPValidation = function() {
+    const rsvpForm = document.getElementById('rsvp-form');
+    if (rsvpForm) {
+      attachRealtimeValidation(rsvpForm);
+
+      // Get event from URL to create unique autosave key
+      const event = window.getEventFromURL ? window.getEventFromURL() : null;
+      const storageKey = event && event.id ? `form:rsvp:${event.id}` : 'form:rsvp';
+      enableAutosave(rsvpForm, storageKey);
+
+      console.log('✅ RSVP form validation and autosave enabled');
+    }
+  };
 })();
 
 console.log('✅ UX-004 form enhancements loaded');
-

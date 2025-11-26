@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting... - EventCall</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #1a1f2e, #2d3748);
+            color: #fff;
+        }
+        .loader {
+            text-align: center;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(212, 175, 55, 0.2);
+            border-top-color: #d4af37;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        h1 { color: #d4af37; font-size: 1.5rem; margin: 0 0 10px; }
+        p { color: #9ca3af; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <h1>🔄 Redirecting...</h1>
+        <p>Loading EventCall</p>
+    </div>
+
+    <script>
+        // GitHub Pages SPA redirect handler
+        // This script redirects 404 pages to index.html while preserving the path
+        (function() {
+            // Get the current path and search parameters
+            const path = window.location.pathname;
+            const search = window.location.search;
+            const hash = window.location.hash;
+
+            console.log('404 Handler - Original path:', path);
+
+            // Determine if we're on GitHub Pages
+            const isGitHubPages = window.location.hostname.endsWith('.github.io');
+
+            if (isGitHubPages) {
+                // Extract the repo name from the path
+                const pathParts = path.split('/').filter(p => p);
+                const repoName = pathParts[0] || 'EventCall';
+                const basePath = '/' + repoName + '/';
+
+                // Get the path after the repo name
+                const appPath = '/' + pathParts.slice(1).join('/');
+
+                console.log('Redirecting to:', basePath + 'index.html' + search + hash);
+                console.log('App will navigate to:', path);
+
+                // Store the intended path in sessionStorage for the app to pick up
+                // IMPORTANT: Use the full path including basePath to avoid routing issues
+                sessionStorage.setItem('redirectPath', path + search + hash);
+
+                // Redirect to index.html with the base path
+                window.location.replace(basePath + 'index.html' + search + hash);
+            } else {
+                // For non-GitHub Pages deployment, just redirect to index.html
+                console.log('Redirecting to: /index.html' + search + hash);
+                sessionStorage.setItem('redirectPath', path + search + hash);
+                window.location.replace('/index.html' + search + hash);
+            }
+        })();
+    </script>
+</body>
+</html>

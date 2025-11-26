@@ -14,13 +14,37 @@ if ('serviceWorker' in navigator) {
                 return;
             }
 
-            // Determine base path dynamically for local vs GitHub Pages
-            const isGitHubPages = window.location.pathname.includes('/EventCall/');
-            const basePath = isGitHubPages ? '/EventCall/' : '/';
+            // Detect GitHub Pages by hostname, not pathname (more reliable)
+            const isGitHubPages = window.location.hostname.endsWith('.github.io');
+
+            // Determine base path
+            let basePath = '/';
+            if (isGitHubPages) {
+                // Extract repo name from hostname or pathname
+                const pathParts = window.location.pathname.split('/').filter(p => p);
+                if (pathParts.length > 0 && pathParts[0] !== '') {
+                    basePath = '/' + pathParts[0] + '/';
+                } else {
+                    // Fallback: try to extract from meta tag or use default
+                    basePath = '/EventCall/';
+                }
+            }
+
+            console.log(`📍 Detected basePath: ${basePath} (GitHub Pages: ${isGitHubPages})`);
+
+            // IMPORTANT: Unregister any old service workers with wrong scope first
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let registration of registrations) {
+                if (registration.scope !== window.location.origin + basePath) {
+                    console.warn(`🧹 Unregistering old service worker with wrong scope: ${registration.scope}`);
+                    await registration.unregister();
+                }
+            }
 
             // Register service worker with environment-aware path and scope
             const registration = await navigator.serviceWorker.register(basePath + 'service-worker.js', {
-                scope: basePath
+                scope: basePath,
+                updateViaCache: 'none' // Don't cache the service worker file itself
             });
 
             console.log('✅ Service Worker registered:', registration.scope);
@@ -85,19 +109,50 @@ if ('serviceWorker' in navigator) {
         }
     });
 
-    // Provide manual cache clear function
+    // Provide manual cache clear and service worker reset function
     window.clearAppCache = async () => {
-        if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-                type: 'CLEAR_CACHE'
-            });
+        try {
+            // Clear all caches manually
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+                console.log('🧹 All caches cleared manually');
+            }
+
+            // Unregister all service workers
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(registrations.map(reg => reg.unregister()));
+                console.log('🧹 All service workers unregistered');
+            }
 
             if (window.showToast) {
-                window.showToast('🧹 Cache cleared successfully!', 'success');
+                window.showToast('🧹 Cache and service workers cleared!', 'success');
             }
 
             // Reload after a brief delay
-            setTimeout(() => window.location.reload(), 500);
+            setTimeout(() => window.location.reload(true), 500);
+        } catch (error) {
+            console.error('Cache clear error:', error);
+            if (window.showToast) {
+                window.showToast('⚠️ Cache clear may have failed: ' + error.message, 'error');
+            }
+        }
+    };
+
+    // Add global unregister function for debugging
+    window.unregisterServiceWorkers = async () => {
+        try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let registration of registrations) {
+                await registration.unregister();
+                console.log('✅ Unregistered service worker:', registration.scope);
+            }
+            console.log('✅ All service workers unregistered');
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to unregister service workers:', error);
+            return false;
         }
     };
 

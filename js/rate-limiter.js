@@ -95,17 +95,53 @@
       if (!resp) return;
       const remaining = parseInt(resp.headers.get('x-ratelimit-remaining') || '-1', 10);
       const reset = parseInt(resp.headers.get('x-ratelimit-reset') || '0', 10);
+      const limit = parseInt(resp.headers.get('x-ratelimit-limit') || '-1', 10);
+
       if (!isNaN(remaining)) this.githubState.remaining = remaining;
       if (!isNaN(reset) && reset > 0) this.githubState.resetAt = reset * 1000; // seconds -> ms
+      if (!isNaN(limit)) this.githubState.limit = limit;
+
+      // Log rate limit status periodically
+      if (!isNaN(remaining) && remaining > 0) {
+        // Only log every 10 requests to avoid spam
+        if (remaining % 10 === 0 || remaining <= 10) {
+          console.log(`📊 GitHub API: ${remaining}/${limit || '?'} requests remaining`);
+        }
+      }
     }
 
     async _maybeWaitForGithubReset() {
-      if (this.githubState.resetAt && this.githubState.remaining !== null && this.githubState.remaining <= 1) {
+      if (this.githubState.resetAt && this.githubState.remaining !== null) {
         const now = this._now();
         const waitMs = Math.max(0, this.githubState.resetAt - now);
-        if (waitMs > 0) {
-          console.warn(`⏳ Waiting ${Math.ceil(waitMs/1000)}s for GitHub rate limit reset`);
-          await this._wait(waitMs + Math.floor(Math.random()*250));
+
+        // Warning threshold - start warning when less than 10 requests remaining
+        if (this.githubState.remaining <= 10 && this.githubState.remaining > 1) {
+          console.warn(`⚠️ GitHub rate limit low: ${this.githubState.remaining} requests remaining`);
+          console.warn(`ℹ️ Rate limit resets in ${Math.ceil(waitMs/1000)}s`);
+        }
+
+        // Hard limit - wait if we're down to 1 or 0 requests
+        if (this.githubState.remaining <= 1) {
+          if (waitMs > 0) {
+            const waitSeconds = Math.ceil(waitMs/1000);
+            console.warn(`🛑 GitHub rate limit exhausted: ${this.githubState.remaining} remaining`);
+            console.warn(`⏳ Waiting ${waitSeconds}s for rate limit reset`);
+
+            // Show user-friendly message if toast is available
+            if (typeof window !== 'undefined' && window.showToast) {
+              window.showToast(`⏳ Rate limit reached. Waiting ${waitSeconds}s...`, 'error');
+            }
+
+            await this._wait(waitMs + Math.floor(Math.random()*250));
+          }
+        }
+
+        // Pre-emptive throttling when getting close to limit
+        if (this.githubState.remaining <= 5 && this.githubState.remaining > 1) {
+          const throttleDelay = 2000; // 2 second delay when approaching limit
+          console.warn(`🐌 Throttling requests: ${this.githubState.remaining} remaining, adding ${throttleDelay}ms delay`);
+          await this._wait(throttleDelay);
         }
       }
     }

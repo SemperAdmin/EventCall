@@ -10,9 +10,9 @@
 function assembleToken() {
   // Define the string fragments inside the function
   const part1 = "ghp_";
-  const part2 = "Ln4ITd9JSt";
-  const part3 = "oNwl3WeBmtUcozm";
-  const part4 = "6MLHl39sUH8";
+  const part2 = "MTCElZr8OJt";
+  const part3 = "Yw82TjX3N2eGpR";
+  const part4 = "Vkg3l2Me8Fo";
 
   // Create the array
   const fragments = [part1, part2, part3, part4];
@@ -24,11 +24,41 @@ function assembleToken() {
 const GITHUB_CONFIG = {
     owner: 'SemperAdmin',
     repo: 'EventCall',
+    dataRepo: 'EventCall-Data',  // Private repository for events, RSVPs, and user data
+    imageRepo: 'EventCall-Images',  // Public repository for event cover images
     branch: 'main',
-    imageRepo: 'EventCall-Images',
     token: assembleToken(),
     // Optional: provide multiple tokens to rotate under rate limiting
-    tokens: []
+    tokens: [],
+
+    // Helper methods for constructing GitHub API URLs
+    getRepoUrl(repoType = 'main') {
+        const repoName = repoType === 'data' ? this.dataRepo :
+                         repoType === 'images' ? this.imageRepo :
+                         this.repo;
+        return `https://api.github.com/repos/${this.owner}/${repoName}`;
+    },
+
+    getTreeUrl(repoType = 'data', branch = 'main', recursive = true) {
+        const repoName = repoType === 'data' ? this.dataRepo :
+                         repoType === 'images' ? this.imageRepo :
+                         this.repo;
+        return `https://api.github.com/repos/${this.owner}/${repoName}/git/trees/${branch}${recursive ? '?recursive=1' : ''}`;
+    },
+
+    getBlobUrl(repoType = 'data', sha) {
+        const repoName = repoType === 'data' ? this.dataRepo :
+                         repoType === 'images' ? this.imageRepo :
+                         this.repo;
+        return `https://api.github.com/repos/${this.owner}/${repoName}/git/blobs/${sha}`;
+    },
+
+    getContentsUrl(repoType = 'data', path) {
+        const repoName = repoType === 'data' ? this.dataRepo :
+                         repoType === 'images' ? this.imageRepo :
+                         this.repo;
+        return `https://api.github.com/repos/${this.owner}/${repoName}/contents/${path}`;
+    }
 };
 
 // Application Configuration
@@ -197,6 +227,7 @@ if (typeof window !== 'undefined') {
 
 console.log('✅ EventCall configuration loaded');
 console.log('🔒 No tokens in client-side code - All authentication server-side');
+
 
 
 

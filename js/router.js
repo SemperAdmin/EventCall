@@ -3,17 +3,32 @@
 
 (function(){
   function pageToPath(pageId, param) {
+    // Get the base path (e.g., '/EventCall/' for GitHub Pages or '/' for local)
+    const basePath = (window.getBasePath && window.getBasePath()) || '/';
+    const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+
     switch(pageId) {
-      case 'dashboard': return '/dashboard';
-      case 'create': return '/create';
-      case 'manage': return param ? `/manage/${param}` : '/manage';
-      case 'invite': return param ? `/invite/${param}` : '/invite';
-      default: return `/${pageId || ''}`;
+      case 'dashboard': return base + '/dashboard';
+      case 'create': return base + '/create';
+      case 'manage': return param ? `${base}/manage/${param}` : `${base}/manage`;
+      case 'invite': return param ? `${base}/invite/${param}` : `${base}/invite`;
+      default: return `${base}/${pageId || ''}`;
     }
   }
 
   function pathToPage(pathname) {
-    const path = String(pathname || '').replace(/^[#/]+/, '');
+    // Get the base path and strip it from the pathname
+    const basePath = (window.getBasePath && window.getBasePath()) || '/';
+    let path = String(pathname || '');
+
+    // Remove the base path if present
+    if (basePath !== '/' && path.startsWith(basePath)) {
+      path = path.substring(basePath.length);
+    }
+
+    // Clean up the path
+    path = path.replace(/^[#/]+/, '').replace(/\/$/, '');
+
     if (!path || path === 'index.html') return { pageId: 'dashboard' };
     const parts = path.split('/');
     const base = parts[0];
@@ -38,15 +53,65 @@
 
   const AppRouter = {
     init: function() {
+      // Check for redirected path from 404.html (GitHub Pages SPA routing)
+      const redirectPath = sessionStorage.getItem('redirectPath');
+      if (redirectPath) {
+        console.log('📍 Restored path from 404 redirect:', redirectPath);
+        sessionStorage.removeItem('redirectPath');
+
+        // Parse the redirect path
+        const url = new URL(redirectPath, window.location.origin);
+        const parsed = pathToPage(url.pathname);
+
+        history.replaceState(parsed, '', redirectPath);
+
+        // Handle invite pages specially
+        if (parsed.pageId === 'invite' && parsed.param) {
+          if (window.uiComponents && window.uiComponents.showInvite) {
+            window.uiComponents.showInvite(parsed.param);
+          }
+          if (window.showPageContent) window.showPageContent('invite');
+        } else if (parsed.pageId === 'manage' && parsed.param) {
+          if (window.eventManager && window.eventManager.showEventManagement) {
+            window.eventManager.showEventManagement(parsed.param);
+          }
+        } else {
+          if (window.showPage) window.showPage(parsed.pageId);
+        }
+
+        setActiveNav(parsed.pageId);
+        return;
+      }
+
+      // Check for query parameter with event data (invite links)
+      const hasInviteData = location.search && location.search.includes('data=');
+
       // Translate hash on first load for back-compat
       if (location.hash) {
         const hash = location.hash.replace(/^#/, '');
         const parts = hash.split('/');
         const pageId = parts[0] || 'dashboard';
         const param = parts[1] || '';
-        const path = pageToPath(pageId, param);
-        history.replaceState({ pageId, param }, '', path);
-        if (window.showPage) window.showPage(pageId);
+
+        // Handle invite URLs with hash
+        if (pageId === 'invite' || hasInviteData) {
+          const path = pageToPath('invite', param);
+          history.replaceState({ pageId: 'invite', param }, '', path + location.search);
+          if (window.showPageContent) window.showPageContent('invite');
+          if (param && window.uiComponents && window.uiComponents.showInvite) {
+            window.uiComponents.showInvite(param);
+          }
+        } else {
+          const path = pageToPath(pageId, param);
+          history.replaceState({ pageId, param }, '', path);
+          if (window.showPage) window.showPage(pageId);
+        }
+      } else if (hasInviteData) {
+        // Handle invite data in query parameter without hash
+        const parsed = pathToPage(location.pathname);
+        const pageId = parsed.pageId === 'dashboard' ? 'invite' : parsed.pageId;
+        history.replaceState({ pageId, param: '' }, '', pageToPath(pageId, ''));
+        if (window.showPageContent) window.showPageContent('invite');
       } else {
         const parsed = pathToPage(location.pathname);
         history.replaceState(parsed, '', pageToPath(parsed.pageId, parsed.param));
@@ -100,6 +165,11 @@
   window.AppRouter = AppRouter;
   // Auto-init when DOM is ready
   document.addEventListener('DOMContentLoaded', function(){
+    // Skip initialization in test mode
+    if (window.__TEST_MODE__) {
+      console.log('⚠️ Test mode detected - skipping router initialization');
+      return;
+    }
     try { AppRouter.init(); } catch (e) { console.warn('Router init failed:', e); }
   });
 })();

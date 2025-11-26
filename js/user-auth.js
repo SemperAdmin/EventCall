@@ -3,6 +3,14 @@
  * Secure authentication with bcrypt password hashing via GitHub Actions
  */
 
+// Time constants for session management
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const ONE_WEEK_MS = 7 * ONE_DAY_MS;
+
+// PERFORMANCE: Feature flag for direct authentication via backend
+// true = Fast (200-500ms), false = Slow (67s via GitHub Actions)
+const USE_DIRECT_AUTH = true;
+
 const userAuth = {
     currentUser: null,
     authInProgress: false,
@@ -70,7 +78,77 @@ const userAuth = {
             appContent.style.display = 'block';
         }
 
-        console.log('📱 App content displayed');
+        // Check if user is admin and show dedicated admin UI
+        if (this.currentUser && this.currentUser.role === 'admin') {
+            console.log('👑 Admin user detected - showing dedicated admin interface');
+            this.showAdminInterface();
+        } else {
+            console.log('📱 Regular user - showing standard app content');
+        }
+    },
+
+    /**
+     * Show dedicated admin interface (admins only see admin dashboard)
+     */
+    showAdminInterface() {
+        // Hide all regular user pages
+        const regularPages = ['dashboard', 'create', 'manage', 'invite'];
+        regularPages.forEach(pageId => {
+            const page = document.getElementById(pageId);
+            if (page) {
+                page.style.display = 'none';
+            }
+        });
+
+        // Hide the header navigation buttons (Create Event, Sync RSVPs, etc.)
+        const quickActions = document.querySelector('.quick-actions');
+        if (quickActions) {
+            const buttons = quickActions.querySelectorAll('button');
+            buttons.forEach(btn => {
+                // Only show admin dashboard button
+                if (btn.id !== 'admin-nav-btn') {
+                    btn.style.display = 'none';
+                }
+            });
+        }
+
+        // Hide dashboard header and welcome banner
+        const dashboardHeader = document.querySelector('.dashboard-header h2');
+        if (dashboardHeader) {
+            dashboardHeader.textContent = '👑 Admin Control Panel';
+        }
+
+        const welcomeBanner = document.querySelector('.welcome-banner');
+        if (welcomeBanner) {
+            welcomeBanner.style.display = 'none';
+        }
+
+        // Hide dashboard tabs (Active Events, Past Events, Your RSVPs)
+        const dashboardTabs = document.querySelector('.dashboard-tabs');
+        if (dashboardTabs) {
+            dashboardTabs.style.display = 'none';
+        }
+
+        // Hide all dashboard tab content
+        const tabContents = document.querySelectorAll('.dashboard-tab-content');
+        tabContents.forEach(content => {
+            content.style.display = 'none';
+        });
+
+        // Show admin page immediately
+        const adminPage = document.getElementById('admin');
+        if (adminPage) {
+            adminPage.classList.add('active');
+            adminPage.style.display = 'block';
+        }
+
+        // Load admin dashboard data
+        if (window.AdminDashboard && window.AdminDashboard.loadDashboard) {
+            console.log('📊 Loading admin dashboard data...');
+            window.AdminDashboard.loadDashboard();
+        }
+
+        console.log('✅ Admin interface initialized');
     },
 
     /**
@@ -106,6 +184,8 @@ const userAuth = {
                 id: 'user_' + uname,
                 username: uname,
                 name: match.name || uname,
+                email: match.email || '',
+                branch: match.branch || '',
                 rank: match.rank || '',
                 role: match.role || 'user'
             };
@@ -116,6 +196,8 @@ const userAuth = {
             id: 'user_' + uname,
             username: uname,
             name: uname,
+            email: '',
+            branch: '',
             rank: '',
             role: 'user'
         };
@@ -135,6 +217,8 @@ const userAuth = {
         const form = event.target;
         const usernameInput = document.getElementById('reg-username');
         const nameInput = document.getElementById('reg-name');
+        const emailInput = document.getElementById('reg-email');
+        const branchInput = document.getElementById('reg-branch');
         const rankInput = document.getElementById('reg-rank');
         const passwordInput = document.getElementById('reg-password');
         const confirmPasswordInput = document.getElementById('reg-confirm-password');
@@ -142,6 +226,8 @@ const userAuth = {
 
         const username = usernameInput?.value.trim().toLowerCase();
         const name = nameInput?.value.trim();
+        const email = emailInput?.value.trim().toLowerCase();
+        const branch = branchInput?.value || '';
         const rank = rankInput?.value || '';
         const password = passwordInput?.value;
         const confirmPassword = confirmPasswordInput?.value;
@@ -164,6 +250,12 @@ const userAuth = {
         if (!name || name.length < 2) {
             showToast('❌ Please enter your full name', 'error');
             nameInput?.focus();
+            return;
+        }
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showToast('❌ Please enter a valid email address', 'error');
+            emailInput?.focus();
             return;
         }
 
@@ -190,29 +282,60 @@ const userAuth = {
             return;
         }
 
-        // Standardized loading state
+        // Set authentication in progress
         this.authInProgress = true;
-        await window.LoadingUI.withButtonLoading(submitBtn, 'Creating account...', async () => {
+
+        const startTime = Date.now();
+        console.log(`⏱️ [T+0ms] Register button clicked, starting registration`);
+
+        // Show loader IMMEDIATELY after validation succeeds (before any async operations)
+        console.log(`⏱️ [T+${Date.now() - startTime}ms] Attempting to show loader...`);
+        if (window.showAppLoader) {
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Calling window.showAppLoader()...`);
+            window.showAppLoader();
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] showAppLoader() call completed`);
+        } else {
+            console.error('❌ window.showAppLoader is not available!');
+        }
+
+        try {
             // Generate unique client ID for tracking response
             const clientId = 'reg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
             // Trigger GitHub Actions workflow
-            console.log('🚀 Triggering registration workflow...');
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Triggering registration workflow...`);
 
             const response = await this.triggerAuthWorkflow('register_user', {
                 username,
                 password,
                 name,
+                email,
+                branch,
                 rank,
                 client_id: clientId
             });
 
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Registration workflow completed`);
+
             if (response.success) {
-                showToast(`✅ Account created! Welcome, ${response.user.name}!`, 'success');
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Registration response received, success`);
+                // Fetch full user data from EventCall-Data (auth response only has userId/username)
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Fetching full user data from EventCall-Data...`);
+                const userData = await this.fetchUserData(response.username);
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] User data fetch completed`);
+
+                if (!userData) {
+                    const errorMsg = 'Failed to fetch user data from EventCall-Data repository. Please check console for details.';
+                    console.error('❌ userData is null - check fetchUserData logs above');
+                    throw new Error(errorMsg);
+                }
+
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Showing success toast and updating UI...`);
+                showToast(`✅ Account created! Welcome, ${userData.name}!`, 'success');
 
                 // Save user to storage (without password)
-                this.currentUser = response.user;
-                this.saveUserToStorage(response.user);
+                this.currentUser = userData;
+                this.saveUserToStorage(userData);
 
                 // Update UI
                 if (window.updateUserDisplay) {
@@ -222,27 +345,45 @@ const userAuth = {
                 // Clear form
                 form.reset();
 
+                // PERFORMANCE: Show UI immediately, load data in background
                 // Hide login and show app
                 this.hideLoginScreen();
 
-                // Load user's events
-                if (window.loadManagerData) {
-                    await window.loadManagerData();
-                }
-
-                // Navigate to dashboard
+                // Navigate to dashboard immediately (shows skeleton)
                 if (window.showPage) {
                     window.showPage('dashboard');
                 }
+
+                // Load user's events in background (non-blocking)
+                if (window.loadManagerData) {
+                    window.loadManagerData().catch(err => {
+                        console.error('Failed to load manager data:', err);
+                        if (window.showToast) {
+                            window.showToast('Failed to load some data. Please refresh.', 'error');
+                        }
+                    });
+                }
+
+                // Hide loading screen after a brief delay to ensure smooth transition
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Scheduling loader hide in 800ms...`);
+                setTimeout(() => {
+                    console.log(`⏱️ [T+${Date.now() - startTime}ms] Hiding loader now`);
+                    if (window.hideAppLoader) {
+                        window.hideAppLoader();
+                    }
+                }, 800);
             } else {
                 throw new Error(response.error || 'Registration failed');
             }
-        });
-        try {
-            // No-op: handled in withButtonLoading block
         } catch (error) {
-            console.error('❌ Registration failed:', error);
+            console.error(`⏱️ [T+${Date.now() - startTime}ms] ❌ Registration failed:`, error);
             showToast('❌ Registration failed: ' + error.message, 'error');
+
+            // Hide app loader on error
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Hiding loader due to error`);
+            if (window.hideAppLoader) {
+                window.hideAppLoader();
+            }
         } finally {
             this.authInProgress = false;
         }
@@ -284,14 +425,31 @@ const userAuth = {
             return;
         }
 
-        // Standardized loading state
+        // Set authentication in progress
         this.authInProgress = true;
-        await window.LoadingUI.withButtonLoading(submitBtn, 'Signing in...', async () => {
+
+        const startTime = Date.now();
+        console.log(`⏱️ [T+0ms] Login button clicked, starting authentication`);
+
+        // Show loader IMMEDIATELY after validation succeeds (before any async operations)
+        console.log(`⏱️ [T+${Date.now() - startTime}ms] Attempting to show loader...`);
+        console.log('🔍 Checking window.showAppLoader availability:', typeof window.showAppLoader);
+
+        if (window.showAppLoader) {
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Calling window.showAppLoader()...`);
+            window.showAppLoader();
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] showAppLoader() call completed`);
+        } else {
+            console.error('❌ window.showAppLoader is not available!');
+            console.error('Type of window.showAppLoader:', typeof window.showAppLoader);
+        }
+
+        try {
             // Generate unique client ID for tracking response
             const clientId = 'login_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
             // Trigger GitHub Actions workflow
-            console.log('🚀 Triggering login workflow...');
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Triggering login workflow...`);
 
             const response = await this.triggerAuthWorkflow('login_user', {
                 username,
@@ -299,12 +457,31 @@ const userAuth = {
                 client_id: clientId
             });
 
-            if (response.success) {
-                showToast(`✅ Welcome back, ${response.user.name}!`, 'success');
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Auth workflow completed`);
+
+                if (response.success) {
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Auth response received, success`);
+                let userData = null;
+                if (response.user) {
+                    userData = response.user;
+                } else {
+                    console.log(`⏱️ [T+${Date.now() - startTime}ms] Fetching full user data from EventCall-Data...`);
+                    userData = await this.fetchUserData(response.username);
+                    console.log(`⏱️ [T+${Date.now() - startTime}ms] User data fetch completed`);
+                }
+
+                if (!userData) {
+                    const errorMsg = 'Failed to fetch user data from EventCall-Data repository. Please check console for details.';
+                    console.error('❌ userData is null - check fetchUserData logs above');
+                    throw new Error(errorMsg);
+                }
+
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Showing success toast and updating UI...`);
+                showToast(`✅ Welcome back, ${userData.name}!`, 'success');
 
                 // Save user to storage (without password)
-                this.currentUser = response.user;
-                this.saveUserToStorage(response.user, rememberMe);
+                this.currentUser = userData;
+                this.saveUserToStorage(userData, rememberMe);
 
                 // Update UI
                 if (window.updateUserDisplay) {
@@ -314,29 +491,96 @@ const userAuth = {
                 // Clear password field
                 passwordInput.value = '';
 
+                // PERFORMANCE: Show UI immediately, load data in background
                 // Hide login and show app
                 this.hideLoginScreen();
 
-                // Load user's events
-                if (window.loadManagerData) {
-                    await window.loadManagerData();
-                }
-
-                // Navigate to dashboard
+                // Navigate to dashboard immediately (shows skeleton)
                 if (window.showPage) {
                     window.showPage('dashboard');
                 }
+
+                // Load user's events in background (non-blocking)
+                if (window.loadManagerData) {
+                    window.loadManagerData().catch(err => {
+                        console.error('Failed to load manager data:', err);
+                        if (window.showToast) {
+                            window.showToast('Failed to load some data. Please refresh.', 'error');
+                        }
+                    });
+                }
+
+                // Hide loading screen after a brief delay to ensure smooth transition
+                console.log(`⏱️ [T+${Date.now() - startTime}ms] Scheduling loader hide in 800ms...`);
+                setTimeout(() => {
+                    console.log(`⏱️ [T+${Date.now() - startTime}ms] Hiding loader now`);
+                    if (window.hideAppLoader) {
+                        window.hideAppLoader();
+                    }
+                }, 800);
             } else {
                 throw new Error(response.error || 'Login failed');
             }
-        });
-        try {
-            // No-op: handled in withButtonLoading block
         } catch (error) {
-            console.error('❌ Login failed:', error);
+            console.error(`⏱️ [T+${Date.now() - startTime}ms] ❌ Login failed:`, error);
             showToast('❌ Login failed: ' + error.message, 'error');
+
+            // Hide app loader on error
+            console.log(`⏱️ [T+${Date.now() - startTime}ms] Hiding loader due to error`);
+            if (window.hideAppLoader) {
+                window.hideAppLoader();
+            }
         } finally {
             this.authInProgress = false;
+        }
+    },
+
+    /**
+     * Fetch full user data from EventCall-Data repository
+     */
+    async fetchUserData(username) {
+        try {
+            const dataRepoOwner = window.GITHUB_CONFIG.dataOwner || window.GITHUB_CONFIG.owner;
+            const dataRepo = window.GITHUB_CONFIG.dataRepo || 'EventCall-Data';
+            const userFilePath = `users/${username}.json`;
+
+            console.log(`📂 Fetching user data from ${dataRepoOwner}/${dataRepo}/${userFilePath}`);
+
+            const response = await fetch(
+                `https://api.github.com/repos/${dataRepoOwner}/${dataRepo}/contents/${userFilePath}`,
+                {
+                    headers: {
+                        'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`❌ GitHub API error: ${response.status}`, errorText);
+                throw new Error(`Failed to fetch user data: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log('📦 GitHub API response received');
+
+            // Decode base64 content (remove newlines first)
+            const content = atob(data.content.replace(/\n/g, ''));
+            console.log('🔓 Base64 decoded, parsing JSON...');
+
+            const userData = JSON.parse(content);
+            console.log('✅ User data fetched successfully:', { username: userData.username, name: userData.name });
+
+            return userData;
+
+        } catch (error) {
+            console.error('❌ Failed to fetch user data:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack
+            });
+            return null;
         }
     },
 
@@ -345,10 +589,56 @@ const userAuth = {
      */
     async triggerAuthWorkflow(actionType, payload) {
         try {
+            // PERFORMANCE: Try direct backend authentication first (200-500ms)
+            if (USE_DIRECT_AUTH && window.BackendAPI && (actionType === 'login_user' || actionType === 'register_user')) {
+                console.log(`⚡ Using fast direct authentication for ${actionType}`);
+
+                try {
+                    const credentials = {
+                        username: payload.username,
+                        password: payload.password,
+                        name: payload.name,
+                        email: payload.email,
+                        branch: payload.branch,
+                        rank: payload.rank
+                    };
+
+                    const result = await window.BackendAPI.authenticateDirect(actionType, credentials);
+                    console.log(`✅ Direct auth completed successfully`);
+                    return result;
+
+                } catch (directAuthError) {
+                    console.warn('⚠️ Direct auth failed, falling back to GitHub Actions:', directAuthError.message);
+                    // Fall through to GitHub Actions workflow below
+                }
+            }
+
             // In simple auth mode, validate locally (works on GitHub Pages too)
             const simpleMode = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.simpleAuth);
             if (simpleMode) {
-                console.log('🔓 Simple auth enabled: validating locally without GitHub');
+                console.log('🔓 Simple auth enabled: processing locally without GitHub');
+
+                // Handle profile updates differently - don't require password revalidation
+                if (actionType === 'update_profile') {
+                    // Get current user and update with new fields
+                    const currentUser = this.getCurrentUser();
+                    if (!currentUser) {
+                        throw new Error('No authenticated user found');
+                    }
+
+                    // Create updated user object with new fields from payload
+                    const updatedUser = {
+                        ...currentUser,
+                        name: payload?.name || currentUser.name,
+                        email: payload?.email || currentUser.email || '',
+                        branch: payload?.branch || currentUser.branch || '',
+                        rank: payload?.rank || currentUser.rank || ''
+                    };
+
+                    return { success: true, user: updatedUser };
+                }
+
+                // For login/register, validate credentials
                 const user = this.simpleValidate(payload?.username, payload?.password);
                 if (!user) {
                     throw new Error('Invalid username or password');
@@ -369,12 +659,35 @@ const userAuth = {
             const forceBackendInDev = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.forceBackendInDev);
             if (isLocalDev && !forceBackendInDev) {
                 console.log('🧪 Local dev detected: skipping GitHub workflow dispatch and polling (set AUTH_CONFIG.forceBackendInDev=true to enable)');
+
+                // Handle profile updates differently in local dev
+                if (actionType === 'update_profile') {
+                    const currentUser = this.getCurrentUser();
+                    if (!currentUser) {
+                        throw new Error('No authenticated user found');
+                    }
+
+                    return {
+                        success: true,
+                        user: {
+                            ...currentUser,
+                            name: payload?.name || currentUser.name,
+                            email: payload?.email || currentUser.email || '',
+                            branch: payload?.branch || currentUser.branch || '',
+                            rank: payload?.rank || currentUser.rank || ''
+                        }
+                    };
+                }
+
+                // For login/register
                 return {
                     success: true,
                     user: {
                         id: 'user_' + (payload?.username || 'local'),
                         username: payload?.username || 'local_user',
                         name: payload?.name || payload?.username || 'Local User',
+                        email: payload?.email || '',
+                        branch: payload?.branch || '',
                         rank: payload?.rank || '',
                         role: 'manager'
                     }
@@ -397,17 +710,49 @@ const userAuth = {
             console.log('🚀 Triggering workflow:', actionType);
             console.log('📦 Payload:', { ...payload, password: '[REDACTED]' });
 
+            // NOTE: Loader should already be shown by the calling function (handleLogin/handleRegister)
+            // Do NOT call showAppLoader here to avoid duplicate calls
+
+            // For profile updates, try direct file update first (faster and doesn't require polling)
+            if (actionType === 'update_profile') {
+                try {
+                    console.log('📝 Attempting direct profile file update...');
+                    const result = await window.BackendAPI.updateUserProfile(payload);
+                    console.log('✅ Profile updated directly:', result);
+                    return {
+                        success: true,
+                        user: result.user
+                    };
+                } catch (directError) {
+                    console.warn('⚠️ Direct profile update failed, falling back to workflow:', directError.message);
+                    // Fall through to workflow dispatch
+                }
+            }
+
             // Trigger workflow via BackendAPI
             const result = await window.BackendAPI.triggerWorkflow(actionType, payload);
             console.log('✅ Workflow dispatch result:', result);
 
             console.log('⏳ Polling for authentication response...');
+
+            // PERFORMANCE: Show initial progress message
+            if (window.updateLoaderMessage) {
+                window.updateLoaderMessage('🔐 Starting authentication...');
+            }
+
             // Poll for response via GitHub Issues using configurable timeouts
+            // Increased default interval from 2s to 5s to avoid GitHub's abuse detection limits
             const timeoutMs = (window.AUTH_CONFIG && window.AUTH_CONFIG.authTimeoutMs) || 30000;
-            const intervalMs = (window.AUTH_CONFIG && window.AUTH_CONFIG.pollIntervalMs) || 2000;
+            const intervalMs = (window.AUTH_CONFIG && window.AUTH_CONFIG.pollIntervalMs) || 5000;
             const response = await this.pollForAuthResponse(payload.client_id, timeoutMs, intervalMs);
 
             console.log('✅ Authentication response received:', response);
+
+            // Hide loader after receiving authentication response, before app content displays
+            if (window.hideAppLoader) {
+                window.hideAppLoader();
+            }
+
             return response;
 
         } catch (error) {
@@ -415,6 +760,11 @@ const userAuth = {
             console.error('Error type:', error.constructor.name);
             console.error('Error message:', error.message);
             console.error('Error stack:', error.stack);
+
+            // Hide loader on error
+            if (window.hideAppLoader) {
+                window.hideAppLoader();
+            }
 
             // Re-throw with more specific error message
             if (error.message.includes('timeout')) {
@@ -430,16 +780,43 @@ const userAuth = {
     /**
      * Poll GitHub Issues for authentication response
      */
-    async pollForAuthResponse(clientId, timeout = 30000, pollInterval = 2000) {
+    async pollForAuthResponse(clientId, timeout = 30000, pollInterval = 5000) {
         const startTime = Date.now();
         let pollCount = 0;
+        let lastProgressUpdate = 0;
 
         console.log(`🔄 Starting to poll for client_id: ${clientId}`);
         console.log(`⏰ Timeout: ${timeout}ms, Poll interval: ${pollInterval}ms`);
 
+        // Helper to show progress feedback
+        const showProgress = (seconds) => {
+            const messages = [
+                { threshold: 10, msg: '🔐 Authenticating with GitHub Actions...' },
+                { threshold: 20, msg: '⏳ Waiting for server response...' },
+                { threshold: 30, msg: '🔄 Processing credentials...' },
+                { threshold: 45, msg: '⏰ Almost there...' },
+                { threshold: 60, msg: '🔒 Finalizing authentication...' }
+            ];
+
+            // Use findLast for better performance (no array copy/reverse needed)
+            const msg = messages.findLast(m => seconds >= m.threshold);
+            if (msg && window.updateLoaderMessage) {
+                window.updateLoaderMessage(msg.msg);
+            } else if (msg && window.showToast) {
+                window.showToast(msg.msg, 'info');
+            }
+        };
+
         while (Date.now() - startTime < timeout) {
             pollCount++;
             const elapsed = Date.now() - startTime;
+            const elapsedSeconds = Math.floor(elapsed / 1000);
+
+            // PERFORMANCE: Show progress updates every 10 seconds
+            if (elapsedSeconds - lastProgressUpdate >= 10) {
+                showProgress(elapsedSeconds);
+                lastProgressUpdate = elapsedSeconds;
+            }
 
             try {
                 console.log(`📡 Poll attempt #${pollCount} (${(elapsed / 1000).toFixed(1)}s elapsed)`);
@@ -449,7 +826,12 @@ const userAuth = {
                 const url = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?state=open&per_page=100&sort=created&direction=desc&t=${Date.now()}`;
                 console.log(`🌐 Fetching: ${url}`);
 
-                const response = await fetch(url, {
+                // Use rate limiter to respect GitHub's limits
+                const fetchFunc = window.rateLimiter ?
+                    (u, opts) => window.rateLimiter.fetch(u, opts, { endpointKey: 'github_issues', retry: { maxAttempts: 2 } }) :
+                    fetch;
+
+                const response = await fetchFunc(url, {
                     headers: {
                         'Authorization': `token ${window.GITHUB_CONFIG.token}`,
                         'Accept': 'application/vnd.github.v3+json'
@@ -493,7 +875,7 @@ const userAuth = {
 
                         // Close the issue
                         console.log(`🔒 Closing issue #${matchingIssue.number}...`);
-                        await fetch(
+                        await fetchFunc(
                             `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues/${matchingIssue.number}`,
                             {
                                 method: 'PATCH',
@@ -516,43 +898,54 @@ const userAuth = {
                     }
                 } else {
                     // Fallback: check across all states in case client closed or visibility lag
-                    try {
-                        const fallbackUrl = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?state=all&per_page=100&sort=created&direction=desc&t=${Date.now()}`;
-                        console.log(`🔎 Fallback fetching: ${fallbackUrl}`);
-                        const fallbackResp = await fetch(fallbackUrl, {
-                            headers: {
-                                'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                                'Accept': 'application/vnd.github.v3+json'
-                            }
-                        });
+                    // Only do fallback check every 3rd poll to avoid rate limiting
+                    if (pollCount % 3 === 0) {
+                        try {
+                            const fallbackUrl = `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues?state=all&per_page=100&sort=created&direction=desc&t=${Date.now()}`;
+                            console.log(`🔎 Fallback fetching (poll #${pollCount}): ${fallbackUrl}`);
 
-                        if (fallbackResp.ok) {
-                            const allIssues = await fallbackResp.json();
-                            const fallbackMatch = allIssues.find(issue => issue.title && issue.title.includes(searchTitle));
-                            if (fallbackMatch) {
-                                console.log(`✅ Found matching issue in fallback #${fallbackMatch.number}`);
-                                const responseData = JSON.parse(fallbackMatch.body);
-                                // Close the issue to keep the queue clean
-                                await fetch(
-                                    `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues/${fallbackMatch.number}`,
-                                    {
-                                        method: 'PATCH',
-                                        headers: {
-                                            'Authorization': `token ${window.GITHUB_CONFIG.token}`,
-                                            'Accept': 'application/vnd.github.v3+json',
-                                            'Content-Type': 'application/json'
-                                        },
-                                        body: JSON.stringify({ state: 'closed' })
-                                    }
-                                );
-                                console.log(`✅ Fallback issue closed successfully`);
-                                return responseData;
+                            // Use rate limiter for fallback fetch too
+                            const fetchFunc = window.rateLimiter ?
+                                (u, opts) => window.rateLimiter.fetch(u, opts, { endpointKey: 'github_issues', retry: { maxAttempts: 2 } }) :
+                                fetch;
+
+                            const fallbackResp = await fetchFunc(fallbackUrl, {
+                                headers: {
+                                    'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                    'Accept': 'application/vnd.github.v3+json'
+                                }
+                            });
+
+                            if (fallbackResp.ok) {
+                                const allIssues = await fallbackResp.json();
+                                const fallbackMatch = allIssues.find(issue => issue.title && issue.title.includes(searchTitle));
+                                if (fallbackMatch) {
+                                    console.log(`✅ Found matching issue in fallback #${fallbackMatch.number}`);
+                                    const responseData = JSON.parse(fallbackMatch.body);
+                                    // Close the issue to keep the queue clean
+                                    await fetchFunc(
+                                        `https://api.github.com/repos/${window.GITHUB_CONFIG.owner}/${window.GITHUB_CONFIG.repo}/issues/${fallbackMatch.number}`,
+                                        {
+                                            method: 'PATCH',
+                                            headers: {
+                                                'Authorization': `token ${window.GITHUB_CONFIG.token}`,
+                                                'Accept': 'application/vnd.github.v3+json',
+                                                'Content-Type': 'application/json'
+                                            },
+                                            body: JSON.stringify({ state: 'closed' })
+                                        }
+                                    );
+                                    console.log(`✅ Fallback issue closed successfully`);
+                                    return responseData;
+                                }
+                            } else {
+                                console.warn(`⚠️ Fallback fetch failed: ${fallbackResp.status}`);
                             }
-                        } else {
-                            console.warn(`⚠️ Fallback fetch failed: ${fallbackResp.status}`);
+                        } catch (fallbackError) {
+                            console.warn('⚠️ Fallback check error:', fallbackError);
                         }
-                    } catch (fallbackError) {
-                        console.warn('⚠️ Fallback check error:', fallbackError);
+                    } else {
+                        console.log(`⏭️ Skipping fallback check on poll #${pollCount} (only checking every 3rd poll)`);
                     }
 
                     console.log(`⏳ No matching issue found yet, waiting ${pollInterval}ms...`);
@@ -635,9 +1028,12 @@ const userAuth = {
         try {
             const storageSync = window.utils && window.utils.secureStorageSync;
             if (storageSync) {
-                const ttl = 4 * 60 * 60 * 1000; // 4 hours
+                // PERFORMANCE: Extended session TTL for better UX
+                // - 7 days if "remember me" checked
+                // - 24 hours for regular sessions (increased from 4 hours)
+                const ttl = rememberMe ? ONE_WEEK_MS : ONE_DAY_MS;
                 storageSync.set('eventcall_user', user, { ttl });
-                console.log('💾 User saved to secure session storage');
+                console.log(`💾 User saved to secure storage (TTL: ${rememberMe ? '7 days' : '24 hours'})`);
             } else {
                 const storageType = rememberMe ? localStorage : sessionStorage;
                 storageType.setItem('eventcall_user', JSON.stringify(user));
@@ -790,6 +1186,12 @@ const userAuth = {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+    // Skip initialization in test mode
+    if (window.__TEST_MODE__) {
+        console.log('⚠️ Test mode detected - skipping auth initialization');
+        return;
+    }
+
     userAuth.init();
 
     // Attach login form handler

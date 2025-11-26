@@ -3,13 +3,13 @@
  * Provides offline support, caching, and performance optimization
  */
 
-const CACHE_NAME = 'eventcall-v2';
+// Increment version number to force cache refresh
+const CACHE_NAME = 'eventcall-v3';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Assets to cache on install
+// Note: Keep this minimal to avoid caching issues with login page
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
     '/styles/main.css',
     '/styles/components.css',
     '/styles/responsive.css',
@@ -17,15 +17,8 @@ const STATIC_ASSETS = [
     '/styles/dashboard-v2.css',
     '/styles/event-management-v2.css',
     '/styles/invite.css',
-    '/styles/login.css',
-    '/js/error-handler.js',
-    '/js/manager-system.js',
-    '/js/event-manager.js',
-    '/js/early-functions.js',
-    '/js/ui-components.js',
-    '/js/github-api.js',
-    '/js/config.js',
-    '/js/utils.js'
+    '/styles/login.css'
+    // IMPORTANT: Don't cache JS files or index.html to avoid login page issues
 ];
 
 // Install event - cache static assets
@@ -85,6 +78,21 @@ self.addEventListener('fetch', (event) => {
     const isScript = request.destination === 'script' || url.pathname.endsWith('.js');
     if (isScript && request.method === 'GET') {
         event.respondWith(fetch(request));
+        return;
+    }
+
+    // Handle SPA navigation - ALWAYS fetch from network for HTML to avoid login page caching issues
+    const isNavigationRequest = request.mode === 'navigate' ||
+                                request.destination === 'document' ||
+                                (request.method === 'GET' && request.headers.get('accept')?.includes('text/html'));
+
+    if (isNavigationRequest && request.method === 'GET') {
+        event.respondWith(
+            fetch(request).catch(() => {
+                // Only use cache as last resort fallback when network is completely unavailable
+                return caches.match('/index.html');
+            })
+        );
         return;
     }
 
@@ -222,6 +230,10 @@ async function setCacheTimestamp(url, timestamp) {
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
+        // Send response to prevent message channel from closing
+        if (event.ports && event.ports[0]) {
+            event.ports[0].postMessage({ success: true, type: 'SKIP_WAITING' });
+        }
     }
 
     if (event.data && event.data.type === 'CLEAR_CACHE') {
@@ -229,7 +241,12 @@ self.addEventListener('message', (event) => {
             caches.keys().then((cacheNames) => {
                 return Promise.all(
                     cacheNames.map((cacheName) => caches.delete(cacheName))
-                );
+                ).then(() => {
+                    // Send response after clearing cache
+                    if (event.ports && event.ports[0]) {
+                        event.ports[0].postMessage({ success: true, type: 'CLEAR_CACHE' });
+                    }
+                });
             })
         );
     }

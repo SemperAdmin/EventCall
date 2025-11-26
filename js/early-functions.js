@@ -102,37 +102,56 @@ function enforceLogin() {
 
 /**
  * Show page navigation - Updated to enforce login state
+ * @param {string} pageId - Page ID to show (dashboard, create, manage, etc.)
+ * @param {string} param - Optional parameter (e.g., eventId for manage page)
  */
-function showPage(pageId) {
-    console.log(`🧭 Attempting to navigate to: ${pageId}`);
-    
+function showPage(pageId, param) {
+    console.log(`🧭 Attempting to navigate to: ${pageId}${param ? `/${param}` : ''}`);
+
     // Allow access to invite page without login (for guests)
     if (pageId === 'invite') {
         console.log('🎟️ Guest invite access - no login required');
-        showPageContent(pageId);
+        showPageContent(pageId, param);
         return;
     }
-    
+
     // Check if this is an invite URL (guest access)
     if (window.location.hash.includes('invite/') || window.location.search.includes('data=')) {
         console.log('🎟️ Guest invite URL detected - bypassing login');
-        showPageContent('invite');
+        showPageContent('invite', param);
         return;
     }
-    
+
     // Check if user is logged in for all other pages
     const isAuthenticated = window.userAuth?.isAuthenticated() || window.managerAuth?.isAuthenticated();
-    
+
     if (!isAuthenticated) {
         console.log('🔒 Access denied - user not logged in');
         enforceLogin();
         return;
     }
-    
-    // User is logged in, proceed to requested page
+
+    // User is logged in, check if admin
     const user = window.userAuth?.getCurrentUser() || window.managerAuth?.getCurrentManager();
-    console.log(`✅ Access granted to ${pageId} for user: ${user?.email}`);
-    showPageContent(pageId);
+
+    // Admin users can ONLY access admin page
+    if (user && user.role === 'admin') {
+        if (pageId !== 'admin') {
+            console.log('👑 Admin user attempting to access non-admin page - redirecting to admin dashboard');
+            pageId = 'admin';
+        }
+        console.log(`✅ Admin access granted to ${pageId}`);
+    } else {
+        // Regular users cannot access admin page
+        if (pageId === 'admin') {
+            console.log('🚫 Regular user attempting to access admin page - access denied');
+            showToast('❌ Access denied - Admin privileges required', 'error');
+            pageId = 'dashboard';
+        }
+        console.log(`✅ Access granted to ${pageId} for user: ${user?.email}`);
+    }
+
+    showPageContent(pageId, param);
 }
 
 /**
@@ -172,17 +191,19 @@ function showLoginPage() {
 
 /**
  * Show specific page content (internal function)
+ * @param {string} pageId - Page ID to show
+ * @param {string} param - Optional parameter (e.g., eventId for manage/invite pages)
  */
-function showPageContent(pageId) {
+function showPageContent(pageId, param) {
     // Hide all pages
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
     });
-    
+
     // Show target page
     const targetPage = document.getElementById(pageId);
     if (targetPage) targetPage.classList.add('active');
-    
+
     // Update nav buttons (only if nav is visible)
     const nav = document.querySelector('.nav');
     if (nav && nav.style.display !== 'none') {
@@ -192,7 +213,7 @@ function showPageContent(pageId) {
         const navButton = document.getElementById(`nav-${pageId}`);
         if (navButton) navButton.classList.add('active');
     }
-    
+
     // Show/hide header and nav based on page
     const header = document.querySelector('.header');
     if (header) {
@@ -201,10 +222,21 @@ function showPageContent(pageId) {
     if (nav) {
         nav.style.display = pageId === 'invite' || pageId === 'manage' ? 'none' : 'flex';
     }
-    
+
     // Sync URL via History API (no hash) when router is available
     if (window.AppRouter && typeof window.AppRouter.updateURLForPage === 'function') {
-        window.AppRouter.updateURLForPage(pageId);
+        window.AppRouter.updateURLForPage(pageId, param);
+    }
+
+    // Handle page-specific loading with parameters
+    if (pageId === 'manage' && param) {
+        // Load event management page with eventId
+        if (window.eventManager && window.eventManager.showEventManagement) {
+            window.eventManager.showEventManagement(param);
+        } else {
+            console.warn('⚠️ Event manager not loaded yet');
+        }
+        return;
     }
     
     // Page-specific initializations
@@ -231,6 +263,11 @@ function showPageContent(pageId) {
         if (typeof window.loadManagerData === 'function') {
             window.loadManagerData();
         }
+    } else if (pageId === 'admin') {
+        // Load admin dashboard (admin only)
+        if (window.AdminDashboard && typeof window.AdminDashboard.loadDashboard === 'function') {
+            window.AdminDashboard.loadDashboard();
+        }
     }
 
     console.log(`📄 Page changed to: ${pageId}`);
@@ -242,18 +279,29 @@ function showPageContent(pageId) {
 function updateUserDisplay() {
     if (window.userAuth && window.userAuth.isAuthenticated()) {
         const user = window.userAuth.getCurrentUser();
-        
+
         const displayName = document.getElementById('user-display-name');
         const avatar = document.getElementById('user-avatar');
-        
+
         if (displayName) {
             displayName.textContent = user.name || user.username || 'User';
         }
-        
+
         if (avatar) {
             avatar.textContent = window.userAuth.getInitials();
         }
-        
+
+        // Show/hide admin navigation based on user role
+        const adminNavBtn = document.getElementById('admin-nav-btn');
+        if (adminNavBtn) {
+            if (user.role === 'admin') {
+                adminNavBtn.style.display = 'inline-block';
+                console.log('👑 Admin navigation enabled for:', user.username);
+            } else {
+                adminNavBtn.style.display = 'none';
+            }
+        }
+
         console.log('👤 User display updated:', user.name);
     }
 }
@@ -265,21 +313,259 @@ function showUserMenu() {
     if (!window.userAuth || !window.userAuth.isAuthenticated()) {
         return;
     }
-    
-    const user = window.userAuth.getCurrentUser();
-    
-    const message = `
-👤 ${user.name || user.username}
-${user.unit ? `🎖️ ${user.unit}` : ''}
 
-Do you want to log out?
-    `.trim();
-    
-    if (confirm(message)) {
-        window.userAuth.logout();
+    const user = window.userAuth.getCurrentUser();
+    const modal = document.getElementById('user-profile-modal');
+
+    if (!modal) {
+        console.error('User profile modal not found');
+        return;
+    }
+
+    // Populate modal with user data
+    const avatarEl = document.getElementById('profile-avatar');
+    const usernameEl = document.getElementById('profile-username');
+    const nameEl = document.getElementById('profile-name');
+    const emailEl = document.getElementById('profile-email');
+    const branchEl = document.getElementById('profile-branch');
+    const rankEl = document.getElementById('profile-rank');
+
+    if (avatarEl) avatarEl.textContent = window.userAuth.getInitials ? window.userAuth.getInitials() : '👤';
+    if (usernameEl) usernameEl.value = user.username || '';
+    if (nameEl) nameEl.value = user.name || '';
+    if (emailEl) emailEl.value = user.email || '';
+    if (branchEl) branchEl.value = user.branch || '';
+
+    // Update ranks for selected branch
+    if (user.branch) {
+        updateProfileRanksForBranch();
+    }
+
+    if (rankEl) rankEl.value = user.rank || '';
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Update rank options when branch is selected in profile
+ */
+function updateProfileRanksForBranch() {
+    const branchSelect = document.getElementById('profile-branch');
+    const rankSelect = document.getElementById('profile-rank');
+
+    if (!branchSelect || !rankSelect) return;
+
+    const branch = branchSelect.value;
+    const currentRank = rankSelect.value;
+
+    // Clear existing options
+    rankSelect.innerHTML = '<option value="">Select rank...</option>';
+
+    if (!branch) {
+        rankSelect.disabled = true;
+        rankSelect.innerHTML = '<option value="">Select service branch first...</option>';
+        return;
+    }
+
+    // Handle Civilian and Other
+    if (branch === 'Civilian') {
+        rankSelect.innerHTML = '<option value="Civilian">Civilian</option>';
+        rankSelect.disabled = true;
+        return;
+    }
+
+    if (branch === 'Other') {
+        rankSelect.innerHTML = '<option value="">N/A</option>';
+        rankSelect.disabled = true;
+        return;
+    }
+
+    rankSelect.disabled = false;
+
+    // Get ranks for branch using MilitaryData
+    if (!window.MilitaryData) {
+        console.error('MilitaryData not loaded');
+        return;
+    }
+
+    const ranks = window.MilitaryData.getRanksForBranch(branch);
+
+    ranks.forEach(rankData => {
+        const option = document.createElement('option');
+        option.value = rankData.value;
+        option.textContent = rankData.label;
+        rankSelect.appendChild(option);
+    });
+
+    // Restore previously selected rank if still valid
+    if (currentRank) {
+        const validRank = ranks.find(r => r.value === currentRank);
+        if (validRank) {
+            rankSelect.value = currentRank;
+        }
+    }
+}
+
+/**
+ * Save user profile changes
+ */
+async function saveUserProfile() {
+    if (!window.userAuth || !window.userAuth.isAuthenticated()) {
+        return;
+    }
+
+    const nameEl = document.getElementById('profile-name');
+    const emailEl = document.getElementById('profile-email');
+    const branchEl = document.getElementById('profile-branch');
+    const rankEl = document.getElementById('profile-rank');
+    const saveBtn = document.querySelector('#user-profile-modal button[onclick*="saveUserProfile"]');
+
+    const name = nameEl?.value.trim();
+    const email = emailEl?.value.trim().toLowerCase();
+    const branch = branchEl?.value || '';
+    const rank = rankEl?.value || '';
+
+    if (!name || name.length < 2) {
+        showToast('❌ Please enter a valid name', 'error');
+        nameEl?.focus();
+        return;
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('❌ Please enter a valid email address', 'error');
+        emailEl?.focus();
+        return;
+    }
+
+    const user = window.userAuth.getCurrentUser();
+    const showToast = window.showToast || function(msg, type) { console.log(msg); };
+
+    // IMPORTANT: Save to local storage FIRST, then sync to backend
+    // This ensures user data is preserved even if backend fails
+    user.name = name;
+    user.email = email;
+    user.branch = branch;
+    user.rank = rank;
+    user.lastUpdated = new Date().toISOString();
+
+    // Save to local storage immediately
+    window.userAuth.saveUserToStorage(user);
+
+    // Update UI immediately
+    if (window.updateUserDisplay) {
+        window.updateUserDisplay();
+    }
+
+    try {
+        // Show loading state
+        if (saveBtn && window.LoadingUI && window.LoadingUI.withButtonLoading) {
+            await window.LoadingUI.withButtonLoading(saveBtn, 'Syncing to backend...', async () => {
+                // Try to sync to backend
+                try {
+                    const response = await window.userAuth.triggerAuthWorkflow('update_profile', {
+                        username: user.username,
+                        password: '', // Password not required for profile updates
+                        name: name,
+                        email: email,
+                        branch: branch,
+                        rank: rank,
+                        client_id: 'profile_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+                    });
+
+                    if (response.success) {
+                        // Fetch fresh user data from EventCall-Data after successful backend sync
+                        const freshUserData = await window.userAuth.fetchUserData(response.username);
+                        if (freshUserData) {
+                            window.userAuth.saveUserToStorage(freshUserData);
+                            window.userAuth.currentUser = freshUserData;
+                        }
+                        showToast('✅ Profile updated and synced to backend', 'success');
+                    } else {
+                        showToast('✅ Profile updated locally (backend sync pending)', 'success');
+                    }
+                } catch (backendError) {
+                    // Check if it's a rate limit error
+                    if (backendError.message && backendError.message.includes('rate limit')) {
+                        showToast('✅ Profile updated locally (backend rate limited, will sync later)', 'success');
+                    } else {
+                        showToast('✅ Profile updated locally (backend sync failed)', 'success');
+                    }
+                    console.warn('Backend sync failed:', backendError);
+                }
+
+                closeUserProfile();
+            });
+        } else {
+            // Fallback if LoadingUI not available
+            try {
+                const response = await window.userAuth.triggerAuthWorkflow('update_profile', {
+                    username: user.username,
+                    password: '',
+                    name: name,
+                    email: email,
+                    branch: branch,
+                    rank: rank,
+                    client_id: 'profile_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+                });
+
+                if (response.success) {
+                    // Fetch fresh user data from EventCall-Data after successful backend sync
+                    const freshUserData = await window.userAuth.fetchUserData(response.username);
+                    if (freshUserData) {
+                        window.userAuth.saveUserToStorage(freshUserData);
+                        window.userAuth.currentUser = freshUserData;
+                    }
+                    showToast('✅ Profile updated and synced to backend', 'success');
+                } else {
+                    showToast('✅ Profile updated locally (backend sync pending)', 'success');
+                }
+            } catch (backendError) {
+                if (backendError.message && backendError.message.includes('rate limit')) {
+                    showToast('✅ Profile updated locally (backend rate limited, will sync later)', 'success');
+                } else {
+                    showToast('✅ Profile updated locally (backend sync failed)', 'success');
+                }
+                console.warn('Backend sync failed:', backendError);
+            }
+
+            closeUserProfile();
+        }
+    } catch (error) {
+        console.error('❌ Profile update UI error:', error);
+        showToast('✅ Profile saved locally', 'success');
+        closeUserProfile();
+    }
+}
+
+/**
+ * Close user profile modal
+ */
+function closeUserProfile() {
+    const modal = document.getElementById('user-profile-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Logout from profile modal
+ */
+function logoutFromProfile() {
+    if (confirm('Are you sure you want to log out?')) {
+        if (window.userAuth) {
+            window.userAuth.logout();
+        }
         location.reload();
     }
 }
+
+// Make functions globally available
+window.showUserMenu = showUserMenu;
+window.updateProfileRanksForBranch = updateProfileRanksForBranch;
+window.saveUserProfile = saveUserProfile;
+window.closeUserProfile = closeUserProfile;
+window.logoutFromProfile = logoutFromProfile;
 
 /**
  * Show toast notification - Available immediately
@@ -353,11 +639,44 @@ async function copyInviteLink(eventId) {
 }
 
 /**
+ * Get the base path for the application (handles GitHub Pages)
+ * @returns {string} Base path (e.g., '/EventCall/' or '/')
+ */
+function getBasePath() {
+    // Return cached value if already determined
+    if (window.__BASE_PATH_CACHE__) {
+        return window.__BASE_PATH_CACHE__;
+    }
+
+    // Check if we're on GitHub Pages
+    const isGitHubPages = window.location.hostname.endsWith('.github.io');
+
+    if (isGitHubPages) {
+        // List of known app pages to exclude when extracting base path
+        const knownPages = ['dashboard', 'create', 'manage', 'invite', 'index.html'];
+
+        // Extract repo name from pathname
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        if (pathParts.length > 0 && !knownPages.includes(pathParts[0])) {
+            window.__BASE_PATH_CACHE__ = '/' + pathParts[0] + '/';
+            return window.__BASE_PATH_CACHE__;
+        }
+        // Fallback for root or when first part is a known page
+        window.__BASE_PATH_CACHE__ = '/EventCall/';
+        return window.__BASE_PATH_CACHE__;
+    }
+
+    window.__BASE_PATH_CACHE__ = '/';
+    return window.__BASE_PATH_CACHE__;
+}
+
+/**
  * Generate invite URL - Utility function
  */
 // function generateInviteURL(event) {
 function generateInviteURL(event) {
-    const baseURL = window.location.origin + window.location.pathname;
+    const basePath = getBasePath();
+    const baseURL = window.location.origin + basePath;
     const encodedData = encodeURIComponent(JSON.stringify({
         id: event.id,
         title: event.title,
@@ -597,16 +916,36 @@ async function deleteEvent(eventId) {
 function checkURLHash() {
     const hash = window.location.hash.substring(1);
     const hasInviteData = window.location.search.includes('data=');
-    
+
     // Handle invite URLs (guest access)
     if (hash.startsWith('invite/') || hasInviteData) {
-        const eventId = hash.split('/')[1];
+        let eventId = '';
+
+        // Try to get event ID from hash first
+        if (hash.startsWith('invite/')) {
+            eventId = hash.split('/')[1];
+        }
+
+        // If no event ID in hash but we have query data, try to parse it
+        if (!eventId && hasInviteData) {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const data = params.get('data');
+                if (data) {
+                    const eventData = JSON.parse(decodeURIComponent(data));
+                    eventId = eventData.id;
+                }
+            } catch (e) {
+                console.error('Failed to parse event data from URL:', e);
+            }
+        }
+
         console.log('🔗 Direct invite link accessed:', eventId);
-        
+
         // Force show invite page without login requirement
         showPageContent('invite');
-        
-        if (window.uiComponents && window.uiComponents.showInvite) {
+
+        if (eventId && window.uiComponents && window.uiComponents.showInvite) {
             window.uiComponents.showInvite(eventId);
         } else {
             console.log('⏳ UI components not loaded yet, will handle invite later');
@@ -677,6 +1016,7 @@ window.exportEventData = exportEventData;
 window.deleteEvent = deleteEvent;
 window.mailAttendee = mailAttendee;
 window.checkURLHash = checkURLHash;
+window.getBasePath = getBasePath;
 // New path-based handler
 function handleURLPath() {
     const pathname = window.location.pathname || '';
@@ -723,9 +1063,97 @@ window.enforceLogin = enforceLogin;
 window.updateUserDisplay = updateUserDisplay;
 window.showUserMenu = showUserMenu;
 
+/**
+ * Show the app loading screen (called on successful login)
+ */
+function showAppLoader() {
+    const timestamp = new Date().toISOString();
+    console.log(`🔵 [${timestamp}] showAppLoader() CALLED`);
+    console.log('🔍 Searching for #app-loader element...');
+
+    const loader = document.getElementById('app-loader');
+    console.log('📍 Element found:', loader ? 'YES' : 'NO');
+
+    if (loader) {
+        console.log('📊 Current loader state BEFORE changes:');
+        console.log('  - display:', window.getComputedStyle(loader).display);
+        console.log('  - opacity:', window.getComputedStyle(loader).opacity);
+        console.log('  - visibility:', window.getComputedStyle(loader).visibility);
+        console.log('  - classList:', loader.classList.toString());
+        console.log('  - z-index:', window.getComputedStyle(loader).zIndex);
+
+        // CRITICAL: Hide login page to prevent it from covering the loader
+        // Both have z-index: 10000, so login page (later in DOM) would cover loader
+        const loginPage = document.getElementById('login-page');
+        if (loginPage) {
+            console.log('🔧 Hiding login page to show loader...');
+            loginPage.style.display = 'none';
+        }
+
+        console.log('🔧 Removing "hidden" class from loader...');
+        loader.classList.remove('hidden');
+
+        // Force style recalculation
+        void loader.offsetHeight;
+
+        console.log('✅ "hidden" class removed');
+        console.log('📊 Current loader state AFTER changes:');
+        console.log('  - display:', window.getComputedStyle(loader).display);
+        console.log('  - opacity:', window.getComputedStyle(loader).opacity);
+        console.log('  - visibility:', window.getComputedStyle(loader).visibility);
+        console.log('  - classList:', loader.classList.toString());
+        console.log('  - z-index:', window.getComputedStyle(loader).zIndex);
+
+        console.log('✅ LOADER SHOULD NOW BE VISIBLE (login page hidden)');
+    } else {
+        console.error('❌ LOADER ELEMENT NOT FOUND - #app-loader does not exist in DOM');
+    }
+}
+window.showAppLoader = showAppLoader;
+
+/**
+ * Hide the app loading screen
+ */
+function hideAppLoader() {
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+        // Reset loader message to default before hiding
+        const statusLabel = loader.querySelector('.app-loader__status-label');
+        if (statusLabel) {
+            statusLabel.textContent = 'Loading';
+        }
+
+        // Add hidden class to trigger fade out
+        loader.classList.add('hidden');
+        // Remove from DOM after transition completes
+        loader.addEventListener('transitionend', () => {
+            if (loader.parentNode) {
+                loader.remove();
+            }
+        }, { once: true });
+    }
+}
+window.hideAppLoader = hideAppLoader;
+
+/**
+ * PERFORMANCE: Update loader message for progress feedback
+ * @param {string} message - Message to display
+ */
+function updateLoaderMessage(message) {
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+        const statusLabel = loader.querySelector('.app-loader__status-label');
+        if (statusLabel) {
+            statusLabel.textContent = message;
+        }
+    }
+}
+window.updateLoaderMessage = updateLoaderMessage;
+
 // Initialize hash listener when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     initializeHashListener();
+    // Note: loader is NOT auto-hidden here - only shows/hides on login
 });
 
 console.log('✅ Early functions loaded with username-only authentication support');

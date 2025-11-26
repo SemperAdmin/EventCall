@@ -71,26 +71,82 @@ class RSVPHandler {
     /**
      * Pre-fill form with existing RSVP data
      */
-    prefillEditForm(rsvpData) {
+    async prefillEditForm(rsvpData) {
         if (!rsvpData) return;
 
-        const nameInput = document.getElementById('rsvp-name');
-        const emailInput = document.getElementById('rsvp-email');
-        const phoneInput = document.getElementById('rsvp-phone');
-        const reasonInput = document.getElementById('reason');
-        const guestCountInput = document.getElementById('guest-count');
+        // Set attending radio button first
+        if (rsvpData.attending !== undefined) {
+            const attendingRadio = document.querySelector(`input[name="attending"][value="${rsvpData.attending}"]`);
+            if (attendingRadio) {
+                attendingRadio.checked = true;
 
+                // Trigger the field display logic and wait for it to complete
+                if (window.toggleAttendingFields) {
+                    await window.toggleAttendingFields(rsvpData.attending);
+                }
+            }
+        }
+
+        // Fields are now displayed, fill them
+        let nameInput, emailInput, phoneInput, reasonInput;
+
+        if (rsvpData.attending === false) {
+            // Declining - use decline fields
+            nameInput = document.getElementById('rsvp-name-decline');
+            emailInput = document.getElementById('rsvp-email-decline');
+            reasonInput = document.getElementById('reason-decline');
+        } else {
+            // Attending - use accept fields
+            nameInput = document.getElementById('rsvp-name');
+            emailInput = document.getElementById('rsvp-email');
+            phoneInput = document.getElementById('rsvp-phone');
+            reasonInput = document.getElementById('reason');
+
+            const guestCountInput = document.getElementById('guest-count');
+            if (guestCountInput) guestCountInput.value = rsvpData.guestCount || 0;
+
+            // Fill military info if present
+            const branchInput = document.getElementById('branch');
+            const rankInput = document.getElementById('rank');
+            const unitInput = document.getElementById('unit');
+
+            if (branchInput && rsvpData.branch) {
+                branchInput.value = rsvpData.branch;
+
+                // Trigger rank update and wait for it
+                if (window.updateRanksForBranch) {
+                    // updateRanksForBranch is synchronous but we need to wait for DOM update
+                    window.updateRanksForBranch();
+
+                    // Wait for next frame to ensure ranks are populated
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+
+                    if (rankInput && rsvpData.rank) {
+                        rankInput.value = rsvpData.rank;
+                    }
+                }
+            }
+            if (unitInput && rsvpData.unit) unitInput.value = rsvpData.unit;
+
+            // Fill dietary restrictions if present
+            if (rsvpData.dietaryRestrictions && Array.isArray(rsvpData.dietaryRestrictions)) {
+                rsvpData.dietaryRestrictions.forEach(restriction => {
+                    const checkbox = document.querySelector(`input[name="dietary"][value="${restriction}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+
+            const allergyDetailsInput = document.getElementById('allergy-details');
+            if (allergyDetailsInput && rsvpData.allergyDetails) {
+                allergyDetailsInput.value = rsvpData.allergyDetails;
+            }
+        }
+
+        // Fill common fields
         if (nameInput) nameInput.value = rsvpData.name || '';
         if (emailInput) emailInput.value = rsvpData.email || '';
         if (phoneInput) phoneInput.value = rsvpData.phone || '';
         if (reasonInput) reasonInput.value = rsvpData.reason || '';
-        if (guestCountInput) guestCountInput.value = rsvpData.guestCount || 0;
-
-        // Set attending radio button
-        if (rsvpData.attending !== undefined) {
-            const attendingRadio = document.querySelector(`input[name="attending"][value="${rsvpData.attending}"]`);
-            if (attendingRadio) attendingRadio.checked = true;
-        }
 
         // Show edit mode banner
         this.showEditModeBanner();
@@ -270,19 +326,27 @@ class RSVPHandler {
             };
         } catch (error) {
             console.error('Backend submission error:', error);
-            
-            let errorMessage = 'Backend submission failed';
-            
-            if (error.message.includes('Failed: 404')) {
-                errorMessage = 'Backend workflow not found - please contact administrator';
-            } else if (error.message.includes('Failed: 401')) {
-                errorMessage = 'Authentication failed - please contact administrator';
-            } else if (error.message.includes('Failed: 403')) {
-                errorMessage = 'Permission denied - please contact administrator';
+
+            // Use enhanced error handler for better messages
+            let errorMessage;
+            if (window.ErrorHandler) {
+                errorMessage = window.ErrorHandler.getUserFriendlyMessage(error, 'RSVP submission');
             } else {
-                errorMessage = error.message;
+                // Fallback to manual message mapping
+                if (error.message.includes('404') || error.message.includes('Workflow not found')) {
+                    errorMessage = 'Workflow endpoint unavailable - using fallback submission method';
+                    console.log('ℹ️ This is expected behavior when workflow dispatch is not configured');
+                } else if (error.message.includes('401') || error.message.includes('Authentication')) {
+                    errorMessage = 'Authentication failed - please contact administrator';
+                } else if (error.message.includes('403') || error.message.includes('Permission')) {
+                    errorMessage = 'Permission denied - please contact administrator';
+                } else if (error.message.includes('Both workflow and issue')) {
+                    errorMessage = 'All submission methods failed - ' + error.message;
+                } else {
+                    errorMessage = error.message;
+                }
             }
-            
+
             throw new Error(errorMessage);
         }
     }
@@ -435,11 +499,11 @@ class RSVPHandler {
 
                 ${qrCodeHTML}
 
-                ${rsvpData.attending && window.calendarExport ? `
-                <div style="margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
+                ${rsvpData.attending ? `
+                <div id="calendar-export-placeholder" class="hidden" style="margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
                     <strong>📅 Add to Your Calendar</strong><br>
-                    <div style="margin-top: 0.75rem;">
-                        ${window.calendarExport.generateCalendarDropdownHTML(event)}
+                    <div id="calendar-dropdown-container" style="margin-top: 0.75rem;">
+                        <!-- Calendar dropdown will be inserted here via JavaScript -->
                     </div>
                 </div>
                 ` : ''}
@@ -461,6 +525,19 @@ class RSVPHandler {
                 </div>
             </div>
         `);
+
+        // Insert calendar dropdown after sanitization (to preserve onclick handlers)
+        if (rsvpData.attending && window.calendarExport) {
+            const calendarContainer = document.getElementById('calendar-dropdown-container');
+            if (calendarContainer) {
+                calendarContainer.innerHTML = window.calendarExport.generateCalendarDropdownHTML(event);
+                // Show the placeholder now that calendar content is injected
+                const placeholder = document.getElementById('calendar-export-placeholder');
+                if (placeholder) {
+                    placeholder.classList.remove('hidden');
+                }
+            }
+        }
     }
 
     showSubmissionError(error) {
@@ -493,41 +570,50 @@ class RSVPHandler {
 
     categorizeError(error) {
         const message = error.message.toLowerCase();
-        
-        if (message.includes('network') || message.includes('fetch')) {
+
+        if (message.includes('network') || message.includes('fetch') || message.includes('failed to fetch')) {
             return {
-                userMessage: 'Network connection issue. Please check your internet connection.',
+                userMessage: 'Unable to connect. Please check your internet connection.',
                 suggestions: [
-                    '• Check your internet connection',
+                    '• Make sure you\'re connected to the internet',
                     '• Try refreshing the page and submitting again',
-                    '• If the problem persists, contact the event organizer directly'
+                    '• If the problem continues, you can contact the event organizer directly'
                 ]
             };
-        } else if (message.includes('rate limit')) {
+        } else if (message.includes('rate limit') || message.includes('too many')) {
             return {
-                userMessage: 'Too many requests. Please wait a moment and try again.',
+                userMessage: 'Too many submission attempts. Please wait a moment.',
                 suggestions: [
-                    '• Wait 60 seconds before trying again',
-                    '• Only submit your RSVP once',
-                    '• Contact event organizer if urgent'
+                    '• Wait about 60 seconds before trying again',
+                    '• Make sure you only submit your RSVP once',
+                    '• If you need urgent help, contact the event organizer'
                 ]
             };
-        } else if (message.includes('authentication') || message.includes('401')) {
+        } else if (message.includes('authentication') || message.includes('401') || message.includes('403')) {
             return {
-                userMessage: 'System authentication issue. This is a temporary problem.',
+                userMessage: 'There was a temporary system issue. Your RSVP was not submitted.',
                 suggestions: [
-                    '• Try again in a few minutes',
-                    '• Contact the event organizer with your RSVP details',
-                    '• Reference Error Code: AUTH_001'
+                    '• Please try again in a few minutes',
+                    '• If this keeps happening, contact the event organizer',
+                    '• Have your name and email ready when you contact them'
+                ]
+            };
+        } else if (message.includes('timeout')) {
+            return {
+                userMessage: 'The submission is taking too long. The server may be busy.',
+                suggestions: [
+                    '• Please wait a moment and try again',
+                    '• Your information has not been saved yet',
+                    '• If this continues, contact the event organizer'
                 ]
             };
         } else {
             return {
-                userMessage: 'An unexpected error occurred during submission.',
+                userMessage: 'Something went wrong while submitting your RSVP.',
                 suggestions: [
-                    '• Try refreshing the page and submitting again',
-                    '• Contact the event organizer directly',
-                    '• Include the error details when contacting support'
+                    '• Please try refreshing the page and submitting again',
+                    '• Your information was not saved',
+                    '• If you continue having trouble, contact the event organizer'
                 ]
             };
         }
@@ -540,7 +626,25 @@ class RSVPHandler {
         const event = getEventFromURL();
         const customAnswers = {};
 
-        if (event && event.customQuestions) {
+        // Determine which set of fields to collect from based on attending status
+        let nameField, emailField, phoneField, reasonField;
+
+        if (attendingValue === false) {
+            // User is declining - collect from decline fields
+            nameField = document.getElementById('rsvp-name-decline');
+            emailField = document.getElementById('rsvp-email-decline');
+            phoneField = null; // Not required for declines
+            reasonField = document.getElementById('reason-decline');
+        } else {
+            // User is accepting - collect from accept fields
+            nameField = document.getElementById('rsvp-name');
+            emailField = document.getElementById('rsvp-email');
+            phoneField = document.getElementById('rsvp-phone');
+            reasonField = document.getElementById('reason');
+        }
+
+        // Collect custom questions (only if attending)
+        if (attendingValue && event && event.customQuestions) {
             event.customQuestions.forEach(q => {
                 const answerElement = document.getElementById(q.id);
                 if (answerElement) {
@@ -549,26 +653,28 @@ class RSVPHandler {
             });
         }
 
-        // Collect dietary restrictions
+        // Collect dietary restrictions (only if attending)
         const dietaryRestrictions = [];
-        document.querySelectorAll('input[name="dietary"]:checked').forEach(checkbox => {
-            dietaryRestrictions.push(checkbox.value);
-        });
+        if (attendingValue) {
+            document.querySelectorAll('input[name="dietary"]:checked').forEach(checkbox => {
+                dietaryRestrictions.push(checkbox.value);
+            });
+        }
 
-        const allergyDetails = sanitizeText(document.getElementById('allergy-details')?.value || '');
+        const allergyDetails = attendingValue ? sanitizeText(document.getElementById('allergy-details')?.value || '') : '';
 
-        // Collect military information
-        const rank = document.getElementById('rank')?.value || '';
-        const unit = sanitizeText(document.getElementById('unit')?.value || '');
-        const branch = document.getElementById('branch')?.value || '';
+        // Collect military information (only if attending)
+        const rank = attendingValue ? (document.getElementById('rank')?.value || '') : '';
+        const unit = attendingValue ? sanitizeText(document.getElementById('unit')?.value || '') : '';
+        const branch = attendingValue ? (document.getElementById('branch')?.value || '') : '';
 
         return {
-            name: sanitizeText(document.getElementById('rsvp-name')?.value || ''),
-            email: sanitizeText(document.getElementById('rsvp-email')?.value || ''),
-            phone: sanitizeText(document.getElementById('rsvp-phone')?.value || ''),
+            name: sanitizeText(nameField?.value || ''),
+            email: sanitizeText(emailField?.value || ''),
+            phone: sanitizeText(phoneField?.value || ''),
             attending: attendingValue,
-            reason: sanitizeText(document.getElementById('reason')?.value || ''),
-            guestCount: parseInt(document.getElementById('guest-count')?.value || '0'),
+            reason: sanitizeText(reasonField?.value || ''),
+            guestCount: attendingValue ? parseInt(document.getElementById('guest-count')?.value || '0') : 0,
             dietaryRestrictions: dietaryRestrictions,
             allergyDetails: allergyDetails,
             rank: rank,
@@ -655,50 +761,6 @@ class RSVPHandler {
         `;
     }
 
-    setupRealTimeValidation() {
-        const emailInput = document.getElementById('rsvp-email');
-        if (emailInput) {
-            emailInput.addEventListener('blur', () => {
-                const email = emailInput.value;
-                if (email && !isValidEmail(email)) {
-                    emailInput.style.borderColor = 'var(--error-color)';
-                    emailInput.title = 'Please enter a valid email address';
-                } else {
-                    emailInput.style.borderColor = '';
-                    emailInput.title = '';
-                }
-            });
-        }
-
-        const phoneInput = document.getElementById('rsvp-phone');
-        if (phoneInput) {
-            phoneInput.addEventListener('blur', () => {
-                const phone = phoneInput.value;
-                if (phone && !isValidPhone(phone)) {
-                    phoneInput.style.borderColor = 'var(--error-color)';
-                    phoneInput.title = 'Please enter a valid phone number';
-                } else {
-                    phoneInput.style.borderColor = '';
-                    phoneInput.title = '';
-                }
-            });
-        }
-
-        const nameInput = document.getElementById('rsvp-name');
-        if (nameInput) {
-            nameInput.addEventListener('blur', () => {
-                const name = nameInput.value;
-                if (name && !isValidName(name)) {
-                    nameInput.style.borderColor = 'var(--error-color)';
-                    nameInput.title = 'Please enter a valid name (letters, spaces, hyphens, and periods only)';
-                } else {
-                    nameInput.style.borderColor = '';
-                    nameInput.title = '';
-                }
-            });
-        }
-    }
-
     prefillFormFromURL() {
         const urlParams = new URLSearchParams(window.location.search);
 
@@ -723,11 +785,29 @@ class RSVPHandler {
     }
 
     /**
+     * Get the base path for the application (handles GitHub Pages)
+     */
+    getBasePath() {
+        const isGitHubPages = window.location.hostname.endsWith('.github.io');
+
+        if (isGitHubPages) {
+            const pathParts = window.location.pathname.split('/').filter(p => p);
+            if (pathParts.length > 0) {
+                return '/' + pathParts[0] + '/';
+            }
+            return '/EventCall/';
+        }
+
+        return '/';
+    }
+
+    /**
      * Generate edit URL for an RSVP
      */
     generateEditURL(event, rsvpId, editToken) {
         if (!event) return '';
-        const currentURL = window.location.href.split('?')[0].split('#')[0];
+        const basePath = this.getBasePath();
+        const baseURL = window.location.origin + basePath;
         const encodedData = btoa(JSON.stringify({
             id: event.id,
             title: event.title,
@@ -743,7 +823,7 @@ class RSVPHandler {
             customQuestions: event.customQuestions || [],
             created: event.created
         }));
-        return `${currentURL}?data=${encodedData}&edit=${editToken}&rsvpId=${rsvpId}#invite/${event.id}`;
+        return `${baseURL}?data=${encodedData}&edit=${editToken}&rsvpId=${rsvpId}#invite/${event.id}`;
     }
 
     /**
@@ -796,4 +876,7 @@ function sanitizeText(text) {
 const rsvpHandler = new RSVPHandler();
 
 window.rsvpHandler = rsvpHandler;
-window.handleRSVP = (e, eventId) => rsvpHandler.handleRSVP(e, eventId);
+window.handleRSVP = (e, eventId) => {
+    rsvpHandler.handleRSVP(e, eventId);
+    return false; // Prevent form submission
+};

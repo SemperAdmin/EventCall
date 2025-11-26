@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RSVP Submission Request",
+  "description": "Schema for RSVP submission requests",
+  "type": "object",
+  "required": ["eventId", "name", "email", "rsvpId", "csrfToken"],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "pattern": "^evt-[0-9]+-[a-f0-9]+$",
+      "description": "Event ID being RSVPed to"
+    },
+    "rsvpId": {
+      "type": "string",
+      "pattern": "^rsvp-[0-9]+-[a-zA-Z0-9]+$",
+      "description": "Unique RSVP identifier"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "Attendee full name"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "maxLength": 255,
+      "description": "Attendee email address"
+    },
+    "phone": {
+      "type": "string",
+      "pattern": "^[\\+]?[1-9][\\d]{0,15}$",
+      "description": "Attendee phone number (E.164 format)"
+    },
+    "attending": {
+      "enum": ["yes", "no", "maybe"],
+      "description": "Attendance status"
+    },
+    "guests": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20,
+      "description": "Number of additional guests"
+    },
+    "dietaryRestrictions": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Dietary restrictions or preferences"
+    },
+    "specialRequirements": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Special requirements or accommodations"
+    },
+    "customResponses": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "oneOf": [
+            { "type": "string", "maxLength": 5000 },
+            { "type": "number" },
+            { "type": "boolean" },
+            {
+              "type": "array",
+              "items": { "type": "string" },
+              "maxItems": 50
+            }
+          ]
+        }
+      },
+      "description": "Responses to custom questions"
+    },
+    "csrfToken": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "minLength": 16,
+      "maxLength": 128,
+      "description": "CSRF token for request validation"
+    },
+    "submittedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RSVP submission timestamp"
+    },
+    "source": {
+      "enum": ["web", "direct", "issue"],
+      "description": "RSVP submission source"
+    }
+  },
+  "additionalProperties": false
+}

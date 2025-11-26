@@ -53,14 +53,14 @@ class EventManager {
         } else {
             responseTableHTML = `
                 <div style="text-align: center; padding: 2rem; color: var(--text-color);">
-                    <h3 style="color: var(--semper-navy);">ðŸ“­ No RSVPs Yet</h3>
+                    <h3 style="color: var(--semper-navy);">🔭 No RSVPs Yet</h3>
                     <p>No RSVPs yet. Share your invite link to start collecting responses!</p>
                     <div style="margin-top: 1rem;">
                         <button class="btn btn-success" onclick="syncWithGitHub()" style="margin-right: 0.5rem;">
                             🔗„ Check for New RSVPs
                         </button>
                         <button class="btn" onclick="copyInviteLink('${eventId}')">
-                            🔗— Share Invite Link
+                            🔗 Share Invite Link
                         </button>
                     </div>
                 </div>
@@ -107,6 +107,7 @@ class EventManager {
             qaMoreMenu.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const act = btn.dataset.action;
+                    if (act === 'edit-event') this.editEvent(eventId);
                     if (act === 'copy-link') this.copyInviteLink(eventId);
                     if (act === 'sync-rsvps') syncWithGitHub();
                     if (act === 'delete-event') deleteEvent(eventId);
@@ -128,11 +129,19 @@ class EventManager {
         // Setup overview subtabs mapping existing sections
         this.setupOverviewSubtabs(event, eventResponses);
 
-        // Render charts if available
-        this.renderAttendanceChart(stats);
-        this.renderResponsesChart(eventResponses);
+        // Setup event delegation for remove buttons in seating chart
+        this.setupSeatingChartEventDelegation();
+
+        // Initialize filter controls for Guest List tab
+        this.initFilterControls();
+
+        // Render charts if available (async, non-blocking)
+        this._renderChartSafe(() => this.renderAttendanceChart(stats), 'attendance chart');
+        this._renderChartSafe(() => this.renderResponsesChart(eventResponses), 'responses chart');
         const rangeSel = document.getElementById('time-range');
-        if (rangeSel) rangeSel.addEventListener('change', () => this.renderResponsesChart(eventResponses));
+        if (rangeSel) rangeSel.addEventListener('change', () => {
+            this._renderChartSafe(() => this.renderResponsesChart(eventResponses), 'responses chart');
+        });
         // Show manage page content; URL updates should be orchestrated by the router, not here
         showPage('manage');
         // Legacy fallback: update hash only if router is unavailable
@@ -202,15 +211,12 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 <div class="mission-control-title">
                     <h1>${h(event.title)}</h1>
                     <div class="mission-control-subtitle">
-                        ${isPast ? '🔴 Past Event' : '🟢 Active Event'} • Created ${formatRelativeTime(event.created)}
+                        ${isPast ? '🔴 Past Event' : '🟢 Active Event'} • Last Updated ${formatRelativeTime(event.updated || event.created)}
                     </div>
                 </div>
                 <div class="mission-control-actions">
                     <button class="btn-back" onclick="goToDashboard()">
                         ← Back to Dashboard
-                    </button>
-                    <button class="btn-edit" onclick="eventManager.editEvent('${eventId}')">
-                        ⚙️ Edit
                     </button>
                 </div>
             </div>
@@ -223,6 +229,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 <div class="btn-group more-group">
                     <button class="btn-secondary" id="qa-more" aria-haspopup="true" aria-expanded="false">⋯ More</button>
                     <div class="dropdown" id="qa-more-menu" hidden>
+                        <button class="btn-tertiary" data-action="edit-event">⚙️ Edit Event</button>
                         <button class="btn-tertiary" data-action="copy-link">🔗 Copy Invite Link</button>
                         <button class="btn-tertiary" data-action="sync-rsvps">🔄 Sync RSVPs</button>
                         <button class="btn-tertiary danger" data-action="delete-event">🗑️ Delete Event</button>
@@ -303,6 +310,50 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                 </div>
                             </div>
                         ` : ''}
+                        ${(() => {
+                            if (!event.customQuestions || event.customQuestions.length === 0) return '';
+
+                            const typeLabels = {
+                                'text': '📝 Text',
+                                'choice': '☑️ Multiple Choice',
+                                'date': '📅 Date',
+                                'datetime': '🕐 Date & Time'
+                            };
+
+                            const questionsHtml = event.customQuestions.map((q, index) => {
+                                const typeLabel = typeLabels[q.type] || '📝 Text';
+                                const requiredLabel = q.required ? '<span class="question-required-label">*Required</span>' : '<span class="question-optional-label">Optional</span>';
+
+                                return `
+                                    <div class="custom-question-item">
+                                        <div class="custom-question-header">
+                                            <div class="custom-question-title">Q${index + 1}: ${h(q.question)}</div>
+                                            <div class="custom-question-required">${requiredLabel}</div>
+                                        </div>
+                                        <div class="custom-question-meta">
+                                            <span>${typeLabel}</span>
+                                            ${q.type === 'choice' && q.options && q.options.length > 0 ? `
+                                                <span class="custom-question-options">• Options: ${q.options.map(opt => h(opt)).join(', ')}</span>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+
+                            return `
+                            <div class="meta-item-v2 meta-item-full-width">
+                                <span class="meta-icon-v2">❓</span>
+                                <div class="meta-content">
+                                    <div class="meta-label">Custom RSVP Questions</div>
+                                    <div class="meta-value">
+                                        <div class="custom-questions-list">
+                                            ${questionsHtml}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        })()}
                         ${event.eventDetails && Object.keys(event.eventDetails).length ? `
                             <div class="meta-item-v2" style="grid-column: 1 / -1;">
                                 <span class="meta-icon-v2">ℹ️</span>
@@ -321,10 +372,15 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         </div>
                     ` : ''}
                 </div>
-            </div>
 
-            <!-- RSVP Dashboard -->
-            <div class="rsvp-dashboard-section">
+                <!-- Event Timeline -->
+                <div class="timeline-section" id="sub-timeline" hidden>
+                    <h2>⏱️ Event Timeline</h2>
+                    <div id="timeline-list" class="timeline-list"></div>
+                </div>
+
+                <!-- RSVP Dashboard -->
+                <div class="rsvp-dashboard-section">
                 <h2 class="rsvp-dashboard-title">📊 RSVP Dashboard</h2>
                 
                 <!-- Big Stat Cards -->
@@ -392,36 +448,30 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         <canvas id="responsesOverTimeChart" aria-label="Responses over time chart"></canvas>
                     </div>
                 </div>
-
             </div>
-
-            <!-- Event Timeline (moved outside RSVP Dashboard) -->
-            <div class="timeline-section" id="sub-timeline" hidden>
-                <h2>⏱️ Event Timeline</h2>
-                <div id="timeline-list" class="timeline-list"></div>
-            </div>
-
-            <!-- Invite Roster (moved to Guest List tab) -->
-            <div class="invite-roster-section" hidden>
-                <h3 class="invite-link-title">📥 Invite Roster</h3>
-                <div class="invite-link-actions" style="margin-bottom: 0.75rem;">
-                    <input type="file"
-                           id="roster-import-file-${eventId}"
-                           accept=".csv"
-                           style="display:none"
-                           onchange="window.csvImporter.handleRosterUpload(event, '${eventId}')">
-                    <button class="btn-action" onclick="document.getElementById('roster-import-file-${eventId}').click()">
-                        📤 Upload Roster CSV
-                    </button>
-                    <a href="#" onclick="window.csvImporter.downloadTemplate(); return false;" style="margin-left: 0.75rem; color: #60a5fa;">
-                        Download CSV Template
-                    </a>
-                </div>
-                <div id="roster-import-preview"></div>
             </div>
 
             <!-- Attendee List -->
             <div class="attendee-list-section">
+                <!-- Invite Roster -->
+                <div class="invite-roster-section" hidden>
+                    <h3 class="invite-link-title">📥 Invite Roster</h3>
+                    <div class="invite-link-actions" style="margin-bottom: 0.75rem;">
+                        <input type="file"
+                               id="roster-import-file-${eventId}"
+                               accept=".csv"
+                               style="display:none"
+                               onchange="window.csvImporter.handleRosterUpload(event, '${eventId}')">
+                        <button class="btn-action" onclick="document.getElementById('roster-import-file-${eventId}').click()">
+                            📤 Upload Roster CSV
+                        </button>
+                        <a href="#" onclick="window.csvImporter.downloadTemplate(); return false;" style="margin-left: 0.75rem; color: #60a5fa;">
+                            Download CSV Template
+                        </a>
+                    </div>
+                    <div id="roster-import-preview"></div>
+                </div>
+
                 <div class="attendee-list-header">
                     <h3 class="attendee-list-title">📋 Attendee List (${eventResponses.length + roster.filter(r => r.email && !respondedEmails.has(r.email.toLowerCase().trim())).length})</h3>
                     <div class="attendee-controls">
@@ -430,9 +480,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                             class="search-input"
                             placeholder="🔍 Search attendees..."
                             id="attendee-search"
-                            oninput="eventManager.filterAttendees()"
+                            data-filter-action="search-attendees"
                         >
-                        <select class="filter-select" id="attendee-filter" onchange="eventManager.filterAttendees()">
+                        <select class="filter-select" id="attendee-filter" data-filter-action="filter-attendees">
                             <option value="all">All People</option>
                             <option value="attending">Attending Only</option>
                             <option value="declined">Declined Only</option>
@@ -454,9 +504,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const btnOverview = document.getElementById('tab-overview-btn');
         const btnGuests = document.getElementById('tab-guests-btn');
         const btnSpecial = document.getElementById('tab-special-btn');
-        // Do not include timeline container here; Timeline visibility is controlled by Overview subtabs
-        const overviewSelectors = ['.overview-subtabs', '.event-overview-section', '.rsvp-dashboard-section', '.charts-grid', '.timeline-section'];
-        const guestSelectors = ['.attendee-list-section', '.invite-roster-section'];
+        // Note: rsvp-dashboard-section is now nested in event-overview-section, no need to list separately
+        // Note: invite-roster-section is now nested in attendee-list-section, no need to list separately
+        const overviewSelectors = ['.overview-subtabs', '.event-overview-section'];
+        const guestSelectors = ['.attendee-list-section'];
         // Remove invite-link-section from Special; invite link should only appear under Event Timeline
         const specialSelectors = ['.dashboard-actions', '.seating-chart-section'];
 
@@ -483,12 +534,14 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             showElems(overviewSelectors);
             hideElems(guestSelectors);
             hideElems(specialSelectors);
+            try { sessionStorage.setItem('manage_active_tab', 'overview'); } catch (_) {}
         };
         const activateGuests = () => {
             setActive(btnGuests);
             hideElems(overviewSelectors);
             showElems(guestSelectors);
             hideElems(specialSelectors);
+            try { sessionStorage.setItem('manage_active_tab', 'guests'); } catch (_) {}
         };
         const activateSpecial = () => {
             setActive(btnSpecial);
@@ -497,6 +550,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             showElems(specialSelectors);
             // Ensure invite link is hidden when Special tab is active
             hideElems(['.invite-link-section']);
+            try { sessionStorage.setItem('manage_active_tab', 'special'); } catch (_) {}
         };
 
         if (btnOverview) btnOverview.addEventListener('click', activateOverview);
@@ -512,8 +566,12 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             });
         });
 
-        // Default to Overview
-        activateOverview();
+        // Default or restore last active tab
+        let initialTab = 'overview';
+        try { initialTab = sessionStorage.getItem('manage_active_tab') || 'overview'; } catch (_) {}
+        if (initialTab === 'guests') activateGuests();
+        else if (initialTab === 'special') activateSpecial();
+        else activateOverview();
     }
 
     setupOverviewSubtabs(event, eventResponses) {
@@ -564,12 +622,17 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             if (timelineSection) { timelineSection.hidden = true; timelineSection.classList.add('hidden'); timelineSection.style.display = 'none'; }
             if (venueGrid) { venueGrid.classList.add('hidden'); venueGrid.setAttribute('hidden', ''); venueGrid.style.display = 'none'; }
             hideInvite();
-            // Render charts if available
+            try { sessionStorage.setItem('overview_active_subtab', 'attendance'); } catch (_) {}
+            // Render charts if available (async, non-blocking)
             try {
                 const stats = this.calculateAttendanceStats ? this.calculateAttendanceStats(eventResponses) : null;
-                if (stats) this.renderAttendanceChart(stats);
-                this.renderResponsesChart(eventResponses);
-            } catch (e) { /* no-op */ }
+                if (stats) {
+                    this._renderChartSafe(() => this.renderAttendanceChart(stats), 'attendance chart');
+                }
+                this._renderChartSafe(() => this.renderResponsesChart(eventResponses), 'responses chart');
+            } catch (e) {
+                console.error('Error in chart rendering:', e);
+            }
         };
 
         const activateTimeline = () => {
@@ -578,6 +641,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             if (overviewSection) { overviewSection.classList.remove('hidden'); overviewSection.removeAttribute('hidden'); overviewSection.style.display = ''; }
             if (timelineSection) { timelineSection.hidden = false; timelineSection.classList.remove('hidden'); timelineSection.style.display = ''; this.populateTimeline(event, eventResponses); }
             if (venueGrid) { venueGrid.classList.add('hidden'); venueGrid.setAttribute('hidden', ''); venueGrid.style.display = 'none'; }
+            try { sessionStorage.setItem('overview_active_subtab', 'timeline'); } catch (_) {}
             showInvite();
         };
 
@@ -588,6 +652,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             if (timelineSection) { timelineSection.hidden = true; timelineSection.classList.add('hidden'); timelineSection.style.display = 'none'; }
             if (venueGrid) { venueGrid.classList.remove('hidden'); venueGrid.removeAttribute('hidden'); venueGrid.style.display = ''; }
             hideInvite();
+            try { sessionStorage.setItem('overview_active_subtab', 'venue'); } catch (_) {}
         };
 
         if (btnAttendance) btnAttendance.addEventListener('click', activateAttendance);
@@ -603,8 +668,40 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             });
         });
 
-        // Default to Attendance Stats
-        activateAttendance();
+        // Default or restore last active subtab, ONLY when Overview tab is active
+        let activeMainTab = 'overview';
+        try { activeMainTab = sessionStorage.getItem('manage_active_tab') || 'overview'; } catch (_) {}
+        if (activeMainTab === 'overview') {
+            let initialSub = 'attendance';
+            try { initialSub = sessionStorage.getItem('overview_active_subtab') || 'attendance'; } catch (_) {}
+            if (initialSub === 'timeline') activateTimeline();
+            else if (initialSub === 'venue') activateVenue();
+            else activateAttendance();
+        }
+    }
+
+    /**
+     * Setup event delegation for seating chart remove buttons
+     */
+    setupSeatingChartEventDelegation() {
+        // Remove any existing delegation listeners first
+        document.removeEventListener('click', this._handleRemoveButtonClick);
+
+        // Create bound handler
+        this._handleRemoveButtonClick = (e) => {
+            if (e.target.closest('.table-guest-remove')) {
+                const btn = e.target.closest('.table-guest-remove');
+                const eventId = btn.dataset.eventId;
+                const rsvpId = btn.dataset.rsvpId;
+
+                if (eventId && rsvpId) {
+                    this.unassignGuest(eventId, rsvpId);
+                }
+            }
+        };
+
+        // Add event delegation
+        document.addEventListener('click', this._handleRemoveButtonClick);
     }
 
     populateTimeline(event, eventResponses) {
@@ -666,10 +763,50 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         return entries;
     }
 
-    renderAttendanceChart(stats) {
+    /**
+     * Ensure Chart.js is loaded (DRY helper)
+     * @returns {Promise<boolean>} True if Chart.js is available
+     */
+    async _ensureChartJsLoaded() {
+        if (window.Chart) return true;
+
+        if (window.LazyLoader && typeof window.LazyLoader.loadChartJS === 'function') {
+            try {
+                await window.LazyLoader.loadChartJS();
+                if (window.Chart) return true;
+                console.warn('Chart.js failed to load');
+                return false;
+            } catch (error) {
+                console.error('Error loading Chart.js:', error);
+                return false;
+            }
+        }
+
+        console.warn('LazyLoader not available, charts cannot be displayed');
+        return false;
+    }
+
+    /**
+     * Helper to render chart with error handling (DRY)
+     * @param {Function} renderFn - Chart rendering function
+     * @param {string} chartName - Name of chart for error messages
+     */
+    async _renderChartSafe(renderFn, chartName) {
+        try {
+            await renderFn();
+        } catch (error) {
+            console.error(`Failed to render ${chartName}:`, error);
+        }
+    }
+
+    async renderAttendanceChart(stats) {
         try {
             const canvas = document.getElementById('attendanceChart');
-            if (!canvas || !window.Chart) return;
+            if (!canvas) return;
+
+            // Ensure Chart.js is loaded
+            if (!(await this._ensureChartJsLoaded())) return;
+
             if (this._attendanceChart) { this._attendanceChart.destroy(); }
             const data = [stats.attending || 0, stats.notAttending || 0, stats.pending || 0];
             this._attendanceChart = new Chart(canvas, {
@@ -680,13 +817,19 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 },
                 options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
             });
-        } catch (e) { /* no-op */ }
+        } catch (e) {
+            console.error('Error rendering attendance chart:', e);
+        }
     }
 
-    renderResponsesChart(eventResponses) {
+    async renderResponsesChart(eventResponses) {
         try {
             const canvas = document.getElementById('responsesOverTimeChart');
-            if (!canvas || !window.Chart) return;
+            if (!canvas) return;
+
+            // Ensure Chart.js is loaded
+            if (!(await this._ensureChartJsLoaded())) return;
+
             const range = parseInt(document.getElementById('time-range')?.value || '30', 10);
             const now = Date.now();
             const start = now - range * 24 * 60 * 60 * 1000;
@@ -706,7 +849,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 data: { labels, datasets: [{ label: 'Responses', data, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.2)', tension: 0.25 }] },
                 options: { responsive: true, plugins: { legend: { display: false }, tooltip: { enabled: true } }, scales: { x: { ticks: { maxRotation: 0 } }, y: { beginAtZero: true } } }
             });
-        } catch (e) { /* no-op */ }
+        } catch (e) {
+            console.error('Error rendering responses chart:', e);
+        }
     }
 
     promptAddGuest(eventId) {
@@ -1234,9 +1379,13 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         // Get event for seating chart info
         const event = window.events ? window.events[eventId] : null;
         let seatingChart = null;
-        if (event && event.seatingChart && event.seatingChart.enabled) {
-            seatingChart = new window.SeatingChart(eventId);
-            seatingChart.loadSeatingData(event);
+        if (event && event.seatingChart && event.seatingChart.enabled && window.SeatingChart) {
+            try {
+                seatingChart = new window.SeatingChart(eventId);
+                seatingChart.loadSeatingData(event);
+            } catch (error) {
+                console.error('Error loading seating chart for attendee cards:', error);
+            }
         }
 
         // Get invite roster
@@ -1269,10 +1418,16 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     tableAssignment = seatingChart.findGuestAssignment(response.rsvpId);
                 }
 
+                // Normalize attending status (handle both boolean and string values)
+                const isAttending = response.attending === true || response.attending === 'true';
+                const isDeclined = response.attending === false || response.attending === 'false';
+                const isInvited = response.attending === null || response.attending === undefined;
+                const attendingStatus = isInvited ? 'invited' : (isAttending ? 'attending' : 'declined');
+
                 return `
                 <div class="attendee-card ${response.isInvitedOnly ? 'attendee-invited-only' : ''}"
                      data-name="${(response.name || '').toLowerCase()}"
-                     data-status="${response.attending === null ? 'invited' : (response.attending ? 'attending' : 'declined')}"
+                     data-status="${attendingStatus}"
                      data-branch="${(response.branch || '').toLowerCase()}"
                      data-rank="${(response.rank || '').toLowerCase()}"
                      data-unit="${(response.unit || '').toLowerCase()}"
@@ -1283,14 +1438,14 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                             <div class="attendee-name">
                                 ${h(response.name) || 'Anonymous'}
                                 ${tableAssignment ? `<span class="attendee-table-badge ${tableAssignment.vipTable ? 'vip' : ''}">Table ${tableAssignment.tableNumber}</span>` :
-                                  (seatingChart && response.attending ? '<span class="attendee-table-badge unassigned">No Table</span>' : '')}
+                                  (seatingChart && isAttending ? '<span class="attendee-table-badge unassigned">No Table</span>' : '')}
                             </div>
                             <span class="attendee-status ${
-                                response.attending === null ? 'status-invited' :
-                                (response.attending ? 'status-attending' : 'status-declined')
+                                isInvited ? 'status-invited' :
+                                (isAttending ? 'status-attending' : 'status-declined')
                             }">
-                                ${response.attending === null ? '📧 Invited' :
-                                  (response.attending ? '✅ Attending' : '❌ Declined')}
+                                ${isInvited ? '📧 Invited' :
+                                  (isAttending ? '✅ Attending' : '❌ Declined')}
                             </span>
                         </div>
                     </div>
@@ -1360,9 +1515,11 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                             ✏️ Edit
                         </button>
                         
-                        <button 
-                            class="btn-attendee-action btn-attendee-action-email" 
-                            onclick="mailAttendee('${response.email || ''}', '${this.currentEvent?.title || 'Event'}')"
+                        <button
+                            class="btn-attendee-action btn-attendee-action-email"
+                            data-action="email-attendee"
+                            data-rsvp-id="${response.rsvpId}"
+                            data-event-id="${eventId}"
                             ${!response.email ? 'disabled title="No email address available"' : 'title="Send email to attendee"'}>
                             📧 Email
                         </button>
@@ -1406,35 +1563,67 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const rankSelect = document.getElementById('filter-rank');
         const unitInput = document.getElementById('filter-unit');
         const cards = document.querySelectorAll('.attendee-card');
-        
-        const searchTerm = searchInput?.value.toLowerCase() || '';
+
+        const searchTerm = searchInput?.value.toLowerCase().trim() || '';
         const filterValue = filterSelect?.value || 'all';
         const branchValue = branchSelect?.value || '';
         const rankValue = rankSelect?.value || '';
-        const unitValue = unitInput?.value.toLowerCase() || '';
-        
+        const unitValue = unitInput?.value.toLowerCase().trim() || '';
+
+        let visibleCount = 0;
+        const visibilityUpdates = [];
+
         cards.forEach(card => {
-            const name = card.dataset.name || '';
+            const name = (card.dataset.name || '').toLowerCase();
+            const email = (card.dataset.email || '').toLowerCase();
+            const phone = (card.dataset.phone || '').toLowerCase();
             const status = card.dataset.status || '';
-            const branch = card.dataset.branch || '';
-            const rank = card.dataset.rank || '';
-            const unit = card.dataset.unit || '';
-            const extra = [
-                branch,
-                rank,
-                unit,
-                card.dataset.email || '',
-                card.dataset.phone || ''
-            ].join(' ');
-            
-            const matchesSearch = searchTerm === '' || name.includes(searchTerm) || extra.includes(searchTerm);
+            const branch = (card.dataset.branch || '').toLowerCase();
+            const rank = (card.dataset.rank || '').toLowerCase();
+            const unit = (card.dataset.unit || '').toLowerCase();
+
+            // Search matches name, email, or phone
+            const matchesSearch = searchTerm === '' ||
+                                  name.includes(searchTerm) ||
+                                  email.includes(searchTerm) ||
+                                  phone.includes(searchTerm) ||
+                                  branch.includes(searchTerm) ||
+                                  rank.includes(searchTerm) ||
+                                  unit.includes(searchTerm);
+
+            // Filter by attendance status
             const matchesFilter = filterValue === 'all' || status === filterValue;
+
+            // Filter by branch
             const matchesBranch = branchValue === '' || branch === branchValue;
+
+            // Filter by rank
             const matchesRank = rankValue === '' || rank === rankValue;
+
+            // Filter by unit
             const matchesUnit = unitValue === '' || unit.includes(unitValue);
-            
-            card.style.display = (matchesSearch && matchesFilter && matchesBranch && matchesRank && matchesUnit) ? 'block' : 'none';
+
+            const isVisible = matchesSearch && matchesFilter && matchesBranch && matchesRank && matchesUnit;
+
+            visibilityUpdates.push({ element: card, show: isVisible });
+            if (isVisible) visibleCount++;
         });
+
+        // Batch DOM updates for performance
+        if (window.utils?.batchVisibilityUpdate) {
+            window.utils.batchVisibilityUpdate(visibilityUpdates);
+        } else {
+            // Fallback if util is not present
+            visibilityUpdates.forEach(({ element, show }) => {
+                element.style.display = show ? 'block' : 'none';
+            });
+        }
+
+        // Update count display if it exists
+        const countDisplay = document.getElementById('attendee-count-display');
+        if (countDisplay) {
+            countDisplay.textContent = `Showing ${visibleCount} of ${cards.length} attendees`;
+        }
     }
     
     /**
@@ -1466,10 +1655,75 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         });
         
         rankSelect.addEventListener('change', () => this.filterAttendees());
-        
+
         const unitInput = document.getElementById('filter-unit');
         if (unitInput) {
             unitInput.addEventListener('input', () => this.filterAttendees());
+        }
+    }
+
+    /**
+     * Open email dialog for a specific attendee
+     * Opens the default email client with pre-populated subject and body
+     * @param {string} rsvpId - RSVP ID of the attendee
+     * @param {string} eventId - Event ID
+     */
+    openEmailDialog(rsvpId, eventId) {
+        const event = window.events ? window.events[eventId] : null;
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+        const response = eventResponses.find(r => r.rsvpId === rsvpId);
+
+        if (!response || !response.email || !event) {
+            showToast('Guest email or event data missing.', 'error');
+            return;
+        }
+
+        // 1. Define Email Content
+        const emailTo = response.email;
+        const guestName = response.name || 'Guest';
+        const eventName = event.title || event.name || 'Event';
+
+        // Format event date and time if available
+        let eventDateTime = '';
+        if (event.date) {
+            const eventDate = new Date(`${event.date}T00:00:00`);
+            const formattedDate = eventDate.toLocaleDateString(undefined, {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            // Use formatTime helper for consistent time formatting
+            const formattedTime = event.time && typeof formatTime === 'function' ? formatTime(event.time) : event.time;
+            eventDateTime = formattedTime ? `${formattedDate} at ${formattedTime}` : formattedDate;
+        }
+
+        // Format location if available
+        const location = event.location ? `\n\nLocation: ${event.location}` : '';
+
+        // Create personalized email body
+        const subject = `Regarding Your RSVP for ${eventName}`;
+        const body = `Dear ${guestName},
+
+Thank you for your RSVP to ${eventName}!${eventDateTime ? `\n\nEvent Details:\nDate & Time: ${eventDateTime}` : ''}${location}
+
+We look forward to seeing you there!
+
+Best regards`;
+
+        // 2. Build the Mailto URL
+        const mailtoUrl = `mailto:${encodeURIComponent(emailTo)}` +
+                          `?subject=${encodeURIComponent(subject)}` +
+                          `&body=${encodeURIComponent(body)}`;
+
+        // 3. Open the Email Client
+        try {
+            window.open(mailtoUrl, '_blank');
+            console.log(`📧 Opening email client for: ${emailTo}`);
+            showToast(`📧 Opening email to ${guestName}`, 'success');
+        } catch (error) {
+            console.error('Failed to open email client:', error);
+            showToast('Failed to open email client', 'error');
         }
     }
 
@@ -1547,6 +1801,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      */
     generateSeatingChartSection(event, eventId, eventResponses) {
         if (!event.seatingChart || !event.seatingChart.enabled) return '';
+        if (!window.SeatingChart) {
+            console.error('SeatingChart class not loaded');
+            return '<div class="error-message">Seating chart module not loaded. Please refresh the page.</div>';
+        }
 
         const h = window.utils.escapeHTML;
         const seatingChart = new window.SeatingChart(eventId);
@@ -1597,13 +1855,13 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
                 <!-- Seating Actions -->
                 <div class="invite-actions-section">
-                    <button class="btn-action" onclick="eventManager.autoAssignSeats('${eventId}')">
+                    <button class="btn-action" data-action="auto-assign-seats" data-event-id="${eventId}">
                         🎯 Auto-Assign All
                     </button>
-                    <button class="btn-action" onclick="eventManager.exportSeatingCSV('${eventId}')">
+                    <button class="btn-action" data-action="export-seating" data-event-id="${eventId}">
                         📥 Export Seating Chart
                     </button>
-                    <button class="btn-action" onclick="eventManager.refreshSeatingChart('${eventId}')">
+                    <button class="btn-action" data-action="refresh-seating" data-event-id="${eventId}">
                         🔄 Refresh
                     </button>
                 </div>
@@ -1626,8 +1884,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                         </div>
                                     </div>
                                     <div class="unassigned-guest-actions">
-                                        <select class="table-select" id="table-select-${guest.rsvpId}">
-                                            <option value="">Select Table...</option>
+                                    <select class="table-move-select" data-action="assign-table" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}">
+                                    <option value="">Select Table...</option>
                                             ${event.seatingChart.tables.map(table => {
                                                 const occupancy = seatingChart.getTableOccupancy(table.tableNumber);
                                                 const available = table.capacity - occupancy;
@@ -1638,9 +1896,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                 </option>`;
                                             }).join('')}
                                         </select>
-                                        <button class="assign-btn" onclick="eventManager.assignGuestToTable('${eventId}', '${guest.rsvpId}')">
-                                            Assign
-                                        </button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -1683,7 +1938,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                 ${guest.guestCount > 0 ? `<span class="table-guest-count">+${guest.guestCount}</span>` : ''}
                                             </div>
                                             <div class="table-guest-actions">
-                                                <select class="table-move-select" id="table-move-${guest.rsvpId}" onchange="eventManager.reassignGuestToTable('${eventId}', '${guest.rsvpId}', this.value)">
+                                                <select class="table-move-select" data-action="assign-table" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}">
                                                     <option value="">Move to...</option>
                                                     ${event.seatingChart.tables.map(t => {
                                                         if (t.tableNumber === table.tableNumber) return ''; // Skip current table
@@ -1695,7 +1950,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                                                         </option>`;
                                                     }).join('')}
                                                 </select>
-                                                <button class="table-guest-remove" onclick="eventManager.unassignGuest('${eventId}', '${guest.rsvpId}')" title="Remove from table">
+                                                <button class="table-guest-remove" data-event-id="${eventId}" data-rsvp-id="${guest.rsvpId}" title="Remove from table">
                                                     ✖
                                                 </button>
                                             </div>
@@ -1730,7 +1985,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 <div class="response-stats">
                     <div class="stat">
                         <div class="stat-number" style="color: var(--semper-navy); font-size: 2rem; font-weight: 900;">${stats.totalHeadcount}</div>
-                        <div class="stat-label">ðŸŽ–ï¸ TOTAL HEADCOUNT</div>
+                        <div class="stat-label">🎖️ TOTAL HEADCOUNT</div>
                     </div>
                     <div class="stat">
                         <div class="stat-number" style="color: var(--success-color);">${stats.attending}</div>
@@ -1769,11 +2024,31 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     📊 Showing ${eventResponses.length} of ${eventResponses.length} responses
                 </div>
             </div>
-            
+
+            <div class="bulk-actions" id="bulk-actions-${eventId}">
+                <div class="bulk-actions-inner">
+                    <span class="bulk-actions-count">
+                        <span id="selected-count-${eventId}">0</span> selected
+                    </span>
+                    <button class="btn-small" onclick="eventManager.bulkExportSelected('${eventId}')" title="Export selected responses to CSV">
+                        📤 Export Selected
+                    </button>
+                    <button class="btn-small" onclick="eventManager.bulkEmailSelected('${eventId}')" title="Email selected attendees">
+                        📧 Email Selected
+                    </button>
+                    <button class="btn-small btn-danger" onclick="eventManager.bulkDeleteSelected('${eventId}')" title="Delete selected responses">
+                        🗑️ Delete Selected
+                    </button>
+                </div>
+            </div>
+
             <div style="overflow-x: auto;">
                 <table class="response-table">
                     <thead>
                         <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="select-all-${eventId}" onchange="eventManager.toggleSelectAll('${eventId}')" aria-label="Select all responses">
+                            </th>
                             <th>Name</th>
                             <th>Email</th>
                             <th>Phone</th>
@@ -1794,19 +2069,22 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             const email = response.email || 'N/A';
             const phone = response.phone || 'N/A';
             const source = response.issueNumber ? `GitHub Issue #${response.issueNumber}` : 'Direct Entry';
-            const sourceIcon = response.issueNumber ? '🔗—' : 'ðŸ“';
+            const sourceIcon = response.issueNumber ? '🔗' : '📝';
 
             html += `
-                <tr class="response-row" data-response-index="${index}" 
-                    data-name="${displayName.toLowerCase()}" 
-                    data-attending="${response.attending}" 
-                    data-reason="${(response.reason || '').toLowerCase()}" 
+                <tr class="response-row" data-response-index="${index}"
+                    data-name="${displayName.toLowerCase()}"
+                    data-attending="${response.attending}"
+                    data-reason="${(response.reason || '').toLowerCase()}"
                     data-guest-count="${response.guestCount || 0}"
-                    data-phone="${phone.toLowerCase()}" 
+                    data-phone="${phone.toLowerCase()}"
                     data-email="${email.toLowerCase()}"
                     data-branch="${(response.branch || '').toLowerCase()}"
                     data-rank="${(response.rank || '').toLowerCase()}"
                     data-unit="${(response.unit || '').toLowerCase()}">
+                    <td>
+                        <input type="checkbox" class="response-checkbox" data-response-index="${index}" onchange="eventManager.updateBulkActions('${eventId}')">
+                    </td>
                     <td><strong>${displayName}</strong></td>
                     <td><a href="mailto:${email}" style="color: var(--semper-red); text-decoration: none;">${email}</a></td>
                     <td>${phone !== 'N/A' ? `<a href="tel:${phone}" style="color: var(--semper-red); text-decoration: none;">${phone}</a>` : phone}</td>
@@ -1815,9 +2093,18 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     </td>
                     ${event.askReason ? `<td style="max-width: 200px; word-wrap: break-word;">${response.reason || '-'}</td>` : ''}
                     ${event.allowGuests ? `<td><strong>${response.guestCount || 0}</strong> ${(response.guestCount || 0) === 1 ? 'guest' : 'guests'}</td>` : ''}
-                    ${event.customQuestions ? event.customQuestions.map(q => 
-                        `<td style="max-width: 150px; word-wrap: break-word;">${response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '-'}</td>`
-                    ).join('') : ''}
+                    ${event.customQuestions ? event.customQuestions.map(q => {
+                        let answer = response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '-';
+                        // Format datetime answers
+                        if (answer !== '-' && q.type === 'datetime' && answer.includes('T')) {
+                            const [datePart, timePart] = answer.split('T');
+                            answer = `${datePart} ${timePart}`;
+                        } else if (answer !== '-' && q.type === 'date') {
+                            // Date is already in YYYY-MM-DD format, just display it
+                            answer = answer;
+                        }
+                        return `<td style="max-width: 150px; word-wrap: break-word;">${answer}</td>`;
+                    }).join('') : ''}
                     <td style="font-size: 0.875rem;">${new Date(response.timestamp).toLocaleString()}</td>
                     <td style="font-size: 0.875rem;" title="${source}">
                         ${sourceIcon} ${response.issueNumber ? `#${response.issueNumber}` : 'Direct'}
@@ -1825,10 +2112,10 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <td>
                         <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" 
                                 onclick="eventManager.deleteResponse('${eventId}', ${index})" 
-                                title="Delete this RSVP">ðŸ—‘ï¸</button>
+                                title="Delete this RSVP">🗑️</button>
                         ${response.issueUrl ? `
                             <a href="${response.issueUrl}" target="_blank" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-left: 0.25rem;" title="View GitHub Issue">
-                                🔗—
+                                🔗
                             </a>
                         ` : ''}
                     </td>
@@ -1917,8 +2204,8 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         
         const statsElement = document.getElementById(`search-stats-${eventId}`);
         statsElement.innerHTML = window.utils.sanitizeHTML(`📊 Showing ${rows.length} of ${rows.length} responses`);
-        
-        showToast('ðŸ§¹ Search cleared', 'success');
+
+        showToast('🧹 Search cleared', 'success');
     }
 
     /**
@@ -1937,7 +2224,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             const success = await copyToClipboard(link);
             
             if (success) {
-                showToast('🔗— Invite link copied to clipboard!', 'success');
+                showToast('🔗 Invite link copied to clipboard!', 'success');
                 
                 // Briefly highlight the input field
                 const input = document.getElementById('invite-link-input');
@@ -2040,7 +2327,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             cancelBtn.type = 'button';
             cancelBtn.id = 'cancel-edit-btn';
             cancelBtn.className = 'btn btn-secondary';
-            cancelBtn.textContent = 'âŒ Cancel Edit';
+            cancelBtn.textContent = '❌ Cancel Edit';
             cancelBtn.style.marginLeft = '0.5rem';
             cancelBtn.onclick = () => this.cancelEdit();
             submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
@@ -2067,7 +2354,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 // Escape dynamic attribute value to prevent injection.
                 questionItem.innerHTML = `
                     <input type="text" placeholder="Enter your question..." class="custom-question-input" value="${window.utils.escapeHTML(q.question || '')}">
-                    <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">ðŸ—‘ï¸</button>
+                    <button type="button" class="btn btn-danger" onclick="removeCustomQuestion(this)">🗑️</button>
                 `;
                 container.appendChild(questionItem);
             });
@@ -2088,7 +2375,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
         // Reset submit button
         const submitBtn = document.querySelector('#event-form button[type="submit"]');
-        submitBtn.textContent = 'ðŸš€ Deploy Event';
+        submitBtn.textContent = '🚀 Deploy Event';
         submitBtn.style.background = '';
 
         // Remove cancel button
@@ -2116,11 +2403,12 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             eventData.createdByName = this.currentEvent.createdByName;
             eventData.lastModified = Date.now();
 
-            // Use BackendAPI to trigger workflow and save to EventCall-Data
-            if (window.BackendAPI) {
-                await window.BackendAPI.createEvent(eventData);
+            // Save directly to EventCall-Data using GitHub API
+            // github-api.js saveEvent handles both create and update operations
+            if (window.githubAPI) {
+                await window.githubAPI.saveEvent(eventData);
             } else {
-                throw new Error('Backend API not available');
+                throw new Error('GitHub API not available');
             }
 
             // Update local state
@@ -2185,7 +2473,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         this.populateCustomQuestions(duplicatedEvent.customQuestions || []);
 
         showPage('create');
-        showToast('ðŸ“‹ Event duplicated - modify details and deploy', 'success');
+        showToast('📋 Event duplicated - modify details and deploy', 'success');
     }
 
     /**
@@ -2220,7 +2508,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     const content = window.githubAPI.safeBase64Encode(JSON.stringify(eventResponses, null, 2));
                     
                     // Get existing file info
-                    const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall/contents/${path}`, {
+                    const existingResponse = await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
                         headers: {
                             'Authorization': `token ${window.githubAPI.getToken()}`,
                             'Accept': 'application/vnd.github.v3+json',
@@ -2239,7 +2527,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                         createData.sha = existingData.sha;
                     }
 
-                    await fetch(`https://api.github.com/repos/SemperAdmin/EventCall/contents/${path}`, {
+                    await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
                         method: 'PUT',
                         headers: {
                             'Authorization': `token ${window.githubAPI.getToken()}`,
@@ -2258,7 +2546,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
 
             // Refresh the event management view
             this.showEventManagement(eventId);
-            showToast('ðŸ—‘ï¸ RSVP response deleted successfully', 'success');
+            showToast('🗑️ RSVP response deleted successfully', 'success');
 
         } catch (error) {
             console.error('Failed to delete response:', error);
@@ -2294,7 +2582,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      * @param {Object} eventData - Event data to validate
      * @returns {Object} Validation result
      */
-    validateEventData(eventData) {
+    validateEventData(eventData, isUpdate = false) {
         const result = {
             valid: true,
             errors: []
@@ -2310,14 +2598,16 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             result.errors.push('Please specify both date and time for the event');
         }
 
-        // Check if date is not too far in the past
-        const eventDate = new Date(`${eventData.date}T${eventData.time}`);
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
+        // Check if date is not too far in the past (only for new events, not updates)
+        if (!isUpdate) {
+            const eventDate = new Date(`${eventData.date}T${eventData.time}`);
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
 
-        if (eventDate < yesterday) {
-            result.valid = false;
-            result.errors.push('Event date cannot be more than 1 day in the past');
+            if (eventDate < yesterday) {
+                result.valid = false;
+                result.errors.push('Event date cannot be more than 1 day in the past');
+            }
         }
 
         // Location URL validation (SEC-005)
@@ -2354,15 +2644,25 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     }
 
     /**
-     * Assign a guest to a table
-     * @param {string} eventId - Event ID
-     * @param {string} rsvpId - RSVP ID
-     */
-    async assignGuestToTable(eventId, rsvpId) {
+ * Assign a guest to a table
+ * @param {string} eventId - Event ID
+ * @param {string} rsvpId - RSVP ID
+ * @param {string} tableNumberStr - The table number selected from the dropdown
+ */
+async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
+    try {
         const event = window.events ? window.events[eventId] : null;
         if (!event || !event.seatingChart) {
-            showToast('Event or seating chart not found', 'error');
-            return;
+            const error = 'Event or seating chart not found';
+            showToast(error, 'error');
+            throw new Error(error);
+        }
+
+        // Check if SeatingChart class is loaded
+        if (!window.SeatingChart) {
+            const error = 'Seating chart module not loaded';
+            showToast(error, 'error');
+            throw new Error(error);
         }
 
         // Look up guest details from responses
@@ -2370,21 +2670,16 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const guest = eventResponses.find(r => r.rsvpId === rsvpId);
 
         if (!guest) {
-            showToast('Guest not found', 'error');
-            return;
+            const error = 'Guest not found';
+            showToast(error, 'error');
+            throw new Error(error);
         }
 
         const guestName = guest.name;
         const guestCount = guest.guestCount || 0;
 
-        // Get selected table from dropdown
-        const selectElement = document.getElementById(`table-select-${rsvpId}`);
-        if (!selectElement) {
-            showToast('Table selection not found', 'error');
-            return;
-        }
-
-        const tableNumber = parseInt(selectElement.value);
+        // Use the table number passed directly from the dropdown
+        const tableNumber = parseInt(tableNumberStr);
         if (!tableNumber) {
             showToast('Please select a table', 'warning');
             return;
@@ -2394,24 +2689,43 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const seatingChart = new window.SeatingChart(eventId);
         seatingChart.loadSeatingData(event);
 
+        // *** THIS IS THE CRITICAL ASSIGNMENT CALL ***
         const result = seatingChart.assignGuestToTable(rsvpId, tableNumber, {
             name: guestName,
             guestCount: guestCount
         });
+        // ********************************************
 
         if (result.success) {
             // Update event data
             event.seatingChart = seatingChart.exportSeatingData();
-            await this.saveEventSeatingData(event);
+
+            // Update local state immediately
+            if (window.events) {
+                window.events[eventId] = event;
+            }
+
+            // Show success feedback immediately (before GitHub save)
             showToast(result.message, 'success');
 
-            // Refresh the seating chart display
+            // Refresh the seating chart display immediately
+            try { sessionStorage.setItem('manage_active_tab', 'special'); } catch (_) {}
             this.refreshSeatingChart(eventId);
-        } else {
-            showToast(result.message, 'error');
-        }
-    }
 
+            // Save to GitHub in background (non-blocking)
+            this.saveEventSeatingDataBackground(event);
+        } else {
+            // Failure logging is now safe within the try block
+            console.error('Assignment failed (Handled by SeatingChart logic):', result.message);
+            showToast(result.message || 'Failed to assign guest: Unknown reason.', 'error');
+        }
+    } catch (error) {
+        // *** THIS CATCHES THE INVISIBLE CRASH ***
+        console.error('CRITICAL ASSIGNMENT CRASH (Function failed to execute):', error);
+        showToast('A critical error occurred during assignment. Check console.', 'error');
+        throw error; // Re-throw to propagate to the HTML onchange handler
+    }
+}
     /**
      * Unassign a guest from their table
      * @param {string} eventId - Event ID
@@ -2550,31 +2864,57 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
      * @param {string} eventId - Event ID
      */
     exportSeatingCSV(eventId) {
-        const event = window.events ? window.events[eventId] : null;
-        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+        try {
+            const event = window.events ? window.events[eventId] : null;
+            const eventResponses = window.responses ? window.responses[eventId] || [] : [];
 
-        if (!event || !event.seatingChart) {
-            showToast('Event or seating chart not found', 'error');
-            return;
+            if (!event || !event.seatingChart) {
+                showToast('Event or seating chart not found', 'error');
+                return;
+            }
+
+            if (!window.SeatingChart) {
+                showToast('Seating chart module not loaded', 'error');
+                return;
+            }
+
+            const seatingChart = new window.SeatingChart(eventId);
+            seatingChart.loadSeatingData(event);
+
+            if (typeof seatingChart.generateSeatingCSV !== 'function') {
+                showToast('Export function not available', 'error');
+                return;
+            }
+
+            const csv = seatingChart.generateSeatingCSV(eventResponses);
+
+            // Check if CSV contains actual data (more than just header)
+            if (!csv || csv.split('\n').filter(line => line.trim()).length <= 1) {
+                showToast('No seating data to export', 'warning');
+                return;
+            }
+
+            // Download CSV (compatible with Excel) - BOM for better compatibility
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `seating-chart-${event.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+
+            showToast('📥 Seating chart exported successfully', 'success');
+        } catch (error) {
+            console.error('Export seating chart error:', error);
+            showToast('Failed to export seating chart', 'error');
         }
-
-        const seatingChart = new window.SeatingChart(eventId);
-        seatingChart.loadSeatingData(event);
-
-        const csv = seatingChart.generateSeatingCSV(eventResponses);
-
-        // Download CSV
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `seating-chart-${event.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-
-        showToast('📥 Seating chart exported', 'success');
     }
 
     /**
@@ -2584,6 +2924,238 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
     refreshSeatingChart(eventId) {
         // Simply reload the event management view
         this.showEventManagement(eventId);
+    }
+
+    /**
+     * Toggle select all checkboxes
+     * @param {string} eventId - Event ID
+     */
+    toggleSelectAll(eventId) {
+        const selectAllCheckbox = document.getElementById(`select-all-${eventId}`);
+        const checkboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox`);
+
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+
+        this.updateBulkActions(eventId);
+    }
+
+    /**
+     * Update bulk actions visibility and count
+     * @param {string} eventId - Event ID
+     */
+    updateBulkActions(eventId) {
+        const checkboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox:checked`);
+        const selectedCount = checkboxes.length;
+        const bulkActionsDiv = document.getElementById(`bulk-actions-${eventId}`);
+        const countSpan = document.getElementById(`selected-count-${eventId}`);
+
+        if (selectedCount > 0) {
+            bulkActionsDiv.style.display = 'block';
+            countSpan.textContent = selectedCount;
+        } else {
+            bulkActionsDiv.style.display = 'none';
+        }
+
+        // Update select-all checkbox state
+        const allCheckboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox`);
+        const selectAllCheckbox = document.getElementById(`select-all-${eventId}`);
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = selectedCount === allCheckboxes.length && selectedCount > 0;
+            selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < allCheckboxes.length;
+        }
+    }
+
+    /**
+     * Export selected responses to CSV
+     * @param {string} eventId - Event ID
+     */
+    bulkExportSelected(eventId) {
+        const event = window.events[eventId];
+        const allResponses = window.responses[eventId] || [];
+        const checkboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox:checked`);
+
+        if (checkboxes.length === 0) {
+            showToast('No responses selected', 'error');
+            return;
+        }
+
+        // Get selected response indices
+        const selectedIndices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.responseIndex));
+        const selectedResponses = allResponses.filter((r, idx) => selectedIndices.includes(idx));
+
+        // Use existing CSV creation function
+        const csvContent = createCSVContent(event, selectedResponses);
+        const filename = `${generateSafeFilename(event.title)}_selected_rsvps.csv`;
+
+        downloadFile(csvContent, filename, 'text/csv');
+        showToast(`📊 Exported ${selectedResponses.length} responses`, 'success');
+    }
+
+    /**
+     * Email selected attendees
+     * @param {string} eventId - Event ID
+     */
+    bulkEmailSelected(eventId) {
+        const checkboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox:checked`);
+
+        if (checkboxes.length === 0) {
+            showToast('No responses selected', 'error');
+            return;
+        }
+
+        // Get email addresses from responses array using indices (avoid DOM-stored data)
+        const allResponses = window.responses[eventId] || [];
+        const selectedIndices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.responseIndex, 10));
+        const emails = selectedIndices
+            .map(index => allResponses[index]?.email)
+            .filter(email => email && email !== 'N/A');
+
+        if (emails.length === 0) {
+            showToast('No valid email addresses in selection', 'error');
+            return;
+        }
+
+        // Open default email client with BCC list
+        const subject = encodeURIComponent(`Event Update: ${window.events[eventId].title}`);
+        const mailtoLink = `mailto:?bcc=${emails.join(',')}&subject=${subject}`;
+
+        // Check URL length - most email clients have limitations (safe threshold: 2000 chars)
+        const MAX_MAILTO_LENGTH = 2000;
+        if (mailtoLink.length > MAX_MAILTO_LENGTH) {
+            // Fallback: Display emails in a modal for manual copy
+            this.showEmailListModal(emails);
+            showToast(`⚠️ Too many recipients for mailto link. Showing list instead.`, 'warning');
+        } else {
+            window.location.href = mailtoLink;
+            showToast(`📧 Opening email client for ${emails.length} recipients`, 'success');
+        }
+    }
+
+    /**
+     * Show modal with email list for copying
+     * @param {Array<string>} emails - Email addresses to display
+     */
+    showEmailListModal(emails) {
+        const emailList = emails.join('\n');
+
+        // Create modal overlay
+        const modal = document.createElement('div');
+        modal.className = 'bulk-email-modal-overlay';
+
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.className = 'bulk-email-modal-content';
+
+        // Create title
+        const title = document.createElement('h3');
+        title.className = 'bulk-email-modal-title';
+        title.textContent = 'Too Many Recipients for Mailto Link';
+
+        // Create description
+        const description = document.createElement('p');
+        description.textContent = 'The email list is too large for a mailto: link. Please copy the email addresses below:';
+
+        // Create textarea
+        const textarea = document.createElement('textarea');
+        textarea.className = 'bulk-email-modal-textarea';
+        textarea.readOnly = true;
+        textarea.value = emailList;
+
+        // Create button container
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'bulk-email-modal-buttons';
+
+        // Create copy button
+        const copyButton = document.createElement('button');
+        copyButton.className = 'btn';
+        copyButton.textContent = '📋 Copy to Clipboard';
+        copyButton.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(emailList);
+                showToast('📋 Copied to clipboard', 'success');
+            } catch (error) {
+                console.error('Failed to copy to clipboard:', error);
+                showToast('Failed to copy to clipboard', 'error');
+            }
+        });
+
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.className = 'btn btn-danger';
+        closeButton.textContent = 'Close';
+        closeButton.addEventListener('click', () => {
+            modal.remove();
+        });
+
+        // Assemble modal
+        buttonContainer.appendChild(copyButton);
+        buttonContainer.appendChild(closeButton);
+        modalContent.appendChild(title);
+        modalContent.appendChild(description);
+        modalContent.appendChild(textarea);
+        modalContent.appendChild(buttonContainer);
+        modal.appendChild(modalContent);
+
+        // Add to page
+        document.body.appendChild(modal);
+
+        // Close on overlay click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+
+    /**
+     * Delete selected responses
+     * @param {string} eventId - Event ID
+     */
+    async bulkDeleteSelected(eventId) {
+        const checkboxes = document.querySelectorAll(`#response-table-body-${eventId} .response-checkbox:checked`);
+
+        if (checkboxes.length === 0) {
+            showToast('No responses selected', 'error');
+            return;
+        }
+
+        const count = checkboxes.length;
+        const confirmed = confirm(`Are you sure you want to delete ${count} selected response${count > 1 ? 's' : ''}? This action cannot be undone.`);
+
+        if (!confirmed) return;
+
+        try {
+            // Get selected response indices (sort in descending order to delete from end)
+            const selectedIndices = Array.from(checkboxes)
+                .map(cb => parseInt(cb.dataset.responseIndex))
+                .sort((a, b) => b - a);
+
+            const allResponses = window.responses[eventId] || [];
+
+            // Delete from end to beginning to maintain correct indices
+            for (const index of selectedIndices) {
+                allResponses.splice(index, 1);
+            }
+
+            // Update storage
+            window.responses[eventId] = allResponses;
+
+            // Save to GitHub
+            if (window.githubAPI) {
+                await window.githubAPI.saveResponses(eventId, allResponses);
+            }
+
+            showToast(`🗑️ Deleted ${count} response${count > 1 ? 's' : ''}`, 'success');
+
+            // Refresh the view
+            this.showEventManagement(eventId);
+
+        } catch (error) {
+            console.error('Bulk delete failed:', error);
+            showToast('Failed to delete responses', 'error');
+        }
     }
 
     /**
@@ -2605,6 +3177,71 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             showToast('Failed to save seating data', 'error');
         }
     }
+
+    /**
+     * Save event seating data to GitHub in background (non-blocking)
+     * Used for immediate UI updates while persisting data asynchronously
+     * @param {Object} event - Event object with updated seating data
+     */
+    saveEventSeatingDataBackground(event) {
+        const attempt = () => {
+            if (!window.githubAPI) return Promise.reject(new Error('GitHub API unavailable'));
+            return window.githubAPI.saveEvent(event);
+        };
+        attempt().catch(() => {
+            const delays = [1000, 3000, 7000];
+            let p = Promise.reject();
+            delays.forEach((d) => {
+                p = p.catch(() => new Promise(res => setTimeout(res, d)).then(attempt));
+            });
+            p.catch(() => {
+                this._showSyncBanner(event.id, () => {
+                    this._hideSyncBanner();
+                    this.saveEventSeatingDataBackground(event);
+                });
+            });
+        });
+    }
+
+    _showSyncBanner(eventId, onRetry) {
+        let el = document.getElementById('sync-status-banner');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'sync-status-banner';
+            el.style.position = 'fixed';
+            el.style.right = '12px';
+            el.style.bottom = '12px';
+            el.style.padding = '8px 12px';
+            el.style.background = 'rgba(220,38,38,0.9)';
+            el.style.color = '#fff';
+            el.style.borderRadius = '6px';
+            el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+            el.style.zIndex = '9999';
+            el.style.fontSize = '14px';
+            const btn = document.createElement('button');
+            btn.textContent = 'Retry';
+            btn.style.marginLeft = '10px';
+            btn.style.background = '#fff';
+            btn.style.color = '#dc2626';
+            btn.style.border = 'none';
+            btn.style.padding = '4px 10px';
+            btn.style.borderRadius = '4px';
+            btn.style.cursor = 'pointer';
+            btn.addEventListener('click', (e) => { e.stopPropagation(); if (typeof onRetry === 'function') onRetry(); });
+            const txt = document.createElement('span');
+            txt.textContent = 'Sync failed. Changes not saved.';
+            el.appendChild(txt);
+            el.appendChild(btn);
+            el.addEventListener('click', () => this._hideSyncBanner());
+            document.body.appendChild(el);
+        }
+        el.dataset.eventId = String(eventId || '');
+    }
+
+    _hideSyncBanner() {
+        const el = document.getElementById('sync-status-banner');
+        if (el) el.remove();
+    }
 }
 
 // Create global instance
@@ -2612,3 +3249,135 @@ const eventManager = new EventManager();
 
 // Make functions available globally for HTML onclick handlers
 window.eventManager = eventManager;
+
+// ================================================
+// EVENT DELEGATION: Seating Chart Table Assignment
+// ================================================
+// This listener handles all table assignment dropdowns via event delegation,
+// eliminating inline onchange handlers that were causing silent failures
+// due to unescaped characters in event/RSVP IDs.
+document.addEventListener('change', async function(event) {
+    // Check if the changed element is a table assignment dropdown
+    if (event.target.matches('[data-action="assign-table"]')) {
+        const target = event.target;
+
+        // Extract data from HTML5 data attributes (safe from escaping issues)
+        const eventId = target.dataset.eventId;
+        const rsvpId = target.dataset.rsvpId;
+        const tableNumberStr = target.value;
+
+        // Validate that a table was actually selected
+        if (!tableNumberStr) {
+            return; // User selected the placeholder option, do nothing
+        }
+
+        try {
+            // Call the assignment function with proper error handling
+            await eventManager.assignGuestToTable(eventId, rsvpId, tableNumberStr);
+
+            // Success toast is shown inside assignGuestToTable
+            // The UI will refresh via refreshSeatingChart() call in that method
+
+        } catch (error) {
+            // Handle any errors that weren't caught inside assignGuestToTable
+            console.error('Assignment error (caught by event delegation):', error);
+            showToast('Failed to assign guest', 'error');
+
+            // Reset the dropdown to prevent confusion
+            target.value = '';
+        }
+    }
+
+    // ================================================
+    // EVENT DELEGATION: Guest List Filters
+    // ================================================
+    // Handle filter dropdown changes
+    if (event.target.matches('[data-filter-action="filter-attendees"]')) {
+        if (eventManager && typeof eventManager.filterAttendees === 'function') {
+            eventManager.filterAttendees();
+        }
+    }
+});
+
+// ================================================
+// EVENT DELEGATION: Guest List Search
+// ================================================
+// Handle search input changes
+document.addEventListener('input', function(event) {
+    if (event.target.matches('[data-filter-action="search-attendees"]')) {
+        if (eventManager && typeof eventManager.filterAttendees === 'function') {
+            eventManager.filterAttendees();
+        }
+    }
+});
+
+// ================================================
+// EVENT DELEGATION: Email Attendee Button
+// ================================================
+// Handle email button clicks in attendee cards
+document.addEventListener('click', function(event) {
+    if (event.target.matches('[data-action="email-attendee"]') ||
+        event.target.closest('[data-action="email-attendee"]')) {
+
+        const button = event.target.matches('[data-action="email-attendee"]')
+            ? event.target
+            : event.target.closest('[data-action="email-attendee"]');
+
+        // Skip if button is disabled
+        if (button.disabled) {
+            return;
+        }
+
+        const rsvpId = button.dataset.rsvpId;
+        const eventId = button.dataset.eventId;
+
+        if (eventManager && typeof eventManager.openEmailDialog === 'function' && rsvpId && eventId) {
+            eventManager.openEmailDialog(rsvpId, eventId);
+        } else {
+            console.error('Email functionality not available or missing data');
+            showToast('Unable to open email', 'error');
+        }
+    }
+
+    // ================================================
+    // EVENT DELEGATION: Seating Chart Action Buttons
+    // ================================================
+    // Handle auto-assign, export, and refresh buttons
+    const actionButton = event.target.closest('[data-action="auto-assign-seats"], [data-action="export-seating"], [data-action="refresh-seating"]');
+
+    if (actionButton) {
+        const action = actionButton.dataset.action;
+        const eventId = actionButton.dataset.eventId;
+
+        if (!eventManager || !eventId) {
+            console.error('EventManager or eventId not available');
+            return;
+        }
+
+        switch (action) {
+            case 'auto-assign-seats':
+                if (typeof eventManager.autoAssignSeats === 'function') {
+                    eventManager.autoAssignSeats(eventId).catch(err => {
+                        console.error('Auto-assign error:', err);
+                        showToast('Auto-assign failed', 'error');
+                    });
+                }
+                break;
+
+            case 'export-seating':
+                if (typeof eventManager.exportSeatingCSV === 'function') {
+                    eventManager.exportSeatingCSV(eventId);
+                }
+                break;
+
+            case 'refresh-seating':
+                if (typeof eventManager.refreshSeatingChart === 'function') {
+                    Promise.resolve(eventManager.refreshSeatingChart(eventId)).catch(err => {
+                        console.error('Refresh seating chart error:', err);
+                        if (typeof showToast === 'function') showToast('Failed to refresh seating chart', 'error');
+                    });
+                }
+                break;
+        }
+    }
+});

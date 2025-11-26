@@ -4,6 +4,10 @@ on:
   issues:
     types: [opened, edited]
 
+env:
+  GITHUB_OWNER: SemperAdmin
+  DATA_REPO: EventCall-Data
+
 jobs:
   process-rsvp:
     if: contains(github.event.issue.labels.*.name, 'rsvp')
@@ -35,6 +39,117 @@ jobs:
           echo "rsvp_id=$RSVP_ID" >> $GITHUB_OUTPUT
           echo "RSVP ID: $RSVP_ID"
 
+      - name: Validate RSVP Data
+        run: |
+          echo "Validating RSVP data from issue..."
+
+          # Validate required fields
+          EVENT_ID=$(jq -r '.eventId // empty' rsvp-data.json)
+          RSVP_ID=$(jq -r '.rsvpId // empty' rsvp-data.json)
+          NAME=$(jq -r '.name // empty' rsvp-data.json)
+          EMAIL=$(jq -r '.email // empty' rsvp-data.json)
+
+          if [ -z "$EVENT_ID" ]; then
+            echo "❌ Validation Error: Missing required field 'eventId'"
+            exit 1
+          fi
+
+          if [ -z "$RSVP_ID" ]; then
+            echo "❌ Validation Error: Missing required field 'rsvpId'"
+            exit 1
+          fi
+
+          if [ -z "$NAME" ]; then
+            echo "❌ Validation Error: Missing required field 'name'"
+            exit 1
+          fi
+
+          if [ -z "$EMAIL" ]; then
+            echo "❌ Validation Error: Missing required field 'email'"
+            exit 1
+          fi
+
+          # Validate event ID format (evt-timestamp-randomhex)
+          if ! echo "$EVENT_ID" | grep -qE '^evt-[0-9]+-[a-f0-9]+$'; then
+            echo "❌ Validation Error: Invalid event ID format"
+            exit 1
+          fi
+
+          # Validate RSVP ID format (rsvp-timestamp-randomhex)
+          if ! echo "$RSVP_ID" | grep -qE '^rsvp-[0-9]+-[a-zA-Z0-9]+$'; then
+            echo "❌ Validation Error: Invalid RSVP ID format"
+            exit 1
+          fi
+
+          # Validate name length (1-100 characters)
+          NAME_LENGTH=${#NAME}
+          if [ $NAME_LENGTH -lt 1 ] || [ $NAME_LENGTH -gt 100 ]; then
+            echo "❌ Validation Error: Name must be 1-100 characters"
+            exit 1
+          fi
+
+          # Validate email format
+          if ! echo "$EMAIL" | grep -qE '^[^@]+@[^@]+\.[^@]+$'; then
+            echo "❌ Validation Error: Invalid email format"
+            exit 1
+          fi
+
+          # Validate email length
+          EMAIL_LENGTH=${#EMAIL}
+          if [ $EMAIL_LENGTH -gt 255 ]; then
+            echo "❌ Validation Error: Email must be maximum 255 characters"
+            exit 1
+          fi
+
+          # Validate guests count if provided
+          GUESTS=$(jq -r '.guests // empty' rsvp-data.json)
+          if [ -n "$GUESTS" ]; then
+            if ! [[ "$GUESTS" =~ ^[0-9]+$ ]] || [ "$GUESTS" -lt 0 ] || [ "$GUESTS" -gt 20 ]; then
+              echo "❌ Validation Error: Guests must be between 0 and 20"
+              exit 1
+            fi
+          fi
+
+          # Validate attending status if provided
+          ATTENDING=$(jq -r '.attending // empty' rsvp-data.json)
+          if [ -n "$ATTENDING" ]; then
+            if [[ "$ATTENDING" != "yes" && "$ATTENDING" != "no" && "$ATTENDING" != "maybe" ]]; then
+              echo "❌ Validation Error: Attending must be 'yes', 'no', or 'maybe'"
+              exit 1
+            fi
+          fi
+
+          # Validate phone number format if provided (E.164 format)
+          PHONE=$(jq -r '.phone // empty' rsvp-data.json)
+          if [ -n "$PHONE" ]; then
+            if ! echo "$PHONE" | grep -qE '^\+?[1-9][0-9]{0,15}$'; then
+              echo "❌ Validation Error: Invalid phone number format (expected E.164)"
+              exit 1
+            fi
+          fi
+
+          # Validate dietaryRestrictions length if provided
+          DIETARY=$(jq -r '.dietaryRestrictions // empty' rsvp-data.json)
+          if [ -n "$DIETARY" ]; then
+            DIETARY_LENGTH=${#DIETARY}
+            if [ $DIETARY_LENGTH -gt 500 ]; then
+              echo "❌ Validation Error: Dietary restrictions must be maximum 500 characters"
+              exit 1
+            fi
+          fi
+
+          # Validate specialRequirements length if provided
+          SPECIAL=$(jq -r '.specialRequirements // empty' rsvp-data.json)
+          if [ -n "$SPECIAL" ]; then
+            SPECIAL_LENGTH=${#SPECIAL}
+            if [ $SPECIAL_LENGTH -gt 1000 ]; then
+              echo "❌ Validation Error: Special requirements must be maximum 1000 characters"
+              exit 1
+            fi
+          fi
+
+          echo "✅ RSVP data validated successfully"
+
       - name: Save RSVP to Private Repo
         env:
           EVENT_ID: ${{ steps.extract.outputs.event_id }}
@@ -60,7 +175,7 @@ jobs:
           EXISTING_SHA=$(curl -s \
             -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${EVENT_ID}.json" \
+            "https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/rsvps/${EVENT_ID}.json" \
             | jq -r '.sha // empty')
 
           # Prepare API request
@@ -72,7 +187,7 @@ jobs:
             EXISTING_CONTENT=$(curl -s \
               -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${EVENT_ID}.json" \
+              "https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/rsvps/${EVENT_ID}.json" \
               | jq -r '.content' | base64 -d)
 
             # Parse existing RSVPs (should be an array)
@@ -93,7 +208,7 @@ jobs:
             curl -X PUT \
               -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${EVENT_ID}.json" \
+              "https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/rsvps/${EVENT_ID}.json" \
               -d "{\"message\":\"Update RSVP for event ${EVENT_ID} (Issue #${ISSUE_NUMBER})\",\"content\":\"$CONTENT\",\"sha\":\"$EXISTING_SHA\"}"
           else
             # Create new file (as array)
@@ -105,7 +220,7 @@ jobs:
             curl -X PUT \
               -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${EVENT_ID}.json" \
+              "https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/rsvps/${EVENT_ID}.json" \
               -d "{\"message\":\"Add RSVP for event ${EVENT_ID} (Issue #${ISSUE_NUMBER})\",\"content\":\"$CONTENT\"}"
           fi
 

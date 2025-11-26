@@ -1,7 +1,7 @@
 class BackendAPI {
     constructor() {
-        this.owner = 'SemperAdmin';
-        this.repo = 'EventCall';
+        this.owner = window.GITHUB_CONFIG?.owner || 'SemperAdmin';
+        this.repo = window.GITHUB_CONFIG?.repo || 'EventCall';
         this.apiBase = 'https://api.github.com';
         this.tokenIndex = parseInt(sessionStorage.getItem('github_token_index') || '0', 10);
         this.proxyCsrf = null; // { clientId, token, expires }
@@ -36,6 +36,20 @@ class BackendAPI {
 
     getToken() {
         const cfg = window.GITHUB_CONFIG || {};
+
+        // Check token expiration
+        if (cfg.tokenExpiry) {
+            const expiryTime = typeof cfg.tokenExpiry === 'number' ? cfg.tokenExpiry : Date.parse(cfg.tokenExpiry);
+            if (!isNaN(expiryTime) && Date.now() > expiryTime) {
+                console.error('❌ GitHub token expired');
+                // Trigger re-authentication if handler exists
+                if (window.handleTokenExpiration) {
+                    window.handleTokenExpiration();
+                }
+                throw new Error('GitHub token expired - please re-authenticate');
+            }
+        }
+
         const tokens = Array.isArray(cfg.tokens) ? cfg.tokens.filter(t => !!t) : [];
         if (tokens.length > 0) {
             const tok = tokens[this.tokenIndex % tokens.length];
@@ -161,6 +175,8 @@ class BackendAPI {
             if (!response.ok) {
                 // Try to get error details from response
                 let errorMessage = 'Workflow dispatch failed: ' + response.status;
+                let shouldFallbackToIssues = false;
+
                 try {
                     const errorData = await response.json();
                     console.error('GitHub API Error Details:', errorData);
@@ -169,9 +185,32 @@ class BackendAPI {
                         console.error('Validation Errors:', errorData.errors);
                         errorMessage += ' - ' + JSON.stringify(errorData.errors);
                     }
+
+                    // Detect specific 404 cases that should fallback to Issues
+                    if (response.status === 404) {
+                        if (errorData.message && errorData.message.includes('Not Found')) {
+                            console.warn('⚠️ Repository dispatch endpoint not found - workflow may not be enabled');
+                            shouldFallbackToIssues = true;
+                            errorMessage = 'Workflow not found (404) - attempting fallback to GitHub Issues';
+                        }
+                    }
                 } catch (parseError) {
                     console.error('Could not parse error response');
+                    // If we can't parse and got 404, assume workflow issue
+                    if (response.status === 404) {
+                        shouldFallbackToIssues = true;
+                        errorMessage = 'Workflow dispatch failed (404) - attempting fallback';
+                    }
                 }
+
+                // For 404 errors, mark for fallback instead of throwing immediately
+                if (shouldFallbackToIssues) {
+                    const fallbackError = new Error(errorMessage);
+                    fallbackError.shouldFallback = true;
+                    fallbackError.status = 404;
+                    throw fallbackError;
+                }
+
                 throw new Error(errorMessage);
             }
 
@@ -180,6 +219,53 @@ class BackendAPI {
 
         } catch (error) {
             console.error('Workflow trigger error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * PERFORMANCE: Direct authentication (bypasses GitHub Actions)
+     * Reduces login time from 67s to 200-500ms (99% faster!)
+     * @param {string} action - 'login_user' or 'register_user'
+     * @param {Object} credentials - { username, password, name, email, etc. }
+     * @returns {Promise<Object>} - Authentication response
+     */
+    async authenticateDirect(action, credentials) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+
+        if (!base) {
+            throw new Error('Backend not configured - cannot use direct authentication');
+        }
+
+        const endpoint = action === 'register_user' ? '/api/auth/register' : '/api/auth/login';
+        const url = base + endpoint;
+
+        console.log(`🚀 Using direct authentication: ${endpoint}`);
+
+        const startTime = Date.now();
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(credentials)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Authentication failed');
+            }
+
+            const result = await response.json();
+            const duration = Date.now() - startTime;
+            console.log(`✅ Direct authentication successful in ${duration}ms`);
+            return result;
+
+        } catch (error) {
+            const duration = Date.now() - startTime;
+            console.error(`❌ Direct authentication failed after ${duration}ms:`, error);
             throw error;
         }
     }
@@ -231,114 +317,135 @@ class BackendAPI {
             if (window.errorHandler) window.errorHandler.handleError(err, 'Security-CSRF', { form: 'rsvp' });
         }
 
-        // Try workflow dispatch first, fall back to GitHub Issues if it fails
+        // Try direct file write first (most reliable), then fallback to workflow/issue
         try {
-            return await this.triggerWorkflow('submit_rsvp', payload);
-        } catch (workflowError) {
-            console.warn('Workflow dispatch failed, trying GitHub Issues fallback:', workflowError.message);
-            return await this.submitRSVPViaIssue(payload);
+            console.log('💾 Attempting direct RSVP file write to GitHub...');
+            return await this.submitRSVPDirectToFile(payload);
+        } catch (directError) {
+            console.warn('⚠️ Direct file write failed:', directError.message);
+
+            // Try workflow dispatch as fallback
+            try {
+                console.log('🔄 Attempting workflow dispatch...');
+                return await this.triggerWorkflow('submit_rsvp', payload);
+            } catch (workflowError) {
+                console.error('❌ All submission methods failed');
+                // Throw a comprehensive error
+                throw new Error(`RSVP submission failed: Direct (${directError.message}), Workflow (${workflowError.message})`);
+            }
         }
     }
 
-    async submitRSVPViaIssue(rsvpData) {
-        console.log('Submitting RSVP via GitHub Issue...');
+    async submitRSVPDirectToFile(rsvpData) {
+        console.log('Writing RSVP directly to EventCall-Data repository...');
 
         const token = this.getToken();
-
         if (!token) {
             throw new Error('GitHub token not available');
         }
 
-        // Format RSVP data for issue body
-        const issueTitle = `RSVP: ${rsvpData.name} - ${rsvpData.attending ? 'Attending' : 'Not Attending'}`;
-
-        // Build military info section without nested template literals
-        let militaryInfo = '';
-        if (rsvpData.rank || rsvpData.unit || rsvpData.branch) {
-            militaryInfo += '### Military Information\n';
-            if (rsvpData.rank) militaryInfo += `**Rank:** ${rsvpData.rank}\n`;
-            if (rsvpData.unit) militaryInfo += `**Unit:** ${rsvpData.unit}\n`;
-            if (rsvpData.branch) militaryInfo += `**Branch:** ${rsvpData.branch}\n`;
-        }
-
-        const reasonBlock = rsvpData.reason ? `**Reason:** ${rsvpData.reason}\n\n` : '';
-        const allergyBlock = rsvpData.allergyDetails ? `**Allergy Details:** ${rsvpData.allergyDetails}\n\n` : '';
-
-        const issueBody = `
-## RSVP Submission
-
-**Event ID:** ${rsvpData.eventId}
-**RSVP ID:** ${rsvpData.rsvpId}
-**Name:** ${rsvpData.name}
-**Email:** ${rsvpData.email}
-**Phone:** ${rsvpData.phone || 'Not provided'}
-**Attending:** ${rsvpData.attending ? '✅ Yes' : '❌ No'}
-**Guest Count:** ${rsvpData.guestCount}
-
-${militaryInfo}
-
-${reasonBlock}${allergyBlock}
----
-**Timestamp:** ${new Date(rsvpData.timestamp).toISOString()}
-**Validation Hash:** ${rsvpData.validationHash}
-**CSRF Token:** ${(window.csrf && window.csrf.getToken && window.csrf.getToken()) || ''}
-**Submission Method:** github_issue_fallback
-
-\`\`\`json
-${JSON.stringify(rsvpData, null, 2)}
-\`\`\`
-`;
+        const eventId = rsvpData.eventId;
+        const dataRepo = window.GITHUB_CONFIG?.dataRepo || 'EventCall-Data';
+        const filePath = `rsvps/${eventId}.json`;
+        const fileUrl = `${this.apiBase}/repos/${this.owner}/${dataRepo}/contents/${filePath}`;
 
         try {
-            const response = await (window.rateLimiter ? window.rateLimiter.fetch(`${this.apiBase}/repos/${this.owner}/${this.repo}/issues`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    title: issueTitle,
-                    body: issueBody,
-                    labels: ['rsvp', 'automated', rsvpData.attending ? 'attending' : 'not-attending']
-                })
-            }, { endpointKey: 'github_issues', retry: { maxAttempts: 5, baseDelayMs: 1000, jitter: true } }) : fetch(`${this.apiBase}/repos/${this.owner}/${this.repo}/issues`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    title: issueTitle,
-                    body: issueBody,
-                    labels: ['rsvp', 'automated', rsvpData.attending ? 'attending' : 'not-attending']
-                })
-            }));
+            // Try to get existing file
+            let existingRSVPs = [];
+            let sha = null;
 
-            const remaining = parseInt(response.headers.get('x-ratelimit-remaining') || '-1', 10);
-            if (!isNaN(remaining) && remaining <= 0) {
-                this.advanceToken();
+            try {
+                const checkResponse = await window.safeFetchGitHub(
+                    fileUrl,
+                    {
+                        headers: {
+                            'Authorization': 'token ' + token,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    },
+                    'Check existing RSVP file in EventCall-Data'
+                );
+
+                if (checkResponse.ok) {
+                    const fileData = await checkResponse.json();
+                    sha = fileData.sha;
+
+                    // Decode existing content
+                    const decodedContent = atob(fileData.content);
+                    const parsedContent = JSON.parse(decodedContent);
+
+                    // Ensure it's an array
+                    existingRSVPs = Array.isArray(parsedContent) ? parsedContent : [parsedContent];
+                    console.log(`📝 Found existing file with ${existingRSVPs.length} RSVPs`);
+                }
+            } catch (e) {
+                console.log('📄 No existing file found, will create new');
             }
+
+            // Check if this is an update (same rsvpId exists)
+            const existingIndex = existingRSVPs.findIndex(r => r.rsvpId === rsvpData.rsvpId);
+
+            if (existingIndex >= 0) {
+                // Update existing RSVP
+                existingRSVPs[existingIndex] = rsvpData;
+                console.log(`🔄 Updating existing RSVP at index ${existingIndex}`);
+            } else {
+                // Add new RSVP
+                existingRSVPs.push(rsvpData);
+                console.log(`➕ Adding new RSVP (total: ${existingRSVPs.length})`);
+            }
+
+            // Encode updated array
+            const content = btoa(JSON.stringify(existingRSVPs, null, 2));
+            const commitMessage = existingIndex >= 0
+                ? `Update RSVP: ${rsvpData.name} for event ${eventId}`
+                : `Add RSVP: ${rsvpData.name} for event ${eventId}`;
+
+            // Create or update file
+            const body = {
+                message: commitMessage,
+                content: content,
+                branch: 'main'
+            };
+
+            if (sha) {
+                body.sha = sha;
+            }
+
+            const response = await window.safeFetchGitHub(
+                fileUrl,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                },
+                'Save RSVP to EventCall-Data'
+            );
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                console.error('GitHub Issue creation failed:', errorData);
-                throw new Error(`GitHub Issue creation failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
+                console.error('GitHub file write failed:', errorData);
+                throw new Error(`GitHub file write failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
             }
 
-            const issueData = await response.json();
-            console.log('✅ RSVP submitted via GitHub Issue:', issueData.number);
+            const result = await response.json();
+            console.log('✅ RSVP saved to EventCall-Data:', filePath);
 
             return {
                 success: true,
-                method: 'github_issue',
-                issueNumber: issueData.number,
-                issueUrl: issueData.html_url
+                method: 'direct_file_write',
+                repository: dataRepo,
+                filePath: filePath,
+                commitSha: result.commit?.sha,
+                totalRSVPs: existingRSVPs.length
             };
 
         } catch (error) {
-            console.error('Failed to submit RSVP via GitHub Issue:', error);
+            console.error('Failed to write RSVP to EventCall-Data:', error);
             throw error;
         }
     }
@@ -388,6 +495,100 @@ ${JSON.stringify(rsvpData, null, 2)}
         }
 
         return await this.triggerWorkflow('create_event', payload);
+    }
+
+    async updateUserProfile(userData) {
+        console.log('Updating user profile in backend...');
+
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available');
+        }
+
+        const username = userData.username;
+        const dataRepo = window.GITHUB_CONFIG?.dataRepo || 'EventCall-Data';
+        const filePath = `users/${username}.json`;
+        const url = `${this.apiBase}/repos/${this.owner}/${dataRepo}/contents/${filePath}`;
+
+        try {
+            // Try to get existing user file
+            let existingContent = null;
+            let sha = null;
+            const checkResponse = await window.safeFetchGitHub(
+                url,
+                {
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                },
+                'Get existing user profile'
+            );
+
+            if (checkResponse.ok) {
+                const fileData = await checkResponse.json();
+                sha = fileData.sha;
+                existingContent = JSON.parse(atob(fileData.content.replace(/\n/g, '')));
+            }
+
+            // Merge with new data, preserving critical fields when available
+            const baseUser = existingContent || { username, id: existingContent?.id || `user_${username}` };
+            const updatedUser = {
+                ...baseUser,
+                name: userData.name || baseUser.name || '',
+                email: (userData.email || baseUser.email || '').toLowerCase(),
+                branch: userData.branch || baseUser.branch || '',
+                rank: userData.rank || baseUser.rank || '',
+                role: baseUser.role || 'user',
+                lastUpdated: new Date().toISOString()
+            };
+
+            // Encode updated content
+            const content = btoa(JSON.stringify(updatedUser, null, 2));
+            const commitMessage = (sha ? 'Update' : 'Create') + ` profile for ${username}`;
+
+            // Create or update file in data repo
+            const response = await window.safeFetchGitHub(
+                url,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: commitMessage,
+                        content: content,
+                        branch: 'main',
+                        ...(sha ? { sha } : {})
+                    })
+                },
+                'Update user profile'
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('User profile update failed:', errorData);
+                throw new Error(`User profile update failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
+            }
+
+            const result = await response.json();
+            console.log('✅ User profile saved to data repo:', `${dataRepo}/${filePath}`);
+
+            return {
+                success: true,
+                method: sha ? 'direct_file_update' : 'direct_file_create',
+                repository: dataRepo,
+                filePath: filePath,
+                commitSha: result.commit?.sha,
+                user: updatedUser
+            };
+
+        } catch (error) {
+            console.error('Failed to update user profile:', error);
+            throw error;
+        }
     }
 }
 

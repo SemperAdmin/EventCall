@@ -20,17 +20,65 @@
     <link rel="stylesheet" href="styles/event-management-v2.css">
     <link rel="stylesheet" href="styles/seating-chart.css">
     <link rel="stylesheet" href="styles/loading.css">
+    <link rel="stylesheet" href="styles/app-loader.css">
     <!-- UX-002 stylesheet for BEM classes and variables -->
     <link rel="stylesheet" href="styles/styles.css">
+    <!-- Form Validation Styles -->
+    <link rel="stylesheet" href="styles/form-validation.css">
+    <!-- Feedback Widget -->
+    <link rel="stylesheet" href="styles/feedback.css">
+    <!-- Admin Dashboard (Admin Only) -->
+    <link rel="stylesheet" href="styles/admin-dashboard.css">
+
+    <!-- PHASE 3 OPTIMIZATION: Resource hints for CDN libraries -->
+    <!-- Preconnect to CDN to reduce DNS/TCP/TLS overhead -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://www.google.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+
     <!-- Scripts -->
     <!-- CSV Parser -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <!-- DOMPurify for HTML sanitization -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous"></script>
-    <!-- zxcvbn for advanced password strength analysis -->
-    <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
+    <!-- PHASE 3: zxcvbn moved to lazy loading (250KB saved on initial load) -->
+
 </head>
 <body>
+<!-- App Loading Screen (hidden by default, shows only after login) -->
+<div id="app-loader" class="app-loader hidden">
+    <div class="app-loader__container">
+        <div class="app-loader__header">
+            <div class="app-loader__icon">🎖️</div>
+            <h1 class="app-loader__title">EventCall</h1>
+            <p class="app-loader__subtitle">Semper Admin</p>
+        </div>
+
+        <!-- Book Loader -->
+        <div class="book-loader" aria-hidden="true">
+            <div class="book-loader__shadow"></div>
+            <div class="book-loader__page"></div>
+            <div class="book-loader__page book-loader__page--2"></div>
+            <div class="book-loader__page book-loader__page--3"></div>
+            <div class="book-loader__page book-loader__page--4"></div>
+            <div class="book-loader__page book-loader__page--5"></div>
+        </div>
+
+        <!-- Status Text -->
+        <div class="app-loader__status">
+            <p class="app-loader__status-label">Loading</p>
+            <div class="app-loader__words" aria-hidden="true">
+                <span class="app-loader__word">events</span>
+                <span class="app-loader__word">responses</span>
+                <span class="app-loader__word">dashboard</span>
+                <span class="app-loader__word">security</span>
+                <span class="app-loader__word">events</span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Removed skip-to-main anchor per request -->
 <!-- Updated Login Page HTML with Obfuscated Token -->
 
@@ -92,7 +140,7 @@
             <div class="auth__remember">
                 <input type="checkbox" id="remember-me" class="auth__remember-checkbox">
                 <label for="remember-me" class="auth__remember-label">
-                    Remember me for 30 days
+                    Remember me for 7 days
                 </label>
             </div>
 
@@ -138,6 +186,44 @@
             </div>
 
             <div class="form-group">
+                <label for="reg-email" class="form-label">
+                    Email Address <span class="text-danger">*</span>
+                </label>
+                <input
+                    type="email"
+                    id="reg-email"
+                    name="email"
+                    placeholder="your.email@example.com"
+                    required
+                    autocomplete="email"
+                    class="form-control"
+                >
+                <small class="form-help">Used for account recovery and notifications</small>
+            </div>
+
+            <div class="form-group">
+                <label for="reg-branch" class="form-label">
+                    Service Branch <span class="form-help form-help--inline">(Optional)</span>
+                </label>
+                <select
+                    id="reg-branch"
+                    name="branch"
+                    class="form-control"
+                    onchange="window.updateRegRanksForBranch && window.updateRegRanksForBranch()"
+                >
+                    <option value="">Select service branch...</option>
+                    <option value="USA">United States Army</option>
+                    <option value="USMC">United States Marine Corps</option>
+                    <option value="USN">United States Navy</option>
+                    <option value="USAF">United States Air Force</option>
+                    <option value="USSF">United States Space Force</option>
+                    <option value="USCG">United States Coast Guard</option>
+                    <option value="Civilian">Civilian</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="reg-rank" class="form-label">
                     Rank <span class="form-help form-help--inline">(Optional)</span>
                 </label>
@@ -145,34 +231,9 @@
                     id="reg-rank"
                     name="rank"
                     class="form-control"
+                    disabled
                 >
-                    <option value="">Select rank...</option>
-                    <option value="Pvt">Pvt - Private</option>
-                    <option value="PFC">PFC - Private First Class</option>
-                    <option value="LCpl">LCpl - Lance Corporal</option>
-                    <option value="Cpl">Cpl - Corporal</option>
-                    <option value="Sgt">Sgt - Sergeant</option>
-                    <option value="SSgt">SSgt - Staff Sergeant</option>
-                    <option value="GySgt">GySgt - Gunnery Sergeant</option>
-                    <option value="MSgt">MSgt - Master Sergeant</option>
-                    <option value="1stSgt">1stSgt - First Sergeant</option>
-                    <option value="MGySgt">MGySgt - Master Gunnery Sergeant</option>
-                    <option value="SgtMaj">SgtMaj - Sergeant Major</option>
-                    <option value="Pvt">WO - Warrant Officer</option>
-                    <option value="Pvt">CWO2 - Chief Warrant Officer 2</option>
-                    <option value="Pvt">CWO3 - Chief Warrant Officer 3</option>
-                    <option value="Pvt">CWO4 - Chief Warrant Officer 4</option>
-                    <option value="Pvt">CWO5 - Chief Warrant Officer 5</option>
-                    <option value="2ndLt">2ndLt - Second Lieutenant</option>
-                    <option value="1stLt">1stLt - First Lieutenant</option>
-                    <option value="Capt">Capt - Captain</option>
-                    <option value="Maj">Maj - Major</option>
-                    <option value="LtCol">LtCol - Lieutenant Colonel</option>
-                    <option value="Col">Col - Colonel</option>
-                    <option value="BGen">BGen - Brigadier General</option>
-                    <option value="MajGen">MajGen - Major General</option>
-                    <option value="LtGen">LtGen - Lieutenant General</option>
-                    <option value="Gen">Gen - General</option>
+                    <option value="">Select service branch first...</option>
                 </select>
             </div>
 
@@ -255,6 +316,164 @@ const tabs = document.querySelectorAll('.auth__tab');
     const showLogin = tab === 'login';
     loginForm.classList.toggle('auth__form--active', showLogin);
     registerForm.classList.toggle('auth__form--active', !showLogin);
+
+    // Scroll to top of page to ensure header with icon is fully visible
+    // Respect user's motion preferences for accessibility
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    window.scrollTo({ top: 0, behavior: motionQuery.matches ? 'auto' : 'smooth' });
+}
+
+// Update rank dropdown based on selected service branch for registration form
+function updateRegRanksForBranch() {
+    const branchSelect = document.getElementById('reg-branch');
+    const rankSelect = document.getElementById('reg-rank');
+
+    if (!branchSelect || !rankSelect || !window.MilitaryData) {
+        return;
+    }
+
+    const selectedBranch = branchSelect.value;
+
+    // Clear current ranks
+    rankSelect.innerHTML = '<option value="">Select rank...</option>';
+
+    if (!selectedBranch || selectedBranch === 'Civilian' || selectedBranch === 'Other') {
+        // For Civilian or Other, just add a Civilian option and disable
+        if (selectedBranch === 'Civilian') {
+            rankSelect.innerHTML = '<option value="Civilian">Civilian</option>';
+            rankSelect.disabled = true;
+        } else if (selectedBranch === 'Other') {
+            rankSelect.innerHTML = '<option value="">N/A</option>';
+            rankSelect.disabled = true;
+        } else {
+            rankSelect.innerHTML = '<option value="">Select service branch first...</option>';
+            rankSelect.disabled = true;
+        }
+        return;
+    }
+
+    // Get ranks for selected branch
+    const branchData = window.MilitaryData[selectedBranch];
+
+    if (!branchData) {
+        rankSelect.innerHTML = '<option value="">No ranks available</option>';
+        rankSelect.disabled = true;
+        return;
+    }
+
+    // Enable the rank dropdown
+    rankSelect.disabled = false;
+
+    // Add officer ranks
+    if (branchData.officer && branchData.officer.length > 0) {
+        const officerGroup = document.createElement('optgroup');
+        officerGroup.label = 'Officer';
+        branchData.officer.forEach(rank => {
+            const option = document.createElement('option');
+            option.value = rank.value;
+            option.textContent = rank.label;
+            officerGroup.appendChild(option);
+        });
+        rankSelect.appendChild(officerGroup);
+    }
+
+    // Add warrant officer ranks
+    if (branchData.warrant && branchData.warrant.length > 0) {
+        const warrantGroup = document.createElement('optgroup');
+        warrantGroup.label = 'Warrant Officer';
+        branchData.warrant.forEach(rank => {
+            const option = document.createElement('option');
+            option.value = rank.value;
+            option.textContent = rank.label;
+            warrantGroup.appendChild(option);
+        });
+        rankSelect.appendChild(warrantGroup);
+    }
+
+    // Add enlisted ranks
+    if (branchData.enlisted && branchData.enlisted.length > 0) {
+        const enlistedGroup = document.createElement('optgroup');
+        enlistedGroup.label = 'Enlisted';
+        branchData.enlisted.forEach(rank => {
+            const option = document.createElement('option');
+            option.value = rank.value;
+            option.textContent = rank.label;
+            enlistedGroup.appendChild(option);
+        });
+        rankSelect.appendChild(enlistedGroup);
+    }
+
+    // Add Civilian option at the end
+    const civilianOption = document.createElement('option');
+    civilianOption.value = 'Civilian';
+    civilianOption.textContent = 'Civilian';
+    rankSelect.appendChild(civilianOption);
+}
+
+// Make function globally available
+window.updateRegRanksForBranch = updateRegRanksForBranch;
+
+// Dashboard tab switching functionality - Version 2.0
+console.log('✅ Dashboard tab functions loaded - Version 2.0');
+
+function switchDashboardTab(tab) {
+    console.log('🔄 Switching to tab:', tab);
+
+    const tabs = document.querySelectorAll('.dashboard-tab');
+    const contents = document.querySelectorAll('.dashboard-tab-content');
+
+    console.log('📋 Found', tabs.length, 'tabs and', contents.length, 'content areas');
+
+    tabs.forEach(btn => {
+        const isActive = btn.getAttribute('data-tab') === tab;
+        btn.classList.toggle('dashboard-tab--active', isActive);
+        console.log('  Tab', btn.getAttribute('data-tab'), ':', isActive ? 'ACTIVE' : 'inactive');
+    });
+
+    contents.forEach(content => {
+        const contentId = content.id;
+        const shouldShow = contentId === tab + '-tab';
+        content.classList.toggle('dashboard-tab-content--active', shouldShow);
+        console.log('  Content', contentId, ':', shouldShow ? 'VISIBLE' : 'hidden');
+    });
+
+    // Load RSVPs when switching to Your RSVPs tab
+    if (tab === 'your-rsvps') {
+        console.log('📝 Loading Your RSVPs...');
+        if (window.displayUserRSVPs) {
+            window.displayUserRSVPs();
+        } else {
+            console.error('❌ displayUserRSVPs function not available');
+        }
+    }
+}
+
+// Make function globally available
+window.switchDashboardTab = switchDashboardTab;
+
+// Verify tabs exist when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', verifyDashboardTabs);
+} else {
+    verifyDashboardTabs();
+}
+
+function verifyDashboardTabs() {
+    console.log('🔍 Verifying dashboard tabs setup...');
+    const tabs = document.querySelectorAll('.dashboard-tab');
+    const contents = document.querySelectorAll('.dashboard-tab-content');
+    console.log('  Found', tabs.length, 'tab buttons');
+    console.log('  Found', contents.length, 'tab content areas');
+
+    tabs.forEach((tab, idx) => {
+        console.log(`  Tab ${idx + 1}:`, tab.getAttribute('data-tab'),
+                    tab.classList.contains('dashboard-tab--active') ? '[ACTIVE]' : '[inactive]');
+    });
+
+    contents.forEach((content, idx) => {
+        console.log(`  Content ${idx + 1}:`, content.id,
+                    content.classList.contains('dashboard-tab-content--active') ? '[VISIBLE]' : '[hidden]');
+    });
 }
 </script>
 
@@ -270,7 +489,7 @@ const tabs = document.querySelectorAll('.auth__tab');
                 </div>
                 <h1>EventCall</h1>
                 <div class="tagline">Where Every Event Matters</div>
-                <div class="tagline">🚧 Under Construction 🚧</div>
+                <div class="tagline"></div>
                 
                 <!-- User Profile Button (UPDATED) -->
                 <button class="user-btn" onclick="showUserMenu()">
@@ -279,8 +498,6 @@ const tabs = document.querySelectorAll('.auth__tab');
                 </button>
             </div>
           <nav class="nav" role="navigation" aria-label="Main navigation">
-              <button onclick="goToDashboard()" class="active" id="nav-dashboard" aria-label="Go to Dashboard" aria-current="page">🏠 Dashboard</button>
-              <button onclick="showPage('create')" id="nav-create" aria-label="Create New Event">➕ Create Event</button>
           </nav>
         </div>
     </div>
@@ -288,6 +505,22 @@ const tabs = document.querySelectorAll('.auth__tab');
     <div class="container">
         <main id="main-content" role="main">
         <div id="dashboard" class="page active">
+            <div class="dashboard-header">
+                <h2>🎖️ Command Center</h2>
+                <div class="quick-actions">
+                    <button class="btn btn-primary" onclick="showPage('create')">
+                        ➕ Create Event
+                    </button>
+                    <button class="btn" onclick="syncWithGitHub()">
+                        🔄 Sync RSVPs
+                    </button>
+                    <!-- Admin Dashboard Button (Admin Only) -->
+                    <button id="admin-nav-btn" class="btn" style="background: linear-gradient(135deg, var(--semper-gold) 0%, #b8941f 100%); color: var(--semper-navy); display: none;" onclick="showPage('admin')">
+                        👑 Admin Dashboard
+                    </button>
+                </div>
+            </div>
+
             <div class="welcome-banner">
                 <div class="welcome-title">🎖️ Welcome to EventCall</div>
                 <div class="welcome-description">
@@ -295,13 +528,46 @@ const tabs = document.querySelectorAll('.auth__tab');
                 </div>
             </div>
 
-            <div class="page-header">
-                <h2 class="page-header__title">Your Events</h2>
+            <!-- Dashboard Tabs -->
+            <div class="dashboard-tabs">
+                <button type="button" class="dashboard-tab dashboard-tab--active" data-tab="active-events" onclick="switchDashboardTab('active-events')">
+                    🟢 Your Active Events
+                </button>
+                <button type="button" class="dashboard-tab" data-tab="past-events" onclick="switchDashboardTab('past-events')">
+                    🔴 Your Past Events
+                </button>
+                <button type="button" class="dashboard-tab" data-tab="your-rsvps" onclick="switchDashboardTab('your-rsvps')">
+                    📝 Your RSVPs
+                </button>
             </div>
-            <div id="events-list">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Loading events...
+
+            <!-- Active Events Tab Content -->
+            <div id="active-events-tab" class="dashboard-tab-content dashboard-tab-content--active">
+                <div id="active-events-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading events...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Past Events Tab Content -->
+            <div id="past-events-tab" class="dashboard-tab-content">
+                <div id="past-events-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading events...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Your RSVPs Tab Content -->
+            <div id="your-rsvps-tab" class="dashboard-tab-content">
+                <div id="user-rsvps-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading your RSVPs...
+                    </div>
                 </div>
             </div>
         </div>
@@ -429,6 +695,13 @@ const tabs = document.querySelectorAll('.auth__tab');
         <div id="invite" class="page">
             <div id="invite-content"></div>
         </div>
+
+        <!-- Admin Dashboard (Admin Only) -->
+        <div id="admin" class="page">
+            <div id="admin-dashboard-content">
+                <!-- Admin dashboard content will be loaded here -->
+            </div>
+        </div>
         </main>
     </div>
 
@@ -503,54 +776,229 @@ const tabs = document.querySelectorAll('.auth__tab');
   </div>
 </div>
 
+<!-- User Profile Modal -->
+<div id="user-profile-modal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2>User Profile</h2>
+        </div>
+        <div class="modal-body">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--ux2-gold); color: var(--ux2-navy); font-size: 2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                    <span id="profile-avatar">👤</span>
+                </div>
+            </div>
+
+            <form id="profile-edit-form">
+                <div class="form-group">
+                    <label for="profile-username" class="form-label">Username</label>
+                    <input
+                        type="text"
+                        id="profile-username"
+                        class="form-control"
+                        readonly
+                        disabled
+                        style="background: rgba(255, 255, 255, 0.15); cursor: not-allowed;"
+                    >
+                    <div class="form-help">Username cannot be changed</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                    <input
+                        type="text"
+                        id="profile-name"
+                        class="form-control"
+                        required
+                        minlength="2"
+                        placeholder="Enter your full name"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                    <input
+                        type="email"
+                        id="profile-email"
+                        class="form-control"
+                        required
+                        placeholder="your.email@example.com"
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-branch" class="form-label">Service Branch</label>
+                    <select id="profile-branch" class="form-control" onchange="window.updateProfileRanksForBranch && window.updateProfileRanksForBranch()">
+                        <option value="">Select service branch...</option>
+                        <option value="USA">United States Army</option>
+                        <option value="USMC">United States Marine Corps</option>
+                        <option value="USN">United States Navy</option>
+                        <option value="USAF">United States Air Force</option>
+                        <option value="USSF">United States Space Force</option>
+                        <option value="USCG">United States Coast Guard</option>
+                        <option value="Civilian">Civilian</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-rank" class="form-label">Rank</label>
+                    <select id="profile-rank" class="form-control">
+                        <option value="">Select service branch first...</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeUserProfile()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="saveUserProfile()">Save Changes</button>
+            <button type="button" class="btn btn-danger" onclick="logoutFromProfile()">Logout</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit RSVP Modal -->
+<div id="edit-rsvp-modal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2>✏️ Edit Your RSVP</h2>
+        </div>
+        <div class="modal-body">
+            <div id="edit-rsvp-event-info" style="padding: 1rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                <!-- Event info will be populated here -->
+            </div>
+
+            <form id="edit-rsvp-form">
+                <div class="form-group">
+                    <label for="edit-rsvp-name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                    <input
+                        type="text"
+                        id="edit-rsvp-name"
+                        class="form-control"
+                        required
+                        minlength="2"
+                        placeholder="Enter your full name"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-rsvp-email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                    <input
+                        type="email"
+                        id="edit-rsvp-email"
+                        class="form-control"
+                        required
+                        placeholder="your.email@example.com"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-rsvp-phone" class="form-label">Phone Number</label>
+                    <input
+                        type="tel"
+                        id="edit-rsvp-phone"
+                        class="form-control"
+                        placeholder="(555) 123-4567"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Will you be attending? <span class="text-danger">*</span></label>
+                    <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="edit-attending" value="true" required style="margin-right: 0.5rem;">
+                            <span>✅ Yes, I'll be there!</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="edit-attending" value="false" required style="margin-right: 0.5rem;">
+                            <span>❌ Can't make it</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="edit-guest-count-group" style="display: none;">
+                    <label for="edit-guest-count" class="form-label">How many additional guests will you bring?</label>
+                    <select id="edit-guest-count" class="form-control">
+                        <option value="0">Just me</option>
+                        <option value="1">+1 guest</option>
+                        <option value="2">+2 guests</option>
+                        <option value="3">+3 guests</option>
+                        <option value="4">+4 guests</option>
+                        <option value="5">+5 guests</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="edit-reason-group" style="display: none;">
+                    <label for="edit-reason" class="form-label">Why are you attending? (Optional)</label>
+                    <textarea id="edit-reason" class="form-control" rows="3" placeholder="Share your thoughts..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeEditRSVPModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="saveEditedRSVP()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- PERFORMANCE OPTIMIZATION: Scripts reorganized, duplicates removed, defer added -->
+<!-- PHASE 3: Lazy loading infrastructure -->
+<script defer src="js/lazy-loader.js"></script>
+
 <!-- Service Worker Registration -->
-<script src="js/service-worker-registration.js"></script>
+<script defer src="js/service-worker-registration.js"></script>
 
 <!-- EARLY FUNCTIONS FIRST -->
-<script src="js/error-handler.js"></script>
-<!-- ============================================
-     SCRIPTS (UPDATED ORDER)
-     ============================================ -->
-<!-- Temporarily minimizing scripts to isolate a parse error -->
-<script src="js/config.js?v=20251104-2"></script>
-<!-- Isolation mode: other scripts temporarily disabled for debugging
-<script src="js/rate-limiter.js"></script>
-<script src="js/utils.js"></script>
-<!-- Re-enabling remaining modules for isolation testing -->
-<script src="js/validation.js"></script>
-<script src="js/recurring-events.js"></script>
-<script src="js/main.js"></script>
-<script src="js/calendar-export.js"></script>
-<script src="js/csv-import.js"></script>
-<script src="js/event-templates.js"></script>
-<script src="js/military-data.js"></script>
-<script src="js/qr-checkin.js"></script>
-<script src="js/seating-chart.js"></script>
-<script src="js/service-worker-registration.js"></script>
-<!-- Removed duplicate imports: keeping versioned user-auth and single backend-api later -->
-<script src="js/utils.js"></script>
-<script src="js/loading.js"></script>
-<script src="js/csrf.js"></script>
-<script src="js/github-api.js"></script>
-<script src="js/rsvp-handler.js"></script>
-    <script src="js/ui-components.js"></script>
-    <!-- Charts library for dashboard visualizations -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="js/event-manager.js"></script>
-<script src="js/manager-system.js"></script>
-<script src="js/early-functions.js"></script>
-<script src="js/router.js"></script>
-<script src="js/rate-limiter.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/validator@13.9.0/validator.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.11.6/bundle/libphonenumber-js.min.js"></script>
-<script src="js/validation.js"></script>
+<script defer src="js/error-handler.js"></script>
+<script defer src="js/error-handler-enhanced.js"></script>
+<script defer src="js/config.js?v=20251104-2"></script>
+<script defer src="js/utils.js"></script>
+<script defer src="js/rate-limiter.js"></script>
+<script defer src="js/validation.js"></script>
+<script defer src="js/loading.js"></script>
+<script defer src="js/csrf.js"></script>
+
+<!-- Core modules -->
+<script defer src="js/recurring-events.js"></script>
+<script defer src="js/main.js"></script>
+<script defer src="js/calendar-export.js"></script>
+<script defer src="js/csv-import.js"></script>
+<script defer src="js/event-templates.js"></script>
+<script defer src="js/military-data.js"></script>
+<script defer src="js/qr-checkin.js"></script>
+<script defer src="js/seating-chart.js"></script>
+
+<!-- GitHub and Event Management -->
+<script defer src="js/github-api.js"></script>
+<script defer src="js/rsvp-handler.js"></script>
+<script defer src="js/feedback-handler.js"></script>
+<script defer src="js/ui-components.js"></script>
+<script defer src="js/event-manager.js"></script>
+<script defer src="js/manager-system.js"></script>
+<script defer src="js/early-functions.js"></script>
+<script defer src="js/user-rsvps.js"></script>
+
+<!-- Admin Dashboard (Admin Only) -->
+<script defer src="js/admin-dashboard.js"></script>
+<script defer src="js/admin-debug.js"></script>
+<script defer src="js/router.js"></script>
+<script defer src="js/api-wrapper.js"></script>
+
+<!-- External Libraries -->
+<script defer src="https://cdn.jsdelivr.net/npm/validator@13.9.0/validator.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.11.6/bundle/libphonenumber-js.min.js"></script>
+<!-- PHASE 3: Chart.js (180KB) now lazy-loaded via LazyLoader (loads only for admin dashboard) -->
+<!-- PHASE 3: zxcvbn (250KB) now lazy-loaded via LazyLoader (loads only when password field focused) -->
 
 <!-- Backend API (must load before auth if backend is used) -->
 <!-- Proxy configuration: set dispatchURL via localStorage or inline assignment -->
 <script>
   (function () {
-    // Default proxy URL for production
-    const defaultURL = 'https://eventcall.onrender.com';
+    const isLocal = (function(){
+      try { const h = location.hostname; return h === 'localhost' || h === '127.0.0.1'; } catch(_) { return false; }
+    })();
+    const defaultURL = isLocal ? 'http://localhost:10000' : 'https://eventcall.onrender.com';
     // Optional override without code changes:
     // In DevTools: localStorage.setItem('eventcall_proxy_url', 'https://your-alt-render-url')
     const fromStorage = localStorage.getItem('eventcall_proxy_url') || '';
@@ -565,11 +1013,11 @@ const tabs = document.querySelectorAll('.auth__tab');
     }
   })();
 </script>
-<script src="js/backend-api.js"></script>
+<script defer src="js/backend-api.js"></script>
 <!-- AUTHENTICATION - REPLACED manager-auth.js with user-auth.js -->
-<script src="js/user-auth.js?v=20251104-2"></script>
+<script defer src="js/user-auth.js?v=20251104-2"></script>
 <!-- UX-004: Form user experience enhancements -->
-<script src="js/form-ux.js"></script>
+<script defer src="js/form-ux.js"></script>
 
 <!-- GitHub and Event Management -->
 <!--

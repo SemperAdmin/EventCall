@@ -8,6 +8,10 @@ permissions:
   contents: read
   issues: write
 
+env:
+  GITHUB_OWNER: SemperAdmin
+  DATA_REPO: EventCall-Data
+
 jobs:
   authenticate:
     runs-on: ubuntu-latest
@@ -16,7 +20,7 @@ jobs:
       - name: Checkout Data Repository
         uses: actions/checkout@v3
         with:
-          repository: SemperAdmin/EventCall-Data
+          repository: ${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}
           token: ${{ secrets.DATA_REPO_TOKEN }}
           path: data-repo
 
@@ -31,6 +35,87 @@ jobs:
           npm init -y
           npm install bcrypt
 
+      - name: Validate CSRF Token
+        run: |
+          CSRF_TOKEN="${{ github.event.client_payload.data.csrfToken }}"
+
+          if [ -z "$CSRF_TOKEN" ]; then
+            echo "❌ Security Error: Missing CSRF token"
+            echo "All authentication requests must include a valid CSRF token"
+            exit 1
+          fi
+
+          # Token format validation (should be non-empty alphanumeric)
+          if ! echo "$CSRF_TOKEN" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+            echo "❌ Security Error: Invalid CSRF token format"
+            exit 1
+          fi
+
+          echo "✅ CSRF token validated: ${CSRF_TOKEN:0:8}..."
+
+      - name: Validate Input Data
+        run: |
+          echo "Validating authentication request data..."
+
+          # Create JSON payload from client_payload
+          cat > auth-request.json << 'EOF'
+          ${{ toJSON(github.event.client_payload.data) }}
+          EOF
+
+          # Validate required fields
+          USERNAME=$(jq -r '.username // empty' auth-request.json)
+          CLIENT_ID=$(jq -r '.client_id // empty' auth-request.json)
+
+          if [ -z "$USERNAME" ]; then
+            echo "❌ Validation Error: Missing required field 'username'"
+            exit 1
+          fi
+
+          if [ -z "$CLIENT_ID" ]; then
+            echo "❌ Validation Error: Missing required field 'client_id'"
+            exit 1
+          fi
+
+          # Validate username format (alphanumeric, dash, underscore, 3-50 chars)
+          if ! echo "$USERNAME" | grep -qE '^[a-zA-Z0-9_-]{3,50}$'; then
+            echo "❌ Validation Error: Username must be 3-50 alphanumeric characters, dashes, or underscores"
+            exit 1
+          fi
+
+          # Validate client_id format
+          if ! echo "$CLIENT_ID" | grep -qE '^[a-zA-Z0-9_-]{16,64}$'; then
+            echo "❌ Validation Error: Invalid client_id format"
+            exit 1
+          fi
+
+          # For register_user and login_user, password is required
+          ACTION="${{ github.event.action }}"
+          if [ "$ACTION" = "register_user" ] || [ "$ACTION" = "login_user" ]; then
+            PASSWORD=$(jq -r '.password // empty' auth-request.json)
+            if [ -z "$PASSWORD" ]; then
+              echo "❌ Validation Error: Password is required for $ACTION"
+              exit 1
+            fi
+
+            # Validate password length (8-128 characters)
+            PASSWORD_LENGTH=${#PASSWORD}
+            if [ $PASSWORD_LENGTH -lt 8 ] || [ $PASSWORD_LENGTH -gt 128 ]; then
+              echo "❌ Validation Error: Password must be 8-128 characters"
+              exit 1
+            fi
+          fi
+
+          # Validate email format if provided
+          EMAIL=$(jq -r '.email // empty' auth-request.json)
+          if [ -n "$EMAIL" ]; then
+            if ! echo "$EMAIL" | grep -qE '^[^@]+@[^@]+\.[^@]+$'; then
+              echo "❌ Validation Error: Invalid email format"
+              exit 1
+            fi
+          fi
+
+          echo "✅ Input data validated successfully"
+
       - name: Process Authentication Request
         id: auth
         env:
@@ -38,8 +123,11 @@ jobs:
           USERNAME: ${{ github.event.client_payload.data.username }}
           PASSWORD: ${{ github.event.client_payload.data.password }}
           NAME: ${{ github.event.client_payload.data.name }}
+          EMAIL: ${{ github.event.client_payload.data.email }}
+          BRANCH: ${{ github.event.client_payload.data.branch }}
           RANK: ${{ github.event.client_payload.data.rank }}
           CLIENT_ID: ${{ github.event.client_payload.data.client_id }}
+          CSRF_TOKEN: ${{ github.event.client_payload.data.csrfToken }}
         run: |
           cd data-repo
           node << 'AUTHSCRIPT'
@@ -55,6 +143,8 @@ jobs:
                   const username = process.env.USERNAME?.toLowerCase().trim();
                   const password = process.env.PASSWORD;
                   const name = process.env.NAME;
+                  const email = process.env.EMAIL?.toLowerCase().trim();
+                  const branch = process.env.BRANCH;
                   const rank = process.env.RANK;
                   const clientId = process.env.CLIENT_ID;
 
@@ -101,6 +191,8 @@ jobs:
                           username: username,
                           passwordHash: passwordHash,
                           name: name || '',
+                          email: email || '',
+                          branch: branch || '',
                           rank: rank || '',
                           createdAt: new Date().toISOString(),
                           lastLogin: new Date().toISOString(),
@@ -200,7 +292,9 @@ jobs:
 
                       // Update fields
                       if (name) user.name = name;
-                      if (rank) user.rank = rank;
+                      if (email !== undefined) user.email = email;
+                      if (branch !== undefined) user.branch = branch;
+                      if (rank !== undefined) user.rank = rank;
                       user.lastUpdated = new Date().toISOString();
 
                       // Save updated user
@@ -246,6 +340,7 @@ jobs:
 
       - name: Create Response Issue (Success)
         if: success()
+        id: create_issue
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -255,7 +350,7 @@ jobs:
             const username = '${{ github.event.client_payload.data.username }}';
             const action = '${{ github.event.action }}';
 
-            // Read the user file that was just created/updated
+            // Read user file to get full user data (stored securely in EventCall-Data)
             let userData = null;
             let userEvents = [];
 
@@ -265,11 +360,11 @@ jobs:
                 const userFileContent = fs.readFileSync(userFilePath, 'utf8');
                 const fullUser = JSON.parse(userFileContent);
 
-                // Remove password hash before sending to client
+                // Remove password hash before sending
                 const { passwordHash, ...safeUser } = fullUser;
                 userData = safeUser;
 
-                // For login, also fetch user's events
+                // For login, fetch user's events from their directory
                 if (action === 'login_user') {
                   const userDataDir = `data-repo/users/${username}`;
                   if (fs.existsSync(userDataDir)) {
@@ -292,25 +387,34 @@ jobs:
               console.error('Error reading user file:', error);
             }
 
-            // Create response with user data
+            // Create sanitized response - MINIMAL DATA ONLY (no PII in issues)
+            // Frontend will fetch full user data from EventCall-Data repo after successful auth
             const responseBody = {
               success: true,
               action: action,
-              user: userData || {
-                username: username,
-                name: '${{ github.event.client_payload.data.name }}',
-                rank: '${{ github.event.client_payload.data.rank }}'
-              },
-              events: userEvents,
+              message: action === 'register_user' ? 'Registration successful' :
+                      action === 'login_user' ? 'Login successful' :
+                      'Profile updated successfully',
+              userId: userData?.id || null,  // Only user ID (no PII)
+              username: username,  // Username for fetching data
               timestamp: new Date().toISOString()
             };
 
-            await github.rest.issues.create({
+            const issue = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `AUTH_RESPONSE::${clientId}`,
               body: JSON.stringify(responseBody),
               labels: ['auth-response', 'success', action]
+            });
+
+            // Immediately close ALL auth issues to minimize exposure
+            console.log(`Closing auth response issue #${issue.data.number} immediately...`);
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.data.number,
+              state: 'closed'
             });
 
       - name: Create Response Issue (Error)
@@ -331,16 +435,24 @@ jobs:
               errorMessage = 'Invalid username or password';
             }
 
-            await github.rest.issues.create({
+            const issue = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `AUTH_RESPONSE::${clientId}`,
               body: JSON.stringify({
                 success: false,
                 action: action,
-                username: username,
                 error: errorMessage,
                 timestamp: new Date().toISOString()
               }),
               labels: ['auth-response', 'error', action]
+            });
+
+            // Immediately close ALL auth error issues to minimize exposure
+            console.log(`Closing auth error issue #${issue.data.number} immediately...`);
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.data.number,
+              state: 'closed'
             });

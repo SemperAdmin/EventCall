@@ -3,6 +3,9 @@
  * Added RSVP issue processing, management capabilities, and email-based user authentication
  */
 
+// Valid image file extensions for upload and deletion
+const VALID_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
+
 class GitHubAPI {
     constructor() {
         this.config = GITHUB_CONFIG;
@@ -13,6 +16,26 @@ class GitHubAPI {
         this.issuesURL = `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/issues`;
         this.corsProxy = 'https://api.allorigins.win/raw?url=';
         this.useCorsProxy = false;
+
+        // Add caching for RSVP data to reduce API calls
+        this.rsvpCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000 // 5 minutes cache
+        };
+
+        this.eventsCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000 // 5 minutes cache
+        };
+
+        // PHASE 3: Response cache for RSVP responses
+        this.responsesCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000 // 5 minutes cache
+        };
     }
 
     /**
@@ -99,6 +122,7 @@ class GitHubAPI {
                 endpointKey: 'github_contents',
                 retry: { maxAttempts: 5, baseDelayMs: 800, jitter: true }
               })
+            : window.safeFetchGitHub ? window.safeFetchGitHub(url, options, 'GitHub API request')
             : fetch(url, options));
         return await this.handleResponse(response);
     }
@@ -143,13 +167,17 @@ class GitHubAPI {
         }
 
         try {
-            const response = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}`, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const response = await window.safeFetchGitHub(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.repo}`,
+                {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'GitHub connection test'
+            );
             
             if (response.ok) {
                 const repoData = await response.json();
@@ -189,26 +217,42 @@ class GitHubAPI {
     }
 
     /**
-     * Load all events from EventCall-Data repository for current user
+     * Load all events from EventCall-Data repository for current user (with caching)
      */
-    async loadEvents() {
+    async loadEvents(options = {}) {
         const token = this.getToken();
         if (!token) {
             console.warn('⚠️ No GitHub token - returning empty events');
             return {};
         }
 
+        // Check cache first unless force refresh is requested
+        const now = Date.now();
+        const forceRefresh = options.forceRefresh || false;
+
+        if (!forceRefresh && this.eventsCache.data && this.eventsCache.timestamp) {
+            const cacheAge = now - this.eventsCache.timestamp;
+            if (cacheAge < this.eventsCache.ttl) {
+                console.log(`📦 Using cached events (${Math.floor(cacheAge / 1000)}s old)`);
+                return this.eventsCache.data;
+            }
+        }
+
         try {
             console.log('📥 Loading events from private EventCall-Data repo...');
 
             // Load from PRIVATE repo: EventCall-Data
-            const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const treeResponse = await window.safeFetchGitHub(
+                window.GITHUB_CONFIG.getTreeUrl('data'),
+                {
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Load tree from EventCall-Data'
+            );
 
             if (!treeResponse.ok) {
                 if (treeResponse.status === 404) {
@@ -229,30 +273,37 @@ class GitHubAPI {
 
             console.log('Found ' + eventFiles.length + ' event files in private repo');
 
-            for (const file of eventFiles) {
+            // Get current user once before processing
+            const currentUser = window.userAuth?.getCurrentUser() || window.managerAuth?.getCurrentManager();
+            if (!currentUser) {
+                console.warn('🔒 Skipping event load: no authenticated user');
+                return {};
+            }
+
+            const userUsername = (currentUser.username || '').toLowerCase();
+            const userEmail = (currentUser.email || '').toLowerCase();
+
+            // PERFORMANCE OPTIMIZATION: Load all event blobs in parallel instead of sequentially
+            // This reduces load time from O(n * delay) to O(delay) for n events
+            const eventPromises = eventFiles.map(async (file) => {
                 try {
-                    const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
-                        headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'User-Agent': 'EventCall-App'
-                        }
-                    });
+                    const fileResponse = await window.safeFetchGitHub(
+                        window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
+                        {
+                            headers: {
+                                'Authorization': 'token ' + token,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'User-Agent': 'EventCall-App'
+                            }
+                        },
+                        'Load file blob from EventCall-Data'
+                    );
 
                     if (fileResponse.ok) {
                         const fileData = await fileResponse.json();
                         const content = JSON.parse(this.safeBase64Decode(fileData.content));
 
                         // Filter events by authenticated user (supports username-first, email fallback)
-                        const currentUser = window.userAuth?.getCurrentUser() || window.managerAuth?.getCurrentManager();
-                        if (!currentUser) {
-                            console.warn('🔒 Skipping event load: no authenticated user');
-                            continue;
-                        }
-
-                        const userUsername = (currentUser.username || '').toLowerCase();
-                        const userEmail = (currentUser.email || '').toLowerCase();
-
                         const createdBy = (content.createdBy || '').toLowerCase();
                         const createdByUsername = (content.createdByUsername || '').toLowerCase();
 
@@ -260,48 +311,132 @@ class GitHubAPI {
                         const matchesEmail = userEmail && createdBy === userEmail; // Backward-compat for older events
 
                         if (matchesUsername || matchesEmail) {
-                            events[content.id] = content;
                             console.log('✅ Loaded event for owner:', content.title);
+                            return content;
                         }
                     }
+                    return null;
                 } catch (error) {
                     console.error('Failed to load event file ' + file.path + ':', error);
+                    return null;
+                }
+            });
+
+            // Wait for all events to load in parallel
+            const loadedEvents = await Promise.all(eventPromises);
+
+            // Add non-null events to the events object
+            for (const event of loadedEvents) {
+                if (event && event.id) {
+                    events[event.id] = event;
                 }
             }
 
             console.log(`✅ Loaded ${Object.keys(events).length} events from private repo for current user`);
+
+            // Update cache
+            this.eventsCache.data = events;
+            this.eventsCache.timestamp = now;
+
             return events;
 
         } catch (error) {
             console.error('Failed to load events from private repo:', error);
+
+            // Use enhanced error handler for user feedback
+            if (window.ErrorHandler) {
+                const userMessage = window.ErrorHandler.getUserFriendlyMessage(error, 'Loading events');
+                if (window.showToast) {
+                    window.showToast(userMessage, 'error');
+                }
+            }
+
+            // Return cached data if available
+            if (this.eventsCache.data) {
+                console.warn('⚠️ Returning stale cached events due to error');
+                if (window.showToast) {
+                    window.showToast('Showing cached events - unable to fetch latest', 'warning');
+                }
+                return this.eventsCache.data;
+            }
+
+            // No cache available
+            if (window.showToast) {
+                window.showToast('Unable to load events. Please try again.', 'error');
+            }
+
             return {};
         }
     }
 
     /**
-     * Load all RSVP responses from GitHub
+     * Clear all caches
      */
-    async loadResponses() {
+    clearCache() {
+        console.log('🧹 Clearing GitHubAPI caches');
+        this.rsvpCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000
+        };
+        this.eventsCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000
+        };
+        this.responsesCache = {
+            data: null,
+            timestamp: null,
+            ttl: 5 * 60 * 1000
+        };
+    }
+
+    /**
+     * Load all RSVP responses from GitHub (with caching)
+     */
+    async loadResponses(options = {}) {
         const token = this.getToken();
         if (!token) {
             console.warn('⚠️ No GitHub token - returning empty responses');
             return {};
         }
 
+        // PERFORMANCE OPTIMIZATION: Check cache first unless force refresh is requested
+        const now = Date.now();
+        const forceRefresh = options.forceRefresh || false;
+
+        // Check cache (initialized in constructor)
+        if (!forceRefresh && this.responsesCache.data && this.responsesCache.timestamp) {
+            const cacheAge = now - this.responsesCache.timestamp;
+            if (cacheAge < this.responsesCache.ttl) {
+                console.log(`📦 Using cached responses (${Math.floor(cacheAge / 1000)}s old)`);
+                return this.responsesCache.data;
+            }
+        }
+
         try {
             console.log('📥 Loading responses from private EventCall-Data repo...');
-            
+
             // Load from PRIVATE repo: EventCall-Data
-            const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const treeResponse = await window.safeFetchGitHub(
+                window.GITHUB_CONFIG.getTreeUrl('data'),
+                {
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Load tree from EventCall-Data'
+            );
 
             if (!treeResponse.ok) {
                 console.log('No responses found or repository not accessible');
+                // Return cached data if available
+                if (this.responsesCache.data) {
+                    console.warn('⚠️ Returning stale cached responses due to error');
+                    return this.responsesCache.data;
+                }
                 return {};
             }
 
@@ -326,27 +461,30 @@ class GitHubAPI {
 
             console.log('Found ' + responseFiles.length + ' RSVP files in private repo');
 
-            for (const file of responseFiles) {
+            // PERFORMANCE OPTIMIZATION: Load all response blobs in parallel instead of sequentially
+            const responsePromises = responseFiles.map(async (file) => {
                 try {
-                    let eventId;
-                    let rsvpArray;
-                    
-                    // Fetch the file content first
-                    const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
-                        headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'User-Agent': 'EventCall-App'
-                        }
-                    });
+                    // Fetch the file content
+                    const fileResponse = await window.safeFetchGitHub(
+                        window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
+                        {
+                            headers: {
+                                'Authorization': 'token ' + token,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'User-Agent': 'EventCall-App'
+                            }
+                        },
+                        'Load file blob from EventCall-Data'
+                    );
 
-                    if (!fileResponse.ok) continue;
+                    if (!fileResponse.ok) return null;
 
                     const fileData = await fileResponse.json();
                     const decoded = this.safeBase64Decode(fileData.content);
                     const rawJson = JSON.parse(decoded);
 
                     // Normalize to array and flatten "data" wrapper if present
+                    let rsvpArray;
                     if (Array.isArray(rawJson)) {
                         rsvpArray = rawJson.map(item =>
                             item && item.data
@@ -362,6 +500,7 @@ class GitHubAPI {
                     }
 
                     // Extract eventId from filename or content
+                    let eventId;
                     if (file.path.startsWith('rsvps/') && !file.path.includes('rsvp-')) {
                         // Format: rsvps/{eventId}.json
                         eventId = file.path.replace('rsvps/', '').replace('.json', '');
@@ -372,17 +511,28 @@ class GitHubAPI {
 
                     if (!eventId) {
                         console.warn(`⚠️ Could not extract eventId from RSVP file: ${file.path}`);
-                        continue;
+                        return null;
                     }
 
-                    // Append RSVPs to the event bucket
-                    if (!responses[eventId]) {
-                        responses[eventId] = [];
-                    }
-                    responses[eventId].push(...rsvpArray);
                     console.log(`✅ Loaded ${rsvpArray.length} RSVP(s) for event: ${eventId} from ${file.path}`);
+                    return { eventId, rsvpArray };
+
                 } catch (error) {
                     console.error('Failed to load response file ' + file.path + ':', error);
+                    return null;
+                }
+            });
+
+            // Wait for all responses to load in parallel
+            const loadedResponses = await Promise.all(responsePromises);
+
+            // Aggregate responses by eventId
+            for (const result of loadedResponses) {
+                if (result && result.eventId && result.rsvpArray) {
+                    if (!responses[result.eventId]) {
+                        responses[result.eventId] = [];
+                    }
+                    responses[result.eventId].push(...result.rsvpArray);
                 }
             }
 
@@ -391,32 +541,68 @@ class GitHubAPI {
             const totalRSVPs = Object.values(responses).reduce((sum, arr) => sum + arr.length, 0);
             console.log(`✅ Loaded responses for ${eventCount} event(s) from private repo`);
             console.log(`📊 Total RSVPs loaded: ${totalRSVPs}`);
-            
+
             // Log per-event breakdown
             Object.entries(responses).forEach(([eventId, rsvps]) => {
                 console.log(`   Event ${eventId}: ${rsvps.length} RSVP(s)`);
             });
-            
+
+            // Update cache
+            this.responsesCache.data = responses;
+            this.responsesCache.timestamp = now;
+
             return responses;
 
         } catch (error) {
             console.error('Failed to load responses from private repo:', error);
+
+            // Use enhanced error handler for user feedback
+            if (window.ErrorHandler) {
+                const userMessage = window.ErrorHandler.getUserFriendlyMessage(error, 'Loading RSVPs');
+                if (window.showToast) {
+                    window.showToast(userMessage, 'error');
+                }
+            } else if (window.showToast) {
+                window.showToast('Unable to load RSVPs. Please try again.', 'error');
+            }
+
+            // Return cached data if available
+            if (this.responsesCache && this.responsesCache.data) {
+                console.warn('⚠️ Returning stale cached responses due to error');
+                if (window.showToast) {
+                    window.showToast('Showing cached RSVPs - unable to fetch latest', 'warning');
+                }
+                return this.responsesCache.data;
+            }
+
             return {};
         }
     }
 
     /**
-     * Load RSVP issues from GitHub
+     * Load RSVP issues from GitHub (with caching)
      */
-    async loadRSVPIssues() {
+    async loadRSVPIssues(options = {}) {
         const token = this.getToken();
         if (!token) {
             throw new Error('GitHub token required to load RSVP issues');
         }
 
+        // Check cache first unless force refresh is requested
+        const now = Date.now();
+        const forceRefresh = options.forceRefresh || false;
+
+        if (!forceRefresh && this.rsvpCache.data && this.rsvpCache.timestamp) {
+            const cacheAge = now - this.rsvpCache.timestamp;
+            if (cacheAge < this.rsvpCache.ttl) {
+                console.log(`📦 Using cached RSVP issues (${Math.floor(cacheAge / 1000)}s old)`);
+                return this.rsvpCache.data;
+            }
+        }
+
         try {
             console.log('🔎 Loading RSVP issues from GitHub...');
-            
+
             // Get issues with RSVP label
             const response = await (window.rateLimiter ? window.rateLimiter.fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
                 headers: {
@@ -424,7 +610,13 @@ class GitHubAPI {
                     'Accept': 'application/vnd.github.v3+json',
                     'User-Agent': 'EventCall-App'
                 }
-            }, { endpointKey: 'github_issues', retry: { maxAttempts: 5, baseDelayMs: 1000, jitter: true } }) : fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
+            }, { endpointKey: 'github_issues', retry: { maxAttempts: 3, baseDelayMs: 1000, jitter: true } }) : window.safeFetchGitHub ? window.safeFetchGitHub(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'EventCall-App'
+                }
+            }, 'Load RSVP issues') : fetch(`${this.issuesURL}?labels=rsvp&state=open&per_page=100`, {
                 headers: {
                     'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json',
@@ -433,16 +625,30 @@ class GitHubAPI {
             }));
 
             if (!response.ok) {
+                // If we have cached data, return it even if stale
+                if (this.rsvpCache.data) {
+                    console.warn(`⚠️ GitHub API error, using stale cache (${response.status})`);
+                    return this.rsvpCache.data;
+                }
                 throw new Error(`Failed to load RSVP issues: ${response.status}`);
             }
 
             const issues = await response.json();
             console.log(`✅ Found ${issues.length} RSVP issues`);
-            
+
+            // Update cache
+            this.rsvpCache.data = issues;
+            this.rsvpCache.timestamp = now;
+
             return issues;
 
         } catch (error) {
             console.error('Failed to load RSVP issues:', error);
+            // Return cached data if available
+            if (this.rsvpCache.data) {
+                console.warn('⚠️ Returning stale cached RSVP data due to error');
+                return this.rsvpCache.data;
+            }
             throw error;
         }
     }
@@ -560,13 +766,17 @@ class GitHubAPI {
             let existingSha = null;
             
             try {
-                const existingResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'EventCall-App'
-                    }
-                });
+                const existingResponse = await window.safeFetchGitHub(
+                    `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    },
+                    'Check existing file'
+                );
 
                 if (existingResponse.ok) {
                     const existingData = await existingResponse.json();
@@ -607,16 +817,20 @@ class GitHubAPI {
                 createData.sha = existingSha;
             }
 
-            const createResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App'
+            const createResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify(createData)
                 },
-                body: JSON.stringify(createData)
-            });
+                'Save event RSVPs'
+            );
 
             if (!createResponse.ok) {
                 const errorText = await createResponse.text();
@@ -641,19 +855,23 @@ class GitHubAPI {
         }
 
         try {
-            const response = await fetch(`${this.issuesURL}/${issueNumber}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App'
+            const response = await window.safeFetchGitHub(
+                `${this.issuesURL}/${issueNumber}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify({
+                        state: 'closed',
+                        labels: ['rsvp', 'processed']
+                    })
                 },
-                body: JSON.stringify({
-                    state: 'closed',
-                    labels: ['rsvp', 'processed']
-                })
-            });
+                'Close processed RSVP issue'
+            );
 
             if (!response.ok) {
                 throw new Error(`Failed to close issue #${issueNumber}: ${response.status}`);
@@ -694,13 +912,17 @@ class GitHubAPI {
             // Check if file exists in EventCall-Data repo
             let existingSha = null;
             try {
-                const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'EventCall-App'
-                    }
-                });
+                const existingResponse = await window.safeFetchGitHub(
+                    window.GITHUB_CONFIG.getContentsUrl('data', path),
+                    {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    },
+                    'Check existing file in EventCall-Data'
+                );
 
                 if (existingResponse.ok) {
                     const existingData = await existingResponse.json();
@@ -733,18 +955,22 @@ class GitHubAPI {
                 }
             }
 
-            const createResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-Token': csrfToken
+            // Note: Don't send X-CSRF-Token to GitHub API - it causes CORS errors
+            // GitHub API has its own authentication via the Authorization token
+            const createResponse = await window.safeFetchGitHub(
+                window.GITHUB_CONFIG.getContentsUrl('data', path),
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify(createData)
                 },
-                body: JSON.stringify(createData)
-            });
+                'Save event to EventCall-Data'
+            );
 
             if (!createResponse.ok) {
                 const errorText = await createResponse.text();
@@ -784,19 +1010,21 @@ class GitHubAPI {
             // Delete cover image if it exists
             if (coverImageUrl) {
                 try {
-                    // Extract the filename from the URL
-                    // Expected format: https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/filename.ext
-                    const urlParts = coverImageUrl.split('/');
-                    const fileName = urlParts[urlParts.length - 1];
+                    // Extract filename from URL with proper parsing
+                    const fileName = this._extractImageFileName(coverImageUrl);
 
                     if (fileName) {
                         const imagePath = `images/${fileName}`;
                         await this.deleteFileFromImageRepo(imagePath, `Delete cover image for event: ${this.cleanText(eventTitle)}`);
-                        console.log('✅ Cover image deleted:', fileName);
+                        console.log('✅ Cover image deleted successfully:', fileName);
+                    } else {
+                        console.warn('⚠️ Could not extract valid filename from cover image URL:', coverImageUrl);
                     }
                 } catch (imageError) {
-                    console.log('Could not delete cover image:', imageError.message);
+                    console.error('❌ Failed to delete cover image:', imageError.message);
+                    console.error('   Cover image URL:', coverImageUrl);
                     // Don't throw - we don't want image deletion failure to fail the entire event deletion
+                    // Note: This may leave an orphaned image in the repository
                 }
             }
 
@@ -805,6 +1033,102 @@ class GitHubAPI {
         } catch (error) {
             console.error('Failed to delete event:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Validate filename for security issues (path traversal)
+     * @param {string} filename - Filename to validate
+     * @returns {boolean} - True if filename is safe, false otherwise
+     * @private
+     */
+    _isSecureFilename(filename) {
+        return !filename.includes('..') && !filename.includes('/') && !filename.includes('\\');
+    }
+
+    /**
+     * Private helper: Extract and validate image filename from URL
+     * Handles query parameters, fragments, and URL encoding
+     * @param {string} imageUrl - The full image URL
+     * @returns {string|null} - The extracted filename or null if invalid
+     */
+    _extractImageFileName(imageUrl) {
+        if (!imageUrl || typeof imageUrl !== 'string') {
+            return null;
+        }
+
+        try {
+            // Parse URL to handle query params and fragments properly
+            const url = new URL(imageUrl);
+
+            // Extract filename from pathname (last segment)
+            const pathSegments = url.pathname.split('/').filter(segment => segment.length > 0);
+            const fileName = pathSegments[pathSegments.length - 1];
+
+            // Validate filename
+            if (!fileName) {
+                console.warn('Empty filename extracted from URL');
+                return null;
+            }
+
+            // Check for valid file extension
+            const hasValidExtension = VALID_IMAGE_EXTENSIONS.some(ext =>
+                fileName.toLowerCase().endsWith(ext)
+            );
+
+            if (!hasValidExtension) {
+                console.warn('Invalid or missing file extension:', fileName);
+                return null;
+            }
+
+            // Decode URL encoding (e.g., %20 -> space)
+            const decodedFileName = decodeURIComponent(fileName);
+
+            // Basic security: reject filenames with path traversal attempts
+            if (!this._isSecureFilename(decodedFileName)) {
+                console.error('Suspicious filename detected (path traversal attempt):', decodedFileName);
+                return null;
+            }
+
+            return decodedFileName;
+
+        } catch (error) {
+            // Fallback for invalid URLs - try simple extraction
+            console.warn('URL parsing failed, attempting fallback extraction:', error.message);
+
+            try {
+                // Remove query params and fragments manually
+                const cleanUrl = imageUrl.split('?')[0].split('#')[0];
+                const segments = cleanUrl.split('/');
+                const fileName = segments[segments.length - 1];
+
+                // Validate and decode fallback filename
+                if (fileName && fileName.includes('.')) {
+                    // Check for valid file extension in fallback
+                    const hasValidExtension = VALID_IMAGE_EXTENSIONS.some(ext =>
+                        fileName.toLowerCase().endsWith(ext)
+                    );
+
+                    if (!hasValidExtension) {
+                        console.warn('Invalid or missing file extension in fallback:', fileName);
+                        return null;
+                    }
+
+                    const decodedFileName = decodeURIComponent(fileName);
+
+                    // Security: Prevent path traversal in fallback filenames
+                    if (!this._isSecureFilename(decodedFileName)) {
+                        console.error('Suspicious filename detected in fallback (path traversal attempt):', decodedFileName);
+                        return null;
+                    }
+
+                    return decodedFileName;
+                }
+            } catch (fallbackError) {
+                console.error('Fallback extraction also failed:', fallbackError.message);
+            }
+
+            return null;
         }
     }
 
@@ -819,31 +1143,39 @@ class GitHubAPI {
 
         try {
             // Get file info first
-            const fileResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const fileResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`,
+                {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Get file info for deletion'
+            );
 
             if (fileResponse.ok) {
                 const fileData = await fileResponse.json();
 
-                const deleteResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'EventCall-App'
+                const deleteResponse = await window.safeFetchGitHub(
+                    `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${path}`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'EventCall-App'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            sha: fileData.sha,
+                            branch: this.config.branch
+                        })
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        sha: fileData.sha,
-                        branch: this.config.branch
-                    })
-                });
+                    'Delete file from main repo'
+                );
 
                 if (!deleteResponse.ok) {
                     throw new Error(`Failed to delete ${path}: ${deleteResponse.status}`);
@@ -865,31 +1197,39 @@ class GitHubAPI {
 
         try {
             // Get file info first from EventCall-Data
-            const fileResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const fileResponse = await window.safeFetchGitHub(
+                window.GITHUB_CONFIG.getContentsUrl('data', path),
+                {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Get file info from EventCall-Data for deletion'
+            );
 
             if (fileResponse.ok) {
                 const fileData = await fileResponse.json();
 
-                const deleteResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'EventCall-App'
+                const deleteResponse = await window.safeFetchGitHub(
+                    window.GITHUB_CONFIG.getContentsUrl('data', path),
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'EventCall-App'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            sha: fileData.sha,
+                            branch: 'main'
+                        })
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        sha: fileData.sha,
-                        branch: 'main'
-                    })
-                });
+                    'Delete file from EventCall-Data'
+                );
 
                 if (!deleteResponse.ok) {
                     throw new Error(`Failed to delete ${path} from EventCall-Data: ${deleteResponse.status}`);
@@ -916,19 +1256,36 @@ class GitHubAPI {
         }
 
         try {
+            console.log(`🗑️ Attempting to delete image from repo: ${path}`);
+
             // Get file info first from EventCall-Images
-            const fileResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
+            const fileResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`,
+                {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Get file info from image repo for deletion'
+            );
+
+            if (!fileResponse.ok) {
+                if (fileResponse.status === 404) {
+                    console.warn(`⚠️ Image not found in repository (may have been deleted already): ${path}`);
+                    return; // Not an error - file doesn't exist
                 }
-            });
+                throw new Error(`Failed to get image file info: ${fileResponse.status} ${fileResponse.statusText}`);
+            }
 
-            if (fileResponse.ok) {
-                const fileData = await fileResponse.json();
+            const fileData = await fileResponse.json();
+            console.log(`📄 Image file found, SHA: ${fileData.sha.substring(0, 7)}...`);
 
-                const deleteResponse = await fetch(`https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`, {
+            // Delete the file
+            const deleteResponse = await window.safeFetchGitHub(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.imageRepo}/contents/${path}`,
+                {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `token ${token}`,
@@ -941,16 +1298,26 @@ class GitHubAPI {
                         sha: fileData.sha,
                         branch: 'main'
                     })
-                });
+                },
+                'Delete file from image repo'
+            );
 
-                if (!deleteResponse.ok) {
-                    throw new Error(`Failed to delete ${path} from ${this.config.imageRepo}: ${deleteResponse.status}`);
-                }
-
-                console.log(`✅ Deleted ${path} from ${this.config.imageRepo}`);
+            if (!deleteResponse.ok) {
+                const errorText = await deleteResponse.text().catch(() => 'Unable to read error response');
+                throw new Error(`Failed to delete ${path} from ${this.config.imageRepo}: ${deleteResponse.status} ${deleteResponse.statusText} - ${errorText}`);
             }
+
+            console.log(`✅ Successfully deleted image from ${this.config.imageRepo}: ${path}`);
+
         } catch (error) {
-            console.log(`File ${path} may not exist in ${this.config.imageRepo}, skipping deletion`);
+            // Enhanced error logging
+            console.error(`❌ Error deleting image from repository:`);
+            console.error(`   Path: ${path}`);
+            console.error(`   Repo: ${this.config.owner}/${this.config.imageRepo}`);
+            console.error(`   Error: ${error.message}`);
+
+            // Re-throw for caller to handle
+            throw error;
         }
     }
 
@@ -972,13 +1339,17 @@ class GitHubAPI {
             // Check if file exists
             let existingSha = null;
             try {
-                const existingResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'EventCall-App'
-                    }
-                });
+                const existingResponse = await window.safeFetchGitHub(
+                    window.GITHUB_CONFIG.getContentsUrl('data', path),
+                    {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    },
+                    'Check existing file in EventCall-Data'
+                );
 
                 if (existingResponse.ok) {
                     const existingData = await existingResponse.json();
@@ -999,16 +1370,20 @@ class GitHubAPI {
                 createData.sha = existingSha;
             }
 
-            const createResponse = await fetch(`https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/${path}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'EventCall-App'
+            const createResponse = await window.safeFetchGitHub(
+                window.GITHUB_CONFIG.getContentsUrl('data', path),
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify(createData)
                 },
-                body: JSON.stringify(createData)
-            });
+                'Save user to EventCall-Data'
+            );
 
             if (!createResponse.ok) {
                 const errorText = await createResponse.text();
@@ -1039,13 +1414,17 @@ class GitHubAPI {
             console.log('🔍 Searching for user by email:', email);
 
             // Load user files from EventCall-Data
-            const treeResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/trees/main?recursive=1', {
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'EventCall-App'
-                }
-            });
+            const treeResponse = await window.safeFetchGitHub(
+                window.GITHUB_CONFIG.getTreeUrl('data'),
+                {
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                },
+                'Load tree to search for user by email'
+            );
 
             if (!treeResponse.ok) {
                 console.log('No users found or repository not accessible');
@@ -1066,13 +1445,17 @@ class GitHubAPI {
             // Search for user by email
             for (const file of userFiles) {
                 try {
-                    const fileResponse = await fetch('https://api.github.com/repos/SemperAdmin/EventCall-Data/git/blobs/' + file.sha, {
-                        headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'User-Agent': 'EventCall-App'
-                        }
-                    });
+                    const fileResponse = await window.safeFetchGitHub(
+                        window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
+                        {
+                            headers: {
+                                'Authorization': 'token ' + token,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'User-Agent': 'EventCall-App'
+                            }
+                        },
+                        'Load file blob from EventCall-Data'
+                    );
 
                     if (fileResponse.ok) {
                         const fileData = await fileResponse.json();
@@ -1159,6 +1542,96 @@ class GitHubAPI {
     }
 
     /**
+     * Save responses to GitHub with atomic read-modify-write using SHA-based optimistic locking
+     * This prevents race conditions by ensuring we're updating the latest version of the file
+     * @param {string} eventId - Event ID
+     * @param {Array} responses - Array of response objects to save
+     * @returns {Promise<void>}
+     */
+    async saveResponses(eventId, responses) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('GitHub token not available. Cannot save responses.');
+        }
+
+        try {
+            const path = `rsvps/${eventId}.json`;
+
+            // Fetch the current file to get its SHA (for optimistic locking)
+            let existingSha = null;
+
+            try {
+                const existingResponse = await window.safeFetchGitHub(
+                    window.GITHUB_CONFIG.getContentsUrl('data', path),
+                    {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'EventCall-App'
+                        }
+                    },
+                    'Check existing file in EventCall-Data'
+                );
+
+                if (existingResponse.ok) {
+                    const existingData = await existingResponse.json();
+                    existingSha = existingData.sha;
+                    console.log(`✅ Found existing responses file with SHA: ${existingSha}`);
+                }
+            } catch (error) {
+                console.log('No existing responses file found, will create new one');
+            }
+
+            // Prepare content
+            const content = this.safeBase64Encode(JSON.stringify(responses, null, 2));
+
+            const updateData = {
+                message: `Update responses for event ${eventId} (${responses.length} responses)`,
+                content: content,
+                branch: 'main'
+            };
+
+            // Include SHA if file exists (this enables optimistic locking)
+            if (existingSha) {
+                updateData.sha = existingSha;
+            }
+
+            // Save to GitHub
+            const saveResponse = await window.safeFetchGitHub(
+                window.GITHUB_CONFIG.getContentsUrl('data', path),
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify(updateData)
+                },
+                'Save responses to EventCall-Data'
+            );
+
+            if (!saveResponse.ok) {
+                const errorText = await saveResponse.text();
+
+                // Check if it's a conflict (SHA mismatch)
+                if (saveResponse.status === 409) {
+                    throw new Error('Conflict: The responses file was modified by another user. Please refresh and try again.');
+                }
+
+                throw new Error(`Failed to save responses: ${saveResponse.status} - ${errorText}`);
+            }
+
+            console.log(`✅ Saved ${responses.length} responses for event ${eventId} with optimistic locking`);
+
+        } catch (error) {
+            console.error('Failed to save responses:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Upload an image to the public image repository
      * @param {File} file - The image file to upload
      * @param {string} fileName - The desired name for the file in the repo
@@ -1210,16 +1683,20 @@ class GitHubAPI {
             branch: 'main'
         };
 
-        const response = await fetch(url, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `token ${token}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json',
-                'User-Agent': 'EventCall-App'
+        const response = await window.safeFetchGitHub(
+            url,
+            {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'EventCall-App'
+                },
+                body: JSON.stringify(data)
             },
-            body: JSON.stringify(data)
-        });
+            'Upload file to GitHub'
+        );
 
         return this.handleResponse(response);
     }

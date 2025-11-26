@@ -22,16 +22,31 @@ function generateUUID() {
  * @returns {string} Formatted date
  */
 function formatDate(date, options = {}) {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    
+    if (!date) {
+        return '';
+    }
+
+    // Parse date string with timezone-safe approach
+    let dateObj;
+    if (typeof date === 'string') {
+        dateObj = date.includes('T') ? new Date(date) : new Date(`${date}T00:00:00`);
+    } else {
+        dateObj = date;
+    }
+
+    // Guard invalid dates
+    if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+        return 'Invalid Date';
+    }
+
     const defaultOptions = {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         ...options
     };
-    
-    return dateObj.toLocaleDateString('en-US', defaultOptions);
+
+    return dateObj.toLocaleDateString(undefined, defaultOptions);
 }
 
 /**
@@ -97,13 +112,35 @@ function sanitizeText(text) {
 }
 
 /**
+ * Get the base path for the application (handles GitHub Pages)
+ * @returns {string} Base path (e.g., '/EventCall/' or '/')
+ */
+function getBasePath() {
+    // Check if we're on GitHub Pages
+    const isGitHubPages = window.location.hostname.endsWith('.github.io');
+
+    if (isGitHubPages) {
+        // Extract repo name from pathname
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        if (pathParts.length > 0) {
+            return '/' + pathParts[0] + '/';
+        }
+        // Fallback for root
+        return '/EventCall/';
+    }
+
+    return '/';
+}
+
+/**
  * Generate invite URL for an event
  * @param {Object} event - Event data
  * @returns {string} Invite URL
  */
 // function generateInviteURL(event) {
 function generateInviteURL(event) {
-    const baseURL = window.location.origin + window.location.pathname;
+    const basePath = getBasePath();
+    const baseURL = window.location.origin + basePath;
     const encodedData = encodeURIComponent(JSON.stringify({
         id: event.id,
         title: event.title,
@@ -418,6 +455,39 @@ function formatRelativeTime(date) {
 
     return 'Just now';
 }
+
+async function clearLocalData() {
+    try { localStorage.clear(); } catch (_) {}
+    try { sessionStorage.clear(); } catch (_) {}
+    try {
+        if (indexedDB && typeof indexedDB.databases === 'function') {
+            const dbs = await indexedDB.databases();
+            await Promise.all((dbs || []).map(d => indexedDB.deleteDatabase(d.name)));
+        }
+    } catch (_) {}
+}
+
+async function clearAppData() {
+    await clearLocalData();
+    if (typeof window.clearAppCache === 'function') {
+        await window.clearAppCache();
+        return;
+    }
+    try {
+        if ('caches' in window) {
+            const names = await caches.keys();
+            await Promise.all(names.map(n => caches.delete(n)));
+        }
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.unregister()));
+        }
+    } catch (_) {}
+    setTimeout(() => window.location.reload(true), 300);
+}
+
+window.clearLocalData = clearLocalData;
+window.clearAppData = clearAppData;
 
 /**
  * Check if date is in the past
@@ -739,5 +809,83 @@ window.utils.secureStorageSync = new SecureStorageSync('sec');
   if (typeof window !== 'undefined') {
     window.utils = window.utils || {};
     window.utils.getRecaptchaToken = getRecaptchaToken;
+  }
+})();
+
+/**
+ * PERFORMANCE OPTIMIZATION: Batch DOM updates to prevent layout thrashing
+ * These utilities help avoid forced reflows by batching style changes
+ */
+(function() {
+  /**
+   * Batch update multiple element styles to avoid layout thrashing
+   * @param {Array} updates - Array of {element, styles} objects
+   * @example
+   * batchStyleUpdate([
+   *   { element: el1, styles: { display: 'block', opacity: '1' } },
+   *   { element: el2, styles: { display: 'none' } }
+   * ]);
+   */
+  function batchStyleUpdate(updates) {
+    // Use requestAnimationFrame to batch all style changes together
+    requestAnimationFrame(() => {
+      updates.forEach(({ element, styles }) => {
+        if (element && styles) {
+          Object.assign(element.style, styles);
+        }
+      });
+    });
+  }
+
+  /**
+   * Show/hide multiple elements efficiently
+   * @param {Array} elements - Array of {element, show} objects
+   * @example
+   * batchVisibilityUpdate([
+   *   { element: card1, show: true },
+   *   { element: card2, show: false }
+   * ]);
+   */
+  function batchVisibilityUpdate(elements) {
+    const updates = elements.map(({ element, show }) => ({
+      element,
+      styles: { display: show ? '' : 'none' }
+    }));
+    batchStyleUpdate(updates);
+  }
+
+  /**
+   * Add/remove CSS classes in batch to avoid layout thrashing
+   * @param {Array} updates - Array of {element, add, remove} objects
+   */
+  function batchClassUpdate(updates) {
+    requestAnimationFrame(() => {
+      updates.forEach(({ element, add, remove }) => {
+        if (element) {
+          if (remove) {
+            if (Array.isArray(remove)) {
+              element.classList.remove(...remove);
+            } else {
+              element.classList.remove(remove);
+            }
+          }
+          if (add) {
+            if (Array.isArray(add)) {
+              element.classList.add(...add);
+            } else {
+              element.classList.add(add);
+            }
+          }
+        }
+      });
+    });
+  }
+
+  // Export to window.utils
+  if (typeof window !== 'undefined') {
+    window.utils = window.utils || {};
+    window.utils.batchStyleUpdate = batchStyleUpdate;
+    window.utils.batchVisibilityUpdate = batchVisibilityUpdate;
+    window.utils.batchClassUpdate = batchClassUpdate;
   }
 })();

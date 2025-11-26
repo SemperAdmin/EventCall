@@ -110,11 +110,6 @@ function createInviteWithoutImageHTML(event, eventId) {
                 ${createEventDetailsHTML(event.eventDetails)}
                 ${createRSVPSettingsHTML(event)}
             </div>
-            <div style="margin: 1.5rem 0; text-align: center;">
-                <div style="display: inline-block;">
-                    ${window.calendarExport ? window.calendarExport.generateCalendarDropdownHTML(event) : ''}
-                </div>
-            </div>
             ${createRSVPFormHTML(event, eventId)}
             <div class="invite-powered-by">
                 <div class="powered-by-text">Powered by</div>
@@ -133,135 +128,175 @@ function createRSVPFormHTML(event, eventId) {
     return `
         <div class="rsvp-form">
             <h3>RSVP</h3>
-            <form id="rsvp-form" onsubmit="handleRSVP(event, '${eventId}')">
-                <div class="form-group">
-                    <label for="rsvp-name">Full Name *</label>
-                    <input type="text" id="rsvp-name" name="name" autocomplete="name" required placeholder="Enter your full name" style="min-height: 44px;">
+
+            <!-- Progress Indicator -->
+            <div id="form-progress-container" class="form-progress-container">
+                <div class="form-progress-header">
+                    <div class="form-progress-label-group">
+                        <span class="form-progress-label">Form Progress</span>
+                        <span id="autosave-indicator" class="autosave-indicator">✓ Saved</span>
+                    </div>
+                    <span id="form-progress-text" class="form-progress-text">0%</span>
                 </div>
-
-                <div class="form-group">
-                    <label for="rsvp-email">Email Address *</label>
-                    <input type="email" id="rsvp-email" name="email" autocomplete="email" required placeholder="your.email@example.com" inputmode="email" style="min-height: 44px;">
+                <div class="form-progress-bar-wrapper">
+                    <div id="form-progress-bar" class="form-progress-bar"></div>
                 </div>
+            </div>
 
-                <div class="form-group">
-                    <label for="rsvp-phone">Phone Number</label>
-                    <div style="display:flex; gap:0.5rem; align-items:center;">
-                      <select id="rsvp-country" style="min-height:44px;">
-                        <option value="US">🇺🇸 US</option>
-                        <option value="CA">🇨🇦 CA</option>
-                        <option value="GB">🇬🇧 UK</option>
-                        <option value="AU">🇦🇺 AU</option>
-                        <option value="DE">🇩🇪 DE</option>
-                      </select>
-                      <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" style="min-height: 44px; flex:1;">
-                    </div>
-                </div>
-
-                <!-- Military Information (Optional) -->
-                <div style="margin: 1.5rem 0; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 0.5rem;">
-                    <div style="font-weight: 600; margin-bottom: 0.75rem; color: #1e40af;">🎖️ Military Information (Optional)</div>
-
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label for="branch">Service Branch</label>
-                        <select id="branch" onchange="window.updateRanksForBranch && window.updateRanksForBranch()" style="min-height: 44px; font-size: 16px;">
-                            <option value="">Select service branch...</option>
-                            ${window.MilitaryData ? window.MilitaryData.branches.map(b =>
-                                `<option value="${b.value}">${b.label}</option>`
-                            ).join('') : ''}
-                        </select>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label for="rank">Rank</label>
-                        <select id="rank" style="min-height: 44px; font-size: 16px;" disabled>
-                            <option value="">Select service branch first...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="unit">Unit</label>
-                        <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" style="min-height: 44px;">
-                    </div>
-                </div>
-
-                ${event.requiresMealChoice ? `
-                    <div class="form-group">
-                        <label>Dietary Restrictions (Optional)</label>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="vegetarian" style="margin-right: 0.5rem;">
-                                <span>🥗 Vegetarian</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="vegan" style="margin-right: 0.5rem;">
-                                <span>🌱 Vegan</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="gluten-free" style="margin-right: 0.5rem;">
-                                <span>🌾 Gluten-Free</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="dairy-free" style="margin-right: 0.5rem;">
-                                <span>🥛 Dairy-Free</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="halal" style="margin-right: 0.5rem;">
-                                <span>☪️ Halal</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" name="dietary" value="kosher" style="margin-right: 0.5rem;">
-                                <span>✡️ Kosher</span>
-                            </label>
-                        </div>
-                        <div style="margin-top: 0.75rem;">
-                            <input type="text" id="allergy-details" placeholder="Other allergies or dietary needs..." style="min-height: 44px;">
-                        </div>
-                    </div>
-                ` : ''}
-
-                ${event.askReason ? `
-                    <div class="form-group">
-                        <label for="reason">Why are you attending? (Optional)</label>
-                        <textarea id="reason" placeholder="Share your thoughts..." rows="3"></textarea>
-                    </div>
-                ` : ''}
-
-                <div class="form-group">
-                  <button type="button" id="rsvp-start-over" class="btn-secondary">Start Over</button>
-                </div>
-                
-                ${createCustomQuestionsHTML(event.customQuestions || [])}
-                
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Will you be attending? *</label>
-                    <div style="display: flex; gap: 1rem;">
-                        <label class="rsvp-radio-option">
-                            <input type="radio" name="attending" value="true" required onchange="toggleGuestCount(true)">
+            <form id="rsvp-form" data-event-id="${eventId}">
+                <!-- Attending Decision - MOVED TO TOP -->
+                <div style="margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 1rem; border: 3px solid #3b82f6;">
+                    <label style="font-weight: 700; margin-bottom: 1rem; display: block; font-size: 1.1rem; color: #1e40af; text-align: center;">Will you be attending? *</label>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <label class="rsvp-radio-option" style="flex: 1; min-width: 140px;">
+                            <input type="radio" name="attending" value="true" required id="attending-yes">
                             <span>✅ Yes, I'll be there!</span>
                         </label>
-                        <label class="rsvp-radio-option">
-                            <input type="radio" name="attending" value="false" required onchange="toggleGuestCount(false)">
+                        <label class="rsvp-radio-option" style="flex: 1; min-width: 140px;">
+                            <input type="radio" name="attending" value="false" required id="attending-no">
                             <span>❌ Can't make it</span>
                         </label>
                     </div>
                 </div>
 
-                ${event.allowGuests ? `
-                    <div class="form-group" id="guest-count-group" style="display: none;">
-                        <label for="guest-count">How many additional guests will you bring?</label>
-                        <select id="guest-count" style="min-height: 44px; font-size: 16px;">
-                            <option value="0">Just me</option>
-                            <option value="1">+1 guest</option>
-                            <option value="2">+2 guests</option>
-                            <option value="3">+3 guests</option>
-                            <option value="4">+4 guests</option>
-                            <option value="5">+5 guests</option>
-                        </select>
-                    </div>
-                ` : ''}
+                <!-- Fields for DECLINE - Minimal info needed -->
+                <div id="decline-fields" style="display: none;">
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1.5rem; font-size: 0.95rem;">
+                        We're sorry you can't make it! Please provide your name and email so we can update our records.
+                    </p>
 
-                <div style="text-align: center; margin-top: 1.5rem;">
+                    <div class="form-group">
+                        <label for="rsvp-name-decline">Full Name *</label>
+                        <input type="text" id="rsvp-name-decline" name="name" autocomplete="name" placeholder="John Smith" style="min-height: 44px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rsvp-email-decline">Email Address *</label>
+                        <input type="email" id="rsvp-email-decline" name="email" autocomplete="email" placeholder="john.smith@email.com" inputmode="email" style="min-height: 44px;">
+                    </div>
+
+                    ${event.askReason ? `
+                        <div class="form-group">
+                            <label for="reason-decline">Would you like to share why you can't attend? (Optional)</label>
+                            <textarea id="reason-decline" placeholder="e.g., Prior commitment, traveling for work..." rows="3"></textarea>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Fields for ACCEPT - Full details needed -->
+                <div id="accept-fields" style="display: none;">
+                    <p style="text-align: center; color: #059669; margin-bottom: 1.5rem; font-size: 0.95rem; font-weight: 600;">
+                        Great! Please provide your details below.
+                    </p>
+
+                    <div class="form-group">
+                        <label for="rsvp-name">Full Name *</label>
+                        <input type="text" id="rsvp-name" name="name" autocomplete="name" placeholder="John Smith" style="min-height: 44px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rsvp-email">Email Address *</label>
+                        <input type="email" id="rsvp-email" name="email" autocomplete="email" placeholder="john.smith@email.com" inputmode="email" style="min-height: 44px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rsvp-phone">Phone Number <span style="color: #6b7280; font-weight: 400;">(Optional)</span></label>
+                        <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="555-123-4567" inputmode="tel" style="min-height: 44px;">
+                    </div>
+
+                    ${event.allowGuests ? `
+                        <div class="form-group" id="guest-count-group">
+                            <label for="guest-count">How many additional guests will you bring? <span style="color: #6b7280; font-weight: 400;">(Optional)</span></label>
+                            <select id="guest-count" style="min-height: 44px; font-size: 16px;">
+                                <option value="0">Just me</option>
+                                <option value="1">+1 guest</option>
+                                <option value="2">+2 guests</option>
+                                <option value="3">+3 guests</option>
+                                <option value="4">+4 guests</option>
+                                <option value="5">+5 guests</option>
+                            </select>
+                        </div>
+                    ` : ''}
+
+                    ${event.requiresMealChoice ? `
+                        <div class="form-group">
+                            <label>Dietary Restrictions (Optional)</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="vegetarian" style="margin-right: 0.5rem;">
+                                    <span>Vegetarian</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="vegan" style="margin-right: 0.5rem;">
+                                    <span>Vegan</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="gluten-free" style="margin-right: 0.5rem;">
+                                    <span>Gluten-Free</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="dairy-free" style="margin-right: 0.5rem;">
+                                    <span>Dairy-Free</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="halal" style="margin-right: 0.5rem;">
+                                    <span>Halal</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                                    <input type="checkbox" name="dietary" value="kosher" style="margin-right: 0.5rem;">
+                                    <span>Kosher</span>
+                                </label>
+                            </div>
+                            <div style="margin-top: 0.75rem;">
+                                <input type="text" id="allergy-details" placeholder="e.g., Nut allergy, shellfish allergy..." style="min-height: 44px;">
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Military Information (Optional) - Collapsed by default -->
+                    <details style="margin: 1.5rem 0; padding: 1rem; background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 0.5rem;">
+                        <summary style="font-weight: 500; margin-bottom: 0.75rem; color: #475569; cursor: pointer; list-style-position: outside;">
+                            🎖️ Military Information <span style="color: #94a3b8; font-weight: 400;">(Optional - Click to expand)</span>
+                        </summary>
+
+                        <div class="form-group" style="margin-bottom: 1rem; margin-top: 1rem;">
+                            <label for="branch">Service Branch</label>
+                            <select id="branch" onchange="window.updateRanksForBranch && window.updateRanksForBranch()" style="min-height: 44px; font-size: 16px;">
+                                <option value="">Select service branch...</option>
+                                ${window.MilitaryData ? window.MilitaryData.branches.map(b =>
+                                    `<option value="${b.value}">${b.label}</option>`
+                                ).join('') : ''}
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="rank">Rank</label>
+                            <select id="rank" style="min-height: 44px; font-size: 16px;" disabled>
+                                <option value="">Select service branch first...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="unit">Unit</label>
+                            <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" style="min-height: 44px;">
+                        </div>
+                    </details>
+
+                    ${createCustomQuestionsHTML(event.customQuestions || [])}
+
+                    ${event.askReason ? `
+                        <div class="form-group">
+                            <label for="reason">Why are you attending? (Optional)</label>
+                            <textarea id="reason" placeholder="Share your thoughts..." rows="3"></textarea>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div class="form-group" id="start-over-container" style="display: none; text-align: center;">
+                  <button type="button" id="rsvp-start-over" class="btn-secondary" style="min-height: 44px;">🔄 Clear Form</button>
+                </div>
+
+                <div id="submit-container" style="display: none; text-align: center; margin-top: 1.5rem;">
                     <button type="submit" class="btn" style="min-height: 48px; padding: 0.875rem 2rem; font-size: 1.1rem;">📝 Submit RSVP</button>
                 </div>
             </form>
@@ -356,39 +391,289 @@ function createCustomQuestionsHTML(customQuestions) {
         return '';
     }
 
-    return customQuestions.map(q => `
-        <div class="form-group">
-            <label for="${q.id}">${q.question}</label>
-            <textarea id="${q.id}" placeholder="Your answer..." rows="3"></textarea>
-        </div>
-    `).join('');
+    return customQuestions.map(q => {
+        const type = q.type || 'text';
+        let inputHTML = '';
+
+        switch(type) {
+            case 'text':
+                inputHTML = `<textarea id="${q.id}" class="custom-question-response" data-question-type="text" placeholder="Your answer..." rows="3"></textarea>`;
+                break;
+
+            case 'choice':
+                if (q.options && q.options.length > 0) {
+                    inputHTML = `<select id="${q.id}" class="custom-question-response" data-question-type="choice">
+                        <option value="">-- Select an option --</option>
+                        ${q.options.map(opt => `<option value="${window.utils.escapeHTML(opt)}">${window.utils.escapeHTML(opt)}</option>`).join('')}
+                    </select>`;
+                } else {
+                    inputHTML = `<p style="color: var(--error-color);">No options configured for this question.</p>`;
+                }
+                break;
+
+            case 'date':
+                inputHTML = `<input type="date" id="${q.id}" class="custom-question-response" data-question-type="date">`;
+                break;
+
+            case 'datetime':
+                inputHTML = `<div class="datetime-input-group">
+                    <input type="date" id="${q.id}_date" class="custom-question-response-date" data-question-type="datetime" placeholder="Date">
+                    <input type="time" id="${q.id}_time" class="custom-question-response-time" data-question-type="datetime" placeholder="Time">
+                </div>
+                <input type="hidden" id="${q.id}" class="custom-question-response" data-question-type="datetime">`;
+                break;
+
+            default:
+                inputHTML = `<textarea id="${q.id}" class="custom-question-response" data-question-type="text" placeholder="Your answer..." rows="3"></textarea>`;
+        }
+
+        const requiredIndicator = q.required ? ' *' : ' <span style="color: #6b7280; font-weight: 400;">(Optional)</span>';
+        return `
+            <div class="form-group">
+                <label for="${q.id}">${window.utils.escapeHTML(q.question)}${requiredIndicator}</label>
+                ${inputHTML}
+            </div>
+        `;
+    }).join('');
 }
 
 /**
- * Toggle guest count visibility
+ * Toggle attending/declining fields based on user selection
+ * Returns a Promise that resolves when fields are displayed and focused
+ */
+function toggleAttendingFields(attending) {
+    return new Promise((resolve) => {
+        const acceptFields = document.getElementById('accept-fields');
+        const declineFields = document.getElementById('decline-fields');
+        const submitContainer = document.getElementById('submit-container');
+        const startOverContainer = document.getElementById('start-over-container');
+
+        const targetFields = attending ? acceptFields : declineFields;
+        const hideFields = attending ? declineFields : acceptFields;
+
+        // Show target fields, hide opposite
+        if (targetFields) targetFields.style.display = 'block';
+        if (hideFields) hideFields.style.display = 'none';
+
+        // Show submit and start over buttons
+        if (submitContainer) submitContainer.style.display = 'block';
+        if (startOverContainer) startOverContainer.style.display = 'block';
+
+        // Clear validation states when switching
+        clearAllValidationStates();
+
+        // Handle scroll and focus using requestAnimationFrame + IntersectionObserver
+        if (targetFields) {
+            requestAnimationFrame(() => {
+                targetFields.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // Use IntersectionObserver to detect when element is in view
+                const observer = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting) {
+                        observer.disconnect();
+
+                        // Focus on first input after scroll completes
+                        const inputSelector = attending ?
+                            'input[type="text"], input[type="email"]' :
+                            'input[type="text"]';
+                        const firstInput = targetFields.querySelector(inputSelector);
+
+                        if (firstInput) {
+                            firstInput.focus();
+                        }
+                        resolve();
+                    }
+                }, { threshold: 0.5 });
+
+                observer.observe(targetFields);
+
+                // Fallback timeout in case observer doesn't fire (1 second max)
+                setTimeout(() => {
+                    observer.disconnect();
+                    resolve();
+                }, 1000);
+            });
+        } else {
+            resolve();
+        }
+    });
+}
+
+/**
+ * Clear all validation states from form fields
+ */
+function clearAllValidationStates() {
+    const form = document.getElementById('rsvp-form');
+    if (!form) return;
+
+    form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
+        el.classList.remove('is-valid', 'is-invalid');
+        el.removeAttribute('aria-invalid');
+        el.removeAttribute('aria-describedby');
+    });
+
+    form.querySelectorAll('.form-error').forEach(err => err.remove());
+}
+
+/**
+ * Toggle guest count visibility (DEPRECATED)
+ * This function has been replaced by toggleAttendingFields()
+ *
+ * Kept for backward compatibility in case any external code or bookmarked
+ * URLs reference this function. Will be removed in a future version.
+ *
+ * @deprecated Use toggleAttendingFields() instead
+ * @param {boolean} attending - Whether the user is attending
  */
 function toggleGuestCount(attending) {
-    const guestCountGroup = document.getElementById('guest-count-group');
-    if (guestCountGroup) {
-        if (attending) {
-            guestCountGroup.style.display = 'block';
-        } else {
-            guestCountGroup.style.display = 'none';
-            const guestCountSelect = document.getElementById('guest-count');
-            if (guestCountSelect) {
-                guestCountSelect.value = '0';
+    // No-op - functionality moved to toggleAttendingFields
+    if (window.toggleAttendingFields) {
+        window.toggleAttendingFields(attending);
+    }
+}
+
+/**
+ * Setup datetime input synchronization for custom questions
+ */
+function setupDatetimeInputSync() {
+    // Find all datetime question groups
+    document.querySelectorAll('.datetime-input-group').forEach(group => {
+        const dateInput = group.querySelector('.custom-question-response-date');
+        const timeInput = group.querySelector('.custom-question-response-time');
+
+        if (dateInput && timeInput) {
+            const hiddenId = dateInput.id.replace('_date', '');
+            const hiddenInput = document.getElementById(hiddenId);
+
+            if (hiddenInput) {
+                // Function to sync values
+                const syncValues = () => {
+                    if (dateInput.value && timeInput.value) {
+                        hiddenInput.value = `${dateInput.value}T${timeInput.value}`;
+                    } else if (dateInput.value) {
+                        hiddenInput.value = dateInput.value;
+                    } else {
+                        hiddenInput.value = '';
+                    }
+                };
+
+                // Attach listeners
+                dateInput.addEventListener('change', syncValues);
+                timeInput.addEventListener('change', syncValues);
             }
         }
-    }
+    });
 }
 
 /**
  * Setup RSVP form functionality
  */
 async function setupRSVPForm() {
-    // Setup real-time validation if available
-    if (window.rsvpHandler && window.rsvpHandler.setupRealTimeValidation) {
-        window.rsvpHandler.setupRealTimeValidation();
+    // Setup real-time validation and autosave from form-ux.js
+    if (window.attachRSVPValidation) {
+        window.attachRSVPValidation();
+    }
+
+    // Setup datetime input synchronization
+    setupDatetimeInputSync();
+
+    // Setup military rank dropdown
+    setupMilitaryRankDropdown();
+
+    // Attach event listeners to attending radio buttons
+    const attendingYes = document.getElementById('attending-yes');
+    const attendingNo = document.getElementById('attending-no');
+
+    if (attendingYes) {
+        attendingYes.addEventListener('change', () => {
+            if (attendingYes.checked) {
+                toggleAttendingFields(true);
+            }
+        });
+    }
+
+    if (attendingNo) {
+        attendingNo.addEventListener('change', () => {
+            if (attendingNo.checked) {
+                toggleAttendingFields(false);
+            }
+        });
+    }
+
+    // Setup "Start Over" / "Clear Form" button
+    const startOverBtn = document.getElementById('rsvp-start-over');
+    if (startOverBtn) {
+        startOverBtn.addEventListener('click', function() {
+            const form = document.getElementById('rsvp-form');
+            if (form && confirm('Are you sure you want to clear the form and start over?')) {
+                // Reset the form
+                form.reset();
+
+                // Hide all conditional sections
+                const acceptFields = document.getElementById('accept-fields');
+                const declineFields = document.getElementById('decline-fields');
+                const submitContainer = document.getElementById('submit-container');
+                const startOverContainer = document.getElementById('start-over-container');
+
+                if (acceptFields) acceptFields.style.display = 'none';
+                if (declineFields) declineFields.style.display = 'none';
+                if (submitContainer) submitContainer.style.display = 'none';
+                if (startOverContainer) startOverContainer.style.display = 'none';
+
+                // Clear validation states
+                clearAllValidationStates();
+
+                // Scroll back to attending decision
+                const attendingSection = form.querySelector('[name="attending"]');
+                if (attendingSection) {
+                    attendingSection.closest('div').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                // Clear autosave if exists
+                try {
+                    const event = getEventFromURL();
+                    if (event && event.id) {
+                        localStorage.removeItem(`form:rsvp:${event.id}`);
+                    }
+                } catch (e) {
+                    console.warn('Could not clear autosave:', e);
+                }
+            }
+        });
+    }
+
+    // CRITICAL: Attach form submit handler to prevent navigation
+    const rsvpForm = document.getElementById('rsvp-form');
+    if (rsvpForm) {
+        // Remove inline handler to avoid conflicts
+        rsvpForm.removeAttribute('onsubmit');
+
+        // Get event ID from data attribute or URL
+        const eventId = rsvpForm.dataset.eventId || getEventFromURL()?.id;
+
+        if (eventId) {
+            // Use capture phase to intercept before any bubbling handlers
+            rsvpForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                console.log('🛑 Form submit intercepted - preventing navigation');
+
+                if (window.handleRSVP) {
+                    window.handleRSVP(e, eventId);
+                } else {
+                    console.error('❌ handleRSVP not available');
+                }
+
+                return false;
+            }, true); // Capture phase
+
+            console.log('✅ RSVP form submit handler attached via addEventListener for event:', eventId);
+        } else {
+            console.error('❌ Could not determine eventId for RSVP form');
+        }
+    } else {
+        console.warn('⚠️ RSVP form not found in DOM yet');
     }
 
     // Check for edit mode and pre-fill if editing
@@ -403,6 +688,93 @@ async function setupRSVPForm() {
     // Pre-fill form if URL parameters exist (for new RSVPs)
     if (window.rsvpHandler && window.rsvpHandler.prefillFormFromURL) {
         window.rsvpHandler.prefillFormFromURL();
+    }
+
+    // Setup form progress indicator
+    setupFormProgress();
+}
+
+/**
+ * Setup form progress tracking
+ */
+function setupFormProgress() {
+    const form = document.getElementById('rsvp-form');
+    const progressContainer = document.getElementById('form-progress-container');
+    const progressBar = document.getElementById('form-progress-bar');
+    const progressText = document.getElementById('form-progress-text');
+
+    if (!form || !progressContainer || !progressBar || !progressText) return;
+
+    function updateProgress() {
+        // Get all visible required fields (offsetParent is null for hidden elements)
+        const requiredFields = Array.from(form.querySelectorAll('input[required], select[required], textarea[required]'))
+            .filter(field => field.offsetParent !== null);
+
+        if (requiredFields.length === 0) return;
+
+        // Calculate unique required fields (dedup radio buttons)
+        const uniqueRequired = new Set();
+        const filledSet = new Set();
+
+        requiredFields.forEach(field => {
+            const fieldKey = field.type === 'radio' ? field.name : (field.id || field.name);
+            uniqueRequired.add(fieldKey);
+
+            // Check if filled
+            let isFilled = false;
+            if (field.type === 'radio') {
+                isFilled = form.querySelector(`input[name="${field.name}"]:checked`) !== null;
+            } else if (field.type === 'checkbox') {
+                isFilled = field.checked;
+            } else {
+                isFilled = field.value.trim() !== '';
+            }
+
+            if (isFilled) {
+                filledSet.add(fieldKey);
+            }
+        });
+
+        const totalRequired = uniqueRequired.size;
+        const totalFilled = filledSet.size;
+        const percentage = Math.round((totalFilled / totalRequired) * 100);
+
+        // Update progress bar
+        progressBar.style.width = `${percentage}%`;
+        progressText.textContent = `${percentage}%`;
+
+        // Show progress container once user starts filling
+        if (totalFilled > 0 && progressContainer.style.display === 'none') {
+            progressContainer.style.display = 'block';
+        }
+    }
+
+    // Update progress on any input change
+    form.addEventListener('input', updateProgress);
+    form.addEventListener('change', updateProgress);
+
+    // Initial update
+    updateProgress();
+}
+
+/**
+ * Setup military rank dropdown change listener
+ */
+function setupMilitaryRankDropdown() {
+    const branchSelect = document.getElementById('branch');
+    if (branchSelect) {
+        // Remove any existing listeners by replacing the element
+        const newBranchSelect = branchSelect.cloneNode(true);
+        branchSelect.parentNode.replaceChild(newBranchSelect, branchSelect);
+
+        // Add the change event listener
+        newBranchSelect.addEventListener('change', function() {
+            if (window.updateRanksForBranch) {
+                window.updateRanksForBranch();
+            }
+        });
+
+        console.log('✅ Military rank dropdown listener attached');
     }
 }
 
@@ -545,11 +917,6 @@ function createInviteWithImageHTML(event, eventId) {
                 ${createEventDetailsHTML(event.eventDetails)}
                 ${createRSVPSettingsHTML(event)}
             </div>
-            <div style="margin: 1.5rem 0; text-align: center;">
-                <div style="display: inline-block;">
-                    ${window.calendarExport ? window.calendarExport.generateCalendarDropdownHTML(event) : ''}
-                </div>
-            </div>
             ${createRSVPFormHTML(event, eventId)}
             <div class="invite-powered-by">
                 <div class="powered-by-text">Powered by</div>
@@ -575,18 +942,31 @@ function updateRanksForBranch() {
     const selectedBranch = branchSelect.value;
 
     // Clear current ranks
-    rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">Select rank...</option>');
+    rankSelect.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select rank...';
+    rankSelect.appendChild(defaultOption);
 
     if (!selectedBranch || selectedBranch === 'Civilian' || selectedBranch === 'Other') {
         // For Civilian or Other, just add a Civilian option and disable
+        rankSelect.innerHTML = '';
+        const option = document.createElement('option');
+
         if (selectedBranch === 'Civilian') {
-            rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="Civilian">Civilian</option>');
+            option.value = 'Civilian';
+            option.textContent = 'Civilian';
+            rankSelect.appendChild(option);
             rankSelect.disabled = true;
         } else if (selectedBranch === 'Other') {
-            rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">N/A</option>');
+            option.value = '';
+            option.textContent = 'N/A';
+            rankSelect.appendChild(option);
             rankSelect.disabled = true;
         } else {
-            rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">Select service branch first...</option>');
+            option.value = '';
+            option.textContent = 'Select service branch first...';
+            rankSelect.appendChild(option);
             rankSelect.disabled = true;
         }
         return;
@@ -596,7 +976,11 @@ function updateRanksForBranch() {
     const branchData = window.MilitaryData[selectedBranch];
 
     if (!branchData) {
-        rankSelect.innerHTML = window.utils.sanitizeHTML('<option value="">No ranks available</option>');
+        rankSelect.innerHTML = '';
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No ranks available';
+        rankSelect.appendChild(option);
         rankSelect.disabled = true;
         return;
     }
@@ -653,6 +1037,8 @@ function updateRanksForBranch() {
 // Make functions globally available
 window.loadInviteContentDirect = loadInviteContentDirect;
 window.toggleGuestCount = toggleGuestCount;
+window.toggleAttendingFields = toggleAttendingFields;
+window.clearAllValidationStates = clearAllValidationStates;
 window.getEventFromURL = getEventFromURL;
 window.isEventInPast = isEventInPast;
 window.formatDate = formatDate;

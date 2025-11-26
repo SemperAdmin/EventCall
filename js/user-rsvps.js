@@ -1,0 +1,605 @@
+/**
+ * User RSVPs Management
+ * Displays and manages RSVPs for the current user
+ */
+
+let currentEditingRSVP = null;
+
+/**
+ * Get all RSVPs for the current user across all events
+ */
+async function getUserRSVPs() {
+    if (!window.userAuth || !window.userAuth.isAuthenticated()) {
+        return [];
+    }
+
+    const user = window.userAuth.getCurrentUser();
+    const userEmail = user.email?.toLowerCase();
+
+    if (!userEmail) {
+        console.warn('User email not available');
+        return [];
+    }
+
+    const allRSVPs = [];
+
+    // First, check window.responses (RSVPs loaded from GitHub by manager dashboard)
+    if (window.responses && typeof window.responses === 'object') {
+        console.log('🔍 Checking window.responses for user RSVPs...');
+
+        for (const [eventId, rsvps] of Object.entries(window.responses)) {
+            if (Array.isArray(rsvps)) {
+                // Filter RSVPs that match user's email
+                const userRSVPsInEvent = rsvps.filter(rsvp =>
+                    rsvp.email && rsvp.email.toLowerCase() === userEmail
+                );
+
+                if (userRSVPsInEvent.length > 0) {
+                    console.log(`✅ Found ${userRSVPsInEvent.length} RSVP(s) for user in event ${eventId}`);
+                    allRSVPs.push(...userRSVPsInEvent);
+                }
+            }
+        }
+    } else {
+        console.log('⚠️ window.responses not available, checking localStorage only');
+    }
+
+    // Also scan localStorage for pending/local RSVPs
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('eventcall_pending_rsvps_')) {
+            try {
+                const data = localStorage.getItem(key);
+                if (data) {
+                    const rsvps = JSON.parse(data);
+                    if (Array.isArray(rsvps)) {
+                        // Filter RSVPs that match user's email
+                        const userRSVPsInEvent = rsvps.filter(rsvp =>
+                            rsvp.email && rsvp.email.toLowerCase() === userEmail
+                        );
+
+                        // Avoid duplicates - check if RSVP ID already exists
+                        const newRSVPs = userRSVPsInEvent.filter(localRSVP =>
+                            !allRSVPs.some(existingRSVP => existingRSVP.rsvpId === localRSVP.rsvpId)
+                        );
+
+                        if (newRSVPs.length > 0) {
+                            console.log(`✅ Found ${newRSVPs.length} local RSVP(s) for user`);
+                            allRSVPs.push(...newRSVPs);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error(`Error parsing RSVPs from ${key}:`, e);
+            }
+        }
+    }
+
+    console.log(`📊 Total RSVPs found for user (${userEmail}): ${allRSVPs.length}`);
+    return allRSVPs;
+}
+
+/**
+ * Load event data for an RSVP
+ */
+async function getEventForRSVP(eventId) {
+    // First check if events are loaded in memory (from manager dashboard)
+    if (window.events && typeof window.events === 'object') {
+        // window.events is an object with eventId as keys
+        if (window.events[eventId]) {
+            return window.events[eventId];
+        }
+    }
+
+    // Also check if it's an array (fallback)
+    if (window.events && Array.isArray(window.events)) {
+        const event = window.events.find(e => e.id === eventId);
+        if (event) return event;
+    }
+
+    // Load from private repo via GitHub API when not in memory
+    if (window.githubAPI && typeof window.githubAPI.loadEvents === 'function') {
+        try {
+            const loaded = await window.githubAPI.loadEvents();
+            if (loaded && typeof loaded === 'object') {
+                window.events = loaded;
+                if (loaded[eventId]) return loaded[eventId];
+                // Fallback to array form if any
+                if (Array.isArray(loaded)) {
+                    const event = loaded.find(e => e.id === eventId);
+                    if (event) return event;
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load events from private repo:', err);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Display user's RSVPs in the dashboard
+ */
+async function displayUserRSVPs() {
+    const container = document.getElementById('user-rsvps-list');
+    if (!container) return;
+
+    // Show loading state
+    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading your RSVPs...</div>';
+
+    try {
+        const rsvps = await getUserRSVPs();
+
+        if (rsvps.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 3rem; background: rgba(255, 255, 255, 0.05); border-radius: 0.5rem; border: 2px dashed rgba(212, 175, 55, 0.3);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                    <h3 style="margin: 0 0 0.5rem 0; color: #d4af37;">No RSVPs Yet</h3>
+                    <p style="margin: 0; color: #9ca3af;">Your RSVPs to events will appear here</p>
+                </div>
+            `;
+            return;
+        }
+
+    // Ensure events are loaded for lookups
+    if (window.githubAPI && typeof window.githubAPI.loadEvents === 'function') {
+        try { window.events = await window.githubAPI.loadEvents(); } catch (_) {}
+    }
+
+    // Load event data for each RSVP
+    const rsvpsWithEvents = await Promise.all(
+            rsvps.map(async (rsvp) => {
+                const event = await getEventForRSVP(rsvp.eventId);
+                return { rsvp, event };
+            })
+        );
+
+        // Sort by event date (upcoming first)
+        rsvpsWithEvents.sort((a, b) => {
+            if (!a.event || !b.event) return 0;
+            const dateA = new Date(a.event.date + ' ' + a.event.time);
+            const dateB = new Date(b.event.date + ' ' + b.event.time);
+            return dateA - dateB;
+        });
+
+        // Render RSVP cards
+        const html = rsvpsWithEvents.map(({ rsvp, event }) => createRSVPCard(rsvp, event)).join('');
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error displaying user RSVPs:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; background: rgba(239, 68, 68, 0.1); border-radius: 0.5rem; border: 2px solid rgba(239, 68, 68, 0.3);">
+                <strong style="color: #ef4444;">❌ Error loading RSVPs</strong>
+                <p style="margin: 0.5rem 0 0 0; color: #9ca3af;">${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Create HTML for a single RSVP card
+ */
+function createRSVPCard(rsvp, event) {
+    const utils = window.utils || { escapeHTML: (s) => s, sanitizeHTML: (s) => s };
+
+    // Cache event data for calendar export
+    if (event) {
+        cacheRSVPEventData(rsvp.rsvpId, event);
+    }
+
+    // Determine if event is past
+    const isPast = event ? isEventInPast(event.date, event.time) : false;
+    const eventDate = event ? new Date(event.date + ' ' + event.time) : null;
+    const formattedDate = event ? formatDate(event.date) : 'Unknown Date';
+    const formattedTime = event ? formatTime(event.time) : 'Unknown Time';
+
+    const attendingBadge = rsvp.attending
+        ? '<span style="background: #dcfce7; color: #166534; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.875rem; font-weight: 600;">✅ Attending</span>'
+        : '<span style="background: #fef2f2; color: #991b1b; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.875rem; font-weight: 600;">❌ Not Attending</span>';
+
+    const pastBadge = isPast
+        ? '<span style="background: #e5e7eb; color: #6b7280; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.875rem; font-weight: 600;">📅 Past Event</span>'
+        : '<span style="background: #dbeafe; color: #1e40af; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.875rem; font-weight: 600;">📅 Upcoming</span>';
+
+    return `
+        <div class="rsvp-card" style="background: linear-gradient(135deg, rgba(31, 41, 55, 0.8), rgba(17, 24, 39, 0.8)); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 0.5rem 0; color: #d4af37; font-size: 1.25rem;">
+                        ${event ? utils.escapeHTML(event.title) : 'Event Not Found'}
+                    </h3>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                        ${attendingBadge}
+                        ${pastBadge}
+                        ${rsvp.guestCount > 0 ? `<span style="background: #f0f9ff; color: #1e40af; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.875rem; font-weight: 600;">👥 +${rsvp.guestCount} Guest${rsvp.guestCount > 1 ? 's' : ''}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+
+            ${event ? `
+                <div style="display: grid; gap: 0.5rem; margin-bottom: 1rem; color: #9ca3af; font-size: 0.95rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span>📅</span>
+                        <span>${formattedDate} at ${formattedTime}</span>
+                    </div>
+                    ${event.location ? `
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span>📍</span>
+                            <span>${utils.escapeHTML(event.location)}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            ` : '<p style="color: #9ca3af; font-size: 0.95rem; margin-bottom: 1rem;">Event details not available</p>'}
+
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                ${event && !isPast ? `
+                    <button
+                        onclick="openEditRSVPModal('${utils.escapeHTML(rsvp.rsvpId)}', '${utils.escapeHTML(rsvp.eventId)}')"
+                        class="btn btn-primary"
+                        style="font-size: 0.875rem; padding: 0.5rem 1rem;"
+                    >
+                        ✏️ Edit RSVP
+                    </button>
+                    <button
+                        onclick="window.print()"
+                        class="btn btn-secondary"
+                        style="font-size: 0.875rem; padding: 0.5rem 1rem;"
+                    >
+                        🖨️ Print
+                    </button>
+                    <div class="calendar-dropdown-container" style="position: relative; display: inline-block;">
+                        <button
+                            class="btn"
+                            type="button"
+                            style="font-size: 0.875rem; padding: 0.5rem 1rem;"
+                            onclick="toggleRSVPCalendarDropdown('${rsvp.rsvpId}', event)"
+                        >
+                            📅 Add to Calendar ▼
+                        </button>
+                        <div id="calendar-dropdown-${rsvp.rsvpId}" class="calendar-dropdown rsvp-calendar-dropdown-${rsvp.rsvpId}" style="display: none; position: absolute; top: 100%; left: 0; min-width: 200px; background: white; color: #1f2937; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 100; margin-top: 0.25rem;">
+                            <button type="button" class="calendar-dropdown-item" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem; transition: background 0.2s; color: #1f2937; border-radius: 0.5rem 0.5rem 0 0;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'" onclick="openRSVPCalendar('google', '${rsvp.rsvpId}'); closeRSVPCalendarDropdown('${rsvp.rsvpId}')">
+                                📅 Google Calendar
+                            </button>
+                            <button type="button" class="calendar-dropdown-item" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem; transition: background 0.2s; color: #1f2937;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'" onclick="openRSVPCalendar('outlook', '${rsvp.rsvpId}'); closeRSVPCalendarDropdown('${rsvp.rsvpId}')">
+                                📅 Outlook
+                            </button>
+                            <button type="button" class="calendar-dropdown-item" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem; transition: background 0.2s; color: #1f2937;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'" onclick="openRSVPCalendar('yahoo', '${rsvp.rsvpId}'); closeRSVPCalendarDropdown('${rsvp.rsvpId}')">
+                                📅 Yahoo
+                            </button>
+                            <button type="button" class="calendar-dropdown-item" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem; transition: background 0.2s; color: #1f2937; border-radius: 0 0 0.5rem 0.5rem;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'" onclick="downloadRSVPCalendarICS('${rsvp.rsvpId}'); closeRSVPCalendarDropdown('${rsvp.rsvpId}')">
+                                📥 Download ICS
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(212, 175, 55, 0.2); font-size: 0.75rem; color: #6b7280;">
+                <strong>RSVP ID:</strong> ${rsvp.rsvpId}<br>
+                <strong>Submitted:</strong> ${new Date(rsvp.timestamp).toLocaleString()}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Open edit RSVP modal
+ */
+async function openEditRSVPModal(rsvpId, eventId) {
+    const modal = document.getElementById('edit-rsvp-modal');
+    if (!modal) return;
+
+    let rsvp = null;
+
+    // First check window.responses (RSVPs from GitHub backend)
+    if (window.responses && window.responses[eventId]) {
+        const rsvps = window.responses[eventId];
+        if (Array.isArray(rsvps)) {
+            rsvp = rsvps.find(r => r.rsvpId === rsvpId);
+            console.log('🔍 Found RSVP in window.responses:', rsvp);
+        }
+    }
+
+    // Fallback to localStorage if not found in window.responses
+    if (!rsvp) {
+        const storageKey = `eventcall_pending_rsvps_${eventId}`;
+        try {
+            const data = localStorage.getItem(storageKey);
+            if (data) {
+                const rsvps = JSON.parse(data);
+                rsvp = rsvps.find(r => r.rsvpId === rsvpId);
+                console.log('🔍 Found RSVP in localStorage:', rsvp);
+            }
+        } catch (e) {
+            console.error('Error loading RSVP from localStorage:', e);
+        }
+    }
+
+    if (!rsvp) {
+        console.error('❌ RSVP not found in window.responses or localStorage');
+        showToast('❌ RSVP not found', 'error');
+        return;
+    }
+
+    // Load event data
+    const event = await getEventForRSVP(eventId);
+
+    // Store current editing RSVP
+    currentEditingRSVP = { rsvp, event, eventId };
+
+    // Populate event info
+    const eventInfoEl = document.getElementById('edit-rsvp-event-info');
+    if (eventInfoEl && event) {
+        eventInfoEl.innerHTML = `
+            <h3 style="margin: 0 0 0.5rem 0; color: #d4af37; font-size: 1.1rem;">${window.utils?.escapeHTML(event.title) || event.title}</h3>
+            <div style="color: #9ca3af; font-size: 0.9rem;">
+                📅 ${formatDate(event.date)} at ${formatTime(event.time)}
+                ${event.location ? `<br>📍 ${window.utils?.escapeHTML(event.location) || event.location}` : ''}
+            </div>
+        `;
+    }
+
+    // Populate form
+    document.getElementById('edit-rsvp-name').value = rsvp.name || '';
+    document.getElementById('edit-rsvp-email').value = rsvp.email || '';
+    document.getElementById('edit-rsvp-phone').value = rsvp.phone || '';
+
+    // Set attending radio button
+    const attendingRadio = document.querySelector(`input[name="edit-attending"][value="${rsvp.attending}"]`);
+    if (attendingRadio) {
+        attendingRadio.checked = true;
+        toggleEditGuestCount(rsvp.attending);
+    }
+
+    // Set guest count
+    const guestCountEl = document.getElementById('edit-guest-count');
+    if (guestCountEl) {
+        guestCountEl.value = rsvp.guestCount || 0;
+    }
+
+    // Set reason if available
+    const reasonEl = document.getElementById('edit-reason');
+    if (reasonEl) {
+        reasonEl.value = rsvp.reason || '';
+        // Show reason field if event asks for it
+        const reasonGroup = document.getElementById('edit-reason-group');
+        if (reasonGroup && event && event.askReason) {
+            reasonGroup.style.display = 'block';
+        }
+    }
+
+    // Setup attending change listener
+    document.querySelectorAll('input[name="edit-attending"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            toggleEditGuestCount(e.target.value === 'true');
+        });
+    });
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Toggle guest count visibility in edit modal
+ */
+function toggleEditGuestCount(attending) {
+    const guestCountGroup = document.getElementById('edit-guest-count-group');
+    if (guestCountGroup) {
+        guestCountGroup.style.display = attending ? 'block' : 'none';
+    }
+}
+
+/**
+ * Close edit RSVP modal
+ */
+function closeEditRSVPModal() {
+    const modal = document.getElementById('edit-rsvp-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    currentEditingRSVP = null;
+}
+
+/**
+ * Save edited RSVP
+ */
+async function saveEditedRSVP() {
+    if (!currentEditingRSVP) {
+        showToast('❌ No RSVP being edited', 'error');
+        return;
+    }
+
+    const { rsvp, eventId } = currentEditingRSVP;
+
+    // Collect form data
+    const name = document.getElementById('edit-rsvp-name').value.trim();
+    const email = document.getElementById('edit-rsvp-email').value.trim().toLowerCase();
+    const phone = document.getElementById('edit-rsvp-phone').value.trim();
+    const attendingRadio = document.querySelector('input[name="edit-attending"]:checked');
+    const attending = attendingRadio ? attendingRadio.value === 'true' : null;
+    const guestCount = parseInt(document.getElementById('edit-guest-count').value) || 0;
+    const reason = document.getElementById('edit-reason')?.value.trim() || '';
+
+    // Validate
+    if (!name || name.length < 2) {
+        showToast('❌ Please enter a valid name', 'error');
+        return;
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('❌ Please enter a valid email address', 'error');
+        return;
+    }
+
+    if (attending === null) {
+        showToast('❌ Please select if you are attending', 'error');
+        return;
+    }
+
+    // Update RSVP object
+    const updatedRSVP = {
+        ...rsvp,
+        name,
+        email,
+        phone,
+        attending,
+        guestCount: attending ? guestCount : 0,
+        reason,
+        lastModified: Date.now(),
+        isUpdate: true
+    };
+
+    // Submit update to backend
+    try {
+        if (window.BackendAPI) {
+            await window.BackendAPI.submitRSVP(updatedRSVP);
+            console.log('✅ RSVP updated in backend');
+
+            // Also update in window.responses if it exists there
+            if (window.responses && window.responses[eventId]) {
+                const index = window.responses[eventId].findIndex(r => r.rsvpId === rsvp.rsvpId);
+                if (index !== -1) {
+                    window.responses[eventId][index] = updatedRSVP;
+                }
+            }
+
+            // Also update localStorage if it exists there
+            const storageKey = `eventcall_pending_rsvps_${eventId}`;
+            const data = localStorage.getItem(storageKey);
+            if (data) {
+                const rsvps = JSON.parse(data);
+                const index = rsvps.findIndex(r => r.rsvpId === rsvp.rsvpId);
+                if (index !== -1) {
+                    rsvps[index] = updatedRSVP;
+                    localStorage.setItem(storageKey, JSON.stringify(rsvps));
+                }
+            }
+
+            showToast('✅ RSVP updated successfully', 'success');
+        } else {
+            throw new Error('Backend API not available');
+        }
+
+        // Close modal and refresh display
+        closeEditRSVPModal();
+        displayUserRSVPs();
+
+    } catch (error) {
+        console.error('Error saving RSVP:', error);
+        showToast('❌ Error saving RSVP: ' + error.message, 'error');
+    }
+}
+
+/**
+ * View event details (navigate to event page)
+ */
+function viewEventDetails(eventId) {
+    console.log('📍 Navigating to event details:', eventId);
+    // Navigate to the event's invite page
+    window.location.href = `invite.html?id=${eventId}`;
+}
+
+// Cache for storing event data for calendar export
+const rsvpEventCache = {};
+
+/**
+ * Store event data for calendar export
+ */
+function cacheRSVPEventData(rsvpId, event) {
+    if (event) {
+        rsvpEventCache[rsvpId] = event;
+    }
+}
+
+/**
+ * Open calendar for RSVP
+ */
+function openRSVPCalendar(type, rsvpId) {
+    const event = rsvpEventCache[rsvpId];
+    if (event && window.calendarExport) {
+        window.calendarExport.openCalendar(type, event);
+    } else {
+        showToast('❌ Event data not available', 'error');
+    }
+}
+
+/**
+ * Download ICS for RSVP
+ */
+function downloadRSVPCalendarICS(rsvpId) {
+    const event = rsvpEventCache[rsvpId];
+    if (event && window.calendarExport) {
+        window.calendarExport.downloadICS(event);
+    } else {
+        showToast('❌ Event data not available', 'error');
+    }
+}
+
+/**
+ * Toggle calendar dropdown for RSVP cards
+ */
+function toggleRSVPCalendarDropdown(rsvpId, event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById(`calendar-dropdown-${rsvpId}`);
+    if (dropdown) {
+        const isVisible = dropdown.style.display === 'block';
+        // Close all other dropdowns first
+        closeAllRSVPCalendarDropdowns();
+        // Toggle this dropdown
+        dropdown.style.display = isVisible ? 'none' : 'block';
+    }
+}
+
+/**
+ * Close specific calendar dropdown
+ */
+function closeRSVPCalendarDropdown(rsvpId) {
+    const dropdown = document.getElementById(`calendar-dropdown-${rsvpId}`);
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+}
+
+/**
+ * Close all RSVP calendar dropdowns
+ */
+function closeAllRSVPCalendarDropdowns() {
+    document.querySelectorAll('.calendar-dropdown').forEach(dropdown => {
+        dropdown.style.display = 'none';
+    });
+}
+
+// Make functions globally available
+window.getUserRSVPs = getUserRSVPs;
+window.displayUserRSVPs = displayUserRSVPs;
+window.openEditRSVPModal = openEditRSVPModal;
+window.closeEditRSVPModal = closeEditRSVPModal;
+window.saveEditedRSVP = saveEditedRSVP;
+window.viewEventDetails = viewEventDetails;
+window.cacheRSVPEventData = cacheRSVPEventData;
+window.openRSVPCalendar = openRSVPCalendar;
+window.downloadRSVPCalendarICS = downloadRSVPCalendarICS;
+window.toggleRSVPCalendarDropdown = toggleRSVPCalendarDropdown;
+window.closeRSVPCalendarDropdown = closeRSVPCalendarDropdown;
+window.closeAllRSVPCalendarDropdowns = closeAllRSVPCalendarDropdowns;
+
+// Auto-load RSVPs when dashboard loads
+document.addEventListener('DOMContentLoaded', () => {
+    // Load RSVPs when user is authenticated
+    if (window.userAuth && window.userAuth.isAuthenticated()) {
+        setTimeout(() => {
+            displayUserRSVPs();
+        }, 1000);
+    }
+
+    // Close calendar dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.calendar-dropdown-container')) {
+            closeAllRSVPCalendarDropdowns();
+        }
+    });
+});
+
+console.log('✅ User RSVPs module loaded');

@@ -4,28 +4,209 @@ on:
   repository_dispatch:
     types: [submit_rsvp]
 
+env:
+  GITHUB_OWNER: SemperAdmin
+  DATA_REPO: EventCall-Data
+
 jobs:
   save-rsvp:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Save RSVP to Private Repo
+      - name: Validate CSRF Token
         run: |
-          echo "Processing RSVP..."
-          
-          TIMESTAMP=$(date +%s)
-          RSVP_ID="rsvp-${TIMESTAMP}-${{ github.run_id }}"
-          
+          CSRF_TOKEN="${{ github.event.client_payload.csrfToken }}"
+
+          if [ -z "$CSRF_TOKEN" ]; then
+            echo "❌ Security Error: Missing CSRF token"
+            echo "All RSVP submissions must include a valid CSRF token"
+            exit 1
+          fi
+
+          # Token format validation
+          if ! echo "$CSRF_TOKEN" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+            echo "❌ Security Error: Invalid CSRF token format"
+            exit 1
+          fi
+
+          echo "✅ CSRF token validated: ${CSRF_TOKEN:0:8}..."
+
+      - name: Validate RSVP Data
+        run: |
+          echo "Validating RSVP submission data..."
+
+          # Create JSON payload from client_payload
           cat > rsvp-data.json << 'EOF'
           ${{ toJSON(github.event.client_payload) }}
           EOF
-          
-          CONTENT=$(base64 -w 0 rsvp-data.json)
-          
-          curl -X PUT \
+
+          # Validate required fields
+          EVENT_ID=$(jq -r '.eventId // empty' rsvp-data.json)
+          RSVP_ID=$(jq -r '.rsvpId // empty' rsvp-data.json)
+          NAME=$(jq -r '.name // empty' rsvp-data.json)
+          EMAIL=$(jq -r '.email // empty' rsvp-data.json)
+
+          if [ -z "$EVENT_ID" ]; then
+            echo "❌ Validation Error: Missing required field 'eventId'"
+            exit 1
+          fi
+
+          if [ -z "$RSVP_ID" ]; then
+            echo "❌ Validation Error: Missing required field 'rsvpId'"
+            exit 1
+          fi
+
+          if [ -z "$NAME" ]; then
+            echo "❌ Validation Error: Missing required field 'name'"
+            exit 1
+          fi
+
+          if [ -z "$EMAIL" ]; then
+            echo "❌ Validation Error: Missing required field 'email'"
+            exit 1
+          fi
+
+          # Validate event ID format (evt-timestamp-randomhex)
+          if ! echo "$EVENT_ID" | grep -qE '^evt-[0-9]+-[a-f0-9]+$'; then
+            echo "❌ Validation Error: Invalid event ID format"
+            exit 1
+          fi
+
+          # Validate RSVP ID format (rsvp-timestamp-randomhex)
+          if ! echo "$RSVP_ID" | grep -qE '^rsvp-[0-9]+-[a-zA-Z0-9]+$'; then
+            echo "❌ Validation Error: Invalid RSVP ID format"
+            exit 1
+          fi
+
+          # Validate name length (1-100 characters)
+          NAME_LENGTH=${#NAME}
+          if [ $NAME_LENGTH -lt 1 ] || [ $NAME_LENGTH -gt 100 ]; then
+            echo "❌ Validation Error: Name must be 1-100 characters"
+            exit 1
+          fi
+
+          # Validate email format
+          if ! echo "$EMAIL" | grep -qE '^[^@]+@[^@]+\.[^@]+$'; then
+            echo "❌ Validation Error: Invalid email format"
+            exit 1
+          fi
+
+          # Validate email length
+          EMAIL_LENGTH=${#EMAIL}
+          if [ $EMAIL_LENGTH -gt 255 ]; then
+            echo "❌ Validation Error: Email must be maximum 255 characters"
+            exit 1
+          fi
+
+          # Validate guests count if provided
+          GUESTS=$(jq -r '.guests // empty' rsvp-data.json)
+          if [ -n "$GUESTS" ]; then
+            if ! [[ "$GUESTS" =~ ^[0-9]+$ ]] || [ "$GUESTS" -lt 0 ] || [ "$GUESTS" -gt 20 ]; then
+              echo "❌ Validation Error: Guests must be between 0 and 20"
+              exit 1
+            fi
+          fi
+
+          # Validate attending status if provided
+          ATTENDING=$(jq -r '.attending // empty' rsvp-data.json)
+          if [ -n "$ATTENDING" ]; then
+            if [[ "$ATTENDING" != "yes" && "$ATTENDING" != "no" && "$ATTENDING" != "maybe" ]]; then
+              echo "❌ Validation Error: Attending must be 'yes', 'no', or 'maybe'"
+              exit 1
+            fi
+          fi
+
+          echo "✅ RSVP data validated successfully"
+
+      - name: Save RSVP to Private Repo
+        run: |
+          echo "Processing RSVP submission..."
+
+          # Parse RSVP payload
+          cat > rsvp-payload.json << 'EOF'
+          ${{ toJSON(github.event.client_payload.data) }}
+          EOF
+
+          # Extract event ID and RSVP ID from payload
+          EVENT_ID=$(jq -r '.eventId // empty' rsvp-payload.json)
+          RSVP_ID=$(jq -r '.rsvpId // empty' rsvp-payload.json)
+          RSVP_NAME=$(jq -r '.name // empty' rsvp-payload.json)
+
+          if [ -z "$EVENT_ID" ] || [ -z "$RSVP_ID" ]; then
+            echo "❌ Error: Missing eventId or rsvpId in payload"
+            exit 1
+          fi
+
+          echo "📝 Event ID: $EVENT_ID"
+          echo "📝 RSVP ID: $RSVP_ID"
+          echo "👤 Name: $RSVP_NAME"
+
+          FILE_PATH="rsvps/${EVENT_ID}.json"
+          FILE_URL="https://api.github.com/repos/${{ env.GITHUB_OWNER }}/${{ env.DATA_REPO }}/contents/${FILE_PATH}"
+
+          # Try to fetch existing RSVP file
+          echo "🔍 Checking for existing RSVP file..."
+          EXISTING_RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/SemperAdmin/EventCall-Data/contents/rsvps/${RSVP_ID}.json \
-            -d "{\"message\":\"Add RSVP\",\"content\":\"$CONTENT\"}"
-          
-          echo "✅ RSVP saved: ${RSVP_ID}"
+            "$FILE_URL")
+
+          HTTP_CODE=$(echo "$EXISTING_RESPONSE" | tail -n1)
+          RESPONSE_BODY=$(echo "$EXISTING_RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✓ Found existing RSVP file"
+
+            # Get the SHA and existing content
+            SHA=$(echo "$RESPONSE_BODY" | jq -r '.sha')
+            EXISTING_CONTENT=$(echo "$RESPONSE_BODY" | jq -r '.content' | base64 -d)
+
+            # Check if existing content is an array
+            if echo "$EXISTING_CONTENT" | jq -e 'type == "array"' > /dev/null 2>&1; then
+              EXISTING_ARRAY="$EXISTING_CONTENT"
+            else
+              # Convert single object to array
+              EXISTING_ARRAY="[$EXISTING_CONTENT]"
+            fi
+
+            # Check if this rsvpId already exists (update case)
+            EXISTING_INDEX=$(echo "$EXISTING_ARRAY" | jq --arg rsvpId "$RSVP_ID" 'map(.rsvpId) | index($rsvpId)')
+
+            if [ "$EXISTING_INDEX" != "null" ]; then
+              echo "🔄 Updating existing RSVP at index $EXISTING_INDEX"
+              UPDATED_ARRAY=$(echo "$EXISTING_ARRAY" | jq --argjson new "$(cat rsvp-payload.json)" --argjson idx "$EXISTING_INDEX" '.[$idx] = $new')
+            else
+              echo "➕ Appending new RSVP to existing array"
+              UPDATED_ARRAY=$(echo "$EXISTING_ARRAY" | jq --argjson new "$(cat rsvp-payload.json)" '. + [$new]')
+            fi
+
+            TOTAL_RSVPS=$(echo "$UPDATED_ARRAY" | jq 'length')
+            echo "📊 Total RSVPs for this event: $TOTAL_RSVPS"
+
+            # Encode updated array
+            CONTENT=$(echo "$UPDATED_ARRAY" | base64 -w 0)
+            COMMIT_MSG="Update RSVP: $RSVP_NAME for event $EVENT_ID"
+
+            # Update file with SHA
+            curl -X PUT \
+              -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "$FILE_URL" \
+              -d "{\"message\":\"$COMMIT_MSG\",\"content\":\"$CONTENT\",\"sha\":\"$SHA\"}"
+          else
+            echo "📄 No existing file, creating new RSVP array"
+
+            # Create new array with this RSVP
+            NEW_ARRAY="[$(cat rsvp-payload.json)]"
+            CONTENT=$(echo "$NEW_ARRAY" | base64 -w 0)
+            COMMIT_MSG="Add RSVP: $RSVP_NAME for event $EVENT_ID"
+
+            # Create new file
+            curl -X PUT \
+              -H "Authorization: token ${{ secrets.DATA_REPO_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "$FILE_URL" \
+              -d "{\"message\":\"$COMMIT_MSG\",\"content\":\"$CONTENT\"}"
+          fi
+
+          echo "✅ RSVP saved successfully to $FILE_PATH"
