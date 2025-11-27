@@ -4,7 +4,7 @@
   "private": true,
   "description": "EventCall - Military Event Management System",
   "scripts": {
-    "start": "http-server -p 8080",
+    "start": "http-server -p 8081",
     "build:css": "postcss styles/main.css -o styles/main.min.css",
     "build:prod": "cross-env NODE_ENV=production postcss styles/main.css -o styles/main.min.css",
     "lint:css": "stylelint \"styles/**/*.css\""

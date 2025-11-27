@@ -230,6 +230,17 @@ class BackendAPI {
      * @param {Object} credentials - { username, password, name, email, etc. }
      * @returns {Promise<Object>} - Authentication response
      */
+    getApiUrl(path) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) {
+            console.error('Backend dispatchURL not configured');
+            // Fallback to relative path, which might work if on the same origin
+            return path;
+        }
+        return `${base}${path}`;
+    }
+
     async authenticateDirect(action, credentials) {
         const cfg = window.BACKEND_CONFIG || {};
         const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
