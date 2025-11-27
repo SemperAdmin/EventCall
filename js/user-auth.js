@@ -30,21 +30,25 @@ const userAuth = {
             return;
         }
 
-        // Check for saved user
-        const savedUser = this.loadUserFromStorage();
+        // Check for a valid session token
+        try {
+            const response = await fetch('/api/auth/me');
+            if (response.ok) {
+                const { user } = await response.json();
+                this.currentUser = user;
+                console.log('✅ User authenticated via session:', user.username);
 
-        if (savedUser) {
-            this.currentUser = savedUser;
-            console.log('✅ User restored from storage:', savedUser.username);
-
-            // Update UI
-            if (window.updateUserDisplay) {
-                window.updateUserDisplay();
+                // Update UI
+                if (window.updateUserDisplay) {
+                    window.updateUserDisplay();
+                }
+                this.hideLoginScreen();
+            } else {
+                console.log('🔒 No active session - showing login screen');
+                this.showLoginScreen();
             }
-
-            this.hideLoginScreen();
-        } else {
-            console.log('🔒 No saved user - showing login screen');
+        } catch (error) {
+            console.error('Error checking authentication status:', error);
             this.showLoginScreen();
         }
     },
@@ -99,6 +103,12 @@ const userAuth = {
                 page.style.display = 'none';
             }
         });
+
+        // Show the admin dashboard button
+        const adminNavBtn = document.getElementById('admin-nav-btn');
+        if (adminNavBtn) {
+            adminNavBtn.style.display = 'inline-block';
+        }
 
         // Hide the header navigation buttons (Create Event, Sync RSVPs, etc.)
         const quickActions = document.querySelector('.quick-actions');
@@ -460,24 +470,15 @@ const userAuth = {
             console.log(`⏱️ [T+${Date.now() - startTime}ms] Auth workflow completed`);
 
             if (response.success) {
-                console.log(`⏱️ [T+${Date.now() - startTime}ms] Auth response received, success`);
-                // Fetch full user data from EventCall-Data (auth response only has userId/username)
-                console.log(`⏱️ [T+${Date.now() - startTime}ms] Fetching full user data from EventCall-Data...`);
-                const userData = await this.fetchUserData(response.username);
-                console.log(`⏱️ [T+${Date.now() - startTime}ms] User data fetch completed`);
-
-                if (!userData) {
-                    const errorMsg = 'Failed to fetch user data from EventCall-Data repository. Please check console for details.';
-                    console.error('❌ userData is null - check fetchUserData logs above');
-                    throw new Error(errorMsg);
+                const meResponse = await fetch('/api/auth/me');
+                if (!meResponse || !meResponse.ok) {
+                    throw new Error('Failed to fetch user data after login');
                 }
+                const { user } = await meResponse.json();
+                this.currentUser = user; // Set currentUser immediately
 
                 console.log(`⏱️ [T+${Date.now() - startTime}ms] Showing success toast and updating UI...`);
-                showToast(`✅ Welcome back, ${userData.name}!`, 'success');
-
-                // Save user to storage (without password)
-                this.currentUser = userData;
-                this.saveUserToStorage(userData, rememberMe);
+                showToast(`✅ Welcome back, ${this.currentUser.name}!`, 'success');
 
                 // Update UI
                 if (window.updateUserDisplay) {
