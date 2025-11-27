@@ -12,7 +12,21 @@
          */
         init() {
             console.log('📊 Admin Dashboard module loaded');
-            // Dashboard will be loaded when admin page is shown
+            document.addEventListener('click', (event) => {
+                const target = event.target;
+                const action = target.dataset.action;
+                if (action === 'close-edit-user-modal') {
+                    this.closeEditUserModal();
+                } else if (action === 'save-user-changes') {
+                    this.saveUserChanges();
+                } else if (target.closest('[data-action="edit-user"]')) {
+                    const username = target.closest('tr').dataset.username;
+                    this.editUser(username);
+                } else if (target.closest('[data-action="delete-user"]')) {
+                    const username = target.closest('tr').dataset.username;
+                    this.deleteUser(username);
+                }
+            });
         },
 
         /**
@@ -178,103 +192,18 @@
          */
         async fetchAllUsers() {
             try {
-                const token = window.GITHUB_CONFIG?.token || window.userAuth?.getGitHubToken?.();
-                if (!token) {
-                    console.warn('⚠️ No GitHub token - returning empty users');
-                    return [];
+                const currentUser = window.userAuth?.currentUser;
+                if (!currentUser) {
+                    throw new Error("No authenticated user found");
                 }
-
-                const owner = window.GITHUB_CONFIG.dataOwner || window.GITHUB_CONFIG.owner;
-                const repo = window.GITHUB_CONFIG.dataRepo || 'EventCall-Data';
-                const url = `https://api.github.com/repos/${owner}/${repo}/contents/users`;
-
-                console.log('📂 Fetching users from:', url);
-
-                const response = await window.safeFetchGitHub(
-                    url,
-                    {
-                        headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    },
-                    'Fetch users directory from EventCall-Data'
-                );
-
+                const response = await fetch('/api/admin/users');
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(`❌ Failed to fetch users directory: ${response.status}`, errorText);
-
-                    // If users directory doesn't exist (404), return empty array
-                    if (response.status === 404) {
-                        console.warn('⚠️ users/ directory does not exist in EventCall-Data repository');
-                        console.warn('💡 To fix: Create users/ directory and add user JSON files');
-                        return [];
-                    }
-
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    throw new Error(`Failed to fetch users: ${response.statusText}`);
                 }
-
-                const files = await response.json();
-                console.log(`📋 Found ${files.length} files in users/ directory`);
-
-                const userFiles = files.filter(f => f.name.endsWith('.json'));
-                console.log(`📋 Found ${userFiles.length} user JSON files`);
-
-                // Fetch all user files in parallel for better performance
-                const userPromises = userFiles.map(async (file) => {
-                    try {
-                        console.log(`📥 Loading user from: ${file.name}`);
-
-                        // For private repos, use GitHub API (file.url) instead of raw URL (file.download_url)
-                        const apiUrl = file.url || file.download_url;
-                        const userResponse = await window.safeFetchGitHub(
-                            apiUrl,
-                            {
-                                headers: {
-                                    'Authorization': 'token ' + token,
-                                    'Accept': 'application/vnd.github.v3+json'
-                                }
-                            },
-                            `Load user file ${file.name}`
-                        );
-
-                        if (!userResponse.ok) {
-                            console.error(`❌ Failed to download ${file.name}: ${userResponse.status}`);
-                            return null;
-                        }
-
-                        const fileData = await userResponse.json();
-
-                        // GitHub API returns base64 encoded content for private repos
-                        let userData;
-                        if (fileData.content) {
-                            // Decode base64 content with Unicode support
-                            const content = window.githubAPI.safeBase64Decode(fileData.content);
-                            userData = JSON.parse(content);
-                        } else {
-                            // Fallback for public repos using download_url
-                            userData = fileData;
-                        }
-
-                        console.log(`✅ Loaded user: ${userData.username || file.name}`);
-                        return userData;
-                    } catch (e) {
-                        console.warn(`⚠️ Failed to parse user file ${file.name}:`, e);
-                        return null;
-                    }
-                });
-
-                const users = (await Promise.all(userPromises)).filter(user => user !== null);
-                console.log(`✅ Successfully loaded ${users.length} users`);
-                return users;
+                return await response.json();
             } catch (error) {
-                console.error('❌ Error fetching users:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack
-                });
-                return [];
+                console.error('Error fetching all users:', error);
+                return []; // Return an empty array on error
             }
         },
 
@@ -449,6 +378,7 @@
                                         <th>Role</th>
                                         <th>Events Created</th>
                                         <th>Last Active</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -513,9 +443,70 @@
                         <td>${roleBadge}</td>
                         <td style="text-align: center;">${eventCount}</td>
                         <td>${lastActive}</td>
+                        <td>
+                            <button class="btn btn-sm" data-action="edit-user">Edit</button>
+                            <button class="btn btn-sm btn-danger" data-action="delete-user">Delete</button>
+                        </td>
                     </tr>
                 `;
             }).join('');
+        },
+
+        editUser(username) {
+            const user = this.allUsers.find(u => u.username === username);
+            if (!user) return;
+
+            document.getElementById('edit-user-username').value = user.username;
+            document.getElementById('edit-user-name').value = user.name;
+            document.getElementById('edit-user-email').value = user.email;
+            document.getElementById('edit-user-role').value = user.role;
+            document.getElementById('edit-user-status').value = user.status || 'active';
+            document.getElementById('edit-user-modal').style.display = 'block';
+        },
+
+        closeEditUserModal() {
+            document.getElementById('edit-user-modal').style.display = 'none';
+        },
+
+        async saveUserChanges() {
+            const username = document.getElementById('edit-user-username').value;
+            const name = document.getElementById('edit-user-name').value;
+            const email = document.getElementById('edit-user-email').value;
+            const role = document.getElementById('edit-user-role').value;
+            const status = document.getElementById('edit-user-status').value;
+
+            const currentUser = window.userAuth?.currentUser;
+            const response = await fetch(`/api/admin/users/${username}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, email, role, status })
+            });
+
+            if (response.ok) {
+                this.closeEditUserModal();
+                this.refresh();
+                window.showToast('User updated successfully', 'success');
+            } else {
+                window.showToast('Failed to save user changes.', 'error');
+            }
+        },
+
+        async deleteUser(username) {
+            if (!confirm(`Are you sure you want to delete user ${username}?`)) return;
+
+            const currentUser = window.userAuth?.currentUser;
+            const response = await fetch(`/api/admin/users/${username}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                this.refresh();
+                window.showToast('User deleted successfully', 'success');
+            } else {
+                window.showToast('Failed to delete user.', 'error');
+            }
         },
 
         /**

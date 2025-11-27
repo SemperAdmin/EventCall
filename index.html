@@ -699,7 +699,49 @@ function verifyDashboardTabs() {
         <!-- Admin Dashboard (Admin Only) -->
         <div id="admin" class="page">
             <div id="admin-dashboard-content">
-                <!-- Admin dashboard content will be loaded here -->
+                <h2>User Management</h2>
+                <div id="user-management-table-container"></div>
+
+                <!-- Edit User Modal -->
+                <div id="edit-user-modal" class="modal-overlay" style="display: none;">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h2>Edit User</h2>
+                        </div>
+                        <div class="modal-body">
+                            <form id="edit-user-form">
+                                <input type="hidden" id="edit-user-username">
+                                <div class="form-group">
+                                    <label for="edit-user-name">Full Name</label>
+                                    <input type="text" id="edit-user-name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-user-email">Email</label>
+                                    <input type="email" id="edit-user-email" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-user-role">Role</label>
+                                    <select id="edit-user-role">
+                                        <option value="user">User</option>
+                                        <option value="manager">Manager</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                  <label for="edit-user-status">Status</label>
+                                  <select id="edit-user-status">
+                                    <option value="active">Active</option>
+                                    <option value="suspended">Suspended</option>
+                                  </select>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-action="close-edit-user-modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" data-action="save-user-changes">Save</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         </main>
