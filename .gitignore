@@ -1,3 +1,2 @@
-node_modules/
-EventCall-Updates.txt
-
+node_modules
+*.log
