@@ -118,8 +118,16 @@
 
         async fetchAdminData() {
             try {
+                const currentUser = window.userAuth?.currentUser;
+                if (!currentUser) {
+                    throw new Error("No authenticated user found");
+                }
                 const url = this._getAdminApiUrl('/api/admin/dashboard-data');
-                const response = await fetch(url);
+                const response = await fetch(url, {
+                    headers: {
+                        'x-username': currentUser.username
+                    }
+                });
                 if (!response.ok) {
                     throw new Error(`Failed to fetch admin data: ${response.statusText}`);
                 }
@@ -140,7 +148,11 @@
                     throw new Error("No authenticated user found");
                 }
                 const url = this._getAdminApiUrl('/api/admin/users');
-                const response = await fetch(url);
+                const response = await fetch(url, {
+                    headers: {
+                        'x-username': currentUser.username
+                    }
+                });
                 if (!response.ok) {
                     throw new Error(`Failed to fetch users: ${response.statusText}`);
                 }

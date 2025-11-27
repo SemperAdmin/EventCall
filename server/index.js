@@ -208,11 +208,20 @@ app.get('/api/admin/users', isAdmin, async (req, res) => {
       }
     });
     const usersData = await response.json();
-    const users = usersData.map(file => {
-      const user = JSON.parse(Buffer.from(file.content, 'base64').toString('utf-8'));
+    const userPromises = usersData.map(async file => {
+      const userResponse = await fetch(file.url, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      const userData = await userResponse.json();
+      const user = JSON.parse(Buffer.from(userData.content, 'base64').toString('utf-8'));
       delete user.passwordHash;
       return user;
     });
+    const users = await Promise.all(userPromises);
     res.json(users);
   } catch (error) {
     console.error('Failed to fetch all users:', error);
@@ -232,7 +241,18 @@ app.get('/api/admin/dashboard-data', isAdmin, async (req, res) => {
       }
     });
     const eventsData = await eventsResponse.json();
-    const events = eventsData.map(file => JSON.parse(Buffer.from(file.content, 'base64').toString('utf-8')));
+    const eventPromises = eventsData.map(async file => {
+      const eventResponse = await fetch(file.url, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      const eventData = await eventResponse.json();
+      return JSON.parse(Buffer.from(eventData.content, 'base64').toString('utf-8'));
+    });
+    const events = await Promise.all(eventPromises);
 
     // Fetch all RSVPs
     const rsvpsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps`;
@@ -244,7 +264,18 @@ app.get('/api/admin/dashboard-data', isAdmin, async (req, res) => {
       }
     });
     const rsvpsData = await rsvpsResponse.json();
-    const rsvps = rsvpsData.map(file => JSON.parse(Buffer.from(file.content, 'base64').toString('utf-8')));
+    const rsvpPromises = rsvpsData.map(async file => {
+      const rsvpResponse = await fetch(file.url, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      const rsvpData = await rsvpResponse.json();
+      return JSON.parse(Buffer.from(rsvpData.content, 'base64').toString('utf-8'));
+    });
+    const rsvps = await Promise.all(rsvpPromises);
 
     res.json({ events, rsvps });
   } catch (error) {
