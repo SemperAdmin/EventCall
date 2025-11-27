@@ -3,6 +3,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 // Env configuration
 const PORT = process.env.PORT || 10000;
@@ -11,6 +15,10 @@ const REPO_OWNER = process.env.REPO_OWNER || '';
 const REPO_NAME = process.env.REPO_NAME || '';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '';
 const CSRF_SHARED_SECRET = process.env.CSRF_SHARED_SECRET || '';
+const JWT_SECRET = process.env.JWT_SECRET || '';
+
+// In-memory cache
+const cache = new Map();
 
 if (!GITHUB_TOKEN || !REPO_OWNER || !REPO_NAME) {
   console.error('Missing required env: GITHUB_TOKEN, REPO_OWNER, REPO_NAME. Exiting.');
@@ -22,8 +30,12 @@ if (!ALLOWED_ORIGIN) {
 if (!CSRF_SHARED_SECRET) {
   console.warn('CSRF_SHARED_SECRET is not set; CSRF validation will fail.');
 }
+if (!JWT_SECRET) {
+    console.warn('JWT_SECRET is not set; authentication will fail.');
+}
 
 const app = express();
+app.use(cookieParser());
 
 // Helper functions for GitHub API interactions
 async function getUserFromGitHub(username) {
@@ -226,13 +238,17 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Return user data (without password hash)
     const { passwordHash, ...safeUser } = user;
+    const token = jwt.sign(safeUser, JWT_SECRET, { expiresIn: '1h' });
+
+    res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+    });
+
     res.json({
-      success: true,
-      user: safeUser,
-      userId: safeUser.id,
-      username: safeUser.username,
-      action: 'login_user',
-      message: 'Login successful'
+        success: true,
+        message: 'Login successful'
     });
 
   } catch (error) {
@@ -241,6 +257,141 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Helper functions for GitHub API interactions
+
+async function getAllUsersFromGitHub() {
+    if (cache.has('all-users')) {
+        return cache.get('all-users');
+    }
+
+    const usersUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users`;
+    const response = await fetch(usersUrl, {
+        headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'EventCall-Backend'
+        }
+    });
+
+    if (!response.ok) {
+        return null;
+    }
+
+    const files = await response.json();
+    const userPromises = files
+        .filter(file => file.name.endsWith('.json'))
+        .map(file => {
+            return fetch(file.url, {
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3.raw',
+                    'User-Agent': 'EventCall-Backend'
+                }
+            }).then(res => res.json());
+        });
+
+    const users = await Promise.all(userPromises);
+    cache.set('all-users', users);
+    return users;
+}
+
+async function updateUserInGitHub(username, userData, sha) {
+    cache.delete('all-users');
+    const updateUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users/${username}.json`;
+    const response = await fetch(updateUrl, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'EventCall-Backend'
+        },
+        body: JSON.stringify({
+            message: `Update user: ${username}`,
+            content: Buffer.from(JSON.stringify(userData, null, 2)).toString('base64'),
+            sha: sha
+        })
+    });
+    return response;
+}
+
+async function getAllEventsFromGitHub() {
+    const eventsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events`;
+    const response = await fetch(eventsUrl, {
+        headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'EventCall-Backend'
+        }
+    });
+
+    if (!response.ok) {
+        return null;
+    }
+
+    const files = await response.json();
+    const eventPromises = files
+        .filter(file => file.name.endsWith('.json'))
+        .map(file => {
+            return fetch(file.url, {
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3.raw',
+                    'User-Agent': 'EventCall-Backend'
+                }
+            }).then(res => res.json());
+        });
+
+    return Promise.all(eventPromises);
+}
+
+async function getAllRsvpsFromGitHub() {
+    const rsvpsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps`;
+    const response = await fetch(rsvpsUrl, {
+        headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'EventCall-Backend'
+        }
+    });
+
+    if (!response.ok) {
+        return null;
+    }
+
+    const files = await response.json();
+    const rsvpPromises = files
+        .filter(file => file.name.endsWith('.json'))
+        .map(file => {
+            return fetch(file.url, {
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3.raw',
+                    'User-Agent': 'EventCall-Backend'
+                }
+            }).then(res => res.json());
+        });
+
+    return Promise.all(rsvpPromises);
+}
+
+async function deleteUserFromGitHub(username, sha) {
+    cache.delete('all-users');
+    const deleteUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users/${username}.json`;
+    const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'EventCall-Backend'
+        },
+        body: JSON.stringify({
+            message: `Delete user: ${username}`,
+            sha: sha
+        })
+    });
+    return response;
+}
 // PERFORMANCE: Direct registration endpoint
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -318,6 +469,169 @@ app.post('/api/auth/register', async (req, res) => {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
+
+function isAuthenticated(req, res, next) {
+    const token = req.cookies.token;
+    if (!token) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+}
+
+function isAdmin(req, res, next) {
+    if (req.user && req.user.role === 'admin') {
+        next();
+    } else {
+        res.status(403).json({ error: 'Forbidden: Admin access required' });
+    }
+}
+
+// Admin routes for user management
+app.get('/api/admin/users', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        const users = await getAllUsersFromGitHub();
+        if (!users) {
+            return res.status(500).json({ error: 'Failed to fetch users' });
+        }
+        // Exclude password hashes from the response for security
+        const safeUsers = users.map(user => {
+            const { passwordHash, ...safeUser } = user;
+            return safeUser;
+        });
+        res.json(safeUsers);
+    } catch (error) {
+        console.error('Get all users error:', error);
+        res.status(500).json({ error: 'Server error while fetching users' });
+    }
+});
+
+app.get('/api/admin/dashboard-data', isAuthenticated, isAdmin, async (req, res) => {
+    if (cache.has('dashboard-data')) {
+        return res.json(cache.get('dashboard-data'));
+    }
+    try {
+        const events = await getAllEventsFromGitHub();
+        const rsvps = await getAllRsvpsFromGitHub();
+        const dashboardData = { events, rsvps };
+        cache.set('dashboard-data', dashboardData);
+        res.json(dashboardData);
+    } catch (error) {
+        console.error('Get dashboard data error:', error);
+        res.status(500).json({ error: 'Server error while fetching dashboard data' });
+    }
+});
+
+// Add a simple cache invalidation endpoint
+app.post('/api/admin/invalidate-cache', isAuthenticated, isAdmin, (req, res) => {
+    const { key } = req.body;
+    if (key && cache.has(key)) {
+        cache.delete(key);
+        return res.json({ success: true, message: `Cache for key '${key}' invalidated.` });
+    }
+    // Invalidate all caches if no key is provided
+    if (!key) {
+        cache.clear();
+        return res.json({ success: true, message: 'All caches invalidated.' });
+    }
+    res.status(404).json({ error: 'Cache key not found.' });
+});
+
+app.put('/api/admin/users/:username', isAuthenticated, isAdmin, async (req, res) => {
+    const { username } = req.params;
+    const userData = req.body;
+
+    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username);
+    if (!isValidUsername) {
+        return res.status(400).json({ error: 'Invalid username format' });
+    }
+
+    try {
+        const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users/${username}.json`;
+        const response = await fetch(userUrl, {
+            headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github+json',
+                'User-Agent': 'EventCall-Backend'
+            }
+        });
+
+        if (!response.ok) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const fileData = await response.json();
+        const sha = fileData.sha;
+        const existingUser = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+
+        const updatedUserData = { ...existingUser, ...userData, passwordHash: existingUser.passwordHash };
+
+        const updateResp = await updateUserInGitHub(username, updatedUserData, sha);
+
+        if (!updateResp.ok) {
+            const error = await updateResp.json();
+            return res.status(500).json({ error: error.message || 'Failed to update user' });
+        }
+
+        const { passwordHash, ...safeUser } = updatedUserData;
+        res.json({ success: true, user: safeUser });
+
+    } catch (error) {
+        console.error('Update user error:', error);
+        res.status(500).json({ error: 'Server error while updating user' });
+    }
+});
+
+app.get('/api/auth/me', isAuthenticated, (req, res) => {
+    const { passwordHash, ...safeUser } = req.user;
+    res.json({ user: safeUser });
+});
+
+app.delete('/api/admin/users/:username', isAuthenticated, isAdmin, async (req, res) => {
+    const { username } = req.params;
+
+    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username);
+    if (!isValidUsername) {
+        return res.status(400).json({ error: 'Invalid username format' });
+    }
+
+    try {
+        const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users/${username}.json`;
+        const response = await fetch(userUrl, {
+            headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github+json',
+                'User-Agent': 'EventCall-Backend'
+            }
+        });
+
+        if (!response.ok) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const fileData = await response.json();
+        const sha = fileData.sha;
+
+        const deleteResp = await deleteUserFromGitHub(username, sha);
+
+        if (!deleteResp.ok) {
+            const error = await deleteResp.json();
+            return res.status(500).json({ error: error.message || 'Failed to delete user' });
+        }
+
+        res.json({ success: true, message: `User ${username} deleted successfully.` });
+
+    } catch (error) {
+        console.error('Delete user error:', error);
+        res.status(500).json({ error: 'Server error while deleting user' });
+    }
+});
+
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 

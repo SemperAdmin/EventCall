@@ -12,7 +12,21 @@
          */
         init() {
             console.log('📊 Admin Dashboard module loaded');
-            // Dashboard will be loaded when admin page is shown
+            document.addEventListener('click', (event) => {
+                const target = event.target;
+                const action = target.dataset.action;
+                if (action === 'close-edit-user-modal') {
+                    this.closeEditUserModal();
+                } else if (action === 'save-user-changes') {
+                    this.saveUserChanges();
+                } else if (target.closest('[data-action="edit-user"]')) {
+                    const username = target.closest('tr').dataset.username;
+                    this.editUser(username);
+                } else if (target.closest('[data-action="delete-user"]')) {
+                    const username = target.closest('tr').dataset.username;
+                    this.deleteUser(username);
+                }
+            });
         },
 
         /**
@@ -52,10 +66,13 @@
          */
         async loadDashboard() {
             console.log('📊 Loading admin dashboard...');
+            const content = document.getElementById('admin-dashboard-content');
+            if (content) {
+                content.innerHTML = '<div class="loading"><div class="spinner"></div>Loading admin data...</div>';
+            }
 
             if (!this.isAdmin()) {
                 console.error('❌ Access denied - user is not admin');
-                const content = document.getElementById('admin-dashboard-content');
                 if (content) {
                     content.innerHTML = `
                         <div style="padding: 2rem; text-align: center; color: var(--semper-red);">
@@ -70,11 +87,12 @@
 
             try {
                 // Fetch all data
-                const [events, users, rsvps] = await Promise.all([
-                    this.fetchAllEvents(),
-                    this.fetchAllUsers(),
-                    this.fetchAllRSVPs()
+                const [adminData, users] = await Promise.all([
+                    this.fetchAdminData(),
+                    this.fetchAllUsers()
                 ]);
+
+                const { events, rsvps } = adminData;
 
                 // Compute KPIs
                 const kpis = this.computeKPIs(events, users, rsvps);
@@ -89,87 +107,16 @@
             }
         },
 
-        /**
-         * Fetch all events from EventCall-Data (admin access - no user filtering)
-         */
-        async fetchAllEvents() {
+        async fetchAdminData() {
             try {
-                const token = window.GITHUB_CONFIG?.token || window.userAuth?.getGitHubToken?.();
-                if (!token) {
-                    console.warn('⚠️ No GitHub token - returning empty events');
-                    return [];
+                const response = await fetch('/api/admin/dashboard-data');
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch admin data: ${response.statusText}`);
                 }
-
-                console.log('📥 Loading all events for admin dashboard...');
-
-                // Load from EventCall-Data repository
-                const treeResponse = await window.safeFetchGitHub(
-                    window.GITHUB_CONFIG.getTreeUrl('data'),
-                    {
-                        headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'User-Agent': 'EventCall-App'
-                        }
-                    },
-                    'Load tree from EventCall-Data for admin'
-                );
-
-                if (!treeResponse.ok) {
-                    console.log('Repository or main branch not found, treating as empty');
-                    return [];
-                }
-
-                const treeData = await treeResponse.json();
-
-                const eventFiles = treeData.tree.filter(item =>
-                    item.path.startsWith('events/') &&
-                    item.path.endsWith('.json') &&
-                    item.type === 'blob'
-                );
-
-                console.log(`Found ${eventFiles.length} event files in private repo`);
-
-                // PERFORMANCE: Load ALL events in parallel (no user filtering for admin)
-                const eventPromises = eventFiles.map(async (file) => {
-                    try {
-                        const fileResponse = await window.safeFetchGitHub(
-                            window.GITHUB_CONFIG.getBlobUrl('data', file.sha),
-                            {
-                                headers: {
-                                    'Authorization': 'token ' + token,
-                                    'Accept': 'application/vnd.github.v3+json',
-                                    'User-Agent': 'EventCall-App'
-                                }
-                            },
-                            'Load event file blob from EventCall-Data'
-                        );
-
-                        if (fileResponse.ok) {
-                            const fileData = await fileResponse.json();
-                            const content = JSON.parse(window.githubAPI.safeBase64Decode(fileData.content));
-                            console.log('✅ Loaded event for admin:', content.title);
-                            return content;
-                        }
-                        return null;
-                    } catch (error) {
-                        console.error('Failed to load event file ' + file.path + ':', error);
-                        return null;
-                    }
-                });
-
-                // Wait for all events to load in parallel
-                const loadedEvents = await Promise.all(eventPromises);
-
-                // Filter out null values
-                const events = loadedEvents.filter(event => event !== null);
-
-                console.log(`✅ Loaded ${events.length} total events for admin dashboard`);
-                return events;
-
+                return await response.json();
             } catch (error) {
-                console.error('Failed to load all events for admin:', error);
-                return [];
+                console.error('Error fetching admin data:', error);
+                return { events: [], rsvps: [] };
             }
         },
 
@@ -178,123 +125,19 @@
          */
         async fetchAllUsers() {
             try {
-                const token = window.GITHUB_CONFIG?.token || window.userAuth?.getGitHubToken?.();
-                if (!token) {
-                    console.warn('⚠️ No GitHub token - returning empty users');
-                    return [];
+                const currentUser = window.userAuth?.currentUser;
+                if (!currentUser) {
+                    throw new Error("No authenticated user found");
                 }
-
-                const owner = window.GITHUB_CONFIG.dataOwner || window.GITHUB_CONFIG.owner;
-                const repo = window.GITHUB_CONFIG.dataRepo || 'EventCall-Data';
-                const url = `https://api.github.com/repos/${owner}/${repo}/contents/users`;
-
-                console.log('📂 Fetching users from:', url);
-
-                const response = await window.safeFetchGitHub(
-                    url,
-                    {
-                        headers: {
-                            'Authorization': 'token ' + token,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    },
-                    'Fetch users directory from EventCall-Data'
-                );
-
+                const response = await fetch('/api/admin/users');
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(`❌ Failed to fetch users directory: ${response.status}`, errorText);
-
-                    // If users directory doesn't exist (404), return empty array
-                    if (response.status === 404) {
-                        console.warn('⚠️ users/ directory does not exist in EventCall-Data repository');
-                        console.warn('💡 To fix: Create users/ directory and add user JSON files');
-                        return [];
-                    }
-
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    throw new Error(`Failed to fetch users: ${response.statusText}`);
                 }
-
-                const files = await response.json();
-                console.log(`📋 Found ${files.length} files in users/ directory`);
-
-                const userFiles = files.filter(f => f.name.endsWith('.json'));
-                console.log(`📋 Found ${userFiles.length} user JSON files`);
-
-                // Fetch all user files in parallel for better performance
-                const userPromises = userFiles.map(async (file) => {
-                    try {
-                        console.log(`📥 Loading user from: ${file.name}`);
-
-                        // For private repos, use GitHub API (file.url) instead of raw URL (file.download_url)
-                        const apiUrl = file.url || file.download_url;
-                        const userResponse = await window.safeFetchGitHub(
-                            apiUrl,
-                            {
-                                headers: {
-                                    'Authorization': 'token ' + token,
-                                    'Accept': 'application/vnd.github.v3+json'
-                                }
-                            },
-                            `Load user file ${file.name}`
-                        );
-
-                        if (!userResponse.ok) {
-                            console.error(`❌ Failed to download ${file.name}: ${userResponse.status}`);
-                            return null;
-                        }
-
-                        const fileData = await userResponse.json();
-
-                        // GitHub API returns base64 encoded content for private repos
-                        let userData;
-                        if (fileData.content) {
-                            // Decode base64 content with Unicode support
-                            const content = window.githubAPI.safeBase64Decode(fileData.content);
-                            userData = JSON.parse(content);
-                        } else {
-                            // Fallback for public repos using download_url
-                            userData = fileData;
-                        }
-
-                        console.log(`✅ Loaded user: ${userData.username || file.name}`);
-                        return userData;
-                    } catch (e) {
-                        console.warn(`⚠️ Failed to parse user file ${file.name}:`, e);
-                        return null;
-                    }
-                });
-
-                const users = (await Promise.all(userPromises)).filter(user => user !== null);
-                console.log(`✅ Successfully loaded ${users.length} users`);
-                return users;
+                return await response.json();
             } catch (error) {
-                console.error('❌ Error fetching users:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack
-                });
-                return [];
+                console.error('Error fetching all users:', error);
+                return []; // Return an empty array on error
             }
-        },
-
-        /**
-         * Fetch all RSVPs from EventCall-Data
-         */
-        async fetchAllRSVPs() {
-            // Use existing GitHub API functions
-            if (window.githubAPI && window.githubAPI.loadResponses) {
-                const responses = await window.githubAPI.loadResponses();
-                // Flatten all RSVPs
-                const allRsvps = [];
-                for (const eventId in responses) {
-                    if (Array.isArray(responses[eventId])) {
-                        allRsvps.push(...responses[eventId]);
-                    }
-                }
-                return allRsvps;
-            }
-            return [];
         },
 
         /**
@@ -449,6 +292,7 @@
                                         <th>Role</th>
                                         <th>Events Created</th>
                                         <th>Last Active</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -513,9 +357,70 @@
                         <td>${roleBadge}</td>
                         <td style="text-align: center;">${eventCount}</td>
                         <td>${lastActive}</td>
+                        <td>
+                            <button class="btn btn-sm" data-action="edit-user">Edit</button>
+                            <button class="btn btn-sm btn-danger" data-action="delete-user">Delete</button>
+                        </td>
                     </tr>
                 `;
             }).join('');
+        },
+
+        editUser(username) {
+            const user = this.allUsers.find(u => u.username === username);
+            if (!user) return;
+
+            document.getElementById('edit-user-username').value = user.username;
+            document.getElementById('edit-user-name').value = user.name;
+            document.getElementById('edit-user-email').value = user.email;
+            document.getElementById('edit-user-role').value = user.role;
+            document.getElementById('edit-user-status').value = user.status || 'active';
+            document.getElementById('edit-user-modal').style.display = 'block';
+        },
+
+        closeEditUserModal() {
+            document.getElementById('edit-user-modal').style.display = 'none';
+        },
+
+        async saveUserChanges() {
+            const username = document.getElementById('edit-user-username').value;
+            const name = document.getElementById('edit-user-name').value;
+            const email = document.getElementById('edit-user-email').value;
+            const role = document.getElementById('edit-user-role').value;
+            const status = document.getElementById('edit-user-status').value;
+
+            const currentUser = window.userAuth?.currentUser;
+            const response = await fetch(`/api/admin/users/${username}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, email, role, status })
+            });
+
+            if (response.ok) {
+                this.closeEditUserModal();
+                this.refresh();
+                window.showToast('User updated successfully', 'success');
+            } else {
+                window.showToast('Failed to save user changes.', 'error');
+            }
+        },
+
+        async deleteUser(username) {
+            if (!confirm(`Are you sure you want to delete user ${username}?`)) return;
+
+            const currentUser = window.userAuth?.currentUser;
+            const response = await fetch(`/api/admin/users/${username}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                this.refresh();
+                window.showToast('User deleted successfully', 'success');
+            } else {
+                window.showToast('Failed to delete user.', 'error');
+            }
         },
 
         /**
