@@ -113,7 +113,23 @@ function constantTimeEqual(a, b) {
   if (bufA.length !== bufB.length) return false;
   return crypto.timingSafeEqual(bufA, bufB);
 }
+async function isAdmin(req, res, next) {
+  const username = req.headers['x-username'];
+  if (!username) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
+  try {
+    const user = await getUserFromGitHub(username);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    next();
+  } catch (error) {
+    console.error('Admin check failed:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+}
 // Issue a short-lived CSRF token for the client
 app.get('/api/csrf', (req, res) => {
   if (!isOriginAllowed(req)) {
@@ -178,6 +194,62 @@ app.post('/api/dispatch', async (req, res) => {
   } catch (e) {
     console.error('Dispatch proxy error:', e);
     return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/admin/users', isAdmin, async (req, res) => {
+  try {
+    const usersUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users`;
+    const response = await fetch(usersUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'EventCall-Backend'
+      }
+    });
+    const usersData = await response.json();
+    const users = usersData.map(file => {
+      const user = JSON.parse(Buffer.from(file.content, 'base64').toString('utf-8'));
+      delete user.passwordHash;
+      return user;
+    });
+    res.json(users);
+  } catch (error) {
+    console.error('Failed to fetch all users:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/admin/dashboard-data', isAdmin, async (req, res) => {
+  try {
+    // Fetch all events
+    const eventsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events`;
+    const eventsResponse = await fetch(eventsUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'EventCall-Backend'
+      }
+    });
+    const eventsData = await eventsResponse.json();
+    const events = eventsData.map(file => JSON.parse(Buffer.from(file.content, 'base64').toString('utf-8')));
+
+    // Fetch all RSVPs
+    const rsvpsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps`;
+    const rsvpsResponse = await fetch(rsvpsUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'EventCall-Backend'
+      }
+    });
+    const rsvpsData = await rsvpsResponse.json();
+    const rsvps = rsvpsData.map(file => JSON.parse(Buffer.from(file.content, 'base64').toString('utf-8')));
+
+    res.json({ events, rsvps });
+  } catch (error) {
+    console.error('Failed to fetch admin dashboard data:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
