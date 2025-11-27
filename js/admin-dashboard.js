@@ -7,6 +7,15 @@
     'use strict';
 
     const AdminDashboard = {
+        _getAdminApiUrl(path) {
+            const cfg = window.BACKEND_CONFIG || {};
+            const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+            if (!base) {
+                console.error('Proxy dispatchURL not configured');
+                return path; // Fallback to relative path
+            }
+            return `${base}${path}`;
+        },
         /**
          * Initialize admin dashboard
          */
@@ -109,7 +118,12 @@
 
         async fetchAdminData() {
             try {
-                const response = await fetch('/api/admin/dashboard-data');
+                const currentUser = window.userAuth?.currentUser;
+                if (!currentUser) {
+                    throw new Error("No authenticated user found");
+                }
+                const url = this._getAdminApiUrl('/api/admin/dashboard-data');
+                const response = await fetch(url, { credentials: 'include' });
                 if (!response.ok) {
                     throw new Error(`Failed to fetch admin data: ${response.statusText}`);
                 }
@@ -129,7 +143,8 @@
                 if (!currentUser) {
                     throw new Error("No authenticated user found");
                 }
-                const response = await fetch('/api/admin/users');
+                const url = this._getAdminApiUrl('/api/admin/users');
+                const response = await fetch(url, { credentials: 'include' });
                 if (!response.ok) {
                     throw new Error(`Failed to fetch users: ${response.statusText}`);
                 }

@@ -4,6 +4,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
 
 // Env configuration
 const PORT = process.env.PORT || 10000;
@@ -13,8 +15,8 @@ const REPO_NAME = process.env.REPO_NAME || '';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '';
 const CSRF_SHARED_SECRET = process.env.CSRF_SHARED_SECRET || '';
 
-if (!GITHUB_TOKEN || !REPO_OWNER || !REPO_NAME) {
-  console.error('Missing required env: GITHUB_TOKEN, REPO_OWNER, REPO_NAME. Exiting.');
+if (!GITHUB_TOKEN || !REPO_OWNER || !REPO_NAME || !process.env.JWT_SECRET) {
+  console.error('Missing required env: GITHUB_TOKEN, REPO_OWNER, REPO_NAME, JWT_SECRET. Exiting.');
   process.exit(1);
 }
 if (!ALLOWED_ORIGIN) {
@@ -64,6 +66,38 @@ async function saveUserToGitHub(username, userData) {
   return response;
 }
 
+// Suggested helper function to be placed with other helpers
+async function fetchFromGitHub(url) {
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `token ${GITHUB_TOKEN}`,
+      'Accept': 'application/vnd.github+json',
+      'User-Agent': 'EventCall-Backend'
+    }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Failed to read error response.');
+    throw new Error(`GitHub API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  return response.json();
+}
+
+async function fetchAllFileContents(files, processor) {
+  const promises = files.map(async (file) => {
+    if (!file.url) {
+      console.warn('File object is missing url property, skipping:', file);
+      return null;
+    }
+    const data = await fetchFromGitHub(file.url);
+    const content = JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8'));
+    return processor ? processor(content) : content;
+  });
+  // Filter out any nulls from skipped files
+  return (await Promise.all(promises)).filter(item => item !== null);
+}
+
 // Configure Helmet with an explicit CSP including frame-ancestors.
 app.use(helmet({
   contentSecurityPolicy: {
@@ -84,6 +118,7 @@ app.use(helmet({
     },
   },
 }));
+app.use(cookieParser());
 app.use(express.json({ limit: '256kb' }));
 app.use(cors({
   origin: function (origin, callback) {
@@ -113,7 +148,36 @@ function constantTimeEqual(a, b) {
   if (bufA.length !== bufB.length) return false;
   return crypto.timingSafeEqual(bufA, bufB);
 }
+async function isAdmin(req, res, next) {
+  // Example: Reading JWT from an HttpOnly cookie named 'token'.
+  // This requires the cookie-parser middleware to be used by the app.
+  const token = req.cookies.token;
 
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized: Missing authentication token.' });
+  }
+
+  try {
+    // Verify the token using the secret key. This will throw an error if the token is invalid or expired.
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // The token payload should contain the user's role, added during login.
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Admin access required.' });
+    }
+
+    // Optionally, attach user info to the request object for use in the route handler.
+    req.user = { username: decoded.username, role: decoded.role };
+
+    next();
+  } catch (error) {
+    console.error('Admin check failed:', error);
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Unauthorized: Invalid or expired token.' });
+    }
+    res.status(500).json({ error: 'Server error during authentication.' });
+  }
+}
 // Issue a short-lived CSRF token for the client
 app.get('/api/csrf', (req, res) => {
   if (!isOriginAllowed(req)) {
@@ -181,6 +245,43 @@ app.post('/api/dispatch', async (req, res) => {
   }
 });
 
+app.get('/api/admin/users', isAdmin, async (req, res) => {
+  try {
+    const usersUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users`;
+    const usersData = await fetchFromGitHub(usersUrl);
+    const users = await fetchAllFileContents(usersData, user => {
+      delete user.passwordHash;
+      return user;
+    });
+    res.json(users);
+  } catch (error) {
+    console.error('Failed to fetch all users:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/admin/dashboard-data', isAdmin, async (req, res) => {
+  try {
+    const eventsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events`;
+    const rsvpsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps`;
+
+    const [eventsData, rsvpsData] = await Promise.all([
+      fetchFromGitHub(eventsUrl),
+      fetchFromGitHub(rsvpsUrl)
+    ]);
+
+    const [events, rsvps] = await Promise.all([
+      fetchAllFileContents(eventsData),
+      fetchAllFileContents(rsvpsData)
+    ]);
+
+    res.json({ events, rsvps });
+  } catch (error) {
+    console.error('Failed to fetch admin dashboard data:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // PERFORMANCE: Direct authentication endpoint (bypasses GitHub Actions)
 // Reduces login time from 67s to 200-500ms (99% faster!)
 app.post('/api/auth/login', async (req, res) => {
@@ -227,6 +328,13 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Return user data (without password hash)
     const { passwordHash, ...safeUser } = user;
+
+    // Create a JWT
+    const token = jwt.sign({ username: safeUser.username, role: safeUser.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    // Set the JWT as an HttpOnly cookie
+    res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'strict' });
+
     res.json({
       success: true,
       user: safeUser,
