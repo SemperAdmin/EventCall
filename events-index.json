@@ -1046,7 +1046,6 @@
     "coverImage": ""
   },
   {
-    "id": "85adde2e-3fcb-4e0d-8d56-e87ce29ad538",
     "title": "Retirement Ceremony",
     "date": "2026-03-14",
     "time": "13:00",
@@ -1056,28 +1055,12 @@
     "allowGuests": true,
     "requiresMealChoice": false,
     "customQuestions": [],
-    "eventDetails": {
-      "retiree-name": {
-        "label": "Retiree Name",
-        "value": "LtCol Adam Wilkie"
-      },
-      "years-service": {
-        "label": "Years of Service",
-        "value": "21 years"
-      },
-      "retiring-rank": {
-        "label": "Retiring Rank",
-        "value": "Lieutenant Colonel"
-      },
-      "reception-location": {
-        "label": "Reception Location",
-        "value": "Oval and Ale @ 6:00 PM (47 N Hampstead Village Dr, Hampstead, NC 28443)"
-      }
-    },
+    "eventDetails": {},
+    "id": "85adde2e-3fcb-4e0d-8d56-e87ce29ad538",
     "created": 1764604122874,
-    "status": "active",
     "createdBy": "awilkie05",
     "createdByName": "Adam Wilkie",
+    "lastModified": 1764604490374,
     "coverImage": ""
   },
   {
