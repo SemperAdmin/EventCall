@@ -1046,24 +1046,6 @@
     "coverImage": ""
   },
   {
-    "title": "Retirement Ceremony",
-    "date": "2026-03-14",
-    "time": "13:00",
-    "location": "Battleship North Carolina (1 Battleship Rd NE, Wilmington, NC 28401)",
-    "description": "Please join us in honoring the distinguished career and dedicated service of a fellow Marine.",
-    "askReason": false,
-    "allowGuests": true,
-    "requiresMealChoice": false,
-    "customQuestions": [],
-    "eventDetails": {},
-    "id": "85adde2e-3fcb-4e0d-8d56-e87ce29ad538",
-    "created": 1764604122874,
-    "createdBy": "awilkie05",
-    "createdByName": "Adam Wilkie",
-    "lastModified": 1764604490374,
-    "coverImage": ""
-  },
-  {
     "id": "86523b84-bb46-471e-a53b-b1c6fc3a886a",
     "title": "Promotion Ceremony",
     "date": "2025-11-26",
