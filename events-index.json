@@ -296,6 +296,24 @@
     "coverImage": ""
   },
   {
+    "title": "Retirement Ceremony for Lieutenant Colonel Adam Wilkie",
+    "date": "2026-03-15",
+    "time": "13:00",
+    "location": "Battleship North Carolina (1 Battleship Rd NE, Wilmington, NC 28401)",
+    "description": "Please join me in thanking those who have supported me during my 21 years of Marine Corps service.Following the ceremony, join us for a get together at Oval and Ale @ 6pm (47 N Hampstead Village Dr, Hampstead, NC 28443)Out of Town Guests: Hotels in the Mayfaire Town Center (Wilmington, NC 28405) will centrally locate you between the Battleship North Carolina (22 min) and Oval and Ale (21 min).",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {},
+    "id": "583c8ca2-9450-45af-8e11-28284207644b",
+    "created": 1764606462581,
+    "createdBy": "awilkie05",
+    "createdByName": "Adam Wilkie",
+    "lastModified": 1764607854893,
+    "coverImage": "https://semperadmin.github.io/EventCall/create"
+  },
+  {
     "id": "613a4b5d-f0cb-4770-9899-21026a1351b5",
     "title": "Retirement Ceremony",
     "date": "2026-08-15",
