@@ -177,6 +177,24 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/ddbe6863-2438-421f-ab53-cf4920a811ca.jpg"
   },
   {
+    "title": "Retirement Ceremony",
+    "date": "2025-12-19",
+    "time": "10:30",
+    "location": "Camp Lejeune North Carolina 10th Marine Regimental LZ on Julian C. Smith Street across Area 5 Pool",
+    "description": "The 1st Battalion, 10th Marine Regiment, Sergeant Major Jaime Lerma and Mrs. Sandra Lerma cordially invites you and your spouse to his Retirement Ceremony.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {},
+    "id": "1d8ab440-4104-43e6-8671-b7dd64ec68a7",
+    "created": 1764692929086,
+    "createdBy": "b.delon",
+    "createdByName": "Breona",
+    "lastModified": 1764693232496,
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/d3f1a033-8381-46f8-914d-89243431e8cc.png"
+  },
+  {
     "id": "20539968-8fa5-44b0-97f5-a15ebd37cd76",
     "title": "Promotion Ceremony",
     "date": "2025-12-01",
@@ -1201,37 +1219,6 @@
     "createdByName": "R.T. Wilson",
     "lastModified": 1763429813417,
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/ddb7953a-0e3f-428a-8137-372fbe719a5b.jpg"
-  },
-  {
-    "id": "ad6e2cf0-a72a-412a-9ab5-06ee7a496f7b",
-    "title": "Sergeant Major Jaime Lerma&#x27;s Retirement Ceremony",
-    "date": "2025-12-19",
-    "time": "10:30",
-    "location": "North Carolina Camp Lejeune, 10th Regimental LZ on Julian C. Smith Street, across from Area 5 Pool.",
-    "description": "The Sergeant Major of 1st Battalion 10th Marine Regiment, Sergeant Major Jaime Lerma, and Mrs. Sandra Lerma cordially invite you to his retirement ceremony. Please join us in honoring the distinguished career and dedicated service of Sergeant Major Lerma.",
-    "askReason": false,
-    "allowGuests": true,
-    "requiresMealChoice": true,
-    "customQuestions": [],
-    "eventDetails": {
-      "retiree-name": {
-        "label": "Retiree Name",
-        "value": "Sergeant Major Jaime Lerma"
-      },
-      "years-service": {
-        "label": "Years of Service",
-        "value": "24 years"
-      },
-      "retiring-rank": {
-        "label": "Retiring Rank",
-        "value": "Seargant Major"
-      }
-    },
-    "created": 1764690367853,
-    "status": "active",
-    "createdBy": "b.delon",
-    "createdByName": "Breona",
-    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/af9fbf83-11af-4cf5-b5d5-5f3bec396722.png"
   },
   {
     "title": "VMFAT-502 Change of Command Ceremony",
