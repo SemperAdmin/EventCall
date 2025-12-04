@@ -1997,38 +1997,21 @@
     "coverImage": ""
   },
   {
-    "id": "ddaa8142-abf0-4398-98b0-89257c6806c7",
     "title": "Retirement Ceremony",
-    "date": "2026-01-30",
+    "date": "2026-01-31",
     "time": "10:00",
-    "location": "MCAS Beaufort Officer&#x27;s Club",
-    "description": "Please join us in honoring the distinguished career and dedicated service of CDR Karen J. Rector, United States Navy Chaplain Corps.Military: UODCivilian: Business Casual or Appropriate Attire",
+    "location": "Officers Club",
+    "description": "Please join us in honoring the distinguished career and dedicated service of CDR Karen J. Rector, United States Navy Chaplain Corps. Military = UOD; Civilian = Business Casual or Appropriate Attire",
     "askReason": false,
     "allowGuests": true,
     "requiresMealChoice": false,
     "customQuestions": [],
-    "eventDetails": {
-      "retiree-name": {
-        "label": "Retiree Name",
-        "value": "CDR Karen J. Rector"
-      },
-      "years-service": {
-        "label": "Years of Service",
-        "value": "27"
-      },
-      "retiring-rank": {
-        "label": "Retiring Rank",
-        "value": "Commander"
-      },
-      "reception-location": {
-        "label": "Reception Location",
-        "value": "MCAS Beaufort Officer&#x27;s Club"
-      }
-    },
+    "eventDetails": {},
+    "id": "ddaa8142-abf0-4398-98b0-89257c6806c7",
     "created": 1764864884409,
-    "status": "active",
     "createdBy": "kjrector",
     "createdByName": "Karen J Rector",
+    "lastModified": 1764867494916,
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/4efc9cfa-e425-41cb-b515-922c7b007a01.jpg"
   },
   {
