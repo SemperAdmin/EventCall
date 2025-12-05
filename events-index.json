@@ -279,20 +279,19 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/0219421a-806c-4a09-9708-426dddf525a0.png"
   },
   {
-    "id": "414eee24-5b7c-4774-b2c8-e8da7a15ff55",
     "title": "Retirement Ceremony",
-    "date": "2026-01-09",
+    "date": "2026-01-10",
     "time": "10:00",
-    "location": "MCAS Beaufort Officer&#x27;s Club",
-    "description": "Please join us in honoring the distinguished career and dedicated service of Master Sergeant Schmidt.",
+    "location": "MCAS Beaufort Officer&amp;amp;#x27;s Club",
+    "description": "Please join us in honoring the distinguished career and dedicated service of a fellow Marine.",
     "askReason": false,
     "allowGuests": true,
-    "requiresMealChoice": false,
+    "requiresMealChoice": true,
     "customQuestions": [],
     "eventDetails": {
       "retiree-name": {
         "label": "Retiree Name",
-        "value": "David E. Schmidt"
+        "value": "MSgt David E. Schmidt"
       },
       "years-service": {
         "label": "Years of Service",
@@ -307,10 +306,11 @@
         "value": "MCAS Beaufort Officer&#x27;s Club"
       }
     },
+    "id": "414eee24-5b7c-4774-b2c8-e8da7a15ff55",
     "created": 1763737350462,
-    "status": "active",
     "createdBy": "schmidtde",
     "createdByName": "David E.  Schmidt",
+    "lastModified": 1764946126097,
     "coverImage": ""
   },
   {
