@@ -2278,6 +2278,13 @@ Best regards`;
         // Populate custom questions
         this.populateCustomQuestions(event.customQuestions || []);
 
+        // Populate event details fields (template-specific fields)
+        if (event.eventDetails && Object.keys(event.eventDetails).length > 0) {
+            if (window.eventTemplates) {
+                window.eventTemplates.populateEventDetailsFields(event.eventDetails);
+            }
+        }
+
         // Seating configuration UI: reflect existing event seating settings
         const enableSeating = document.getElementById('enable-seating');
         const seatingConfigFields = document.getElementById('seating-config-fields');

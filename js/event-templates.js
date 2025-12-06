@@ -284,6 +284,134 @@ class EventTemplates {
             </div>
         `;
     }
+
+    /**
+     * Detect which template was used based on eventDetails keys
+     * @param {Object} eventDetails - Event details object with field keys
+     * @returns {string|null} Template ID or null if no match found
+     */
+    detectTemplateFromEventDetails(eventDetails) {
+        if (!eventDetails || Object.keys(eventDetails).length === 0) {
+            return null;
+        }
+
+        const eventDetailKeys = Object.keys(eventDetails);
+        const templates = this.getAllTemplates();
+
+        // Find template with matching field IDs
+        for (const template of templates) {
+            if (!template.eventFields || template.eventFields.length === 0) continue;
+
+            const templateFieldIds = template.eventFields.map(f => f.id);
+
+            // Check if all eventDetail keys exist in this template's fields
+            const allKeysMatch = eventDetailKeys.every(key => templateFieldIds.includes(key));
+
+            if (allKeysMatch) {
+                return template.id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Create and populate event detail fields for editing
+     * @param {Object} eventDetails - Event details object with field keys and values
+     * @returns {boolean} True if successful, false otherwise
+     */
+    populateEventDetailsFields(eventDetails) {
+        if (!eventDetails || Object.keys(eventDetails).length === 0) {
+            return false;
+        }
+
+        // Detect which template was used
+        const templateId = this.detectTemplateFromEventDetails(eventDetails);
+
+        if (!templateId) {
+            console.warn('Could not detect template from eventDetails, creating generic fields');
+            // Create generic fields for eventDetails that don't match a template
+            const eventDetailsContainer = document.getElementById('event-details-container');
+            if (!eventDetailsContainer) return false;
+
+            eventDetailsContainer.innerHTML = '';
+
+            Object.entries(eventDetails).forEach(([key, detail]) => {
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'form-group';
+                fieldDiv.innerHTML = window.utils.sanitizeHTML(`
+                    <label for="event-detail-${window.utils.escapeHTML(key)}">
+                        ${window.utils.escapeHTML(detail.label)}
+                    </label>
+                    <input
+                        type="text"
+                        id="event-detail-${window.utils.escapeHTML(key)}"
+                        name="${window.utils.escapeHTML(key)}"
+                        value="${window.utils.escapeHTML(detail.value)}"
+                        class="event-detail-field"
+                        data-field-id="${window.utils.escapeHTML(key)}"
+                        data-field-label="${window.utils.escapeHTML(detail.label)}"
+                    >
+                `);
+                eventDetailsContainer.appendChild(fieldDiv);
+            });
+
+            // Show the event details section
+            const eventDetailsSection = document.getElementById('event-details-section');
+            if (eventDetailsSection) {
+                eventDetailsSection.classList.remove('hidden');
+                eventDetailsSection.style.display = 'block';
+            }
+
+            return true;
+        }
+
+        // Get the template
+        const template = this.getTemplate(templateId);
+        if (!template) return false;
+
+        // Create the fields using template structure
+        const eventDetailsContainer = document.getElementById('event-details-container');
+        if (!eventDetailsContainer) return false;
+
+        eventDetailsContainer.innerHTML = '';
+
+        template.eventFields.forEach(field => {
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'form-group';
+
+            // Get the value from eventDetails if it exists
+            const fieldValue = eventDetails[field.id] ? eventDetails[field.id].value : '';
+
+            fieldDiv.innerHTML = window.utils.sanitizeHTML(`
+                <label for="event-detail-${window.utils.escapeHTML(field.id)}">
+                    ${window.utils.escapeHTML(field.label)}${field.required ? ' *' : ''}
+                </label>
+                <input
+                    type="text"
+                    id="event-detail-${window.utils.escapeHTML(field.id)}"
+                    name="${window.utils.escapeHTML(field.id)}"
+                    placeholder="${window.utils.escapeHTML(field.placeholder || '')}"
+                    value="${window.utils.escapeHTML(fieldValue)}"
+                    ${field.required ? 'required' : ''}
+                    class="event-detail-field"
+                    data-field-id="${window.utils.escapeHTML(field.id)}"
+                    data-field-label="${window.utils.escapeHTML(field.label)}"
+                >
+            `);
+            eventDetailsContainer.appendChild(fieldDiv);
+        });
+
+        // Show the event details section
+        const eventDetailsSection = document.getElementById('event-details-section');
+        if (eventDetailsSection) {
+            eventDetailsSection.classList.remove('hidden');
+            eventDetailsSection.style.display = 'block';
+        }
+
+        console.log(`✅ Populated ${template.eventFields.length} event detail fields from template: ${template.name}`);
+        return true;
+    }
 }
 
 // Initialize and make globally available
