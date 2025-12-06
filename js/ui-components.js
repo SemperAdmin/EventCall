@@ -87,14 +87,7 @@ function escapeHTML(str) {
 
 // Helper for escaping HTML while preserving line breaks
 function escapeHTMLPreserveNewlines(str) {
-    if (str === null || str === undefined) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/\n/g, '<br>');
+    return escapeHTML(str).replace(/\n/g, '<br>');
 }
 
 // function createInviteWithoutImageHTML(event, eventId) {
