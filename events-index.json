@@ -2381,6 +2381,93 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/d4b70e4d-bfdb-4fc9-9c8f-cd4d117b087f.png"
   },
   {
+    "id": "e8d9d0ea-b448-4d09-bae2-a42ba3ac4082",
+    "title": "Memorial Service",
+    "date": "2026-03-25",
+    "time": "20:00",
+    "location": "",
+    "description": "We gather to honor and remember those who made the ultimate sacrifice.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {
+      "honoree-name": {
+        "label": "In Memory Of",
+        "value": "s"
+      },
+      "service-dates": {
+        "label": "Service Dates",
+        "value": "2"
+      },
+      "chaplain": {
+        "label": "Officiant",
+        "value": "d"
+      },
+      "reception-info": {
+        "label": "Reception Details",
+        "value": "f"
+      }
+    },
+    "created": 1765235026944,
+    "status": "active",
+    "createdBy": "alex94",
+    "createdByName": "Alexander Ontivero",
+    "seatingChart": {
+      "enabled": true,
+      "numberOfTables": 7,
+      "seatsPerTable": 8,
+      "totalCapacity": 56,
+      "tables": [
+        {
+          "tableNumber": 1,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": true
+        },
+        {
+          "tableNumber": 2,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 3,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 4,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 5,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 6,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        },
+        {
+          "tableNumber": 7,
+          "capacity": 8,
+          "assignedGuests": [],
+          "vipTable": false
+        }
+      ],
+      "unassignedGuests": [],
+      "lastModified": 1765235026944
+    },
+    "coverImage": ""
+  },
+  {
     "id": "f1b8168b-6cf9-4962-9fc1-e35c75637a0e",
     "title": "Family Day Event",
     "date": "2026-04-05",
