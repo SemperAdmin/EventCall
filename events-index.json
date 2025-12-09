@@ -195,9 +195,8 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/d3f1a033-8381-46f8-914d-89243431e8cc.png"
   },
   {
-    "id": "1f2cc611-0132-4283-833a-a0229fdaf026",
-    "title": "I&amp;L Holiday Party",
-    "date": "2025-12-19",
+    "title": "IL Holiday Party",
+    "date": "2025-12-20",
     "time": "14:00",
     "location": "Joint Base Myers-Henderson Hall Bowling Center",
     "description": "Join us for a festive holiday celebration! 🎉 Whether you re here to enjoy good company, delicious food, or a little holiday cheer, this all-ages event is the perfect way to kick off the season. Bring your holiday spirit and let s make some memories together!We look forward to celebrating with you!",
@@ -211,11 +210,12 @@
         "value": "Bowling"
       }
     },
+    "id": "1f2cc611-0132-4283-833a-a0229fdaf026",
     "created": 1765294479957,
-    "status": "active",
     "createdBy": "dcil75",
     "createdByName": "Adrian Rodriguez",
-    "coverImage": ""
+    "lastModified": 1765295156268,
+    "coverImage": "https://semperadmin.github.io/EventCall/create"
   },
   {
     "id": "20539968-8fa5-44b0-97f5-a15ebd37cd76",
