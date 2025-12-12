@@ -1,6 +1,37 @@
 [
   [],
   {
+    "id": "12b9ab8c-3958-4a31-960a-724e7a3eab52",
+    "title": "Unit Formation",
+    "date": "2025-12-15",
+    "time": "08:00",
+    "location": "BUILDING 1440",
+    "description": "Mandatory unit formation. All personnel are required to attend unless on approved leave or TDY.",
+    "askReason": true,
+    "allowGuests": false,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "formation-type": {
+        "label": "Formation Type",
+        "value": "PT Accountability"
+      },
+      "uniform": {
+        "label": "Uniform",
+        "value": "green on green"
+      },
+      "reporting-senior": {
+        "label": "Reporting Senior",
+        "value": "SSgt Barocio"
+      }
+    },
+    "created": 1765576236647,
+    "status": "active",
+    "createdBy": "jjbarocio",
+    "createdByName": "javier jesus barocio",
+    "coverImage": ""
+  },
+  {
     "id": "13a8c3a3-117c-47ba-942b-a92c828b5ad2",
     "title": "Marine Corps Birthday Ball",
     "date": "2025-11-29",
