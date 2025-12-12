@@ -1,34 +1,34 @@
 [
   [],
   {
-    "id": "12b9ab8c-3958-4a31-960a-724e7a3eab52",
-    "title": "Unit Formation",
+    "title": "Training Event",
     "date": "2025-12-15",
     "time": "08:00",
     "location": "BUILDING 1440",
-    "description": "Mandatory unit formation. All personnel are required to attend unless on approved leave or TDY.",
+    "description": "Professional military education and training session.",
     "askReason": true,
     "allowGuests": false,
     "requiresMealChoice": false,
     "customQuestions": [],
     "eventDetails": {
-      "formation-type": {
-        "label": "Formation Type",
-        "value": "PT Accountability"
+      "training-topic": {
+        "label": "Training Topic",
+        "value": "pt feild"
       },
-      "uniform": {
-        "label": "Uniform",
-        "value": "green on green"
+      "instructor": {
+        "label": "Instructor",
+        "value": "Sgt Sal"
       },
-      "reporting-senior": {
-        "label": "Reporting Senior",
-        "value": "SSgt Barocio"
+      "equipment-bring": {
+        "label": "Equipment to Bring",
+        "value": "main pack, gas mask"
       }
     },
+    "id": "12b9ab8c-3958-4a31-960a-724e7a3eab52",
     "created": 1765576236647,
-    "status": "active",
     "createdBy": "jjbarocio",
     "createdByName": "javier jesus barocio",
+    "lastModified": 1765578908711,
     "coverImage": ""
   },
   {
