@@ -368,6 +368,41 @@
     "coverImage": ""
   },
   {
+    "id": "49b3fc5c-8d58-46e5-953b-02f2569b1fa7",
+    "title": "R800",
+    "date": "2025-12-16",
+    "time": "17:51",
+    "location": "Base",
+    "description": "PME",
+    "askReason": false,
+    "allowGuests": false,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "training-topic": {
+        "label": "Training Topic",
+        "value": "CLS"
+      },
+      "instructor": {
+        "label": "Instructor",
+        "value": "CLS"
+      },
+      "prerequisites": {
+        "label": "Prerequisites",
+        "value": "CLS"
+      },
+      "equipment-bring": {
+        "label": "Equipment to Bring",
+        "value": "CLS"
+      }
+    },
+    "created": 1765921656944,
+    "status": "active",
+    "createdBy": "firstsergeant1833",
+    "createdByName": "Edward Argueta",
+    "coverImage": ""
+  },
+  {
     "title": "Retirement Ceremony for Lieutenant Colonel Adam Wilkie",
     "date": "2026-03-15",
     "time": "13:00",
@@ -488,6 +523,41 @@
       "unassignedGuests": [],
       "lastModified": 1763404616073
     },
+    "coverImage": ""
+  },
+  {
+    "id": "69dcba9e-78cd-4179-9c24-7b413699faaf",
+    "title": "Training Event",
+    "date": "2025-12-16",
+    "time": "16:47",
+    "location": "R800",
+    "description": "Professional military education and training session.",
+    "askReason": false,
+    "allowGuests": false,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "training-topic": {
+        "label": "Training Topic",
+        "value": "CLS"
+      },
+      "instructor": {
+        "label": "Instructor",
+        "value": "Marine"
+      },
+      "prerequisites": {
+        "label": "Prerequisites",
+        "value": "TR"
+      },
+      "equipment-bring": {
+        "label": "Equipment to Bring",
+        "value": "Notebook"
+      }
+    },
+    "created": 1765921541281,
+    "status": "active",
+    "createdBy": "firstsergeant1833",
+    "createdByName": "Edward Argueta",
     "coverImage": ""
   },
   {
