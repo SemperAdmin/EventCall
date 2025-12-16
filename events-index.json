@@ -2453,6 +2453,41 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/d4b70e4d-bfdb-4fc9-9c8f-cd4d117b087f.png"
   },
   {
+    "title": "Change of Command Ceremony",
+    "date": "2026-01-22",
+    "time": "12:00",
+    "location": "Parade deck, MCRD San Diego",
+    "description": "Join us for the formal transfer of authority and responsibility.Uniform for participants: Service BUniform for guests: UOD or appropriate civilian attire if applicable",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "outgoing-co": {
+        "label": "Outgoing Commander",
+        "value": "LtCol Stephen J. Greenberg"
+      },
+      "incoming-co": {
+        "label": "Incoming Commander",
+        "value": "LtCol Cristina Lopez"
+      },
+      "reviewing-officer": {
+        "label": "Reviewing Officer",
+        "value": "Col Tracy A. Maese"
+      },
+      "unit-designation": {
+        "label": "Unit",
+        "value": "3d Recruit Training Battalion, Recruit Training Regiment, Marine Corps Recruit Depot San Diego"
+      }
+    },
+    "id": "e6c68af0-a6b7-435b-9287-06f9c84f9be1",
+    "created": 1765907997394,
+    "createdBy": "portiastewart",
+    "createdByName": "Portia Stewart",
+    "lastModified": 1765909582881,
+    "coverImage": ""
+  },
+  {
     "id": "e8d9d0ea-b448-4d09-bae2-a42ba3ac4082",
     "title": "Memorial Service",
     "date": "2026-03-25",
