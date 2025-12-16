@@ -491,6 +491,41 @@
     "coverImage": ""
   },
   {
+    "id": "63c929fd-c839-434f-bb0b-fa7454cdf05f",
+    "title": "Change of Command Ceremony",
+    "date": "2026-01-21",
+    "time": "12:00",
+    "location": "Parade deck, MCRD San Diego",
+    "description": "Join us for the formal transfer of authority and responsibility.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "outgoing-co": {
+        "label": "Outgoing Commander",
+        "value": "LtCol Stephen J. Greenberg"
+      },
+      "incoming-co": {
+        "label": "Incoming Commander",
+        "value": "LtCol Cristina Lopez"
+      },
+      "reviewing-officer": {
+        "label": "Reviewing Officer",
+        "value": "Col Tracy A. Maese"
+      },
+      "unit-designation": {
+        "label": "Unit",
+        "value": "3d Recruit Training Battalion, Recruit Training Regiment, Marine Corps Recruit Training Depot"
+      }
+    },
+    "created": 1765907168786,
+    "status": "active",
+    "createdBy": "portiastewart",
+    "createdByName": "Portia Stewart",
+    "coverImage": ""
+  },
+  {
     "id": "7844d2f4-5a91-46c7-8026-647e4751ba83",
     "title": "Marine Corps Birthday Ball",
     "date": "2025-11-21",
