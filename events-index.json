@@ -284,6 +284,37 @@
     "coverImage": ""
   },
   {
+    "id": "255d40bc-5227-4ea0-9e1d-eea2840d51ad",
+    "title": "Family Day Event (Test for 3d MEB)",
+    "date": "2025-12-25",
+    "time": "13:41",
+    "location": "CG&#x27;s House.",
+    "description": "TEST TEST: Bring your families to celebrate and build camaraderie outside of duty hours.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {
+      "activities-available": {
+        "label": "Activities",
+        "value": "Bounce house, ring around the rose"
+      },
+      "food-provided": {
+        "label": "Food/Beverages",
+        "value": "Bring your own."
+      },
+      "parking-info": {
+        "label": "Parking",
+        "value": "Main lot"
+      }
+    },
+    "created": 1765946599313,
+    "status": "active",
+    "createdBy": "m.arguello",
+    "createdByName": "Michael",
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/d567c1a3-6723-4019-939f-ea6e0af47625.jpg"
+  },
+  {
     "id": "2edf0d21-0e44-4723-bd60-e2ce7f2f752f",
     "title": "Unit Formation",
     "date": "2025-11-12",
