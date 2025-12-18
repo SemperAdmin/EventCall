@@ -208,6 +208,37 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/ddbe6863-2438-421f-ab53-cf4920a811ca.jpg"
   },
   {
+    "id": "1bdf2e9d-ce90-4413-9115-12dd345216b1",
+    "title": "Test test",
+    "date": "2025-12-19",
+    "time": "10:00",
+    "location": "asdfasdf",
+    "description": "Bring your families to celebrate and build camaraderie outside of duty hours.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "activities-available": {
+        "label": "Activities",
+        "value": "adsfdas"
+      },
+      "food-provided": {
+        "label": "Food/Beverages",
+        "value": "asdfasdf"
+      },
+      "parking-info": {
+        "label": "Parking",
+        "value": "asdfasdf"
+      }
+    },
+    "created": 1766039645685,
+    "status": "active",
+    "createdBy": "m.arguello",
+    "createdByName": "Michael",
+    "coverImage": ""
+  },
+  {
     "id": "1c0a18de-b8f9-4093-819c-4c1336bbde32",
     "title": "Sgt Val&#x27;s going away",
     "date": "2025-12-18",
@@ -380,6 +411,37 @@
     "createdBy": "reese.johnson",
     "createdByName": "Reese Johnson",
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/0219421a-806c-4a09-9708-426dddf525a0.png"
+  },
+  {
+    "id": "3dfe14b4-4cba-452c-b87c-a6ecfbc5ec03",
+    "title": "Winter Wonderland Test",
+    "date": "2025-12-18",
+    "time": "13:00",
+    "location": "4412",
+    "description": "Bring your families to celebrate and build camaraderie outside of duty hours. Test test",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {
+      "activities-available": {
+        "label": "Activities",
+        "value": "Bounce House, games."
+      },
+      "food-provided": {
+        "label": "Food/Beverages",
+        "value": "Lite re"
+      },
+      "parking-info": {
+        "label": "Parking",
+        "value": "tengan parking lot or other"
+      }
+    },
+    "created": 1766039240837,
+    "status": "active",
+    "createdBy": "m.arguello",
+    "createdByName": "Michael",
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/06de81d4-fa6c-437c-a0bd-7ed4329850bb.jpg"
   },
   {
     "title": "Retirement Ceremony",
