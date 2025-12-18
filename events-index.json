@@ -364,6 +364,37 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/d567c1a3-6723-4019-939f-ea6e0af47625.jpg"
   },
   {
+    "title": "Winter Wonderland",
+    "date": "2026-01-10",
+    "time": "09:00",
+    "location": "Crows Nest at Camp Shields",
+    "description": "Winter Wonderland to bring the unit and families together after the holiday season.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "activities-available": {
+        "label": "Activities",
+        "value": "Bounce house and winter crafts"
+      },
+      "food-provided": {
+        "label": "Food/Beverages",
+        "value": "Breakfast buffet and hot cocoa bar"
+      },
+      "parking-info": {
+        "label": "Parking",
+        "value": "At Crows Nest"
+      }
+    },
+    "id": "2c45f276-34da-45d8-852e-a2bedd7eb996",
+    "created": 1766040619882,
+    "createdBy": "jayleegiffin",
+    "createdByName": "Jaylee Giffin",
+    "lastModified": 1766041076789,
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/62fc1365-a004-4e17-b98e-c8146764fbd3.jpg"
+  },
+  {
     "id": "2edf0d21-0e44-4723-bd60-e2ce7f2f752f",
     "title": "Unit Formation",
     "date": "2025-11-12",
