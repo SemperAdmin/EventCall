@@ -208,6 +208,24 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/ddbe6863-2438-421f-ab53-cf4920a811ca.jpg"
   },
   {
+    "id": "1c0a18de-b8f9-4093-819c-4c1336bbde32",
+    "title": "Sgt Val&#x27;s going away",
+    "date": "2025-12-18",
+    "time": "13:30",
+    "location": "BBW",
+    "description": "See you there.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {},
+    "created": 1766021403395,
+    "status": "active",
+    "createdBy": "danielr3432",
+    "createdByName": "Daniel Cory Robinson",
+    "coverImage": ""
+  },
+  {
     "title": "Retirement Ceremony",
     "date": "2025-12-20",
     "time": "10:30",
