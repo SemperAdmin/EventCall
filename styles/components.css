@@ -544,31 +544,6 @@ select option:checked {
 }
 
 /* =============================================================================
-   THEME TOGGLE BUTTON
-   ============================================================================= */
-.theme-toggle-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.25rem;
-    padding: 0.5rem;
-    margin-right: 0.5rem;
-    opacity: 0.9;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.theme-toggle-btn:hover {
-    opacity: 1;
-    transform: scale(1.1);
-}
-
-.theme-toggle-btn:focus {
-    outline: 2px solid var(--semper-gold);
-    outline-offset: 2px;
-    border-radius: 4px;
-}
-
-/* =============================================================================
    EVENT SEARCH
    ============================================================================= */
 .event-search-container {
@@ -699,10 +674,4 @@ select option:checked {
 .draft-recovery-banner__actions .btn {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
-}
-
-/* Dark mode adjustments */
-[data-theme="dark"] .draft-recovery-banner {
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.02));
-    border-color: rgba(212, 175, 55, 0.2);
 }

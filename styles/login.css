@@ -683,60 +683,58 @@
 }
 
 /* =============================================================================
-   DARK MODE SUPPORT FOR LOGIN PAGE
+   LOGIN PAGE TEXT STYLING
+   White text for login page dark background
    ============================================================================= */
 
-/* Auth form header - dark mode only */
-[data-theme="dark"] .auth__form-header h3 {
+/* Auth form header - white text on dark background */
+.auth__form-header h3 {
     color: var(--semper-gold);
 }
 
-[data-theme="dark"] .auth__form-header p {
-    color: rgba(255, 255, 255, 0.7);
+.auth__form-header p {
+    color: rgba(255, 255, 255, 0.8);
 }
 
-/* Form labels - dark mode */
-[data-theme="dark"] .form-label {
+/* Form labels - white text */
+#login-page .form-label,
+.login-box .form-label {
     color: #e5e7eb;
 }
 
-/* Input fields in dark mode */
-[data-theme="dark"] #login-page .form-control {
+/* Input fields - light styling on dark background */
+#login-page .form-control,
+.login-box .form-control {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.2);
     color: #f3f4f6;
 }
 
-[data-theme="dark"] #login-page .form-control::placeholder {
+#login-page .form-control::placeholder,
+.login-box .form-control::placeholder {
     color: rgba(255, 255, 255, 0.5);
 }
 
-[data-theme="dark"] #login-page .form-control:focus {
+#login-page .form-control:focus,
+.login-box .form-control:focus {
     border-color: var(--semper-gold);
     box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
 }
 
 /* Remember me checkbox label */
-[data-theme="dark"] .auth__remember-label,
-[data-theme="dark"] .checkbox-label {
+#login-page .auth__remember-label,
+#login-page .checkbox-label,
+.login-box .checkbox-label {
     color: #d1d5db;
 }
 
-/* Tab buttons */
-[data-theme="dark"] .tab-btn:not(.active) {
+/* Tab buttons - inactive state */
+#login-page .tab-btn:not(.active),
+.login-box .tab-btn:not(.active) {
     color: #d1d5db;
 }
 
-/* Button link styling for dark mode */
-[data-theme="dark"] .btn-link {
-    color: var(--semper-gold);
-}
-
-[data-theme="dark"] .btn-link:hover {
-    color: #f0d060;
-}
-
-/* Override any button defaults for btn-link in auth forms */
+/* Button link styling */
 .auth__form .btn-link,
 #login-page .btn-link,
 .auth__link-container .btn-link {
@@ -756,16 +754,16 @@
     color: #f0d060 !important;
 }
 
-/* Reset Password Form - Ensure header is visible in dark mode */
-[data-theme="dark"] #forgot-password-form .auth__form-header h3,
-[data-theme="dark"] #reset-confirm-form .auth__form-header h3 {
-    color: var(--semper-gold) !important;
+/* Reset Password Form headers */
+#forgot-password-form .auth__form-header h3,
+#reset-confirm-form .auth__form-header h3 {
+    color: var(--semper-gold);
     font-size: 1.5rem;
 }
 
-[data-theme="dark"] #forgot-password-form .auth__form-header p,
-[data-theme="dark"] #reset-confirm-form .auth__form-header p {
-    color: rgba(255, 255, 255, 0.8) !important;
+#forgot-password-form .auth__form-header p,
+#reset-confirm-form .auth__form-header p {
+    color: rgba(255, 255, 255, 0.8);
 }
 
 /* =============================================================================
@@ -828,62 +826,6 @@
     margin-bottom: 1.25rem;
 }
 
-/* Dark mode modal overrides */
-[data-theme="dark"] .modal {
-    background: #1f2937; /* gray-800 */
-}
-
-[data-theme="dark"] .modal-header {
-    border-color: #374151;
-}
-
-[data-theme="dark"] .modal-header h2 {
-    color: var(--semper-gold);
-}
-
-[data-theme="dark"] .modal-footer {
-    border-color: #374151;
-}
-
-[data-theme="dark"] .modal .form-label,
-[data-theme="dark"] .modal-body .form-label,
-[data-theme="dark"] #user-profile-modal .form-label {
-    color: #e5e7eb !important; /* gray-200 */
-}
-
-[data-theme="dark"] .modal .form-control,
-[data-theme="dark"] .modal-body .form-control,
-[data-theme="dark"] #user-profile-modal .form-control {
-    color: #f3f4f6 !important;
-    background-color: #374151 !important; /* gray-700 */
-    border-color: #4b5563 !important; /* gray-600 */
-}
-
-[data-theme="dark"] .modal .form-control:focus,
-[data-theme="dark"] #user-profile-modal .form-control:focus {
-    border-color: var(--semper-gold) !important;
-    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2) !important;
-}
-
-[data-theme="dark"] .modal .form-control:disabled,
-[data-theme="dark"] .modal .form-control[readonly],
-[data-theme="dark"] #user-profile-modal .form-control:disabled,
-[data-theme="dark"] #user-profile-modal .form-control[readonly] {
-    background-color: #1f2937 !important;
-    color: #9ca3af !important;
-}
-
-[data-theme="dark"] .modal .form-help,
-[data-theme="dark"] #user-profile-modal .form-help {
-    color: #9ca3af !important;
-}
-
-[data-theme="dark"] .modal select.form-control,
-[data-theme="dark"] #user-profile-modal select.form-control {
-    color: #f3f4f6 !important;
-    background-color: #374151 !important;
-}
-
 /* Profile password section styling */
 .profile-password-section {
     margin-top: 2rem;
@@ -895,14 +837,6 @@
     margin: 0 0 1rem 0;
     color: #1f2937;
     font-size: 1.1rem;
-}
-
-[data-theme="dark"] .profile-password-section {
-    border-top-color: #374151;
-}
-
-[data-theme="dark"] .profile-password-section h4 {
-    color: var(--semper-gold);
 }
 
 /* Password strength indicator */
