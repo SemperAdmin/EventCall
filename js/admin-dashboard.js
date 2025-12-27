@@ -76,8 +76,15 @@
         async loadDashboard() {
             console.log('📊 Loading admin dashboard...');
             const content = document.getElementById('admin-dashboard-content');
+            let skeletonCtl = null;
+
             if (content) {
-                content.innerHTML = '<div class="loading"><div class="spinner"></div>Loading admin data...</div>';
+                // Use unified skeleton loader if available
+                if (window.LoadingUI && window.LoadingUI.Skeleton) {
+                    skeletonCtl = window.LoadingUI.Skeleton.show(content, 'cards', 4);
+                } else {
+                    content.innerHTML = '<div class="loading-inline"><span class="spinner"></span> Loading admin data...</div>';
+                }
             }
 
             if (!this.isAdmin()) {
