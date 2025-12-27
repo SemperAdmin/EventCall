@@ -542,6 +542,36 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+// Helper function to fetch user for password reset (prevents code duplication)
+async function findUserForReset(username) {
+  let user = null;
+  let userFileSha = null;
+  const userPath = `users/${username.toLowerCase()}.json`;
+  const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
+
+  try {
+    const userResp = await fetch(userUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (userResp.ok) {
+      const fileData = await userResp.json();
+      user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+      userFileSha = fileData.sha;
+    }
+  } catch (err) {
+    console.log(`[RESET] Error fetching user: ${err.message}`);
+  }
+
+  // Add artificial delay to prevent timing attacks (100-300ms random)
+  await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+
+  return { user, userFileSha };
+}
+
 // Verify username and email for UI-based password reset
 // Returns a reset token if credentials match, allowing immediate password reset
 app.post('/api/auth/verify-reset', async (req, res) => {
@@ -565,32 +595,8 @@ app.post('/api/auth/verify-reset', async (req, res) => {
       return res.status(400).json({ error: 'Username and email are required' });
     }
 
-    // Try to fetch user from EventCall-Data repository
-    // Always attempt fetch regardless of username format to prevent timing attacks
-    let user = null;
-    let userFileSha = null;
-    const userPath = `users/${username.toLowerCase()}.json`;
-    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
-
-    try {
-      const userResp = await fetch(userUrl, {
-        headers: {
-          'Authorization': `token ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-
-      if (userResp.ok) {
-        const fileData = await userResp.json();
-        user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
-        userFileSha = fileData.sha;
-      }
-    } catch (err) {
-      console.log(`[RESET] Error fetching user: ${err.message}`);
-    }
-
-    // Add artificial delay to prevent timing attacks (100-300ms random)
-    await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+    // Fetch user with timing attack protection
+    const { user, userFileSha } = await findUserForReset(username);
 
     // Verify user exists and email matches (case-insensitive)
     if (!user || user.email.toLowerCase() !== email.toLowerCase()) {
@@ -649,32 +655,8 @@ app.post('/api/auth/request-reset', async (req, res) => {
       return res.status(400).json({ error: 'Username and email are required' });
     }
 
-    // Try to fetch user from EventCall-Data repository
-    // Always attempt fetch regardless of username format to prevent timing attacks
-    let user = null;
-    let userFileSha = null;
-    const userPath = `users/${username.toLowerCase()}.json`;
-    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
-
-    try {
-      const userResp = await fetch(userUrl, {
-        headers: {
-          'Authorization': `token ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-
-      if (userResp.ok) {
-        const fileData = await userResp.json();
-        user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
-        userFileSha = fileData.sha; // Store sha for later use
-      }
-    } catch (err) {
-      console.log(`[RESET] Error fetching user: ${err.message}`);
-    }
-
-    // Add artificial delay to prevent timing attacks (100-300ms random)
-    await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+    // Fetch user with timing attack protection
+    const { user, userFileSha } = await findUserForReset(username);
 
     // Verify user exists and email matches (case-insensitive)
     if (!user || user.email.toLowerCase() !== email.toLowerCase()) {
