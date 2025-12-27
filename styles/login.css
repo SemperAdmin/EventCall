@@ -737,3 +737,35 @@
 [data-theme="dark"] .btn-link:hover {
     color: #f0d060;
 }
+
+/* Override any button defaults for btn-link in auth forms */
+.auth__form .btn-link,
+#login-page .btn-link,
+.auth__link-container .btn-link {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--semper-gold) !important;
+    text-decoration: underline;
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+}
+
+.auth__form .btn-link:hover,
+#login-page .btn-link:hover {
+    opacity: 0.8;
+    color: #f0d060 !important;
+}
+
+/* Reset Password Form - Ensure header is visible */
+#forgot-password-form .auth__form-header h3,
+#reset-confirm-form .auth__form-header h3 {
+    color: var(--semper-gold) !important;
+    font-size: 1.5rem;
+}
+
+#forgot-password-form .auth__form-header p,
+#reset-confirm-form .auth__form-header p {
+    color: rgba(255, 255, 255, 0.8) !important;
+}

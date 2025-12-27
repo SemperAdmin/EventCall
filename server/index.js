@@ -570,6 +570,7 @@ app.post('/api/auth/request-reset', async (req, res) => {
     // Try to fetch user from EventCall-Data repository
     // Even if username format is invalid, we proceed to maintain consistent timing
     let user = null;
+    let userFileSha = null;
     if (isValidUsername) {
       const userPath = `users/${username.toLowerCase()}.json`;
       const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
@@ -585,6 +586,7 @@ app.post('/api/auth/request-reset', async (req, res) => {
         if (userResp.ok) {
           const fileData = await userResp.json();
           user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+          userFileSha = fileData.sha; // Store sha for later use
         }
       } catch (err) {
         console.log(`[RESET] Error fetching user: ${err.message}`);
@@ -610,7 +612,7 @@ app.post('/api/auth/request-reset', async (req, res) => {
       username: username.toLowerCase(),
       email: email.toLowerCase(),
       expires,
-      fileSha: fileData.sha
+      fileSha: userFileSha
     });
 
     // In production, send email with reset link
