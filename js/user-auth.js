@@ -1241,12 +1241,11 @@ async function handleForgotPassword(e) {
     e.preventDefault();
 
     const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
 
-    try {
-        submitBtn.innerHTML = '<div class="spinner"></div> Sending...';
-        submitBtn.disabled = true;
+    // Use unified loading UI if available
+    const useLoadingUI = window.LoadingUI && window.LoadingUI.withButtonLoading;
 
+    const doRequest = async () => {
         const username = document.getElementById('reset-username').value.trim().toLowerCase();
         const email = document.getElementById('reset-email').value.trim().toLowerCase();
 
@@ -1290,15 +1289,28 @@ async function handleForgotPassword(e) {
             showLoginForm();
             e.target.reset();
         }, 2000);
+    };
 
+    try {
+        if (useLoadingUI) {
+            await window.LoadingUI.withButtonLoading(submitBtn, 'Sending...', doRequest);
+        } else {
+            // Fallback for when LoadingUI is not available
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner"></span> Sending...';
+            submitBtn.disabled = true;
+            try {
+                await doRequest();
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        }
     } catch (error) {
         console.error('Forgot password error:', error);
         if (window.showToast) {
             window.showToast('❌ ' + error.message, 'error');
         }
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
     }
 }
 
@@ -1309,12 +1321,11 @@ async function handleResetPassword(e) {
     e.preventDefault();
 
     const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
 
-    try {
-        submitBtn.innerHTML = '<div class="spinner"></div> Resetting...';
-        submitBtn.disabled = true;
+    // Use unified loading UI if available
+    const useLoadingUI = window.LoadingUI && window.LoadingUI.withButtonLoading;
 
+    const doReset = async () => {
         const token = document.getElementById('reset-token').value;
         const password = document.getElementById('new-password').value;
         const confirmPassword = document.getElementById('confirm-new-password').value;
@@ -1366,15 +1377,28 @@ async function handleResetPassword(e) {
             showLoginForm();
             e.target.reset();
         }, 1500);
+    };
 
+    try {
+        if (useLoadingUI) {
+            await window.LoadingUI.withButtonLoading(submitBtn, 'Resetting...', doReset);
+        } else {
+            // Fallback for when LoadingUI is not available
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner"></span> Resetting...';
+            submitBtn.disabled = true;
+            try {
+                await doReset();
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        }
     } catch (error) {
         console.error('Reset password error:', error);
         if (window.showToast) {
             window.showToast('❌ ' + error.message, 'error');
         }
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
     }
 }
 
