@@ -7,6 +7,61 @@ class EventManager {
     constructor() {
         this.currentEvent = null;
         this.editMode = false;
+        // RSVP pagination state
+        this.rsvpPagination = {
+            pageSize: 25,
+            shownByEvent: {} // eventId -> number of RSVPs shown
+        };
+    }
+
+    /**
+     * Reset RSVP pagination for an event
+     * @param {string} eventId - Event ID
+     */
+    resetRsvpPagination(eventId) {
+        this.rsvpPagination.shownByEvent[eventId] = this.rsvpPagination.pageSize;
+    }
+
+    /**
+     * Load more RSVPs for an event
+     * @param {string} eventId - Event ID
+     */
+    loadMoreRsvps(eventId) {
+        const current = this.rsvpPagination.shownByEvent[eventId] || this.rsvpPagination.pageSize;
+        this.rsvpPagination.shownByEvent[eventId] = current + this.rsvpPagination.pageSize;
+
+        // Re-render the response table
+        const event = window.events ? window.events[eventId] : null;
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+
+        if (event && eventResponses.length > 0) {
+            const stats = calculateEventStats(eventResponses);
+            const tableBody = document.getElementById(`response-table-body-${eventId}`);
+            const loadMoreContainer = document.getElementById(`rsvp-load-more-${eventId}`);
+
+            if (tableBody) {
+                // Render additional rows
+                const shown = this.rsvpPagination.shownByEvent[eventId];
+                const newRows = this.generateResponseRows(event, eventResponses, stats, current, shown);
+                tableBody.insertAdjacentHTML('beforeend', newRows);
+
+                // Update or remove load more button
+                if (loadMoreContainer) {
+                    if (shown >= eventResponses.length) {
+                        loadMoreContainer.remove();
+                    } else {
+                        const remaining = eventResponses.length - shown;
+                        loadMoreContainer.querySelector('button').textContent = `📋 Load More RSVPs (${remaining} remaining)`;
+                    }
+                }
+
+                // Update stats display
+                const statsEl = document.getElementById(`search-stats-${eventId}`);
+                if (statsEl) {
+                    statsEl.textContent = `📊 Showing ${Math.min(shown, eventResponses.length)} of ${eventResponses.length} responses`;
+                }
+            }
+        }
     }
     
     /**
@@ -1962,6 +2017,10 @@ Best regards`;
     generateResponseTable(event, eventResponses, stats) {
         const eventId = event.id;
 
+        // PAGINATION: Calculate how many to show initially
+        this.resetRsvpPagination(eventId);
+        const shownCount = Math.min(this.rsvpPagination.pageSize, eventResponses.length);
+
         let html = `
             <div style="margin-bottom: 2rem;">
                 <div class="response-stats">
@@ -2003,7 +2062,7 @@ Best regards`;
                 </div>
                 
                 <div class="search-stats" id="search-stats-${eventId}">
-                    📊 Showing ${eventResponses.length} of ${eventResponses.length} responses
+                    📊 Showing ${shownCount} of ${eventResponses.length} responses
                 </div>
             </div>
 
@@ -2045,8 +2104,11 @@ Best regards`;
                     </thead>
                     <tbody id="response-table-body-${eventId}">
         `;
-        
-        eventResponses.forEach((response, index) => {
+
+        // Show only the first batch (shownCount calculated at top of function)
+        const responsesToShow = eventResponses.slice(0, shownCount);
+
+        responsesToShow.forEach((response, index) => {
             const displayName = response.name || 'Unknown';
             const email = response.email || 'N/A';
             const phone = response.phone || 'N/A';
@@ -2104,8 +2166,95 @@ Best regards`;
                 </tr>
             `;
         });
-        
+
         html += '</tbody></table></div>';
+
+        // Add "Load More" button if there are more responses
+        if (shownCount < eventResponses.length) {
+            const remaining = eventResponses.length - shownCount;
+            html += `
+                <div id="rsvp-load-more-${eventId}" class="load-more-btn" style="text-align: center; margin-top: 1.5rem;">
+                    <button class="btn btn-secondary" onclick="eventManager.loadMoreRsvps('${eventId}')">
+                        📋 Load More RSVPs (${remaining} remaining)
+                    </button>
+                </div>
+            `;
+        }
+
+        return html;
+    }
+
+    /**
+     * Generate response table rows for a subset of responses
+     * Used by both initial render and loadMoreRsvps
+     * @param {Object} event - Event data
+     * @param {Array} allResponses - All RSVP responses
+     * @param {Object} stats - Event statistics (unused, kept for consistency)
+     * @param {number} startIdx - Starting index in allResponses
+     * @param {number} endIdx - Ending index in allResponses (exclusive)
+     * @returns {string} HTML for table rows
+     */
+    generateResponseRows(event, allResponses, stats, startIdx, endIdx) {
+        const eventId = event.id;
+        const responses = allResponses.slice(startIdx, endIdx);
+        let html = '';
+
+        responses.forEach((response, i) => {
+            const index = startIdx + i; // Original index for data attributes
+            const displayName = response.name || 'Unknown';
+            const email = response.email || 'N/A';
+            const phone = response.phone || 'N/A';
+            const source = response.issueNumber ? `GitHub Issue #${response.issueNumber}` : 'Direct Entry';
+            const sourceIcon = response.issueNumber ? '🔗' : '📝';
+
+            html += `
+                <tr class="response-row" data-response-index="${index}"
+                    data-name="${displayName.toLowerCase()}"
+                    data-attending="${response.attending}"
+                    data-reason="${(response.reason || '').toLowerCase()}"
+                    data-guest-count="${response.guestCount || 0}"
+                    data-phone="${phone.toLowerCase()}"
+                    data-email="${email.toLowerCase()}"
+                    data-branch="${(response.branch || '').toLowerCase()}"
+                    data-rank="${(response.rank || '').toLowerCase()}"
+                    data-unit="${(response.unit || '').toLowerCase()}">
+                    <td>
+                        <input type="checkbox" class="response-checkbox" data-response-index="${index}" onchange="eventManager.updateBulkActions('${eventId}')">
+                    </td>
+                    <td><strong>${displayName}</strong></td>
+                    <td><a href="mailto:${email}" style="color: var(--semper-red); text-decoration: none;">${email}</a></td>
+                    <td>${phone !== 'N/A' ? `<a href="tel:${phone}" style="color: var(--semper-red); text-decoration: none;">${phone}</a>` : phone}</td>
+                    <td class="${response.attending ? 'attending-yes' : 'attending-no'}">
+                        ${response.attending ? '✅ Yes' : '❌ No'}
+                    </td>
+                    ${event.askReason ? `<td style="max-width: 200px; word-wrap: break-word;">${response.reason || '-'}</td>` : ''}
+                    ${event.allowGuests ? `<td><strong>${response.guestCount || 0}</strong> ${(response.guestCount || 0) === 1 ? 'guest' : 'guests'}</td>` : ''}
+                    ${event.customQuestions ? event.customQuestions.map(q => {
+                        let answer = response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '-';
+                        if (answer !== '-' && q.type === 'datetime' && answer.includes('T')) {
+                            const [datePart, timePart] = answer.split('T');
+                            answer = `${datePart} ${timePart}`;
+                        }
+                        return `<td style="max-width: 150px; word-wrap: break-word;">${answer}</td>`;
+                    }).join('') : ''}
+                    <td style="font-size: 0.875rem;">${new Date(response.timestamp).toLocaleString()}</td>
+                    <td style="font-size: 0.875rem;" title="${source}">
+                        ${sourceIcon} ${response.issueNumber ? `#${response.issueNumber}` : 'Direct'}
+                    </td>
+                    <td>
+                        <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"
+                                onclick="eventManager.deleteResponse('${eventId}', ${index})"
+                                title="Delete this RSVP">🗑️</button>
+                        ${response.issueUrl ? `
+                            <a href="${response.issueUrl}" target="_blank" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-left: 0.25rem;" title="View GitHub Issue">
+                                🔗
+                            </a>
+                        ` : ''}
+                    </td>
+                </tr>
+            `;
+        });
+
         return html;
     }
 
