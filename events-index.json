@@ -2264,6 +2264,41 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/4efc9cfa-e425-41cb-b515-922c7b007a01.jpg"
   },
   {
+    "id": "def43e08-238e-48da-af33-4337ab22ee14",
+    "title": "Relief and Appointment",
+    "date": "2026-04-03",
+    "time": "14:00",
+    "location": "Virginia War Memorial",
+    "description": "Join us for the formal transfer of the Sergeant Major sword of office",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "outgoing-co": {
+        "label": "Outgoing Commander",
+        "value": "SgtMaj Peter Vargo"
+      },
+      "incoming-co": {
+        "label": "Incoming Commander",
+        "value": "SgtMaj Felicia Tanksley"
+      },
+      "reviewing-officer": {
+        "label": "Reviewing Officer",
+        "value": "Maj Grant McCloskey"
+      },
+      "unit-designation": {
+        "label": "Unit",
+        "value": "Recruiting Station Richmond"
+      }
+    },
+    "created": 1766850562811,
+    "status": "active",
+    "createdBy": "pdvargo85",
+    "createdByName": "Peter Vargo",
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/4aa3dac8-fecb-4157-b95d-0dd8be379d8e.png"
+  },
+  {
     "id": "dffaeabb-f73e-41ed-adf1-377cbf82c004",
     "title": "A D&amp;B Festive Holiday Celebration",
     "date": "2025-12-05",
