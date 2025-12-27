@@ -686,40 +686,38 @@
    DARK MODE SUPPORT FOR LOGIN PAGE
    ============================================================================= */
 
-/* Auth form header - ensure visibility in both modes */
-.auth__form-header h3 {
+/* Auth form header - dark mode only */
+[data-theme="dark"] .auth__form-header h3 {
     color: var(--semper-gold);
 }
 
-.auth__form-header p {
+[data-theme="dark"] .auth__form-header p {
     color: rgba(255, 255, 255, 0.7);
 }
 
-/* Form labels */
-[data-theme="dark"] .form-label,
-[data-theme="dark"] .auth__form .form-label {
+/* Form labels - dark mode */
+[data-theme="dark"] .form-label {
     color: #e5e7eb;
 }
 
 /* Input fields in dark mode */
-[data-theme="dark"] .auth__form .form-control,
 [data-theme="dark"] #login-page .form-control {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.2);
     color: #f3f4f6;
 }
 
-[data-theme="dark"] .auth__form .form-control::placeholder {
+[data-theme="dark"] #login-page .form-control::placeholder {
     color: rgba(255, 255, 255, 0.5);
 }
 
-[data-theme="dark"] .auth__form .form-control:focus {
+[data-theme="dark"] #login-page .form-control:focus {
     border-color: var(--semper-gold);
     box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
 }
 
-/* Checkbox label */
-[data-theme="dark"] .auth__form label,
+/* Remember me checkbox label */
+[data-theme="dark"] .auth__remember-label,
 [data-theme="dark"] .checkbox-label {
     color: #d1d5db;
 }
@@ -758,14 +756,14 @@
     color: #f0d060 !important;
 }
 
-/* Reset Password Form - Ensure header is visible */
-#forgot-password-form .auth__form-header h3,
-#reset-confirm-form .auth__form-header h3 {
+/* Reset Password Form - Ensure header is visible in dark mode */
+[data-theme="dark"] #forgot-password-form .auth__form-header h3,
+[data-theme="dark"] #reset-confirm-form .auth__form-header h3 {
     color: var(--semper-gold) !important;
     font-size: 1.5rem;
 }
 
-#forgot-password-form .auth__form-header p,
-#reset-confirm-form .auth__form-header p {
+[data-theme="dark"] #forgot-password-form .auth__form-header p,
+[data-theme="dark"] #reset-confirm-form .auth__form-header p {
     color: rgba(255, 255, 255, 0.8) !important;
 }

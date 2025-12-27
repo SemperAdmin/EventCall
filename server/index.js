@@ -564,33 +564,28 @@ app.post('/api/auth/request-reset', async (req, res) => {
       return res.status(400).json({ error: 'Username and email are required' });
     }
 
-    // Validate username format - but don't return early to avoid timing attacks
-    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username.toLowerCase());
-
     // Try to fetch user from EventCall-Data repository
-    // Even if username format is invalid, we proceed to maintain consistent timing
+    // Always attempt fetch regardless of username format to prevent timing attacks
     let user = null;
     let userFileSha = null;
-    if (isValidUsername) {
-      const userPath = `users/${username.toLowerCase()}.json`;
-      const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
+    const userPath = `users/${username.toLowerCase()}.json`;
+    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
 
-      try {
-        const userResp = await fetch(userUrl, {
-          headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json'
-          }
-        });
-
-        if (userResp.ok) {
-          const fileData = await userResp.json();
-          user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
-          userFileSha = fileData.sha; // Store sha for later use
+    try {
+      const userResp = await fetch(userUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json'
         }
-      } catch (err) {
-        console.log(`[RESET] Error fetching user: ${err.message}`);
+      });
+
+      if (userResp.ok) {
+        const fileData = await userResp.json();
+        user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+        userFileSha = fileData.sha; // Store sha for later use
       }
+    } catch (err) {
+      console.log(`[RESET] Error fetching user: ${err.message}`);
     }
 
     // Add artificial delay to prevent timing attacks (100-300ms random)
