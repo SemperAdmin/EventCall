@@ -160,7 +160,7 @@
         <form id="forgot-password-form" class="auth__form" style="display: none;">
             <div class="auth__form-header">
                 <h3>🔑 Reset Password</h3>
-                <p>Enter your username and email to receive a reset link</p>
+                <p>Enter your username and email to verify your identity</p>
             </div>
 
             <div class="form-group">
@@ -190,7 +190,7 @@
             </div>
 
             <button type="submit" class="btn btn--primary btn--full">
-                📧 Send Reset Link
+                Verify Identity
             </button>
 
             <div class="auth__link-container">
@@ -240,6 +240,12 @@
             <button type="submit" class="btn btn--primary btn--full">
                 ✓ Reset Password
             </button>
+
+            <div class="auth__link-container">
+                <button type="button" class="btn-link" id="reset-back-to-login-btn">
+                    Back to Sign In
+                </button>
+            </div>
         </form>
 
         <!-- Registration Form -->
