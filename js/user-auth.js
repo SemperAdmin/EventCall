@@ -1258,7 +1258,7 @@ async function handleForgotPassword(e) {
         const baseUrl = String(cfg.dispatchURL || '').replace(/\/$/, '');
 
         if (!baseUrl) {
-            throw new Error('Backend not configured');
+            throw new Error('Password reset service is currently unavailable. Please contact support.');
         }
 
         const response = await fetch(`${baseUrl}/api/auth/request-reset`, {
@@ -1274,8 +1274,11 @@ async function handleForgotPassword(e) {
         }
 
         // Show success message
+        const successMsg = '📧 If an account exists with that email, a reset link will be sent.';
         if (window.showToast) {
-            window.showToast('📧 If an account exists with that email, a reset link will be sent.', 'success');
+            window.showToast(successMsg, 'success');
+        } else {
+            alert(successMsg);
         }
 
         // For development - show the token if available
@@ -1308,8 +1311,11 @@ async function handleForgotPassword(e) {
         }
     } catch (error) {
         console.error('Forgot password error:', error);
+        // Show error with fallback if toast not available
         if (window.showToast) {
             window.showToast('❌ ' + error.message, 'error');
+        } else {
+            alert('Error: ' + error.message);
         }
     }
 }
