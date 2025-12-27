@@ -203,3 +203,38 @@ select option {
   .auth__info { padding: 1rem; margin-top: 1rem; }
   .branding-footer { margin-top: 1rem; padding-top: 1rem; }
 }
+
+/* =============================================================================
+   MODAL FORM TEXT CONTRAST FIX
+   Override base form styles for modal white backgrounds
+   ============================================================================= */
+
+/* Dark text for modal form labels */
+.modal .form-label,
+.modal-body .form-label,
+#user-profile-modal .form-label,
+#edit-rsvp-modal .form-label {
+  color: #1f2937;
+}
+
+/* Dark text and proper styling for modal inputs */
+.modal .form-control,
+.modal-body .form-control,
+#user-profile-modal .form-control,
+#edit-rsvp-modal .form-control {
+  color: #111827;
+  background: #ffffff;
+  border: 2px solid #d1d5db;
+}
+
+/* Modal help text */
+.modal .form-help,
+.modal-body .form-help,
+#user-profile-modal .form-help {
+  color: #6b7280;
+}
+
+/* Password section header */
+.profile-password-section h4 {
+  color: #1f2937;
+}
