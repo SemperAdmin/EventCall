@@ -767,6 +767,9 @@ function createEventCardElement(event, isPast) {
                     <button class="btn-quick" data-action="copy" title="Copy Invite Link">
                         🔗 Copy Link
                     </button>
+                    <button class="btn-quick" data-action="duplicate" title="Duplicate Event">
+                        📋 Duplicate
+                    </button>
                     <button class="btn-quick" data-action="export" title="Export Data">
                         📤 Export
                     </button>
@@ -807,6 +810,21 @@ function attachCardListeners(card, eventId) {
     };
     copyBtn.addEventListener('click', copyHandler);
     cleanupFunctions.push(() => copyBtn.removeEventListener('click', copyHandler));
+
+    // Duplicate button
+    const duplicateBtn = card.querySelector('[data-action="duplicate"]');
+    if (duplicateBtn) {
+        const duplicateHandler = (e) => {
+            e.stopPropagation();
+            if (window.duplicateEvent) {
+                window.duplicateEvent(eventId);
+            } else if (window.eventManager && window.eventManager.duplicateEvent) {
+                window.eventManager.duplicateEvent(eventId);
+            }
+        };
+        duplicateBtn.addEventListener('click', duplicateHandler);
+        cleanupFunctions.push(() => duplicateBtn.removeEventListener('click', duplicateHandler));
+    }
 
     // Export button
     const exportBtn = card.querySelector('[data-action="export"]');
