@@ -5,6 +5,81 @@ import helmet from 'helmet';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 
+// =============================================================================
+// RATE LIMITING - Brute force protection (no external dependencies)
+// =============================================================================
+class RateLimiter {
+  constructor(windowMs, maxAttempts) {
+    this.windowMs = windowMs;
+    this.maxAttempts = maxAttempts;
+    this.attempts = new Map();
+
+    // Cleanup old entries every minute
+    setInterval(() => this.cleanup(), 60 * 1000);
+  }
+
+  cleanup() {
+    const now = Date.now();
+    for (const [key, data] of this.attempts) {
+      if (now - data.firstAttempt > this.windowMs) {
+        this.attempts.delete(key);
+      }
+    }
+  }
+
+  isRateLimited(key) {
+    const now = Date.now();
+    const data = this.attempts.get(key);
+
+    if (!data) {
+      this.attempts.set(key, { count: 1, firstAttempt: now });
+      return false;
+    }
+
+    // Reset if window has passed
+    if (now - data.firstAttempt > this.windowMs) {
+      this.attempts.set(key, { count: 1, firstAttempt: now });
+      return false;
+    }
+
+    // Increment and check
+    data.count++;
+    if (data.count > this.maxAttempts) {
+      return true;
+    }
+
+    return false;
+  }
+
+  getRemainingTime(key) {
+    const data = this.attempts.get(key);
+    if (!data) return 0;
+    const elapsed = Date.now() - data.firstAttempt;
+    return Math.max(0, Math.ceil((this.windowMs - elapsed) / 1000));
+  }
+
+  getAttempts(key) {
+    const data = this.attempts.get(key);
+    return data ? data.count : 0;
+  }
+}
+
+// Rate limiters for auth endpoints
+// Login: 5 attempts per 15 minutes per IP
+const loginLimiter = new RateLimiter(15 * 60 * 1000, 5);
+// Registration: 3 attempts per hour per IP
+const registerLimiter = new RateLimiter(60 * 60 * 1000, 3);
+
+function getClientIP(req) {
+  // Support common proxy headers
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+         req.headers['x-real-ip'] ||
+         req.socket?.remoteAddress ||
+         'unknown';
+}
+
+// =============================================================================
+
 // Env configuration
 const PORT = process.env.PORT || 10000;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
@@ -292,6 +367,18 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(403).json({ error: 'Origin not allowed' });
     }
 
+    // SECURITY: Rate limiting to prevent brute force attacks
+    const clientIP = getClientIP(req);
+    if (loginLimiter.isRateLimited(clientIP)) {
+      const retryAfter = loginLimiter.getRemainingTime(clientIP);
+      console.warn(`[SECURITY] Rate limit exceeded for IP: ${clientIP}`);
+      res.set('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: 'Too many login attempts. Please try again later.',
+        retryAfter
+      });
+    }
+
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -350,6 +437,18 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     if (!isOriginAllowed(req)) {
       return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    // SECURITY: Rate limiting to prevent registration abuse
+    const clientIP = getClientIP(req);
+    if (registerLimiter.isRateLimited(clientIP)) {
+      const retryAfter = registerLimiter.getRemainingTime(clientIP);
+      console.warn(`[SECURITY] Registration rate limit exceeded for IP: ${clientIP}`);
+      res.set('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: 'Too many registration attempts. Please try again later.',
+        retryAfter
+      });
     }
 
     const { username, password, name, email, branch, rank } = req.body;

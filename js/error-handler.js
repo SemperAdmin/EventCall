@@ -63,8 +63,59 @@ class ErrorHandler {
         const userMessage = this.getUserFriendlyMessage(error, context);
         this.showErrorToast(userMessage);
 
-        // In production, you would send this to a logging service like Sentry
-        // this.sendToLoggingService(errorDetails);
+        // Send to remote logging service if configured
+        this.sendToLoggingService(errorDetails);
+    }
+
+    /**
+     * Send error to remote logging service
+     * Supports Sentry DSN or custom endpoint
+     * @param {Object} errorDetails - Error details to send
+     */
+    sendToLoggingService(errorDetails) {
+        try {
+            // Check if remote logging is enabled
+            const config = window.ERROR_TRACKING_CONFIG || {};
+            if (!config.enabled) return;
+
+            // If Sentry is available, use it
+            if (window.Sentry && typeof window.Sentry.captureException === 'function') {
+                const error = new Error(errorDetails.message);
+                error.stack = errorDetails.stack;
+                window.Sentry.captureException(error, {
+                    tags: { context: errorDetails.context },
+                    extra: errorDetails.metadata
+                });
+                return;
+            }
+
+            // Custom endpoint fallback (if configured)
+            if (config.endpoint) {
+                const payload = {
+                    ...errorDetails,
+                    appVersion: config.appVersion || '1.0.0',
+                    environment: config.environment || 'production',
+                    url: window.location.href,
+                    timestamp: new Date().toISOString()
+                };
+
+                // Use sendBeacon for reliability (won't block page unload)
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon(config.endpoint, JSON.stringify(payload));
+                } else {
+                    // Fallback to fetch with keepalive
+                    fetch(config.endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        keepalive: true
+                    }).catch(() => {}); // Silent fail for logging
+                }
+            }
+        } catch (loggingError) {
+            // Never let logging errors break the app
+            console.warn('Failed to send error to logging service:', loggingError);
+        }
     }
 
     /**
