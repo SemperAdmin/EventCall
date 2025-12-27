@@ -415,25 +415,20 @@
       // Show recovery prompt
       const recoveryBanner = document.createElement('div');
       recoveryBanner.id = 'draft-recovery-banner';
-      recoveryBanner.style.cssText = `
-        background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
-        border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px;
-        padding: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center;
-        justify-content: space-between; gap: 1rem;
-      `;
+      recoveryBanner.className = 'draft-recovery-banner';
       recoveryBanner.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <span style="font-size: 1.5rem;">📝</span>
+        <div class="draft-recovery-banner__content">
+          <span class="draft-recovery-banner__icon">📝</span>
           <div>
-            <strong>Draft found</strong>
-            <div style="font-size: 0.875rem; opacity: 0.8;">You have an unsaved event from earlier</div>
+            <div class="draft-recovery-banner__title">Draft found</div>
+            <div class="draft-recovery-banner__subtitle">You have an unsaved event from earlier</div>
           </div>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button type="button" id="restore-draft-btn" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+        <div class="draft-recovery-banner__actions">
+          <button type="button" id="restore-draft-btn" class="btn btn-primary">
             Restore Draft
           </button>
-          <button type="button" id="discard-draft-btn" class="btn" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+          <button type="button" id="discard-draft-btn" class="btn">
             Start Fresh
           </button>
         </div>

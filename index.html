@@ -149,8 +149,8 @@
                 🔐 Sign In
             </button>
 
-            <div class="auth__forgot-link" style="text-align: center; margin-top: 1rem;">
-                <button type="button" class="btn-link" onclick="showForgotPassword()" style="background: none; border: none; color: var(--semper-gold); cursor: pointer; text-decoration: underline;">
+            <div class="auth__link-container">
+                <button type="button" class="btn-link" id="show-forgot-password-btn">
                     Forgot your password?
                 </button>
             </div>
@@ -158,9 +158,9 @@
 
         <!-- Forgot Password Form -->
         <form id="forgot-password-form" class="auth__form" style="display: none;">
-            <div style="text-align: center; margin-bottom: 1.5rem;">
-                <h3 style="margin-bottom: 0.5rem;">🔑 Reset Password</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Enter your username and email to receive a reset link</p>
+            <div class="auth__form-header">
+                <h3>🔑 Reset Password</h3>
+                <p>Enter your username and email to receive a reset link</p>
             </div>
 
             <div class="form-group">
@@ -189,12 +189,12 @@
                 >
             </div>
 
-            <button type="submit" class="btn btn--primary" style="width: 100%;">
+            <button type="submit" class="btn btn--primary btn--full">
                 📧 Send Reset Link
             </button>
 
-            <div style="text-align: center; margin-top: 1rem;">
-                <button type="button" class="btn-link" onclick="showLoginForm()" style="background: none; border: none; color: var(--semper-gold); cursor: pointer; text-decoration: underline;">
+            <div class="auth__link-container">
+                <button type="button" class="btn-link" id="show-login-btn">
                     Back to Sign In
                 </button>
             </div>
@@ -202,9 +202,9 @@
 
         <!-- Reset Password Confirmation Form (shown after clicking reset link) -->
         <form id="reset-confirm-form" class="auth__form" style="display: none;">
-            <div style="text-align: center; margin-bottom: 1.5rem;">
-                <h3 style="margin-bottom: 0.5rem;">🔐 Set New Password</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Enter your new password below</p>
+            <div class="auth__form-header">
+                <h3>🔐 Set New Password</h3>
+                <p>Enter your new password below</p>
             </div>
 
             <input type="hidden" id="reset-token" name="token">
@@ -237,7 +237,7 @@
                 >
             </div>
 
-            <button type="submit" class="btn btn--primary" style="width: 100%;">
+            <button type="submit" class="btn btn--primary btn--full">
                 ✓ Reset Password
             </button>
         </form>
@@ -587,10 +587,8 @@ function verifyDashboardTabs() {
                 <button
                     id="theme-toggle"
                     class="theme-toggle-btn"
-                    onclick="toggleTheme()"
                     aria-label="Toggle dark mode"
                     title="Toggle dark/light mode"
-                    style="background: none; border: none; cursor: pointer; font-size: 1.25rem; padding: 0.5rem; margin-right: 0.5rem; opacity: 0.9; transition: opacity 0.2s;"
                 >
                     <span id="theme-icon">🌙</span>
                 </button>
@@ -631,25 +629,24 @@ function verifyDashboardTabs() {
             </div>
 
             <!-- Event Search -->
-            <div class="event-search-container" style="margin-bottom: 1rem;">
-                <div style="position: relative; max-width: 400px;">
+            <div class="event-search-container">
+                <div class="event-search-wrapper">
                     <input
                         type="search"
                         id="event-search-input"
                         class="form-control"
                         placeholder="Search events by title, location, or date..."
                         autocomplete="off"
-                        style="padding-left: 2.5rem; padding-right: 2.5rem;"
                     >
-                    <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+                    <span class="event-search-icon">🔍</span>
                     <button
                         type="button"
                         id="event-search-clear"
-                        style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; opacity: 0.5; display: none; font-size: 1.25rem; padding: 0.25rem;"
+                        class="event-search-clear"
                         aria-label="Clear search"
                     >×</button>
                 </div>
-                <div id="event-search-results" style="font-size: 0.875rem; color: var(--text-color); opacity: 0.7; margin-top: 0.5rem; display: none;"></div>
+                <div id="event-search-results" class="event-search-results"></div>
             </div>
 
             <!-- Dashboard Tabs -->

@@ -564,37 +564,40 @@ app.post('/api/auth/request-reset', async (req, res) => {
       return res.status(400).json({ error: 'Username and email are required' });
     }
 
-    // Validate username format
+    // Validate username format - but don't return early to avoid timing attacks
     const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username.toLowerCase());
-    if (!isValidUsername) {
-      // Don't reveal if user exists - always return success
-      return res.json({ success: true, message: 'If an account exists, a reset link will be sent.' });
-    }
 
     // Try to fetch user from EventCall-Data repository
-    const userPath = `users/${username.toLowerCase()}.json`;
-    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
+    // Even if username format is invalid, we proceed to maintain consistent timing
+    let user = null;
+    if (isValidUsername) {
+      const userPath = `users/${username.toLowerCase()}.json`;
+      const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
 
-    const userResp = await fetch(userUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json'
+      try {
+        const userResp = await fetch(userUrl, {
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (userResp.ok) {
+          const fileData = await userResp.json();
+          user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+        }
+      } catch (err) {
+        console.log(`[RESET] Error fetching user: ${err.message}`);
       }
-    });
-
-    if (!userResp.ok) {
-      // User doesn't exist - but don't reveal this
-      console.log(`[RESET] User not found: ${username}`);
-      return res.json({ success: true, message: 'If an account exists, a reset link will be sent.' });
     }
 
-    const fileData = await userResp.json();
-    const user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+    // Add artificial delay to prevent timing attacks (100-300ms random)
+    await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
 
-    // Verify email matches (case-insensitive)
-    if (user.email.toLowerCase() !== email.toLowerCase()) {
-      // Email doesn't match - but don't reveal this
-      console.log(`[RESET] Email mismatch for user: ${username}`);
+    // Verify user exists and email matches (case-insensitive)
+    if (!user || user.email.toLowerCase() !== email.toLowerCase()) {
+      // User doesn't exist or email mismatch - don't reveal which
+      console.log(`[RESET] Reset request failed for: ${username}`);
       return res.json({ success: true, message: 'If an account exists, a reset link will be sent.' });
     }
 
