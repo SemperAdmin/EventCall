@@ -817,11 +817,26 @@ app.post('/api/auth/reset-password', async (req, res) => {
   }
 });
 
+// Rate limiter for password change attempts (5 per hour per IP)
+const passwordChangeLimiter = new RateLimiter(60 * 60 * 1000, 5);
+
 // Change password from profile (requires current password verification)
+// Security note: In this architecture without JWT/sessions, the current password
+// verification serves as authentication. Rate limiting prevents brute force attacks.
 app.post('/api/auth/change-password', async (req, res) => {
   try {
     if (!isOriginAllowed(req)) {
       return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    // Rate limit to prevent brute force attacks
+    const clientIP = getClientIP(req);
+    if (passwordChangeLimiter.isRateLimited(clientIP)) {
+      const retryAfter = passwordChangeLimiter.getRemainingTime(clientIP);
+      return res.status(429).json({
+        error: 'Too many password change attempts. Please try again later.',
+        retryAfter
+      });
     }
 
     const { username, currentPassword, newPassword } = req.body;
@@ -830,9 +845,19 @@ app.post('/api/auth/change-password', async (req, res) => {
       return res.status(400).json({ error: 'Username, current password, and new password are required' });
     }
 
-    // Validate new password strength
+    // Validate new password strength - must match frontend requirements
     if (newPassword.length < 8) {
       return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+
+    // Password complexity validation (same as frontend)
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    if (!hasUpper || !hasLower || !hasNumber) {
+      return res.status(400).json({
+        error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+      });
     }
 
     // Fetch user from GitHub

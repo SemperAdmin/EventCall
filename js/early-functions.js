@@ -1355,7 +1355,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const profilePasswordForm = document.getElementById('profile-password-form');
     if (profilePasswordForm) {
         profilePasswordForm.addEventListener('submit', handleProfilePasswordChange);
-        console.log('✅ Profile password form attached');
     }
 
     // Add password strength indicator for profile password change
@@ -1364,11 +1363,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (profileNewPassword && profilePasswordStrength && window.userAuth) {
         profileNewPassword.addEventListener('input', (e) => {
             const result = window.userAuth.checkPasswordStrength(e.target.value);
-            const sanitize = window.utils && window.utils.sanitizeHTML ? window.utils.sanitizeHTML : (s) => s;
-            profilePasswordStrength.innerHTML = sanitize(`
-                <div class="strength-bar" style="background: ${result.color}; width: ${(result.score / 6) * 100}%; height: 4px; border-radius: 2px; margin-top: 0.5rem;"></div>
-                <span class="strength-text" style="color: ${result.color}; font-size: 0.85rem;">${result.message}</span>
-            `);
+            // Escape message to prevent XSS (message may contain parts of password)
+            const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const escapedMessage = escapeHTML(result.message);
+            const widthPercent = Math.min(100, (result.score / 6) * 100);
+            profilePasswordStrength.innerHTML = `
+                <div class="password-strength-bar" style="background: ${result.color}; width: ${widthPercent}%;"></div>
+                <span class="password-strength-text" style="color: ${result.color};">${escapedMessage}</span>
+            `;
         });
     }
 });

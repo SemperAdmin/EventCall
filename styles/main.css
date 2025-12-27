@@ -163,6 +163,22 @@ body {
     z-index: 2;
 }
 
+/* User controls container - theme toggle + user button positioned together */
+.header-content .theme-toggle-btn,
+.header-content .user-btn {
+    position: absolute;
+    top: 0;
+    z-index: 10;
+}
+
+.header-content .user-btn {
+    right: 0;
+}
+
+.header-content .theme-toggle-btn {
+    right: 180px; /* Position to the left of user button */
+}
+
 .header h1 {
     text-align: center;
     font-size: 1.5rem;

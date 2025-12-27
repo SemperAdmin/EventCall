@@ -885,14 +885,41 @@
 }
 
 /* Profile password section styling */
+.profile-password-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e5e7eb;
+}
+
 .profile-password-section h4 {
+    margin: 0 0 1rem 0;
     color: #1f2937;
+    font-size: 1.1rem;
 }
 
 [data-theme="dark"] .profile-password-section {
-    border-top-color: #374151 !important;
+    border-top-color: #374151;
 }
 
 [data-theme="dark"] .profile-password-section h4 {
-    color: var(--semper-gold) !important;
+    color: var(--semper-gold);
+}
+
+/* Password strength indicator */
+.password-strength-bar {
+    height: 4px;
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    transition: width 0.2s ease, background 0.2s ease;
+}
+
+.password-strength-text {
+    font-size: 0.85rem;
+    display: block;
+    margin-top: 0.25rem;
+}
+
+/* Full width button utility */
+.btn-full-width {
+    width: 100%;
 }
