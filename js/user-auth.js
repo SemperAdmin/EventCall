@@ -1463,6 +1463,17 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('✅ Reset password form attached');
     }
 
+    // Attach navigation button handlers (instead of inline onclick)
+    const showForgotBtn = document.getElementById('show-forgot-password-btn');
+    if (showForgotBtn) {
+        showForgotBtn.addEventListener('click', showForgotPassword);
+    }
+
+    const showLoginBtn = document.getElementById('show-login-btn');
+    if (showLoginBtn) {
+        showLoginBtn.addEventListener('click', showLoginForm);
+    }
+
     // Password strength indicator for registration
     const regPassword = document.getElementById('reg-password');
     const strengthIndicator = document.getElementById('password-strength');

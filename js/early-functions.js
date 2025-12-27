@@ -87,10 +87,16 @@ window.toggleTheme = toggleTheme;
 window.applyTheme = applyTheme;
 window.getThemePreference = getThemePreference;
 
-// Update icon after DOM loads
+// Update icon and attach event listener after DOM loads
 document.addEventListener('DOMContentLoaded', () => {
     const theme = getThemePreference();
     applyTheme(theme);
+
+    // Attach click handler for theme toggle button
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', toggleTheme);
+    }
 });
 
 // =============================================================================

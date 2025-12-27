@@ -542,3 +542,167 @@ select option:checked {
     min-width: 40px;
     min-height: 40px;
 }
+
+/* =============================================================================
+   THEME TOGGLE BUTTON
+   ============================================================================= */
+.theme-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.25rem;
+    padding: 0.5rem;
+    margin-right: 0.5rem;
+    opacity: 0.9;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.theme-toggle-btn:focus {
+    outline: 2px solid var(--semper-gold);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* =============================================================================
+   EVENT SEARCH
+   ============================================================================= */
+.event-search-container {
+    margin-bottom: 1rem;
+}
+
+.event-search-wrapper {
+    position: relative;
+    max-width: 400px;
+}
+
+.event-search-wrapper .form-control {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+}
+
+.event-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.event-search-clear {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0.5;
+    font-size: 1.25rem;
+    padding: 0.25rem;
+    line-height: 1;
+    display: none;
+}
+
+.event-search-clear:hover {
+    opacity: 1;
+}
+
+.event-search-clear.visible {
+    display: block;
+}
+
+.event-search-results {
+    font-size: 0.875rem;
+    color: var(--text-color);
+    opacity: 0.7;
+    margin-top: 0.5rem;
+    display: none;
+}
+
+.event-search-results.visible {
+    display: block;
+}
+
+/* =============================================================================
+   AUTH FORM LINKS
+   ============================================================================= */
+.auth__link-container {
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--semper-gold);
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: inherit;
+    padding: 0.25rem 0.5rem;
+}
+
+.btn-link:hover {
+    opacity: 0.8;
+}
+
+.btn-link:focus {
+    outline: 2px solid var(--semper-gold);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* =============================================================================
+   DRAFT RECOVERY BANNER
+   ============================================================================= */
+.draft-recovery-banner {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.draft-recovery-banner__content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.draft-recovery-banner__icon {
+    font-size: 1.5rem;
+}
+
+.draft-recovery-banner__title {
+    font-weight: 600;
+}
+
+.draft-recovery-banner__subtitle {
+    font-size: 0.875rem;
+    opacity: 0.8;
+}
+
+.draft-recovery-banner__actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.draft-recovery-banner__actions .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .draft-recovery-banner {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.02));
+    border-color: rgba(212, 175, 55, 0.2);
+}

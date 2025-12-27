@@ -1738,9 +1738,9 @@ function initEventSearch() {
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.trim();
 
-        // Show/hide clear button
+        // Show/hide clear button via CSS class
         if (clearBtn) {
-            clearBtn.style.display = query ? 'block' : 'none';
+            clearBtn.classList.toggle('visible', !!query);
         }
 
         // Clear previous timeout
@@ -1756,7 +1756,7 @@ function initEventSearch() {
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
             searchInput.value = '';
-            clearBtn.style.display = 'none';
+            clearBtn.classList.remove('visible');
             filterEventsBySearch('');
             searchInput.focus();
         });
@@ -1766,7 +1766,7 @@ function initEventSearch() {
     searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             searchInput.value = '';
-            if (clearBtn) clearBtn.style.display = 'none';
+            if (clearBtn) clearBtn.classList.remove('visible');
             filterEventsBySearch('');
         }
     });
@@ -1832,13 +1832,13 @@ function filterEventsBySearch(query) {
         }
     });
 
-    // Update results counter
+    // Update results counter via CSS class
     if (resultsDiv) {
         if (query) {
-            resultsDiv.style.display = 'block';
+            resultsDiv.classList.add('visible');
             resultsDiv.textContent = `Found ${matchCount} of ${totalCount} event${totalCount !== 1 ? 's' : ''}`;
         } else {
-            resultsDiv.style.display = 'none';
+            resultsDiv.classList.remove('visible');
         }
     }
 }

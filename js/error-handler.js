@@ -78,6 +78,10 @@ class ErrorHandler {
             const config = window.ERROR_TRACKING_CONFIG || {};
             if (!config.enabled) return;
 
+            // Apply sample rate - only send a percentage of errors
+            const sampleRate = typeof config.sampleRate === 'number' ? config.sampleRate : 1.0;
+            if (sampleRate < 1.0 && Math.random() >= sampleRate) return;
+
             // If Sentry is available, use it
             if (window.Sentry && typeof window.Sentry.captureException === 'function') {
                 const error = new Error(errorDetails.message);
