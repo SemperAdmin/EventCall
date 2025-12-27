@@ -1275,21 +1275,17 @@ async function handleForgotPassword(e) {
         }
 
         // Verification successful - show reset password form with token
-        if (result.verified && result.token) {
-            console.log('✅ Identity verified, showing password reset form');
+        console.log('✅ Identity verified, showing password reset form');
 
-            if (window.showToast) {
-                window.showToast('✅ Identity verified! Please enter your new password.', 'success');
-            }
-
-            // Show the password reset form with the token
-            showResetConfirmForm(result.token);
-
-            // Clear the forgot password form
-            e.target.reset();
-        } else {
-            throw new Error('Verification failed. Please check your credentials.');
+        if (window.showToast) {
+            window.showToast('✅ Identity verified! Please enter your new password.', 'success');
         }
+
+        // Show the password reset form with the token
+        showResetConfirmForm(result.token);
+
+        // Clear the forgot password form
+        e.target.reset();
     };
 
     try {
