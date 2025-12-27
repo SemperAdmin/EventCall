@@ -1236,6 +1236,7 @@ function showResetConfirmForm(token) {
 
 /**
  * Handle forgot password form submission
+ * Uses UI-based verification - if username+email match, shows password reset form directly
  */
 async function handleForgotPassword(e) {
     e.preventDefault();
@@ -1245,7 +1246,7 @@ async function handleForgotPassword(e) {
     // Use unified loading UI if available
     const useLoadingUI = window.LoadingUI && window.LoadingUI.withButtonLoading;
 
-    const doRequest = async () => {
+    const doVerify = async () => {
         const username = document.getElementById('reset-username').value.trim().toLowerCase();
         const email = document.getElementById('reset-email').value.trim().toLowerCase();
 
@@ -1253,7 +1254,7 @@ async function handleForgotPassword(e) {
             throw new Error('Please enter both username and email');
         }
 
-        // Call backend API
+        // Call backend API to verify username + email
         const cfg = window.BACKEND_CONFIG || {};
         const baseUrl = String(cfg.dispatchURL || '').replace(/\/$/, '');
 
@@ -1261,7 +1262,7 @@ async function handleForgotPassword(e) {
             throw new Error('Password reset service is currently unavailable. Please contact support.');
         }
 
-        const response = await fetch(`${baseUrl}/api/auth/request-reset`, {
+        const response = await fetch(`${baseUrl}/api/auth/verify-reset`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, email })
@@ -1270,40 +1271,37 @@ async function handleForgotPassword(e) {
         const result = await response.json();
 
         if (!response.ok) {
-            throw new Error(result.error || 'Request failed');
+            throw new Error(result.error || 'Verification failed');
         }
 
-        // Show success message
-        const successMsg = '📧 If an account exists with that email, a reset link will be sent.';
-        if (window.showToast) {
-            window.showToast(successMsg, 'success');
-        } else {
-            alert(successMsg);
-        }
+        // Verification successful - show reset password form with token
+        if (result.verified && result.token) {
+            console.log('✅ Identity verified, showing password reset form');
 
-        // For development - show the token if available
-        if (result._devToken) {
-            console.log('🔧 Dev reset token:', result._devToken);
-            console.log('🔧 Reset URL:', window.location.origin + '?reset=' + result._devToken);
-        }
+            if (window.showToast) {
+                window.showToast('✅ Identity verified! Please enter your new password.', 'success');
+            }
 
-        // Return to login form after short delay
-        setTimeout(() => {
-            showLoginForm();
+            // Show the password reset form with the token
+            showResetConfirmForm(result.token);
+
+            // Clear the forgot password form
             e.target.reset();
-        }, 2000);
+        } else {
+            throw new Error('Verification failed. Please check your credentials.');
+        }
     };
 
     try {
         if (useLoadingUI) {
-            await window.LoadingUI.withButtonLoading(submitBtn, 'Sending...', doRequest);
+            await window.LoadingUI.withButtonLoading(submitBtn, 'Verifying...', doVerify);
         } else {
             // Fallback for when LoadingUI is not available
             const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<span class="spinner"></span> Sending...';
+            submitBtn.innerHTML = '<span class="spinner"></span> Verifying...';
             submitBtn.disabled = true;
             try {
-                await doRequest();
+                await doVerify();
             } finally {
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
@@ -1478,6 +1476,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const showLoginBtn = document.getElementById('show-login-btn');
     if (showLoginBtn) {
         showLoginBtn.addEventListener('click', showLoginForm);
+    }
+
+    const resetBackToLoginBtn = document.getElementById('reset-back-to-login-btn');
+    if (resetBackToLoginBtn) {
+        resetBackToLoginBtn.addEventListener('click', showLoginForm);
     }
 
     // Password strength indicator for registration

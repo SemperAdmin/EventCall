@@ -542,7 +542,92 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-// Request password reset
+// Verify username and email for UI-based password reset
+// Returns a reset token if credentials match, allowing immediate password reset
+app.post('/api/auth/verify-reset', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    const clientIP = getClientIP(req);
+    if (resetLimiter.isRateLimited(clientIP)) {
+      const retryAfter = resetLimiter.getRemainingTime(clientIP);
+      return res.status(429).json({
+        error: 'Too many reset requests. Please try again later.',
+        retryAfter
+      });
+    }
+
+    const { username, email } = req.body;
+
+    if (!username || !email) {
+      return res.status(400).json({ error: 'Username and email are required' });
+    }
+
+    // Try to fetch user from EventCall-Data repository
+    // Always attempt fetch regardless of username format to prevent timing attacks
+    let user = null;
+    let userFileSha = null;
+    const userPath = `users/${username.toLowerCase()}.json`;
+    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
+
+    try {
+      const userResp = await fetch(userUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (userResp.ok) {
+        const fileData = await userResp.json();
+        user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+        userFileSha = fileData.sha;
+      }
+    } catch (err) {
+      console.log(`[RESET] Error fetching user: ${err.message}`);
+    }
+
+    // Add artificial delay to prevent timing attacks (100-300ms random)
+    await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+
+    // Verify user exists and email matches (case-insensitive)
+    if (!user || user.email.toLowerCase() !== email.toLowerCase()) {
+      console.log(`[RESET] Verification failed for: ${username}`);
+      return res.status(400).json({
+        success: false,
+        error: 'Username and email do not match our records'
+      });
+    }
+
+    // Generate reset token (valid for 15 minutes for UI-based reset)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expires = Date.now() + (15 * 60 * 1000); // 15 minutes
+
+    // Store token
+    resetTokens.set(resetToken, {
+      username: username.toLowerCase(),
+      email: email.toLowerCase(),
+      expires,
+      fileSha: userFileSha
+    });
+
+    console.log(`[RESET] Verification successful, token generated for: ${username}`);
+    res.json({
+      success: true,
+      verified: true,
+      token: resetToken,
+      message: 'Identity verified. You can now reset your password.'
+    });
+
+  } catch (error) {
+    console.error('Reset verification error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Legacy email-based reset request (kept for compatibility)
 app.post('/api/auth/request-reset', async (req, res) => {
   try {
     if (!isOriginAllowed(req)) {
