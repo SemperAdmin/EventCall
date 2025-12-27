@@ -50,67 +50,6 @@
     --bp-xl: 1280px;
 }
 
-/* Dark Mode Theme */
-[data-theme="dark"] {
-    --primary-color: #2d2d44;
-    --text-color: #e5e7eb;
-    --text-muted: #9ca3af;
-    --bg-color: #0f1419;
-    --bg-secondary: #1a1f26;
-    --border-color: #374151;
-    --gray-50: #1f2937;
-    --gray-100: #1f2937;
-    --gray-200: #374151;
-    --card-bg: #1a1f26;
-    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-    --input-bg: #1f2937;
-    --input-border: #4b5563;
-}
-
-/* Dark mode specific overrides */
-[data-theme="dark"] body {
-    background: linear-gradient(135deg, var(--bg-color) 0%, var(--bg-secondary) 100%);
-}
-
-[data-theme="dark"] .auth__card,
-[data-theme="dark"] .card,
-[data-theme="dark"] .event-card,
-[data-theme="dark"] .welcome-banner {
-    background: var(--card-bg);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .form-control,
-[data-theme="dark"] input,
-[data-theme="dark"] select,
-[data-theme="dark"] textarea {
-    background-color: var(--input-bg);
-    border-color: var(--input-border);
-    color: var(--text-color);
-}
-
-[data-theme="dark"] .form-control::placeholder {
-    color: var(--text-muted);
-}
-
-[data-theme="dark"] .btn {
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .dashboard-tabs {
-    background: var(--card-bg);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .dashboard-tab {
-    color: var(--text-color);
-}
-
-[data-theme="dark"] .dashboard-tab-content {
-    background: var(--card-bg);
-}
-
-
 /* Reset and Base Styles */
 * {
     margin: 0;
@@ -163,20 +102,12 @@ body {
     z-index: 2;
 }
 
-/* User controls container - theme toggle + user button positioned together */
-.header-content .theme-toggle-btn,
+/* User button positioned on the right */
 .header-content .user-btn {
     position: absolute;
     top: 0;
-    z-index: 10;
-}
-
-.header-content .user-btn {
     right: 0;
-}
-
-.header-content .theme-toggle-btn {
-    right: 180px; /* Position to the left of user button */
+    z-index: 10;
 }
 
 .header h1 {
