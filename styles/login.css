@@ -681,3 +681,59 @@
 .btn--full {
     width: 100%;
 }
+
+/* =============================================================================
+   DARK MODE SUPPORT FOR LOGIN PAGE
+   ============================================================================= */
+
+/* Auth form header - ensure visibility in both modes */
+.auth__form-header h3 {
+    color: var(--semper-gold);
+}
+
+.auth__form-header p {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Form labels */
+[data-theme="dark"] .form-label,
+[data-theme="dark"] .auth__form .form-label {
+    color: #e5e7eb;
+}
+
+/* Input fields in dark mode */
+[data-theme="dark"] .auth__form .form-control,
+[data-theme="dark"] #login-page .form-control {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #f3f4f6;
+}
+
+[data-theme="dark"] .auth__form .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="dark"] .auth__form .form-control:focus {
+    border-color: var(--semper-gold);
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+/* Checkbox label */
+[data-theme="dark"] .auth__form label,
+[data-theme="dark"] .checkbox-label {
+    color: #d1d5db;
+}
+
+/* Tab buttons */
+[data-theme="dark"] .tab-btn:not(.active) {
+    color: #d1d5db;
+}
+
+/* Button link styling for dark mode */
+[data-theme="dark"] .btn-link {
+    color: var(--semper-gold);
+}
+
+[data-theme="dark"] .btn-link:hover {
+    color: #f0d060;
+}
