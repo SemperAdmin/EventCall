@@ -835,6 +835,90 @@ app.post('/api/auth/reset-password', async (req, res) => {
   }
 });
 
+// Change password from profile (requires current password verification)
+app.post('/api/auth/change-password', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    const { username, currentPassword, newPassword } = req.body;
+
+    if (!username || !currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Username, current password, and new password are required' });
+    }
+
+    // Validate new password strength
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+
+    // Fetch user from GitHub
+    const userPath = `users/${username.toLowerCase()}.json`;
+    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
+
+    const userResp = await fetch(userUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (!userResp.ok) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    const fileData = await userResp.json();
+    const user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+
+    // Verify current password
+    const isCurrentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isCurrentValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update user with new password
+    const updatedUser = {
+      ...user,
+      passwordHash: newPasswordHash,
+      passwordChangedAt: new Date().toISOString()
+    };
+
+    // Save updated user
+    const updateResp = await fetch(userUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `Change password for ${username}`,
+        content: Buffer.from(JSON.stringify(updatedUser, null, 2)).toString('base64'),
+        sha: fileData.sha
+      })
+    });
+
+    if (!updateResp.ok) {
+      const error = await updateResp.json();
+      return res.status(500).json({ error: error.message || 'Failed to update password' });
+    }
+
+    console.log(`[AUTH] Password changed successfully for: ${username}`);
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {

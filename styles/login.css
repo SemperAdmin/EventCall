@@ -767,3 +767,132 @@
 [data-theme="dark"] #reset-confirm-form .auth__form-header p {
     color: rgba(255, 255, 255, 0.8) !important;
 }
+
+/* =============================================================================
+   MODAL FORM STYLING - Light mode text contrast
+   Ensures dark text on white modal backgrounds
+   ============================================================================= */
+
+/* Modal form labels - ensure dark text on white background */
+.modal .form-label,
+.modal-body .form-label,
+#user-profile-modal .form-label {
+    color: #1f2937 !important; /* gray-800 */
+    font-weight: 600;
+}
+
+/* Modal form inputs - dark text, light background */
+.modal .form-control,
+.modal-body .form-control,
+#user-profile-modal .form-control {
+    color: #111827 !important; /* gray-900 */
+    background-color: #ffffff !important;
+    border: 2px solid #d1d5db !important; /* gray-300 */
+}
+
+.modal .form-control:focus,
+.modal-body .form-control:focus,
+#user-profile-modal .form-control:focus {
+    border-color: var(--semper-red) !important;
+    box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.1) !important;
+}
+
+/* Disabled/readonly inputs */
+.modal .form-control:disabled,
+.modal .form-control[readonly],
+#user-profile-modal .form-control:disabled,
+#user-profile-modal .form-control[readonly] {
+    background-color: #f3f4f6 !important; /* gray-100 */
+    color: #6b7280 !important; /* gray-500 */
+}
+
+/* Modal form help text */
+.modal .form-help,
+.modal-body .form-help,
+#user-profile-modal .form-help {
+    color: #6b7280 !important; /* gray-500 */
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* Modal select dropdowns */
+.modal select.form-control,
+#user-profile-modal select.form-control {
+    color: #111827 !important;
+    background-color: #ffffff !important;
+}
+
+/* Modal form group spacing */
+.modal .form-group,
+#user-profile-modal .form-group {
+    margin-bottom: 1.25rem;
+}
+
+/* Dark mode modal overrides */
+[data-theme="dark"] .modal {
+    background: #1f2937; /* gray-800 */
+}
+
+[data-theme="dark"] .modal-header {
+    border-color: #374151;
+}
+
+[data-theme="dark"] .modal-header h2 {
+    color: var(--semper-gold);
+}
+
+[data-theme="dark"] .modal-footer {
+    border-color: #374151;
+}
+
+[data-theme="dark"] .modal .form-label,
+[data-theme="dark"] .modal-body .form-label,
+[data-theme="dark"] #user-profile-modal .form-label {
+    color: #e5e7eb !important; /* gray-200 */
+}
+
+[data-theme="dark"] .modal .form-control,
+[data-theme="dark"] .modal-body .form-control,
+[data-theme="dark"] #user-profile-modal .form-control {
+    color: #f3f4f6 !important;
+    background-color: #374151 !important; /* gray-700 */
+    border-color: #4b5563 !important; /* gray-600 */
+}
+
+[data-theme="dark"] .modal .form-control:focus,
+[data-theme="dark"] #user-profile-modal .form-control:focus {
+    border-color: var(--semper-gold) !important;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2) !important;
+}
+
+[data-theme="dark"] .modal .form-control:disabled,
+[data-theme="dark"] .modal .form-control[readonly],
+[data-theme="dark"] #user-profile-modal .form-control:disabled,
+[data-theme="dark"] #user-profile-modal .form-control[readonly] {
+    background-color: #1f2937 !important;
+    color: #9ca3af !important;
+}
+
+[data-theme="dark"] .modal .form-help,
+[data-theme="dark"] #user-profile-modal .form-help {
+    color: #9ca3af !important;
+}
+
+[data-theme="dark"] .modal select.form-control,
+[data-theme="dark"] #user-profile-modal select.form-control {
+    color: #f3f4f6 !important;
+    background-color: #374151 !important;
+}
+
+/* Profile password section styling */
+.profile-password-section h4 {
+    color: #1f2937;
+}
+
+[data-theme="dark"] .profile-password-section {
+    border-top-color: #374151 !important;
+}
+
+[data-theme="dark"] .profile-password-section h4 {
+    color: var(--semper-gold) !important;
+}
