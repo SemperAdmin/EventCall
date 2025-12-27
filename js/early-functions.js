@@ -659,12 +659,109 @@ function logoutFromProfile() {
     }
 }
 
+/**
+ * Handle profile password change form submission
+ */
+async function handleProfilePasswordChange(e) {
+    e.preventDefault();
+
+    if (!window.userAuth || !window.userAuth.isAuthenticated()) {
+        showToast('❌ You must be logged in to change your password', 'error');
+        return;
+    }
+
+    const currentPassword = document.getElementById('profile-current-password')?.value;
+    const newPassword = document.getElementById('profile-new-password')?.value;
+    const confirmPassword = document.getElementById('profile-confirm-password')?.value;
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+
+    // Validation
+    if (!currentPassword) {
+        showToast('❌ Please enter your current password', 'error');
+        document.getElementById('profile-current-password')?.focus();
+        return;
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+        showToast('❌ New password must be at least 8 characters', 'error');
+        document.getElementById('profile-new-password')?.focus();
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        showToast('❌ New passwords do not match', 'error');
+        document.getElementById('profile-confirm-password')?.focus();
+        return;
+    }
+
+    // Password strength check
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    if (!hasUpper || !hasLower || !hasNumber) {
+        showToast('❌ Password must contain uppercase, lowercase, and number', 'error');
+        return;
+    }
+
+    const user = window.userAuth.getCurrentUser();
+    const cfg = window.BACKEND_CONFIG || {};
+    const baseUrl = String(cfg.dispatchURL || '').replace(/\/$/, '');
+
+    if (!baseUrl) {
+        showToast('❌ Password change service is unavailable', 'error');
+        return;
+    }
+
+    const doChangePassword = async () => {
+        const response = await fetch(`${baseUrl}/api/auth/change-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: user.username,
+                currentPassword,
+                newPassword
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Password change failed');
+        }
+
+        // Clear the form
+        e.target.reset();
+
+        showToast('✅ Password changed successfully!', 'success');
+    };
+
+    try {
+        if (window.LoadingUI && window.LoadingUI.withButtonLoading) {
+            await window.LoadingUI.withButtonLoading(submitBtn, 'Updating...', doChangePassword);
+        } else {
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner"></span> Updating...';
+            submitBtn.disabled = true;
+            try {
+                await doChangePassword();
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+    } catch (error) {
+        console.error('Password change error:', error);
+        showToast('❌ ' + error.message, 'error');
+    }
+}
+
 // Make functions globally available
 window.showUserMenu = showUserMenu;
 window.updateProfileRanksForBranch = updateProfileRanksForBranch;
 window.saveUserProfile = saveUserProfile;
 window.closeUserProfile = closeUserProfile;
 window.logoutFromProfile = logoutFromProfile;
+window.handleProfilePasswordChange = handleProfilePasswordChange;
 
 /**
  * Show toast notification - Available immediately
@@ -1253,6 +1350,27 @@ window.updateLoaderMessage = updateLoaderMessage;
 document.addEventListener('DOMContentLoaded', () => {
     initializeHashListener();
     // Note: loader is NOT auto-hidden here - only shows/hides on login
+
+    // Attach profile password change form handler
+    const profilePasswordForm = document.getElementById('profile-password-form');
+    if (profilePasswordForm) {
+        profilePasswordForm.addEventListener('submit', handleProfilePasswordChange);
+        console.log('✅ Profile password form attached');
+    }
+
+    // Add password strength indicator for profile password change
+    const profileNewPassword = document.getElementById('profile-new-password');
+    const profilePasswordStrength = document.getElementById('profile-password-strength');
+    if (profileNewPassword && profilePasswordStrength && window.userAuth) {
+        profileNewPassword.addEventListener('input', (e) => {
+            const result = window.userAuth.checkPasswordStrength(e.target.value);
+            const sanitize = window.utils && window.utils.sanitizeHTML ? window.utils.sanitizeHTML : (s) => s;
+            profilePasswordStrength.innerHTML = sanitize(`
+                <div class="strength-bar" style="background: ${result.color}; width: ${(result.score / 6) * 100}%; height: 4px; border-radius: 2px; margin-top: 0.5rem;"></div>
+                <span class="strength-text" style="color: ${result.color}; font-size: 0.85rem;">${result.message}</span>
+            `);
+        });
+    }
 });
 
 console.log('✅ Early functions loaded with username-only authentication support');
