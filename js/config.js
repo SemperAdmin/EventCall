@@ -123,6 +123,21 @@ const SECURITY_CONFIG = {
     csrfRotateMs: 30 * 60 * 1000 // rotate every 30 minutes
 };
 
+// Error Tracking Configuration
+// To enable Sentry: add the Sentry SDK script and set enabled: true
+// To use custom endpoint: set endpoint to your error logging API
+const ERROR_TRACKING_CONFIG = {
+    enabled: false, // Set to true to enable remote error tracking
+    appVersion: '1.0.0',
+    environment: window.location.hostname.includes('github.io') ? 'production' : 'development',
+    // Sentry DSN (optional) - add Sentry SDK script to index.html if using
+    // sentryDsn: 'https://your-sentry-dsn@sentry.io/project-id',
+    // Custom endpoint for self-hosted error logging (optional)
+    // endpoint: 'https://your-api.com/errors',
+    // Sample rate (0-1) - reduce to log fewer errors in high-traffic scenarios
+    sampleRate: 1.0
+};
+
 // reCAPTCHA v3 Configuration (client-side only; server must validate tokens)
 const RECAPTCHA_CONFIG = {
     enabled: true,
@@ -217,6 +232,7 @@ if (typeof window !== 'undefined') {
     window.GITHUB_CONFIG = GITHUB_CONFIG;
     window.APP_CONFIG = APP_CONFIG;
     window.SECURITY_CONFIG = SECURITY_CONFIG;
+    window.ERROR_TRACKING_CONFIG = ERROR_TRACKING_CONFIG;
     window.CODE_CONFIG = CODE_CONFIG;
     window.AUTH_CONFIG = AUTH_CONFIG;
     window.RECAPTCHA_CONFIG = RECAPTCHA_CONFIG;

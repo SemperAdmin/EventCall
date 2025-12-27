@@ -57,7 +57,7 @@ class EventManager {
                     <p>No RSVPs yet. Share your invite link to start collecting responses!</p>
                     <div style="margin-top: 1rem;">
                         <button class="btn btn-success" onclick="syncWithGitHub()" style="margin-right: 0.5rem;">
-                            🔗„ Check for New RSVPs
+                            🔗 Check for New RSVPs
                         </button>
                         <button class="btn" onclick="copyInviteLink('${eventId}')">
                             🔗 Share Invite Link
@@ -1730,7 +1730,7 @@ Best regards`;
                 syncBtn.disabled = true;
             }
 
-            showToast('🔗„ Syncing RSVPs for this event...', 'success');
+            showToast('🔗 Syncing RSVPs for this event...', 'success');
 
             // Process RSVP issues for all events (GitHub doesn't allow filtering by event easily)
             const result = await window.githubAPI.processRSVPIssues();
@@ -1998,7 +1998,7 @@ Best regards`;
                     
                     <button class="clear-search" onclick="eventManager.clearSearch('${eventId}')">Clear</button>
                     <button class="btn btn-success" onclick="eventManager.syncEventRSVPs('${eventId}')" style="margin-left: 0.5rem;">
-                        🔗„ Refresh
+                        🔗 Refresh
                     </button>
                 </div>
                 

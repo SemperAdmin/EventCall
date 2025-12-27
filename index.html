@@ -490,7 +490,6 @@ function verifyDashboardTabs() {
                 </div>
                 <h1>EventCall</h1>
                 <div class="tagline">Where Every Event Matters</div>
-                <div class="tagline"></div>
                 
                 <!-- User Profile Button (UPDATED) -->
                 <button class="user-btn" onclick="showUserMenu()">
@@ -498,8 +497,6 @@ function verifyDashboardTabs() {
                     <span class="user-name" id="user-display-name">User</span>
                 </button>
             </div>
-          <nav class="nav" role="navigation" aria-label="Main navigation">
-          </nav>
         </div>
     </div>
 
@@ -527,6 +524,28 @@ function verifyDashboardTabs() {
                 <div class="welcome-description">
                     Professional military event management with real-time RSVP tracking. Create events instantly and share invite links for seamless coordination.
                 </div>
+            </div>
+
+            <!-- Event Search -->
+            <div class="event-search-container" style="margin-bottom: 1rem;">
+                <div style="position: relative; max-width: 400px;">
+                    <input
+                        type="search"
+                        id="event-search-input"
+                        class="form-control"
+                        placeholder="Search events by title, location, or date..."
+                        autocomplete="off"
+                        style="padding-left: 2.5rem; padding-right: 2.5rem;"
+                    >
+                    <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+                    <button
+                        type="button"
+                        id="event-search-clear"
+                        style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; opacity: 0.5; display: none; font-size: 1.25rem; padding: 0.25rem;"
+                        aria-label="Clear search"
+                    >×</button>
+                </div>
+                <div id="event-search-results" style="font-size: 0.875rem; color: var(--text-color); opacity: 0.7; margin-top: 0.5rem; display: none;"></div>
             </div>
 
             <!-- Dashboard Tabs -->

@@ -255,6 +255,19 @@ class BackendAPI {
 
             if (!response.ok) {
                 const error = await response.json();
+
+                // Handle rate limiting (429) with user-friendly message
+                if (response.status === 429) {
+                    const retryAfter = error.retryAfter || parseInt(response.headers.get('Retry-After') || '900', 10);
+                    const minutes = Math.ceil(retryAfter / 60);
+                    const rateLimitError = new Error(
+                        `Too many attempts. Please try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`
+                    );
+                    rateLimitError.isRateLimited = true;
+                    rateLimitError.retryAfter = retryAfter;
+                    throw rateLimitError;
+                }
+
                 throw new Error(error.error || 'Authentication failed');
             }
 

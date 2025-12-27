@@ -1329,6 +1329,11 @@ async function handleEventSubmit(e) {
 
         showToast('🎖️ Event deployed successfully!', 'success');
 
+        // Clear autosave draft
+        if (window.clearEventFormDraft) {
+            window.clearEventFormDraft();
+        }
+
         // Reset form
         document.getElementById('event-form').reset();
         const coverPreview = document.getElementById('cover-preview');
@@ -1694,5 +1699,148 @@ window.duplicateEvent = function(eventId) {
         console.error('EventManager not available');
     }
 };
+
+// =============================================================================
+// EVENT SEARCH FUNCTIONALITY
+// =============================================================================
+
+/**
+ * Initialize event search functionality
+ */
+function initEventSearch() {
+    const searchInput = document.getElementById('event-search-input');
+    const clearBtn = document.getElementById('event-search-clear');
+    const resultsDiv = document.getElementById('event-search-results');
+
+    if (!searchInput) return;
+
+    let searchTimeout = null;
+
+    // Debounced search
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+
+        // Show/hide clear button
+        if (clearBtn) {
+            clearBtn.style.display = query ? 'block' : 'none';
+        }
+
+        // Clear previous timeout
+        if (searchTimeout) clearTimeout(searchTimeout);
+
+        // Debounce search
+        searchTimeout = setTimeout(() => {
+            filterEventsBySearch(query);
+        }, 200);
+    });
+
+    // Clear search
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            clearBtn.style.display = 'none';
+            filterEventsBySearch('');
+            searchInput.focus();
+        });
+    }
+
+    // Handle escape key to clear
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            searchInput.value = '';
+            if (clearBtn) clearBtn.style.display = 'none';
+            filterEventsBySearch('');
+        }
+    });
+
+    console.log('✅ Event search initialized');
+}
+
+/**
+ * Filter events by search query
+ * @param {string} query - Search query
+ */
+function filterEventsBySearch(query) {
+    const activeEventsList = document.getElementById('active-events-list');
+    const pastEventsList = document.getElementById('past-events-list');
+    const resultsDiv = document.getElementById('event-search-results');
+
+    if (!window.events) return;
+
+    const searchTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    let matchCount = 0;
+    let totalCount = 0;
+
+    // Get all event cards
+    const allEventCards = [
+        ...(activeEventsList ? activeEventsList.querySelectorAll('.event-card') : []),
+        ...(pastEventsList ? pastEventsList.querySelectorAll('.event-card') : [])
+    ];
+
+    allEventCards.forEach(card => {
+        totalCount++;
+        const eventId = card.dataset.eventId;
+        const event = window.events[eventId];
+
+        if (!query) {
+            // No search - show all
+            card.style.display = '';
+            matchCount++;
+            return;
+        }
+
+        if (!event) {
+            card.style.display = 'none';
+            return;
+        }
+
+        // Build searchable text
+        const searchableText = [
+            event.title || '',
+            event.location || '',
+            event.description || '',
+            event.date || '',
+            event.createdByName || ''
+        ].join(' ').toLowerCase();
+
+        // Check if all search terms match
+        const matches = searchTerms.every(term => searchableText.includes(term));
+
+        if (matches) {
+            card.style.display = '';
+            matchCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    // Update results counter
+    if (resultsDiv) {
+        if (query) {
+            resultsDiv.style.display = 'block';
+            resultsDiv.textContent = `Found ${matchCount} of ${totalCount} event${totalCount !== 1 ? 's' : ''}`;
+        } else {
+            resultsDiv.style.display = 'none';
+        }
+    }
+}
+
+// Initialize search when DOM is ready
+document.addEventListener('DOMContentLoaded', initEventSearch);
+
+// Re-apply search filter after dashboard renders
+const _originalRenderDashboard = window.renderDashboard;
+if (_originalRenderDashboard) {
+    window.renderDashboard = function() {
+        _originalRenderDashboard.apply(this, arguments);
+        const searchInput = document.getElementById('event-search-input');
+        if (searchInput && searchInput.value) {
+            setTimeout(() => filterEventsBySearch(searchInput.value.trim()), 100);
+        }
+    };
+}
+
+window.filterEventsBySearch = filterEventsBySearch;
+window.initEventSearch = initEventSearch;
 
 console.log('✅ Enhanced manager system loaded with RSVP sync functionality and username auth support');
