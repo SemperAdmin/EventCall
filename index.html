@@ -148,6 +148,98 @@
             <button type="submit" class="btn btn--primary">
                 🔐 Sign In
             </button>
+
+            <div class="auth__forgot-link" style="text-align: center; margin-top: 1rem;">
+                <button type="button" class="btn-link" onclick="showForgotPassword()" style="background: none; border: none; color: var(--semper-gold); cursor: pointer; text-decoration: underline;">
+                    Forgot your password?
+                </button>
+            </div>
+        </form>
+
+        <!-- Forgot Password Form -->
+        <form id="forgot-password-form" class="auth__form" style="display: none;">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 0.5rem;">🔑 Reset Password</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Enter your username and email to receive a reset link</p>
+            </div>
+
+            <div class="form-group">
+                <label for="reset-username" class="form-label">Username</label>
+                <input
+                    type="text"
+                    id="reset-username"
+                    name="username"
+                    placeholder="Enter your username"
+                    required
+                    autocomplete="username"
+                    class="form-control"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="reset-email" class="form-label">Email Address</label>
+                <input
+                    type="email"
+                    id="reset-email"
+                    name="email"
+                    placeholder="Enter your registered email"
+                    required
+                    autocomplete="email"
+                    class="form-control"
+                >
+            </div>
+
+            <button type="submit" class="btn btn--primary" style="width: 100%;">
+                📧 Send Reset Link
+            </button>
+
+            <div style="text-align: center; margin-top: 1rem;">
+                <button type="button" class="btn-link" onclick="showLoginForm()" style="background: none; border: none; color: var(--semper-gold); cursor: pointer; text-decoration: underline;">
+                    Back to Sign In
+                </button>
+            </div>
+        </form>
+
+        <!-- Reset Password Confirmation Form (shown after clicking reset link) -->
+        <form id="reset-confirm-form" class="auth__form" style="display: none;">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 0.5rem;">🔐 Set New Password</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Enter your new password below</p>
+            </div>
+
+            <input type="hidden" id="reset-token" name="token">
+
+            <div class="form-group">
+                <label for="new-password" class="form-label">New Password</label>
+                <input
+                    type="password"
+                    id="new-password"
+                    name="password"
+                    placeholder="Enter new password"
+                    required
+                    minlength="8"
+                    autocomplete="new-password"
+                    class="form-control"
+                >
+                <div id="new-password-strength"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm-new-password" class="form-label">Confirm New Password</label>
+                <input
+                    type="password"
+                    id="confirm-new-password"
+                    name="confirmPassword"
+                    placeholder="Confirm new password"
+                    required
+                    autocomplete="new-password"
+                    class="form-control"
+                >
+            </div>
+
+            <button type="submit" class="btn btn--primary" style="width: 100%;">
+                ✓ Reset Password
+            </button>
         </form>
 
         <!-- Registration Form -->
@@ -491,6 +583,18 @@ function verifyDashboardTabs() {
                 <h1>EventCall</h1>
                 <div class="tagline">Where Every Event Matters</div>
                 
+                <!-- Theme Toggle Button -->
+                <button
+                    id="theme-toggle"
+                    class="theme-toggle-btn"
+                    onclick="toggleTheme()"
+                    aria-label="Toggle dark mode"
+                    title="Toggle dark/light mode"
+                    style="background: none; border: none; cursor: pointer; font-size: 1.25rem; padding: 0.5rem; margin-right: 0.5rem; opacity: 0.9; transition: opacity 0.2s;"
+                >
+                    <span id="theme-icon">🌙</span>
+                </button>
+
                 <!-- User Profile Button (UPDATED) -->
                 <button class="user-btn" onclick="showUserMenu()">
                     <span class="user-avatar" id="user-avatar">👤</span>

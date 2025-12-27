@@ -522,6 +522,234 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
+// =============================================================================
+// PASSWORD RESET ENDPOINTS
+// =============================================================================
+
+// Rate limiter for password reset requests (3 per hour per IP)
+const resetLimiter = new RateLimiter(60 * 60 * 1000, 3);
+
+// In-memory store for reset tokens (in production, use Redis or database)
+const resetTokens = new Map();
+
+// Cleanup expired tokens every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of resetTokens) {
+    if (now > data.expires) {
+      resetTokens.delete(token);
+    }
+  }
+}, 5 * 60 * 1000);
+
+// Request password reset
+app.post('/api/auth/request-reset', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    const clientIP = getClientIP(req);
+    if (resetLimiter.isRateLimited(clientIP)) {
+      const retryAfter = resetLimiter.getRemainingTime(clientIP);
+      return res.status(429).json({
+        error: 'Too many reset requests. Please try again later.',
+        retryAfter
+      });
+    }
+
+    const { username, email } = req.body;
+
+    if (!username || !email) {
+      return res.status(400).json({ error: 'Username and email are required' });
+    }
+
+    // Validate username format
+    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username.toLowerCase());
+    if (!isValidUsername) {
+      // Don't reveal if user exists - always return success
+      return res.json({ success: true, message: 'If an account exists, a reset link will be sent.' });
+    }
+
+    // Try to fetch user from EventCall-Data repository
+    const userPath = `users/${username.toLowerCase()}.json`;
+    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
+
+    const userResp = await fetch(userUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (!userResp.ok) {
+      // User doesn't exist - but don't reveal this
+      console.log(`[RESET] User not found: ${username}`);
+      return res.json({ success: true, message: 'If an account exists, a reset link will be sent.' });
+    }
+
+    const fileData = await userResp.json();
+    const user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+
+    // Verify email matches (case-insensitive)
+    if (user.email.toLowerCase() !== email.toLowerCase()) {
+      // Email doesn't match - but don't reveal this
+      console.log(`[RESET] Email mismatch for user: ${username}`);
+      return res.json({ success: true, message: 'If an account exists, a reset link will be sent.' });
+    }
+
+    // Generate reset token (valid for 1 hour)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expires = Date.now() + (60 * 60 * 1000); // 1 hour
+
+    // Store token
+    resetTokens.set(resetToken, {
+      username: username.toLowerCase(),
+      email: email.toLowerCase(),
+      expires,
+      fileSha: fileData.sha
+    });
+
+    // In production, send email with reset link
+    // For now, we'll trigger a GitHub Action workflow to send the email
+    const resetUrl = `${req.headers.origin || ALLOWED_ORIGIN}?reset=${resetToken}`;
+
+    // Try to trigger email workflow (if configured)
+    try {
+      const workflowResp = await fetch(
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/dispatches`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            event_type: 'password_reset',
+            client_payload: {
+              email: user.email,
+              name: user.name,
+              resetUrl,
+              expiresIn: '1 hour'
+            }
+          })
+        }
+      );
+
+      if (workflowResp.ok) {
+        console.log(`[RESET] Email workflow triggered for: ${username}`);
+      }
+    } catch (emailError) {
+      console.warn('[RESET] Failed to trigger email workflow:', emailError.message);
+    }
+
+    console.log(`[RESET] Token generated for user: ${username}`);
+    res.json({
+      success: true,
+      message: 'If an account exists, a reset link will be sent.',
+      // Include token in development for testing (remove in production)
+      ...(process.env.NODE_ENV !== 'production' && { _devToken: resetToken })
+    });
+
+  } catch (error) {
+    console.error('Reset request error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Reset password with token
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token and password are required' });
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Find and validate token
+    const tokenData = resetTokens.get(token);
+    if (!tokenData) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    if (Date.now() > tokenData.expires) {
+      resetTokens.delete(token);
+      return res.status(400).json({ error: 'Reset token has expired' });
+    }
+
+    // Fetch current user data
+    const userPath = `users/${tokenData.username}.json`;
+    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
+
+    const userResp = await fetch(userUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (!userResp.ok) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    const fileData = await userResp.json();
+    const user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Update user with new password
+    const updatedUser = {
+      ...user,
+      passwordHash,
+      passwordResetAt: new Date().toISOString()
+    };
+
+    // Save updated user
+    const updateResp = await fetch(userUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `Reset password for ${tokenData.username}`,
+        content: Buffer.from(JSON.stringify(updatedUser, null, 2)).toString('base64'),
+        sha: fileData.sha
+      })
+    });
+
+    if (!updateResp.ok) {
+      const error = await updateResp.json();
+      return res.status(500).json({ error: error.message || 'Failed to update password' });
+    }
+
+    // Invalidate the token
+    resetTokens.delete(token);
+
+    console.log(`[RESET] Password reset successful for: ${tokenData.username}`);
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully. You can now log in.'
+    });
+
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {

@@ -1181,6 +1181,223 @@ const userAuth = {
     }
 };
 
+// =============================================================================
+// PASSWORD RESET FUNCTIONS
+// =============================================================================
+
+/**
+ * Show forgot password form, hide login form
+ */
+function showForgotPassword() {
+    const loginForm = document.getElementById('login-form');
+    const forgotForm = document.getElementById('forgot-password-form');
+    const resetConfirmForm = document.getElementById('reset-confirm-form');
+
+    if (loginForm) loginForm.style.display = 'none';
+    if (forgotForm) forgotForm.style.display = 'block';
+    if (resetConfirmForm) resetConfirmForm.style.display = 'none';
+
+    // Focus on username field
+    const usernameInput = document.getElementById('reset-username');
+    if (usernameInput) usernameInput.focus();
+}
+
+/**
+ * Show login form, hide forgot password form
+ */
+function showLoginForm() {
+    const loginForm = document.getElementById('login-form');
+    const forgotForm = document.getElementById('forgot-password-form');
+    const resetConfirmForm = document.getElementById('reset-confirm-form');
+
+    if (loginForm) loginForm.style.display = 'block';
+    if (forgotForm) forgotForm.style.display = 'none';
+    if (resetConfirmForm) resetConfirmForm.style.display = 'none';
+}
+
+/**
+ * Show reset confirmation form (for when user clicks reset link)
+ */
+function showResetConfirmForm(token) {
+    const loginForm = document.getElementById('login-form');
+    const forgotForm = document.getElementById('forgot-password-form');
+    const resetConfirmForm = document.getElementById('reset-confirm-form');
+    const tokenInput = document.getElementById('reset-token');
+
+    if (loginForm) loginForm.style.display = 'none';
+    if (forgotForm) forgotForm.style.display = 'none';
+    if (resetConfirmForm) resetConfirmForm.style.display = 'block';
+    if (tokenInput) tokenInput.value = token;
+
+    // Focus on new password field
+    const newPasswordInput = document.getElementById('new-password');
+    if (newPasswordInput) newPasswordInput.focus();
+}
+
+/**
+ * Handle forgot password form submission
+ */
+async function handleForgotPassword(e) {
+    e.preventDefault();
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    try {
+        submitBtn.innerHTML = '<div class="spinner"></div> Sending...';
+        submitBtn.disabled = true;
+
+        const username = document.getElementById('reset-username').value.trim().toLowerCase();
+        const email = document.getElementById('reset-email').value.trim().toLowerCase();
+
+        if (!username || !email) {
+            throw new Error('Please enter both username and email');
+        }
+
+        // Call backend API
+        const cfg = window.BACKEND_CONFIG || {};
+        const baseUrl = String(cfg.dispatchURL || '').replace(/\/$/, '');
+
+        if (!baseUrl) {
+            throw new Error('Backend not configured');
+        }
+
+        const response = await fetch(`${baseUrl}/api/auth/request-reset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Request failed');
+        }
+
+        // Show success message
+        if (window.showToast) {
+            window.showToast('📧 If an account exists with that email, a reset link will be sent.', 'success');
+        }
+
+        // For development - show the token if available
+        if (result._devToken) {
+            console.log('🔧 Dev reset token:', result._devToken);
+            console.log('🔧 Reset URL:', window.location.origin + '?reset=' + result._devToken);
+        }
+
+        // Return to login form after short delay
+        setTimeout(() => {
+            showLoginForm();
+            e.target.reset();
+        }, 2000);
+
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        if (window.showToast) {
+            window.showToast('❌ ' + error.message, 'error');
+        }
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+/**
+ * Handle reset password confirmation form submission
+ */
+async function handleResetPassword(e) {
+    e.preventDefault();
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    try {
+        submitBtn.innerHTML = '<div class="spinner"></div> Resetting...';
+        submitBtn.disabled = true;
+
+        const token = document.getElementById('reset-token').value;
+        const password = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-new-password').value;
+
+        if (!token) {
+            throw new Error('Invalid reset token');
+        }
+
+        if (!password || password.length < 8) {
+            throw new Error('Password must be at least 8 characters');
+        }
+
+        if (password !== confirmPassword) {
+            throw new Error('Passwords do not match');
+        }
+
+        // Call backend API
+        const cfg = window.BACKEND_CONFIG || {};
+        const baseUrl = String(cfg.dispatchURL || '').replace(/\/$/, '');
+
+        if (!baseUrl) {
+            throw new Error('Backend not configured');
+        }
+
+        const response = await fetch(`${baseUrl}/api/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, password })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Reset failed');
+        }
+
+        // Show success message
+        if (window.showToast) {
+            window.showToast('✅ Password reset successfully! You can now log in.', 'success');
+        }
+
+        // Clear URL parameter
+        const url = new URL(window.location);
+        url.searchParams.delete('reset');
+        window.history.replaceState({}, '', url);
+
+        // Return to login form
+        setTimeout(() => {
+            showLoginForm();
+            e.target.reset();
+        }, 1500);
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+        if (window.showToast) {
+            window.showToast('❌ ' + error.message, 'error');
+        }
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+/**
+ * Check URL for reset token on page load
+ */
+function checkForResetToken() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('reset');
+
+    if (resetToken) {
+        console.log('🔑 Reset token detected in URL');
+        showResetConfirmForm(resetToken);
+    }
+}
+
+// Make password reset functions globally available
+window.showForgotPassword = showForgotPassword;
+window.showLoginForm = showLoginForm;
+window.showResetConfirmForm = showResetConfirmForm;
+window.handleForgotPassword = handleForgotPassword;
+window.handleResetPassword = handleResetPassword;
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     // Skip initialization in test mode
@@ -1190,6 +1407,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     userAuth.init();
+
+    // Check for password reset token in URL
+    checkForResetToken();
 
     // Attach login form handler
     const loginForm = document.getElementById('login-form');
@@ -1205,7 +1425,21 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('✅ Registration form attached');
     }
 
-    // Password strength indicator
+    // Attach forgot password form handler
+    const forgotForm = document.getElementById('forgot-password-form');
+    if (forgotForm) {
+        forgotForm.addEventListener('submit', handleForgotPassword);
+        console.log('✅ Forgot password form attached');
+    }
+
+    // Attach reset confirmation form handler
+    const resetConfirmForm = document.getElementById('reset-confirm-form');
+    if (resetConfirmForm) {
+        resetConfirmForm.addEventListener('submit', handleResetPassword);
+        console.log('✅ Reset password form attached');
+    }
+
+    // Password strength indicator for registration
     const regPassword = document.getElementById('reg-password');
     const strengthIndicator = document.getElementById('password-strength');
 
@@ -1213,6 +1447,20 @@ document.addEventListener('DOMContentLoaded', () => {
         regPassword.addEventListener('input', (e) => {
             const result = userAuth.checkPasswordStrength(e.target.value);
             strengthIndicator.innerHTML = window.utils.sanitizeHTML(`
+                <div class="strength-bar" style="background: ${result.color}; width: ${(result.score / 6) * 100}%"></div>
+                <span class="strength-text" style="color: ${result.color}">${window.utils.escapeHTML(result.message)}</span>
+            `);
+        });
+    }
+
+    // Password strength indicator for reset
+    const newPassword = document.getElementById('new-password');
+    const newStrengthIndicator = document.getElementById('new-password-strength');
+
+    if (newPassword && newStrengthIndicator) {
+        newPassword.addEventListener('input', (e) => {
+            const result = userAuth.checkPasswordStrength(e.target.value);
+            newStrengthIndicator.innerHTML = window.utils.sanitizeHTML(`
                 <div class="strength-bar" style="background: ${result.color}; width: ${(result.score / 6) * 100}%"></div>
                 <span class="strength-text" style="color: ${result.color}">${window.utils.escapeHTML(result.message)}</span>
             `);

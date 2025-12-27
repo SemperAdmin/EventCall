@@ -4,6 +4,99 @@
  * Load this file BEFORE all other scripts
  */
 
+// =============================================================================
+// THEME MANAGEMENT (runs immediately to prevent flash)
+// =============================================================================
+
+/**
+ * Get the current theme preference
+ * Priority: localStorage > system preference > light (default)
+ */
+function getThemePreference() {
+    // Check localStorage first
+    const stored = localStorage.getItem('eventcall_theme');
+    if (stored === 'dark' || stored === 'light') {
+        return stored;
+    }
+
+    // Check system preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+    }
+
+    // Default to light
+    return 'light';
+}
+
+/**
+ * Apply theme to the document
+ */
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+
+    // Update icon
+    const icon = document.getElementById('theme-icon');
+    if (icon) {
+        icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    // Update button title
+    const btn = document.getElementById('theme-toggle');
+    if (btn) {
+        btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    }
+}
+
+/**
+ * Toggle between light and dark themes
+ */
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = current === 'dark' ? 'light' : 'dark';
+
+    // Save preference
+    localStorage.setItem('eventcall_theme', newTheme);
+
+    // Apply theme
+    applyTheme(newTheme);
+
+    // Show feedback
+    if (window.showToast) {
+        window.showToast(`${newTheme === 'dark' ? '🌙' : '☀️'} ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} mode enabled`, 'success');
+    }
+}
+
+// Apply theme immediately (before DOMContentLoaded to prevent flash)
+(function() {
+    const theme = getThemePreference();
+    document.documentElement.setAttribute('data-theme', theme);
+})();
+
+// Listen for system theme changes
+if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        // Only auto-switch if user hasn't set a preference
+        if (!localStorage.getItem('eventcall_theme')) {
+            applyTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+}
+
+// Make functions globally available
+window.toggleTheme = toggleTheme;
+window.applyTheme = applyTheme;
+window.getThemePreference = getThemePreference;
+
+// Update icon after DOM loads
+document.addEventListener('DOMContentLoaded', () => {
+    const theme = getThemePreference();
+    applyTheme(theme);
+});
+
+// =============================================================================
+// GLOBAL STATE INITIALIZATION
+// =============================================================================
+
 // Initialize global state
 window.events = {};
 window.responses = {};
