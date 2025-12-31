@@ -914,6 +914,32 @@ select option:checked {
     margin-bottom: 0.75rem;
 }
 
+/* Custom questions form group spacing */
+.form-group--custom-questions {
+    margin-top: 1.5rem;
+}
+
+/* Modal footer base styles */
+.modal-footer {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+/* Modal visibility class */
+.modal-overlay {
+    display: none;
+}
+
+.modal-overlay.is-visible {
+    display: flex;
+}
+
+/* Progress bar complete state */
+.form-progress__fill--complete {
+    background: linear-gradient(90deg, var(--success-color) 0%, #059669 100%);
+}
+
 /* Responsive form sections */
 @media (max-width: 640px) {
     .form-section {
