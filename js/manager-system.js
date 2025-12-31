@@ -42,7 +42,7 @@ function handleCancelEventCreation() {
         // Show confirmation modal
         const modal = document.getElementById('cancel-event-modal');
         if (modal) {
-            modal.style.display = 'flex';
+            modal.classList.add('is-visible');
             // Focus the "Keep Editing" button for accessibility
             const keepEditingBtn = modal.querySelector('.btn-secondary');
             if (keepEditingBtn) keepEditingBtn.focus();
@@ -59,7 +59,7 @@ function handleCancelEventCreation() {
 function closeCancelModal() {
     const modal = document.getElementById('cancel-event-modal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('is-visible');
     }
 }
 
@@ -132,11 +132,11 @@ function setupEventFormKeyboardShortcuts() {
         if (!createPage || !createPage.classList.contains('active')) return;
 
         // Don't trigger if a modal is open (let modal handle its own Escape)
-        const openModals = document.querySelectorAll('.modal-overlay[style*="display: flex"]');
+        const openModals = document.querySelectorAll('.modal-overlay.is-visible');
         if (openModals.length > 0) {
             // If cancel modal is open, close it
             const cancelModal = document.getElementById('cancel-event-modal');
-            if (cancelModal && cancelModal.style.display === 'flex') {
+            if (cancelModal && cancelModal.classList.contains('is-visible')) {
                 closeCancelModal();
             }
             return;
@@ -201,16 +201,18 @@ function updateFormProgress() {
     const percentage = Math.round((completedCount / requiredFields.length) * 100);
     progressFill.style.width = `${percentage}%`;
 
-    // Update status text
+    // Update status text and styling via CSS classes
     if (percentage === 100) {
         progressStatus.textContent = 'Ready to deploy your event!';
-        progressFill.style.background = 'linear-gradient(90deg, var(--success-color) 0%, #059669 100%)';
-    } else if (percentage > 0) {
-        const remaining = missingFields.join(', ');
-        progressStatus.textContent = `Still needed: ${remaining}`;
-        progressFill.style.background = 'linear-gradient(90deg, var(--semper-gold) 0%, var(--success-color) 100%)';
+        progressFill.classList.add('form-progress__fill--complete');
     } else {
-        progressStatus.textContent = 'Fill in the required fields to deploy your event';
+        progressFill.classList.remove('form-progress__fill--complete');
+        if (percentage > 0) {
+            const remaining = missingFields.join(', ');
+            progressStatus.textContent = `Still needed: ${remaining}`;
+        } else {
+            progressStatus.textContent = 'Fill in the required fields to deploy your event';
+        }
     }
 }
 
