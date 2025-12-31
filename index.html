@@ -690,17 +690,41 @@ function verifyDashboardTabs() {
         </div>
 
         <div id="create" class="page">
-            <div class="page-header">
-                <h2 class="page-header__title">Create New Event</h2>
-                <div class="page-header__badge">🎯 Mission Planning</div>
+            <div class="page-header page-header--with-actions">
+                <div class="page-header__left">
+                    <button type="button" class="btn-back" onclick="handleCancelEventCreation()" aria-label="Back to Dashboard">
+                        ← Back
+                    </button>
+                    <h2 class="page-header__title">Create New Event</h2>
+                </div>
+                <div class="page-header__right">
+                    <div class="page-header__badge">🎯 Mission Planning</div>
+                </div>
             </div>
 
             <!-- Event Templates Selector -->
             <div id="template-selector-container"></div>
 
+            <!-- Form Progress Indicator -->
+            <div class="form-progress" id="form-progress">
+                <div class="form-progress__bar">
+                    <div class="form-progress__fill" id="form-progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="form-progress__text">
+                    <span class="form-progress__status" id="form-progress-status">Fill in the required fields to deploy your event</span>
+                    <span class="form-progress__required">* Required fields</span>
+                </div>
+            </div>
+
             <form id="event-form">
-                <div class="form-group">
-                    <label for="event-title" class="required">Event Title</label>
+                <!-- Basic Information Section -->
+                <div class="form-section">
+                    <div class="form-section__header">
+                        <h3 class="form-section__title">Basic Information</h3>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-title" class="required">Event Title</label>
                     <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson" aria-required="true" aria-describedby="title-help">
                     <span id="title-help" class="sr-only">Enter a descriptive title for your event, at least 3 characters</span>
                 </div>
@@ -739,69 +763,98 @@ function verifyDashboardTabs() {
                     <img id="cover-preview" class="image-preview hidden" alt="Event cover image preview">
                     <input type="hidden" id="cover-image-url" value="">
                 </div>
+                </div><!-- End Basic Information Section -->
 
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="ask-reason"> Ask guests why they're attending
-                    </label>
-                </div>
+                <!-- RSVP Settings Section -->
+                <div class="form-section form-section--collapsible">
+                    <div class="form-section__header">
+                        <h3 class="form-section__title">RSVP Settings</h3>
+                        <span class="form-section__optional">Optional</span>
+                    </div>
 
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="allow-guests"> Allow guests to bring additional people
-                    </label>
-                </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="ask-reason">
+                            <span>Ask guests why they're attending</span>
+                        </label>
+                    </div>
 
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="requires-meal-choice"> Event requires meal/dietary choices
-                    </label>
-                </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="allow-guests">
+                            <span>Allow guests to bring additional people</span>
+                        </label>
+                    </div>
 
-                <!-- Event Details Section -->
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="requires-meal-choice">
+                            <span>Event requires meal/dietary choices</span>
+                        </label>
+                    </div>
+                </div><!-- End RSVP Settings Section -->
+
+                <!-- Event Details Section (populated by templates) -->
                 <div id="event-details-section" class="panel panel--info hidden">
                     <div class="panel__title">📝 Event Details</div>
                     <div id="event-details-container"></div>
                 </div>
 
-                <!-- Seating Chart Configuration Section -->
-                <div class="seating-config-section">
-                    <h3>🪑 Seating Chart (Optional)</h3>
-
-                    <div class="seating-config-toggle">
-                        <input type="checkbox" id="enable-seating">
-                        <label for="enable-seating">Enable seating chart for this event</label>
+                <!-- Advanced Options Section -->
+                <div class="form-section form-section--collapsible">
+                    <div class="form-section__header">
+                        <h3 class="form-section__title">Advanced Options</h3>
+                        <span class="form-section__optional">Optional</span>
                     </div>
 
-                    <div id="seating-config-fields" class="hidden">
-                        <div class="seating-config-fields">
-                            <div class="seating-config-field">
-                                <label for="number-of-tables">Number of Tables</label>
-                                <input type="number" id="number-of-tables" min="1" max="100" value="10">
-                                <small>Total number of tables at the venue</small>
-                            </div>
-
-                            <div class="seating-config-field">
-                                <label for="seats-per-table">Seats per Table</label>
-                                <input type="number" id="seats-per-table" min="2" max="20" value="8">
-                                <small>Average capacity per table</small>
-                            </div>
+                    <!-- Seating Chart Configuration -->
+                    <div class="seating-config-section">
+                        <div class="seating-config-toggle">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="enable-seating">
+                                <span>Enable seating chart for this event</span>
+                            </label>
                         </div>
 
-                        <div class="seating-config-info">
-                            ℹ️ Total Capacity: <strong><span id="total-seating-capacity">80</span> seats</strong>
+                        <div id="seating-config-fields" class="hidden">
+                            <div class="seating-config-fields">
+                                <div class="seating-config-field">
+                                    <label for="number-of-tables">Number of Tables</label>
+                                    <input type="number" id="number-of-tables" min="1" max="100" value="10">
+                                    <small>Total number of tables at the venue</small>
+                                </div>
+
+                                <div class="seating-config-field">
+                                    <label for="seats-per-table">Seats per Table</label>
+                                    <input type="number" id="seats-per-table" min="2" max="20" value="8">
+                                    <small>Average capacity per table</small>
+                                </div>
+                            </div>
+
+                            <div class="seating-config-info">
+                                Total Capacity: <strong><span id="total-seating-capacity">80</span> seats</strong>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label>Custom Questions (Optional)</label>
-                    <div id="custom-questions-container"></div>
-                    <button type="button" class="btn" onclick="addCustomQuestion()">➕ Add Question</button>
-                </div>
+                    <!-- Custom Questions -->
+                    <div class="form-group" style="margin-top: 1.5rem;">
+                        <label>Custom Questions</label>
+                        <p class="form-help">Add custom questions to gather specific information from attendees.</p>
+                        <div id="custom-questions-container"></div>
+                        <button type="button" class="btn btn-secondary" onclick="addCustomQuestion()">➕ Add Question</button>
+                    </div>
+                </div><!-- End Advanced Options Section -->
 
-                <!-- IMPORTANT: type="submit" with no onclick handler -->
-                <button type="submit" class="btn" aria-label="Deploy event and create invitation">🚀 Deploy Event</button>
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="handleCancelEventCreation()" aria-label="Cancel and return to dashboard">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" aria-label="Deploy event and create invitation">
+                        🚀 Deploy Event
+                    </button>
+                </div>
             </form>
         </div>
 
@@ -1097,6 +1150,26 @@ function verifyDashboardTabs() {
         <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: flex-end;">
             <button type="button" class="btn btn-secondary" onclick="closeEditRSVPModal()">Cancel</button>
             <button type="button" class="btn btn-primary" onclick="saveEditedRSVP()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Event Creation Confirmation Modal -->
+<div id="cancel-event-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="cancel-modal-title">
+    <div class="modal modal--confirm">
+        <div class="modal-header">
+            <h3 id="cancel-modal-title">⚠️ Discard Changes?</h3>
+        </div>
+        <div class="modal-body">
+            <p>You have unsaved changes. Are you sure you want to leave? Your draft will be saved and can be restored later.</p>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeCancelModal()" autofocus>
+                Keep Editing
+            </button>
+            <button type="button" class="btn btn-danger" onclick="confirmCancelEventCreation()">
+                Discard & Leave
+            </button>
         </div>
     </div>
 </div>

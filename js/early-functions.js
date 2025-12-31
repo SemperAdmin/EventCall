@@ -269,6 +269,11 @@ function showPageContent(pageId, param) {
         if (window.setupEventForm) {
             window.setupEventForm();
         }
+
+        // Update form progress indicator
+        if (typeof window.updateFormProgress === 'function') {
+            window.updateFormProgress();
+        }
     } else if (pageId === 'dashboard') {
         // Load dashboard data
         if (typeof window.loadManagerData === 'function') {
