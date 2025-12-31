@@ -675,3 +675,260 @@ select option:checked {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
 }
+
+/* =============================================================================
+   EVENT CREATION PAGE HEADER & ACTIONS
+   ============================================================================= */
+
+/* Page header with actions layout */
+.page-header--with-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.page-header__left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.page-header__right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Back button styling */
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: var(--semper-navy);
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn-back:hover {
+    background: var(--gray-100);
+    border-color: var(--semper-navy);
+    color: var(--semper-navy);
+}
+
+.btn-back:focus-visible {
+    outline: 3px solid var(--semper-gold);
+    outline-offset: 2px;
+}
+
+/* Form actions container */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.form-actions .btn {
+    min-width: 140px;
+}
+
+.form-actions .btn-primary {
+    flex-shrink: 0;
+}
+
+/* Confirmation modal styling */
+.modal--confirm {
+    max-width: 420px;
+}
+
+.modal--confirm .modal-header h3 {
+    font-size: 1.25rem;
+    color: var(--semper-navy);
+}
+
+.modal--confirm .modal-body p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .page-header--with-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .page-header__left {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .page-header__left .page-header__title {
+        order: 1;
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .page-header__right {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+        gap: 0.75rem;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+    }
+
+    .btn-back {
+        font-size: 0.8125rem;
+        padding: 0.375rem 0.75rem;
+    }
+}
+
+/* =============================================================================
+   FORM PROGRESS INDICATOR
+   ============================================================================= */
+
+.form-progress {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-progress__bar {
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+}
+
+.form-progress__fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--semper-gold) 0%, var(--success-color) 100%);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.form-progress__text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+}
+
+.form-progress__status {
+    color: var(--text-color);
+}
+
+.form-progress__required {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+/* =============================================================================
+   FORM SECTIONS
+   ============================================================================= */
+
+.form-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-section__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.form-section__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--semper-navy);
+    margin: 0;
+}
+
+.form-section__optional {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--gray-100);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.form-section .form-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Checkbox label styling */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-weight: 400;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 1.125rem;
+    height: 1.125rem;
+    accent-color: var(--semper-navy);
+    cursor: pointer;
+}
+
+.checkbox-label span {
+    color: var(--text-color);
+}
+
+/* Form help text */
+.form-help {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Responsive form sections */
+@media (max-width: 640px) {
+    .form-section {
+        padding: 1rem;
+    }
+
+    .form-section__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .form-progress__text {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+}

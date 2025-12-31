@@ -10,6 +10,245 @@ console.log('📦 manager-system.js loaded - Version 2.0 (Tabbed Dashboard)');
 let syncInProgress = false;
 let pendingRSVPCount = 0;
 
+// =============================================================================
+// EVENT CREATION CANCEL HANDLING
+// =============================================================================
+
+/**
+ * Check if the event form has any unsaved changes
+ * @returns {boolean} True if form has data
+ */
+function hasEventFormData() {
+    const form = document.getElementById('event-form');
+    if (!form) return false;
+
+    const title = document.getElementById('event-title')?.value?.trim() || '';
+    const date = document.getElementById('event-date')?.value || '';
+    const time = document.getElementById('event-time')?.value || '';
+    const location = document.getElementById('event-location')?.value?.trim() || '';
+    const description = document.getElementById('event-description')?.value?.trim() || '';
+    const coverImage = document.getElementById('cover-image-url')?.value || '';
+    const customQuestions = document.querySelectorAll('.custom-question-item');
+
+    // Check if any field has data
+    return !!(title || date || time || location || description || coverImage || customQuestions.length > 0);
+}
+
+/**
+ * Handle cancel event creation - shows confirmation if form has data
+ */
+function handleCancelEventCreation() {
+    if (hasEventFormData()) {
+        // Show confirmation modal
+        const modal = document.getElementById('cancel-event-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            // Focus the "Keep Editing" button for accessibility
+            const keepEditingBtn = modal.querySelector('.btn-secondary');
+            if (keepEditingBtn) keepEditingBtn.focus();
+        }
+    } else {
+        // No data, go directly to dashboard
+        navigateToDashboard();
+    }
+}
+
+/**
+ * Close the cancel confirmation modal
+ */
+function closeCancelModal() {
+    const modal = document.getElementById('cancel-event-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Confirm cancellation and navigate to dashboard
+ * Draft is automatically saved by form-ux.js, so just navigate away
+ */
+function confirmCancelEventCreation() {
+    closeCancelModal();
+    navigateToDashboard();
+}
+
+/**
+ * Navigate to dashboard and clear form state
+ */
+function navigateToDashboard() {
+    // Reset the form
+    const form = document.getElementById('event-form');
+    if (form) {
+        form.reset();
+        // Clear custom questions
+        const questionsContainer = document.getElementById('custom-questions-container');
+        if (questionsContainer) questionsContainer.innerHTML = '';
+        // Clear event details
+        const detailsContainer = document.getElementById('event-details-container');
+        if (detailsContainer) detailsContainer.innerHTML = '';
+        const detailsSection = document.getElementById('event-details-section');
+        if (detailsSection) detailsSection.classList.add('hidden');
+        // Clear cover image preview
+        const coverPreview = document.getElementById('cover-preview');
+        if (coverPreview) {
+            coverPreview.src = '';
+            coverPreview.classList.add('hidden');
+        }
+        const coverUrl = document.getElementById('cover-image-url');
+        if (coverUrl) coverUrl.value = '';
+        // Reset seating chart
+        const seatingCheckbox = document.getElementById('enable-seating');
+        if (seatingCheckbox) seatingCheckbox.checked = false;
+        const seatingFields = document.getElementById('seating-config-fields');
+        if (seatingFields) seatingFields.classList.add('hidden');
+        // Remove any error states
+        form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        form.querySelectorAll('.form-error').forEach(el => el.remove());
+        const errorSummary = form.querySelector('#form-error-summary');
+        if (errorSummary) errorSummary.remove();
+        // Remove draft recovery banner if visible
+        const draftBanner = document.getElementById('draft-recovery-banner');
+        if (draftBanner) draftBanner.remove();
+    }
+
+    // Navigate to dashboard
+    if (typeof showPage === 'function') {
+        showPage('dashboard');
+    } else if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
+        window.AppRouter.navigateToPage('dashboard');
+    }
+}
+
+/**
+ * Setup keyboard shortcut (Escape) to cancel event creation
+ */
+function setupEventFormKeyboardShortcuts() {
+    document.addEventListener('keydown', function(e) {
+        // Only handle Escape key
+        if (e.key !== 'Escape') return;
+
+        // Check if we're on the create page
+        const createPage = document.getElementById('create');
+        if (!createPage || !createPage.classList.contains('active')) return;
+
+        // Don't trigger if a modal is open (let modal handle its own Escape)
+        const openModals = document.querySelectorAll('.modal-overlay[style*="display: flex"]');
+        if (openModals.length > 0) {
+            // If cancel modal is open, close it
+            const cancelModal = document.getElementById('cancel-event-modal');
+            if (cancelModal && cancelModal.style.display === 'flex') {
+                closeCancelModal();
+            }
+            return;
+        }
+
+        // Don't trigger if focus is in a textarea (user might be using Escape for other purposes)
+        if (document.activeElement?.tagName === 'TEXTAREA') return;
+
+        // Trigger cancel
+        handleCancelEventCreation();
+    });
+}
+
+// Initialize keyboard shortcuts when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupEventFormKeyboardShortcuts);
+} else {
+    setupEventFormKeyboardShortcuts();
+}
+
+// =============================================================================
+// FORM PROGRESS INDICATOR
+// =============================================================================
+
+/**
+ * Update the form progress bar based on required field completion
+ */
+function updateFormProgress() {
+    const form = document.getElementById('event-form');
+    const progressFill = document.getElementById('form-progress-fill');
+    const progressStatus = document.getElementById('form-progress-status');
+
+    if (!form || !progressFill || !progressStatus) return;
+
+    // Required fields
+    const requiredFields = [
+        { id: 'event-title', name: 'Title', minLength: 3 },
+        { id: 'event-date', name: 'Date' },
+        { id: 'event-time', name: 'Time' }
+    ];
+
+    let completedCount = 0;
+    const missingFields = [];
+
+    requiredFields.forEach(field => {
+        const input = document.getElementById(field.id);
+        if (!input) return;
+
+        const value = input.value?.trim() || '';
+        const isComplete = field.minLength
+            ? value.length >= field.minLength
+            : value.length > 0;
+
+        if (isComplete) {
+            completedCount++;
+        } else {
+            missingFields.push(field.name);
+        }
+    });
+
+    // Calculate percentage
+    const percentage = Math.round((completedCount / requiredFields.length) * 100);
+    progressFill.style.width = `${percentage}%`;
+
+    // Update status text
+    if (percentage === 100) {
+        progressStatus.textContent = 'Ready to deploy your event!';
+        progressFill.style.background = 'linear-gradient(90deg, var(--success-color) 0%, #059669 100%)';
+    } else if (percentage > 0) {
+        const remaining = missingFields.join(', ');
+        progressStatus.textContent = `Still needed: ${remaining}`;
+        progressFill.style.background = 'linear-gradient(90deg, var(--semper-gold) 0%, var(--success-color) 100%)';
+    } else {
+        progressStatus.textContent = 'Fill in the required fields to deploy your event';
+    }
+}
+
+/**
+ * Setup form progress tracking
+ */
+function setupFormProgressTracking() {
+    const form = document.getElementById('event-form');
+    if (!form) return;
+
+    // Track changes on required fields
+    const requiredInputs = ['event-title', 'event-date', 'event-time'];
+
+    requiredInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('input', updateFormProgress);
+            input.addEventListener('change', updateFormProgress);
+        }
+    });
+
+    // Initial update
+    updateFormProgress();
+}
+
+// Initialize form progress when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFormProgressTracking);
+} else {
+    setupFormProgressTracking();
+}
+
+// Expose functions to window for external access
+window.updateFormProgress = updateFormProgress;
+window.handleCancelEventCreation = handleCancelEventCreation;
+window.closeCancelModal = closeCancelModal;
+window.confirmCancelEventCreation = confirmCancelEventCreation;
+
 // Add custom question function
 function addCustomQuestion(questionData = null) {
     const container = document.getElementById('custom-questions-container');

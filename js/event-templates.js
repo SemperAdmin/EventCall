@@ -249,6 +249,11 @@ class EventTemplates {
             console.log(`✅ Added ${template.eventFields.length} event detail fields from template`);
         }
 
+        // Update form progress indicator
+        if (typeof window.updateFormProgress === 'function') {
+            window.updateFormProgress();
+        }
+
         showToast(`✅ Applied "${template.name}" template`, 'success');
         return true;
     }
