@@ -502,6 +502,18 @@ select option:checked {
 /* Accessible modal overlay and focus styles */
 .modal-overlay {
     background-color: rgba(17, 24, 39, 0.65); /* high contrast overlay */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0s 0.2s, opacity 0.2s ease;
+}
+
+.modal-overlay.is-visible {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.2s ease;
 }
 
 .modal-content:focus-visible,
@@ -924,15 +936,6 @@ select option:checked {
     display: flex;
     gap: 1rem;
     justify-content: flex-end;
-}
-
-/* Modal visibility class */
-.modal-overlay {
-    display: none;
-}
-
-.modal-overlay.is-visible {
-    display: flex;
 }
 
 /* Progress bar complete state */
