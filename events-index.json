@@ -510,6 +510,41 @@
     "coverImage": ""
   },
   {
+    "id": "538d514e-dfbd-4487-a207-cfa576c8f563",
+    "title": "Promotion Ceremony",
+    "date": "2026-02-20",
+    "time": "10:00",
+    "location": "National Museum of the Marine Corps",
+    "description": "Please join us in celebrating this significant milestone in a Marine&#x27;s career.",
+    "askReason": false,
+    "allowGuests": true,
+    "requiresMealChoice": false,
+    "customQuestions": [],
+    "eventDetails": {
+      "honoree-name": {
+        "label": "Honoree Name",
+        "value": "1stSgt Felicia Tanksley"
+      },
+      "current-rank": {
+        "label": "Current Rank",
+        "value": "First Sergeant"
+      },
+      "new-rank": {
+        "label": "New Rank",
+        "value": "Sergeant Major"
+      },
+      "promoter-name": {
+        "label": "Promoted By",
+        "value": "LtCol Wheeler"
+      }
+    },
+    "created": 1767372284452,
+    "status": "active",
+    "createdBy": "fmtanksley",
+    "createdByName": "Felicia Tanksley",
+    "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/0a284e71-eb21-4a58-98c0-533cc2a9178e.png"
+  },
+  {
     "title": "Retirement Ceremony for Lieutenant Colonel Adam Wilkie",
     "date": "2026-03-15",
     "time": "13:00",
