@@ -28,11 +28,15 @@ class FeedbackWidget {
         const button = document.createElement('button');
         button.id = 'feedback-button';
         button.className = 'feedback-button';
-        button.setAttribute('aria-label', 'Open feedback form');
-        button.innerHTML = '💬';
+        button.setAttribute('aria-label', 'Share Feedback');
+        button.setAttribute('title', 'Share Feedback');
+        button.innerHTML = '💬 Feedback';
         document.body.appendChild(button);
 
-        button.addEventListener('click', () => this.openModal());
+        // Navigate to Sentinel Directives Hub
+        button.addEventListener('click', () => {
+            window.location.href = 'https://semperadmin.github.io/Sentinel/#detail/eventcall/todo';
+        });
     }
 
     /**
