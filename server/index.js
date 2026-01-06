@@ -249,6 +249,7 @@ async function saveUser(username, userData) {
 // Map Supabase event data to frontend-expected format
 function mapSupabaseEvent(e) {
   if (!e) return null;
+  const coverUrl = e.cover_image_url || e.image_url || '';
   return {
     id: e.id,
     title: e.title || '',
@@ -257,7 +258,8 @@ function mapSupabaseEvent(e) {
     location: e.location || '',
     description: e.description || '',
     dress_code: e.dress_code || '',
-    cover_image_url: e.cover_image_url || e.image_url || '',
+    cover_image_url: coverUrl,
+    coverImage: coverUrl, // Frontend UI expects this alias
     status: e.status || 'active',
     created_by: e.creator_id || e.created_by || '',
     creator_id: e.creator_id || e.created_by || '',
@@ -496,6 +498,58 @@ app.get('/api/events/:id', async (req, res) => {
     res.json({ success: true, event });
   } catch (error) {
     console.error('Failed to fetch event:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PUT /api/events/:id - Update an event
+app.put('/api/events/:id', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const eventId = req.params.id;
+    const updates = req.body;
+
+    if (!USE_SUPABASE || !supabase) {
+      return res.status(503).json({ error: 'Event updates require Supabase configuration' });
+    }
+
+    // Map frontend field names to database column names
+    const dbUpdates = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.date !== undefined) dbUpdates.date = updates.date;
+    if (updates.time !== undefined) dbUpdates.time = updates.time;
+    if (updates.location !== undefined) dbUpdates.location = updates.location;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.dress_code !== undefined) dbUpdates.dress_code = updates.dress_code;
+    if (updates.dressCode !== undefined) dbUpdates.dress_code = updates.dressCode;
+    if (updates.cover_image_url !== undefined) dbUpdates.cover_image_url = updates.cover_image_url;
+    if (updates.coverImageUrl !== undefined) dbUpdates.cover_image_url = updates.coverImageUrl;
+    if (updates.coverImage !== undefined) dbUpdates.cover_image_url = updates.coverImage;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.allow_guests !== undefined) dbUpdates.allow_guests = updates.allow_guests;
+    if (updates.requires_meal_choice !== undefined) dbUpdates.requires_meal_choice = updates.requires_meal_choice;
+    if (updates.custom_questions !== undefined) dbUpdates.custom_questions = updates.custom_questions;
+    if (updates.event_details !== undefined) dbUpdates.event_details = updates.event_details;
+    if (updates.seating_chart !== undefined) dbUpdates.seating_chart = updates.seating_chart;
+    dbUpdates.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('ec_events')
+      .update(dbUpdates)
+      .eq('id', eventId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase updateEvent error:', error.message);
+      return res.status(500).json({ error: 'Failed to update event' });
+    }
+
+    res.json({ success: true, event: mapSupabaseEvent(data) });
+  } catch (error) {
+    console.error('Failed to update event:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -952,6 +1006,36 @@ app.post('/api/dispatch', async (req, res) => {
   } catch (e) {
     console.error('Dispatch proxy error:', e);
     return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// =============================================================================
+// USER API - User lookup for auth persistence
+// =============================================================================
+
+// GET /api/users/by-username/:username - Get user by username (for auth persistence)
+app.get('/api/users/by-username/:username', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    const username = req.params.username;
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const user = await getUser(username);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Return user without password hash
+    const { passwordHash, password_hash, ...safeUser } = user;
+    res.json({ success: true, user: safeUser });
+  } catch (error) {
+    console.error('Failed to fetch user:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
