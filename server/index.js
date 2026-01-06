@@ -863,7 +863,10 @@ app.post('/api/events', async (req, res) => {
     }
     const eventId = eventData.id || crypto.randomUUID();
     // Accept both creator_id and created_by from frontend
-    const creatorId = eventData.creator_id || eventData.creatorId || eventData.created_by || eventData.createdBy || '';
+    const creatorId = eventData.creator_id || eventData.creatorId || eventData.created_by || eventData.createdBy;
+    if (!creatorId) {
+      return res.status(400).json({ error: 'Creator ID is required' });
+    }
 
     const event = {
       id: eventId,
@@ -1080,17 +1083,22 @@ app.post('/api/images/upload', async (req, res) => {
       photoId = photoData?.id || null;
 
       // Also update the event's cover_image_url if this is the first photo or no cover set
-      const { data: eventData } = await supabase
+      const { data: eventData, error: fetchError } = await supabase
         .from('ec_events')
         .select('cover_image_url')
         .eq('id', event_id)
         .single();
 
-      if (!eventData?.cover_image_url) {
-        await supabase
+      if (fetchError) {
+        console.error('Error fetching event to update cover image:', fetchError.message);
+      } else if (eventData && !eventData.cover_image_url) {
+        const { error: updateError } = await supabase
           .from('ec_events')
           .update({ cover_image_url: publicUrl, updated_at: new Date().toISOString() })
           .eq('id', event_id);
+        if (updateError) {
+          console.error('Error updating event cover image:', updateError.message);
+        }
       }
     }
 

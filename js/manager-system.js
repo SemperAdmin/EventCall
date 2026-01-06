@@ -529,6 +529,17 @@ async function loadManagerData() {
         }
     } catch (_) {}
     
+    // Helper to extract events array from API response
+    const extractEventsFromResponse = (response) => {
+        if (response && Array.isArray(response.events)) {
+            return response.events;
+        }
+        if (response && typeof response === 'object' && !Array.isArray(response)) {
+            return Object.values(response);
+        }
+        return [];
+    };
+
     if (window.BackendAPI) {
         try {
             const currentUser = window.userAuth && window.userAuth.isAuthenticated() ? window.userAuth.getCurrentUser() : null;
@@ -539,25 +550,13 @@ async function loadManagerData() {
                 filterParams.created_by = currentUser.id;
             }
             let rawResponse = await window.BackendAPI.loadEvents(filterParams);
-
-            // Handle BackendAPI response format { success: true, events: [] }
-            let allEventsList = [];
-            if (rawResponse && Array.isArray(rawResponse.events)) {
-                allEventsList = rawResponse.events;
-            } else if (typeof rawResponse === 'object') {
-                // Legacy/Fallback support
-                allEventsList = Object.values(rawResponse);
-            }
+            let allEventsList = extractEventsFromResponse(rawResponse);
 
             // Fallback: if filtered by creator returned nothing, load ALL events
             if (allEventsList.length === 0 && useCreatorFilter) {
                 console.log('ℹ️ No events found for user filter, loading all events as fallback');
                 rawResponse = await window.BackendAPI.loadEvents({});
-                if (rawResponse && Array.isArray(rawResponse.events)) {
-                    allEventsList = rawResponse.events;
-                } else if (typeof rawResponse === 'object') {
-                    allEventsList = Object.values(rawResponse);
-                }
+                allEventsList = extractEventsFromResponse(rawResponse);
             }
 
             // Convert to map and normalize
