@@ -300,7 +300,10 @@ function addCustomQuestion(questionData = null) {
         </div>
         <div class="question-options-container" style="display: ${questionType === 'choice' ? 'block' : 'none'}">
             <div class="question-options-list">${optionsHTML}</div>
-            <button type="button" class="btn-small" onclick="addQuestionOption(this)">+ Add Option</button>
+            <button type="button" class="btn-add-option" onclick="addQuestionOption(this)">
+                <span class="btn-add-option__icon">+</span>
+                <span class="btn-add-option__text">Add Option</span>
+            </button>
         </div>
     `;
     container.appendChild(questionItem);
@@ -323,8 +326,8 @@ function handleQuestionTypeChange(selectElement) {
         // Add default options if none exist
         const optionsList = optionsContainer.querySelector('.question-options-list');
         if (!optionsList.querySelector('.question-option-item')) {
-            addQuestionOption(optionsContainer.querySelector('.btn-small'));
-            addQuestionOption(optionsContainer.querySelector('.btn-small'));
+            addQuestionOption(optionsContainer.querySelector('.btn-add-option'));
+            addQuestionOption(optionsContainer.querySelector('.btn-add-option'));
         }
     } else {
         optionsContainer.style.display = 'none';

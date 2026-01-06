@@ -423,6 +423,51 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
     box-shadow: 0 0 0 2px rgba(0, 33, 71, 0.1);
 }
 
+/* Add Option Button - Modern styling */
+.btn-add-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    margin-top: 0.75rem;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    color: #0369a1;
+    border: 2px dashed #7dd3fc;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-add-option:hover {
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+    border-color: #38bdf8;
+    transform: translateY(-1px);
+}
+
+.btn-add-option:active {
+    transform: translateY(0);
+}
+
+.btn-add-option__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    background: #0ea5e9;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.btn-add-option__text {
+    color: #0369a1;
+}
+
 /* Add Question Button */
 .form-group--custom-questions .btn-secondary {
     display: inline-flex;
