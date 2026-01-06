@@ -12,6 +12,61 @@ class EventManager {
             pageSize: 25,
             shownByEvent: {} // eventId -> number of RSVPs shown
         };
+        // IntersectionObserver for infinite scroll
+        this._loadMoreObserver = null;
+        this._setupInfiniteScroll();
+    }
+
+    /**
+     * Setup IntersectionObserver for infinite scroll
+     * Automatically loads more RSVPs when user scrolls near the load more button
+     */
+    _setupInfiniteScroll() {
+        if (typeof IntersectionObserver === 'undefined') return;
+
+        this._loadMoreObserver = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const eventId = entry.target.dataset.eventId;
+                        if (eventId) {
+                            // Small delay to prevent rapid-fire loading
+                            setTimeout(() => this.loadMoreRsvps(eventId), 100);
+                        }
+                    }
+                });
+            },
+            {
+                root: null, // viewport
+                rootMargin: '200px', // trigger 200px before visible
+                threshold: 0
+            }
+        );
+    }
+
+    /**
+     * Observe a "Load More" button for infinite scroll
+     * @param {string} eventId - Event ID
+     */
+    observeLoadMore(eventId) {
+        if (!this._loadMoreObserver) return;
+        const container = document.getElementById(`rsvp-load-more-${eventId}`);
+        if (container) {
+            container.dataset.eventId = eventId;
+            this._loadMoreObserver.observe(container);
+        }
+    }
+
+    /**
+     * Stop observing a "Load More" button
+     * @param {string} eventId - Event ID
+     */
+    unobserveLoadMore(eventId) {
+        if (!this._loadMoreObserver) return;
+        const container = document.getElementById(`rsvp-load-more-${eventId}`);
+        if (container) {
+            this._loadMoreObserver.unobserve(container);
+        }
     }
 
     /**
@@ -28,11 +83,18 @@ class EventManager {
      */
     loadMoreRsvps(eventId) {
         const current = this.rsvpPagination.shownByEvent[eventId] || this.rsvpPagination.pageSize;
+
+        // Prevent loading if already at max
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+        if (current >= eventResponses.length) {
+            this.unobserveLoadMore(eventId);
+            return;
+        }
+
         this.rsvpPagination.shownByEvent[eventId] = current + this.rsvpPagination.pageSize;
 
         // Re-render the response table
         const event = window.events ? window.events[eventId] : null;
-        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
 
         if (event && eventResponses.length > 0) {
             const stats = calculateEventStats(eventResponses);
@@ -48,10 +110,15 @@ class EventManager {
                 // Update or remove load more button
                 if (loadMoreContainer) {
                     if (shown >= eventResponses.length) {
+                        // Stop observing and remove button
+                        this.unobserveLoadMore(eventId);
                         loadMoreContainer.remove();
                     } else {
                         const remaining = eventResponses.length - shown;
-                        loadMoreContainer.querySelector('button').textContent = `📋 Load More RSVPs (${remaining} remaining)`;
+                        const btn = loadMoreContainer.querySelector('button');
+                        if (btn) {
+                            btn.textContent = `📋 Load More RSVPs (${remaining} remaining)`;
+                        }
                     }
                 }
 
@@ -130,10 +197,11 @@ class EventManager {
             backBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (typeof goToDashboard === 'function') {
+                // Use unified navigation
+                if (typeof window.navigateTo === 'function') {
+                    window.navigateTo('dashboard');
+                } else if (typeof goToDashboard === 'function') {
                     goToDashboard();
-                } else if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
-                    window.AppRouter.navigateToPage('dashboard');
                 } else if (typeof showPage === 'function') {
                     showPage('dashboard');
                 }
@@ -200,6 +268,12 @@ class EventManager {
         // Initialize photo upload for manage page
         if (window.setupPhotoUpload) {
             window.setupPhotoUpload();
+        }
+
+        // Setup infinite scroll for RSVP list
+        if (eventResponses.length > this.rsvpPagination.pageSize) {
+            // Use requestAnimationFrame to ensure DOM is ready
+            requestAnimationFrame(() => this.observeLoadMore(eventId));
         }
     }
 
@@ -2546,7 +2620,12 @@ Best regards`;
         // Restore Back button and Cancel button
         this._toggleRedundantEditButtons(true);
 
-        showPage('dashboard');
+        // Use unified navigation
+        if (typeof window.navigateTo === 'function') {
+            window.navigateTo('dashboard');
+        } else {
+            showPage('dashboard');
+        }
     }
 
     /**
@@ -2648,6 +2727,7 @@ Best regards`;
 
     /**
      * Delete a specific RSVP response
+     * Uses PESSIMISTIC approach: server confirmation BEFORE local state update
      * @param {string} eventId - Event ID
      * @param {number} responseIndex - Index of response to delete
      */
@@ -2657,66 +2737,75 @@ Best regards`;
         }
 
         try {
-            const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+            const eventResponses = window.responses ? [...(window.responses[eventId] || [])] : [];
             const deletedResponse = eventResponses[responseIndex];
-            
+
             if (!deletedResponse) {
                 showToast('Response not found', 'error');
                 return;
             }
 
-            // Remove from local array
-            eventResponses.splice(responseIndex, 1);
-            if (window.responses) {
-                window.responses[eventId] = eventResponses;
+            // PESSIMISTIC: Prepare the new array but don't apply to local state yet
+            const updatedResponses = [...eventResponses];
+            updatedResponses.splice(responseIndex, 1);
+
+            // Try backend API first (if available)
+            let serverSuccess = false;
+            if (window.BackendAPI && window.BackendAPI.deleteRsvp && deletedResponse.id) {
+                await window.BackendAPI.deleteRsvp(deletedResponse.id);
+                serverSuccess = true;
+            } else if (window.githubAPI && window.githubAPI.hasToken()) {
+                // Fall back to GitHub
+                const path = `rsvps/${eventId}.json`;
+                const content = window.githubAPI.safeBase64Encode(JSON.stringify(updatedResponses, null, 2));
+
+                // Get existing file info
+                const existingResponse = await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
+                    headers: {
+                        'Authorization': `token ${window.githubAPI.getToken()}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                });
+
+                let createData = {
+                    message: `Delete RSVP response: ${deletedResponse.name}`,
+                    content: content,
+                    branch: 'main'
+                };
+
+                if (existingResponse.ok) {
+                    const existingData = await existingResponse.json();
+                    createData.sha = existingData.sha;
+                }
+
+                const saveResponse = await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${window.githubAPI.getToken()}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify(createData)
+                });
+
+                if (!saveResponse.ok) {
+                    throw new Error('Failed to save changes to server');
+                }
+                serverSuccess = true;
             }
 
-            // Update GitHub if connected
-            if (window.githubAPI && window.githubAPI.hasToken()) {
-                try {
-                    const path = `rsvps/${eventId}.json`;
-                    const content = window.githubAPI.safeBase64Encode(JSON.stringify(eventResponses, null, 2));
-                    
-                    // Get existing file info
-                    const existingResponse = await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
-                        headers: {
-                            'Authorization': `token ${window.githubAPI.getToken()}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'User-Agent': 'EventCall-App'
-                        }
-                    });
-
-                    let createData = {
-                        message: `Delete RSVP response: ${deletedResponse.name}`,
-                        content: content,
-                        branch: 'main'
-                    };
-
-                    if (existingResponse.ok) {
-                        const existingData = await existingResponse.json();
-                        createData.sha = existingData.sha;
-                    }
-
-                    await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${window.githubAPI.getToken()}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'Content-Type': 'application/json',
-                            'User-Agent': 'EventCall-App'
-                        },
-                        body: JSON.stringify(createData)
-                    });
-
-                } catch (error) {
-                    console.error('Failed to update GitHub:', error);
-                    // Continue anyway - local deletion succeeded
+            // PESSIMISTIC: Only update local state AFTER server success
+            if (serverSuccess || (!window.BackendAPI && !window.githubAPI)) {
+                if (window.responses) {
+                    window.responses[eventId] = updatedResponses;
                 }
             }
 
             // Refresh the event management view
             this.showEventManagement(eventId);
-            showToast('🗑️ RSVP response deleted successfully', 'success');
+            showToast('RSVP response deleted successfully', 'success');
 
         } catch (error) {
             console.error('Failed to delete response:', error);
@@ -3280,6 +3369,7 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
 
     /**
      * Delete selected responses
+     * Uses PESSIMISTIC approach: server confirmation BEFORE local state update
      * @param {string} eventId - Event ID
      */
     async bulkDeleteSelected(eventId) {
@@ -3301,22 +3391,24 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
                 .map(cb => parseInt(cb.dataset.responseIndex))
                 .sort((a, b) => b - a);
 
-            const allResponses = window.responses[eventId] || [];
+            // PESSIMISTIC: Create a copy and prepare new array without modifying original yet
+            const originalResponses = window.responses[eventId] || [];
+            const updatedResponses = [...originalResponses];
 
             // Delete from end to beginning to maintain correct indices
             for (const index of selectedIndices) {
-                allResponses.splice(index, 1);
+                updatedResponses.splice(index, 1);
             }
 
-            // Update storage
-            window.responses[eventId] = allResponses;
-
-            // Save to GitHub
+            // PESSIMISTIC: Save to server FIRST, before updating local state
             if (window.githubAPI) {
-                await window.githubAPI.saveResponses(eventId, allResponses);
+                await window.githubAPI.saveResponses(eventId, updatedResponses);
             }
 
-            showToast(`🗑️ Deleted ${count} response${count > 1 ? 's' : ''}`, 'success');
+            // Only update local storage AFTER server success
+            window.responses[eventId] = updatedResponses;
+
+            showToast(`Deleted ${count} response${count > 1 ? 's' : ''}`, 'success');
 
             // Refresh the view
             this.showEventManagement(eventId);

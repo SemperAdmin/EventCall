@@ -19,47 +19,529 @@ document.documentElement.setAttribute('data-theme', 'light');
 window.events = {};
 window.responses = {};
 
+// =============================================================================
+// CACHE MANAGER - Centralized cache invalidation strategy
+// =============================================================================
+
+/**
+ * CacheManager - Centralized cache management with invalidation
+ * Provides consistent TTL, versioning, and invalidation across the app
+ */
+const CacheManager = {
+    // Cache version - increment to invalidate all caches
+    VERSION: 1,
+
+    // Default TTL values (in milliseconds)
+    TTL: {
+        EVENTS: 5 * 60 * 1000,      // 5 minutes
+        RESPONSES: 5 * 60 * 1000,   // 5 minutes
+        USER: 30 * 60 * 1000,       // 30 minutes
+        FORM_DRAFT: 60 * 60 * 1000  // 1 hour
+    },
+
+    // Track when data was last fetched
+    _timestamps: {
+        events: 0,
+        responses: 0
+    },
+
+    // Subscribers for cache invalidation events
+    _subscribers: [],
+
+    /**
+     * Check if cached data is stale
+     * @param {string} cacheKey - 'events' or 'responses'
+     * @returns {boolean}
+     */
+    isStale(cacheKey) {
+        const timestamp = this._timestamps[cacheKey] || 0;
+        const ttl = this.TTL[cacheKey.toUpperCase()] || this.TTL.EVENTS;
+        return Date.now() - timestamp > ttl;
+    },
+
+    /**
+     * Mark cache as fresh (just updated)
+     * @param {string} cacheKey - 'events' or 'responses'
+     */
+    markFresh(cacheKey) {
+        this._timestamps[cacheKey] = Date.now();
+    },
+
+    /**
+     * Invalidate specific cache or all caches
+     * @param {string} [cacheKey] - Optional specific cache to invalidate
+     */
+    invalidate(cacheKey) {
+        if (cacheKey) {
+            this._timestamps[cacheKey] = 0;
+            console.log(`🗑️ Cache invalidated: ${cacheKey}`);
+        } else {
+            // Invalidate all
+            Object.keys(this._timestamps).forEach(key => {
+                this._timestamps[key] = 0;
+            });
+            console.log('🗑️ All caches invalidated');
+        }
+
+        // Notify subscribers
+        this._notifySubscribers(cacheKey);
+
+        // Also clear GitHub API caches if available
+        if (window.githubAPI && typeof window.githubAPI.clearCache === 'function') {
+            window.githubAPI.clearCache();
+        }
+    },
+
+    /**
+     * Invalidate caches after a mutation (create/update/delete)
+     * @param {string} entityType - 'event' or 'rsvp'
+     * @param {string} eventId - Event ID affected
+     */
+    invalidateAfterMutation(entityType, eventId) {
+        if (entityType === 'event') {
+            this.invalidate('events');
+        }
+        this.invalidate('responses');
+        console.log(`🔄 Cache invalidated after ${entityType} mutation for event: ${eventId}`);
+    },
+
+    /**
+     * Subscribe to cache invalidation events
+     * @param {Function} callback - Called when cache is invalidated
+     * @returns {Function} Unsubscribe function
+     */
+    subscribe(callback) {
+        this._subscribers.push(callback);
+        return () => {
+            this._subscribers = this._subscribers.filter(cb => cb !== callback);
+        };
+    },
+
+    /**
+     * Notify all subscribers of cache invalidation
+     * @param {string} [cacheKey] - Which cache was invalidated
+     */
+    _notifySubscribers(cacheKey) {
+        this._subscribers.forEach(callback => {
+            try {
+                callback(cacheKey);
+            } catch (err) {
+                console.error('Cache subscriber error:', err);
+            }
+        });
+    },
+
+    /**
+     * Get cache statistics for debugging
+     * @returns {Object}
+     */
+    getStats() {
+        const now = Date.now();
+        return {
+            version: this.VERSION,
+            events: {
+                age: now - this._timestamps.events,
+                isStale: this.isStale('events'),
+                count: Object.keys(window.events || {}).length
+            },
+            responses: {
+                age: now - this._timestamps.responses,
+                isStale: this.isStale('responses'),
+                count: Object.keys(window.responses || {}).length
+            }
+        };
+    }
+};
+
+// Export to window for global access
+window.CacheManager = CacheManager;
+
+// =============================================================================
+// LOADING STATE MANAGER - Consistent loading/error states
+// =============================================================================
+
+/**
+ * LoadingStateManager - Centralized loading and error state management
+ * Provides consistent UI states across the application
+ */
+const LoadingStateManager = {
+    // Current loading states by key
+    _states: {},
+
+    // State change subscribers
+    _subscribers: [],
+
+    /**
+     * Check if any operation is loading
+     * @param {string} [key] - Optional specific key to check
+     * @returns {boolean}
+     */
+    isLoading(key) {
+        if (key) {
+            return this._states[key]?.loading || false;
+        }
+        return Object.values(this._states).some(s => s.loading);
+    },
+
+    /**
+     * Get error for a specific key
+     * @param {string} key
+     * @returns {Error|null}
+     */
+    getError(key) {
+        return this._states[key]?.error || null;
+    },
+
+    /**
+     * Start a loading operation
+     * @param {string} key - Unique operation key
+     * @param {Object} [options] - Options
+     * @param {boolean} [options.showOverlay] - Show global overlay
+     * @param {string} [options.message] - Loading message
+     */
+    startLoading(key, options = {}) {
+        const { showOverlay = false, message = 'Loading...' } = options;
+
+        this._states[key] = {
+            loading: true,
+            error: null,
+            startTime: Date.now(),
+            message
+        };
+
+        if (showOverlay && window.LoadingUI?.Overlay) {
+            window.LoadingUI.Overlay.show(message);
+        }
+
+        this._notify(key, 'loading');
+    },
+
+    /**
+     * End a loading operation with success
+     * @param {string} key - Operation key
+     */
+    endLoading(key) {
+        if (this._states[key]) {
+            const elapsed = Date.now() - (this._states[key].startTime || 0);
+            console.log(`✅ ${key} completed in ${elapsed}ms`);
+            this._states[key].loading = false;
+            this._states[key].error = null;
+        }
+
+        // Hide overlay if no more operations loading
+        if (!this.isLoading() && window.LoadingUI?.Overlay) {
+            window.LoadingUI.Overlay.hide();
+        }
+
+        this._notify(key, 'success');
+    },
+
+    /**
+     * End a loading operation with error
+     * @param {string} key - Operation key
+     * @param {Error|string} error - Error that occurred
+     * @param {Object} [options] - Options
+     * @param {boolean} [options.showToast] - Show error toast (default: true)
+     * @param {boolean} [options.retry] - Allow retry
+     */
+    setError(key, error, options = {}) {
+        const { showToast = true } = options;
+        const errorObj = typeof error === 'string' ? new Error(error) : error;
+
+        if (this._states[key]) {
+            this._states[key].loading = false;
+            this._states[key].error = errorObj;
+        } else {
+            this._states[key] = { loading: false, error: errorObj };
+        }
+
+        // Hide overlay
+        if (window.LoadingUI?.Overlay) {
+            window.LoadingUI.Overlay.hide();
+        }
+
+        // Show toast notification
+        if (showToast && window.showToast) {
+            const message = this._getUserFriendlyMessage(errorObj);
+            window.showToast(`❌ ${message}`, 'error');
+        }
+
+        console.error(`❌ ${key} failed:`, errorObj);
+        this._notify(key, 'error', errorObj);
+    },
+
+    /**
+     * Clear error state
+     * @param {string} key
+     */
+    clearError(key) {
+        if (this._states[key]) {
+            this._states[key].error = null;
+        }
+        this._notify(key, 'cleared');
+    },
+
+    /**
+     * Execute an operation with automatic loading/error state management
+     * @param {string} key - Operation key
+     * @param {Function} fn - Async function to execute
+     * @param {Object} [options] - Options
+     * @returns {Promise<any>}
+     */
+    async withLoading(key, fn, options = {}) {
+        this.startLoading(key, options);
+        try {
+            const result = await fn();
+            this.endLoading(key);
+            return result;
+        } catch (error) {
+            this.setError(key, error, options);
+            throw error;
+        }
+    },
+
+    /**
+     * Subscribe to state changes
+     * @param {Function} callback - Called with (key, state, error)
+     * @returns {Function} Unsubscribe function
+     */
+    subscribe(callback) {
+        this._subscribers.push(callback);
+        return () => {
+            this._subscribers = this._subscribers.filter(cb => cb !== callback);
+        };
+    },
+
+    /**
+     * Notify subscribers of state change
+     * @private
+     */
+    _notify(key, state, error = null) {
+        this._subscribers.forEach(cb => {
+            try {
+                cb(key, state, error);
+            } catch (err) {
+                console.error('LoadingStateManager subscriber error:', err);
+            }
+        });
+    },
+
+    /**
+     * Get user-friendly error message
+     * @private
+     */
+    _getUserFriendlyMessage(error) {
+        const msg = error?.message || String(error);
+
+        // Network errors
+        if (msg.includes('fetch') || msg.includes('network') || msg.includes('Network')) {
+            return 'Network error - please check your connection';
+        }
+
+        // Rate limiting
+        if (msg.includes('429') || msg.includes('rate limit')) {
+            return 'Too many requests - please wait a moment';
+        }
+
+        // Auth errors
+        if (msg.includes('401') || msg.includes('Authentication')) {
+            return 'Please log in again';
+        }
+
+        // Server errors
+        if (msg.includes('500') || msg.includes('Server')) {
+            return 'Server error - please try again later';
+        }
+
+        // Timeout
+        if (msg.includes('timeout') || msg.includes('Timeout')) {
+            return 'Request timed out - please try again';
+        }
+
+        // Default: use original message (truncated)
+        return msg.length > 100 ? msg.substring(0, 100) + '...' : msg;
+    },
+
+    /**
+     * Get all current states (for debugging)
+     * @returns {Object}
+     */
+    getStates() {
+        return { ...this._states };
+    }
+};
+
+// Export to window for global access
+window.LoadingStateManager = LoadingStateManager;
+
+// =============================================================================
+// APP INITIALIZATION MUTEX
+// =============================================================================
+
+/**
+ * AppInit - Manages application initialization with mutex protection
+ * Ensures initialization happens exactly once and in the correct order
+ */
+const AppInit = {
+    _initialized: false,
+    _initializing: false,
+    _initPromise: null,
+    _readyCallbacks: [],
+
+    /**
+     * Check if app is fully initialized
+     */
+    isReady() {
+        return this._initialized;
+    },
+
+    /**
+     * Wait for initialization to complete
+     * @returns {Promise<void>}
+     */
+    async waitForReady() {
+        if (this._initialized) return;
+        if (this._initPromise) return this._initPromise;
+        return new Promise(resolve => {
+            this._readyCallbacks.push(resolve);
+        });
+    },
+
+    /**
+     * Run initialization with mutex protection
+     * @returns {Promise<void>}
+     */
+    async initialize() {
+        // Already initialized - nothing to do
+        if (this._initialized) {
+            console.log('✅ AppInit: Already initialized');
+            return;
+        }
+
+        // Another initialization in progress - wait for it
+        if (this._initializing && this._initPromise) {
+            console.log('⏳ AppInit: Waiting for existing initialization...');
+            return this._initPromise;
+        }
+
+        // Start initialization with mutex
+        this._initializing = true;
+        this._initPromise = this._doInitialize();
+
+        try {
+            await this._initPromise;
+        } finally {
+            this._initializing = false;
+        }
+
+        return this._initPromise;
+    },
+
+    /**
+     * Internal initialization logic
+     */
+    async _doInitialize() {
+        console.log('🚀 AppInit: Starting initialization...');
+
+        // Step 1: Wait for userAuth to be available (with timeout)
+        const userAuthReady = await this._waitForDependency(
+            () => window.userAuth && typeof window.userAuth.init === 'function',
+            'userAuth',
+            3000
+        );
+
+        if (!userAuthReady) {
+            console.warn('⚠️ AppInit: userAuth not available, showing fallback login');
+            showLoginPage();
+            this._markReady();
+            return;
+        }
+
+        // Step 2: Initialize userAuth
+        try {
+            await window.userAuth.init();
+        } catch (err) {
+            console.error('❌ AppInit: userAuth.init() failed:', err);
+        }
+
+        // Step 3: Handle authentication state
+        if (!window.userAuth.isAuthenticated()) {
+            console.log('🔒 AppInit: Not authenticated - showing login');
+            if (typeof window.userAuth.showLoginScreen === 'function') {
+                window.userAuth.showLoginScreen();
+            }
+            this._markReady();
+            return;
+        }
+
+        console.log('✅ AppInit: User authenticated');
+        enforceLogin();
+
+        // Step 4: Load initial data for dashboard
+        const hash = window.location.hash.substring(1);
+        const isDefaultDashboard = !hash || hash === 'dashboard';
+
+        if (isDefaultDashboard) {
+            // Wait for loadManagerData to be available
+            const loadDataReady = await this._waitForDependency(
+                () => typeof window.loadManagerData === 'function',
+                'loadManagerData',
+                5000
+            );
+
+            if (loadDataReady) {
+                console.log('📊 AppInit: Loading dashboard data...');
+                try {
+                    await window.loadManagerData();
+                } catch (err) {
+                    console.error('❌ AppInit: loadManagerData failed:', err);
+                }
+            }
+        }
+
+        this._markReady();
+    },
+
+    /**
+     * Wait for a dependency to become available
+     */
+    async _waitForDependency(checkFn, name, timeoutMs) {
+        const startTime = Date.now();
+        while (!checkFn()) {
+            if (Date.now() - startTime > timeoutMs) {
+                console.warn(`⚠️ AppInit: ${name} not available after ${timeoutMs}ms timeout`);
+                return false;
+            }
+            await new Promise(r => setTimeout(r, 50));
+        }
+        console.log(`✅ AppInit: ${name} is available`);
+        return true;
+    },
+
+    /**
+     * Mark initialization as complete and notify waiters
+     */
+    _markReady() {
+        this._initialized = true;
+        console.log('🎉 AppInit: Initialization complete');
+
+        // Notify all waiters
+        this._readyCallbacks.forEach(cb => cb());
+        this._readyCallbacks = [];
+    }
+};
+
+// Export to window for global access
+window.AppInit = AppInit;
+
 async function initialAuthAndLoad() {
     const isInvitePage = window.location.hash.includes('invite/') || window.location.search.includes('data=');
     if (isInvitePage) {
         return;
     }
-    if (window.userAuth && typeof window.userAuth.init === 'function') {
-        try {
-            await window.userAuth.init();
-        } catch (err) {
-            console.error('Failed to initialize userAuth:', err);
-        }
-        if (!window.userAuth.isAuthenticated()) {
-            console.log('🔒 Not authenticated - showing new login screen');
-            if (typeof window.userAuth.showLoginScreen === 'function') {
-                window.userAuth.showLoginScreen();
-            }
-            return;
-        }
-        console.log('✅ Authenticated - showing app');
-        enforceLogin();
-        const hash = window.location.hash.substring(1);
-        const isDefaultDashboard = !hash || hash === 'dashboard';
-        if (isDefaultDashboard) {
-            console.log('📊 Initial load: Loading dashboard data...');
-            const waitForLoad = setInterval(() => {
-                if (typeof window.loadManagerData === 'function') {
-                    clearInterval(waitForLoad);
-                    window.loadManagerData();
-                }
-            }, 100);
-            setTimeout(() => {
-                clearInterval(waitForLoad);
-                if (typeof window.loadManagerData !== 'function') {
-                    console.error('❌ loadManagerData function not available after timeout');
-                }
-            }, 5000);
-        }
-        return;
-    }
-    console.warn('⚠️ userAuth not available; showing built-in login page UI');
-    showLoginPage();
+
+    // Use the new AppInit mutex system for guaranteed single initialization
+    await AppInit.initialize();
 }
 
 if (document.readyState === 'loading') {
@@ -67,6 +549,56 @@ if (document.readyState === 'loading') {
 } else {
     initialAuthAndLoad();
 }
+
+// =============================================================================
+// UNIFIED NAVIGATION
+// =============================================================================
+
+/**
+ * Unified navigation function - single entry point for all navigation
+ * Handles AppRouter, showPage fallback, and authentication checks
+ * @param {string} pageId - The page to navigate to (e.g., 'dashboard', 'manage', 'create')
+ * @param {string} [param] - Optional parameter (e.g., event ID for manage page)
+ * @returns {Promise<void>}
+ */
+async function navigateTo(pageId, param = '') {
+    console.log('🧭 navigateTo:', pageId, param || '');
+
+    // Check authentication for protected pages
+    const publicPages = ['invite', 'login'];
+    if (!publicPages.includes(pageId)) {
+        if (!window.userAuth || !window.userAuth.isAuthenticated()) {
+            console.log('🔒 navigateTo: Not authenticated, redirecting to login');
+            if (typeof window.userAuth?.showLoginScreen === 'function') {
+                window.userAuth.showLoginScreen();
+            }
+            return;
+        }
+    }
+
+    // Use AppRouter if available (preferred)
+    if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
+        window.AppRouter.navigateToPage(pageId, param);
+        return;
+    }
+
+    // Fallback to showPage
+    if (typeof showPage === 'function') {
+        showPage(pageId, param);
+        return;
+    }
+
+    // Last resort: direct hash manipulation
+    console.warn('⚠️ navigateTo: No router available, using hash fallback');
+    if (param) {
+        window.location.hash = `${pageId}/${param}`;
+    } else {
+        window.location.hash = pageId;
+    }
+}
+
+// Export to window for global access
+window.navigateTo = navigateTo;
 
 /**
  * Enforce login - show login page if not authenticated
@@ -1053,10 +1585,10 @@ async function deleteEvent(eventId) {
         }
         
         showToast('🗑️ Event deleted successfully', 'success');
-        
+
         // Navigate to dashboard if on manage page
         if (window.location.hash.includes('manage/')) {
-            showPage('dashboard');
+            navigateTo('dashboard');
         }
         
     } catch (error) {
@@ -1142,13 +1674,10 @@ function checkURLHash() {
 
 /**
  * Navigate to dashboard - Available immediately for HTML onclick
+ * Uses unified navigation internally
  */
 function goToDashboard() {
-    if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
-        window.AppRouter.navigateToPage('dashboard');
-    } else {
-        showPage('dashboard');
-    }
+    navigateTo('dashboard');
 }
 
 /**

@@ -7,6 +7,57 @@ class BackendAPI {
         this.proxyCsrf = null; // { clientId, token, expires }
     }
 
+    /**
+     * Centralized fetch wrapper with exponential backoff
+     * Uses the rate limiter when available, falls back to plain fetch
+     * @param {string} url - URL to fetch
+     * @param {Object} options - Fetch options
+     * @param {Object} meta - Metadata for rate limiter (endpointKey, retry config)
+     * @returns {Promise<Response>}
+     */
+    async _fetch(url, options = {}, meta = {}) {
+        const defaultRetry = {
+            maxAttempts: 4,
+            baseDelayMs: 1000,
+            jitter: true
+        };
+        const retryCfg = { ...defaultRetry, ...(meta.retry || {}) };
+        const endpointKey = meta.endpointKey || 'backend_api';
+
+        // Use rate limiter if available
+        if (window.rateLimiter && typeof window.rateLimiter.fetch === 'function') {
+            return window.rateLimiter.fetch(url, options, {
+                endpointKey,
+                retry: retryCfg
+            });
+        }
+
+        // Fallback: plain fetch with manual exponential backoff
+        let lastErr;
+        for (let attempt = 0; attempt < retryCfg.maxAttempts; attempt++) {
+            try {
+                const resp = await fetch(url, options);
+
+                // Retry on server errors (5xx) or rate limits (429)
+                if (resp.status >= 500 || resp.status === 429) {
+                    throw new Error(`Server error: ${resp.status}`);
+                }
+
+                return resp;
+            } catch (err) {
+                lastErr = err;
+                if (attempt < retryCfg.maxAttempts - 1) {
+                    // Exponential backoff: 1s, 2s, 4s, 8s...
+                    const delay = retryCfg.baseDelayMs * Math.pow(2, attempt);
+                    const jitter = retryCfg.jitter ? Math.random() * (retryCfg.baseDelayMs / 2) : 0;
+                    console.warn(`🔁 Retry ${attempt + 1}/${retryCfg.maxAttempts} in ${Math.ceil((delay + jitter) / 1000)}s: ${err.message}`);
+                    await new Promise(r => setTimeout(r, delay + jitter));
+                }
+            }
+        }
+        throw lastErr || new Error('Request failed after retries');
+    }
+
     shouldUseProxy() {
         try {
             const cfg = window.BACKEND_CONFIG || {};
@@ -329,7 +380,7 @@ class BackendAPI {
         const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
         if (!base) throw new Error('Backend not configured');
         const url = base + '/api/rsvps';
-        const resp = await fetch(url, {
+        const resp = await this._fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -349,7 +400,7 @@ class BackendAPI {
                 check_in_token: payload.checkInToken,
                 edit_token: payload.editToken
             })
-        });
+        }, { endpointKey: 'submit_rsvp' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'RSVP submission failed');
@@ -510,11 +561,11 @@ class BackendAPI {
         }
 
         const url = base + '/api/events';
-        const resp = await fetch(url, {
+        const resp = await this._fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
-        });
+        }, { endpointKey: 'create_event' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Event creation failed');
@@ -547,11 +598,11 @@ class BackendAPI {
             uploader_username: currentUser?.username || '',
             uploader_id: currentUser?.id || ''
         };
-        const resp = await fetch(url, {
+        const resp = await this._fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
-        });
+        }, { endpointKey: 'upload_image' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Image upload failed');
@@ -565,7 +616,7 @@ class BackendAPI {
         const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
         if (!base) throw new Error('Backend not configured');
         const url = base + '/api/events/' + encodeURIComponent(String(eventId)) + '/photos';
-        const resp = await fetch(url, { method: 'GET' });
+        const resp = await this._fetch(url, { method: 'GET' }, { endpointKey: 'load_photos' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to load photos');
@@ -578,7 +629,7 @@ class BackendAPI {
         const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
         if (!base) throw new Error('Backend not configured');
         const url = base + '/api/photos/' + encodeURIComponent(String(photoId));
-        const resp = await fetch(url, { method: 'DELETE' });
+        const resp = await this._fetch(url, { method: 'DELETE' }, { endpointKey: 'delete_photo' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to delete photo');
@@ -595,7 +646,7 @@ class BackendAPI {
         if (params.unassigned === true) q.set('unassigned', 'true');
         if (params.status) q.set('status', params.status);
         const url = base + '/api/events' + (q.toString() ? ('?' + q.toString()) : '');
-        const resp = await fetch(url, { method: 'GET' });
+        const resp = await this._fetch(url, { method: 'GET' }, { endpointKey: 'load_events' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to load events');
@@ -634,7 +685,7 @@ class BackendAPI {
         const q = new URLSearchParams();
         if (Array.isArray(ids) && ids.length > 0) q.set('ids', ids.join(','));
         const url = base + '/api/users' + (q.toString() ? ('?' + q.toString()) : '');
-        const resp = await fetch(url, { method: 'GET' });
+        const resp = await this._fetch(url, { method: 'GET' }, { endpointKey: 'load_users' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to load users');
@@ -662,7 +713,7 @@ class BackendAPI {
         const uname = String(username || '').trim().toLowerCase();
         if (!uname) throw new Error('Username required');
         const url = base + '/api/users/by-username/' + encodeURIComponent(uname);
-        const resp = await fetch(url, { method: 'GET' });
+        const resp = await this._fetch(url, { method: 'GET' }, { endpointKey: 'load_users' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to load user');
@@ -688,7 +739,7 @@ class BackendAPI {
             q.set('event_ids', params.event_ids.join(','));
         }
         const url = base + '/api/rsvps' + (q.toString() ? ('?' + q.toString()) : '');
-        const resp = await fetch(url, { method: 'GET' });
+        const resp = await this._fetch(url, { method: 'GET' }, { endpointKey: 'load_rsvps' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to load RSVPs');
@@ -743,11 +794,11 @@ class BackendAPI {
             seating_chart: typeof update.seatingChart === 'object' && update.seatingChart !== null ? update.seatingChart : undefined,
             created_by: update.created_by
         };
-        const resp = await fetch(url, {
+        const resp = await this._fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
-        });
+        }, { endpointKey: 'update_event' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to update event');
@@ -760,7 +811,7 @@ class BackendAPI {
         const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
         if (!base) throw new Error('Backend not configured');
         const url = base + '/api/events/' + encodeURIComponent(String(eventId));
-        const resp = await fetch(url, { method: 'DELETE' });
+        const resp = await this._fetch(url, { method: 'DELETE' }, { endpointKey: 'delete_event' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to delete event');
@@ -776,7 +827,7 @@ class BackendAPI {
             throw new Error('Backend not configured');
         }
         const url = base + '/api/users/update-profile';
-        const resp = await fetch(url, {
+        const resp = await this._fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -786,13 +837,31 @@ class BackendAPI {
                 branch: userData.branch,
                 rank: userData.rank
             })
-        });
+        }, { endpointKey: 'update_profile' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to update profile');
         }
         const data = await resp.json();
         return { success: true, user: data.user };
+    }
+
+    /**
+     * Delete an RSVP by ID
+     * @param {string} rsvpId - RSVP ID to delete
+     * @returns {Promise<Object>}
+     */
+    async deleteRsvp(rsvpId) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const url = base + '/api/rsvps/' + encodeURIComponent(String(rsvpId));
+        const resp = await this._fetch(url, { method: 'DELETE' }, { endpointKey: 'delete_rsvp' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to delete RSVP');
+        }
+        return await resp.json();
     }
 }
 
