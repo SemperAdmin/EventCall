@@ -731,44 +731,46 @@ function verifyDashboardTabs() {
 
                     <div class="form-group">
                         <label for="event-title" class="required">Event Title</label>
-                    <input type="text" id="event-title" required placeholder="e.g., Retirement Ceremony for MSgt Johnson" aria-required="true" aria-describedby="title-help">
-                    <span id="title-help" class="sr-only">Enter a descriptive title for your event, at least 3 characters</span>
-                </div>
+                        <input type="text" id="event-title" class="form-control" required placeholder="e.g., Retirement Ceremony for MSgt Johnson" aria-required="true" aria-describedby="title-help">
+                        <span class="form-help-text" id="title-help">Enter a descriptive title for your event</span>
+                    </div>
 
-                <div class="form-group">
-                    <label for="event-date" class="required">Date</label>
-                    <input type="date" id="event-date" required aria-required="true" aria-describedby="date-help">
-                    <span id="date-help" class="sr-only">Select the date when your event will take place</span>
-                </div>
+                    <div class="form-row form-row--two-col">
+                        <div class="form-group">
+                            <label for="event-date" class="required">Date</label>
+                            <input type="date" id="event-date" class="form-control" required aria-required="true" aria-describedby="date-help">
+                            <span class="form-help-text" id="date-help">When will your event take place?</span>
+                        </div>
 
-                <div class="form-group">
-                    <label for="event-time" class="required">Time</label>
-                    <input type="time" id="event-time" required aria-required="true" aria-describedby="time-help">
-                    <span id="time-help" class="sr-only">Select the time when your event will start</span>
-                </div>
+                        <div class="form-group">
+                            <label for="event-time" class="required">Time</label>
+                            <input type="time" id="event-time" class="form-control" required aria-required="true" aria-describedby="time-help">
+                            <span class="form-help-text" id="time-help">What time does it start?</span>
+                        </div>
+                    </div>
 
-                <div class="form-group">
-                    <label for="event-location">Location</label>
-                    <input type="text" id="event-location" placeholder="e.g., Base Chapel, Building 123" aria-describedby="location-help">
-                    <span id="location-help" class="sr-only">Enter the location where the event will be held</span>
-                </div>
+                    <div class="form-group">
+                        <label for="event-location">Location</label>
+                        <input type="text" id="event-location" class="form-control" placeholder="e.g., Base Chapel, Building 123" aria-describedby="location-help">
+                        <span class="form-help-text" id="location-help">Where will the event be held?</span>
+                    </div>
 
-                <div class="form-group">
-                    <label for="event-description">Description</label>
-                    <textarea id="event-description" placeholder="Additional details about the event..." aria-describedby="description-help"></textarea>
-                    <span id="description-help" class="sr-only">Provide additional details about the event</span>
-                </div>
+                    <div class="form-group">
+                        <label for="event-description">Description</label>
+                        <textarea id="event-description" class="form-control" placeholder="Share the details: what's the occasion, what to expect, any special instructions..." aria-describedby="description-help" rows="4"></textarea>
+                        <span class="form-help-text" id="description-help">Help guests know what to expect</span>
+                    </div>
 
-                <div class="form-group">
-                    <label for="cover-input">Cover Image (Optional)</label>
-                    <div class="image-upload" id="cover-upload" role="button" tabindex="0" aria-label="Upload cover image by clicking or dragging a file" aria-describedby="cover-help">
+                    <div class="form-group">
+                        <label for="cover-input">Cover Image <span class="label-optional">(Optional)</span></label>
+                        <div class="image-upload" id="cover-upload" role="button" tabindex="0" aria-label="Upload cover image by clicking or dragging a file" aria-describedby="cover-help">
                             <p>Click or drag to upload cover image</p>
                             <input type="file" id="cover-input" accept="image/*" class="file-input" aria-label="Choose cover image file">
                         </div>
-                    <span id="cover-help" class="sr-only">Upload a cover image for your event. Maximum size 5MB. Accepted formats: JPEG, PNG, GIF, WebP</span>
-                    <img id="cover-preview" class="image-preview hidden" alt="Event cover image preview">
-                    <input type="hidden" id="cover-image-url" value="">
-                </div>
+                        <span class="form-help-text" id="cover-help">Add a photo to make your event stand out (JPEG, PNG, WebP - max 5MB)</span>
+                        <img id="cover-preview" class="image-preview hidden" alt="Event cover image preview">
+                        <input type="hidden" id="cover-image-url" value="">
+                    </div>
                 </div><!-- End Basic Information Section -->
 
                 <!-- RSVP Settings Section -->
@@ -778,25 +780,27 @@ function verifyDashboardTabs() {
                         <span class="form-section__optional">Optional</span>
                     </div>
 
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="ask-reason">
-                            <span>Ask guests why they're attending</span>
-                        </label>
-                    </div>
+                    <div class="rsvp-settings-options">
+                        <div class="checkbox-card">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="ask-reason">
+                                <span>Ask guests why they're attending</span>
+                            </label>
+                        </div>
 
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="allow-guests">
-                            <span>Allow guests to bring additional people</span>
-                        </label>
-                    </div>
+                        <div class="checkbox-card">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="allow-guests">
+                                <span>Allow guests to bring additional people</span>
+                            </label>
+                        </div>
 
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="requires-meal-choice">
-                            <span>Event requires meal/dietary choices</span>
-                        </label>
+                        <div class="checkbox-card">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="requires-meal-choice">
+                                <span>Event requires meal/dietary choices</span>
+                            </label>
+                        </div>
                     </div>
                 </div><!-- End RSVP Settings Section -->
 
