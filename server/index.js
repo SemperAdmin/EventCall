@@ -83,81 +83,6 @@ function getClientIP(req) {
 
 // =============================================================================
 
-// =============================================================================
-// RATE LIMITING - Brute force protection (no external dependencies)
-// =============================================================================
-class RateLimiter {
-  constructor(windowMs, maxAttempts) {
-    this.windowMs = windowMs;
-    this.maxAttempts = maxAttempts;
-    this.attempts = new Map();
-
-    // Cleanup old entries every minute
-    setInterval(() => this.cleanup(), 60 * 1000);
-  }
-
-  cleanup() {
-    const now = Date.now();
-    for (const [key, data] of this.attempts) {
-      if (now - data.firstAttempt > this.windowMs) {
-        this.attempts.delete(key);
-      }
-    }
-  }
-
-  isRateLimited(key) {
-    const now = Date.now();
-    const data = this.attempts.get(key);
-
-    if (!data) {
-      this.attempts.set(key, { count: 1, firstAttempt: now });
-      return false;
-    }
-
-    // Reset if window has passed
-    if (now - data.firstAttempt > this.windowMs) {
-      this.attempts.set(key, { count: 1, firstAttempt: now });
-      return false;
-    }
-
-    // Increment and check
-    data.count++;
-    if (data.count > this.maxAttempts) {
-      return true;
-    }
-
-    return false;
-  }
-
-  getRemainingTime(key) {
-    const data = this.attempts.get(key);
-    if (!data) return 0;
-    const elapsed = Date.now() - data.firstAttempt;
-    return Math.max(0, Math.ceil((this.windowMs - elapsed) / 1000));
-  }
-
-  getAttempts(key) {
-    const data = this.attempts.get(key);
-    return data ? data.count : 0;
-  }
-}
-
-// Rate limiters for auth endpoints
-// Login: 5 attempts per 15 minutes per IP
-const loginLimiter = new RateLimiter(15 * 60 * 1000, 5);
-// Registration: 3 attempts per hour per IP
-const registerLimiter = new RateLimiter(60 * 60 * 1000, 3);
-
-function getClientIP(req) {
-  // Support common proxy headers
-  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-         req.headers['x-real-ip'] ||
-         req.socket?.remoteAddress ||
-         'unknown';
-}
-
-// =============================================================================
-
 // Env configuration
 const PORT = process.env.PORT || 10000;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
@@ -386,7 +311,8 @@ async function isAdmin(req, res, next) {
   }
 
   try {
-    const user = await getUserFromGitHub(username);
+    // Use unified getUser to support both GitHub and Supabase modes
+    const user = await getUser(username);
     if (!user || user.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden' });
     }
@@ -1126,9 +1052,5 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {
   console.log(`EventCall proxy listening on port ${PORT}`);
-  if (MIGRATE_ON_START && USE_SUPABASE) {
-    performMigration().then(r => {
-      console.log(`Migration completed: ${JSON.stringify(r)}`);
-    }).catch(() => {});
-  }
+  console.log(`Mode: ${USE_SUPABASE ? 'Supabase' : 'GitHub'}`);
 });
