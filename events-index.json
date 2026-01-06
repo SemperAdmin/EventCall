@@ -364,6 +364,101 @@
     "coverImage": "https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/d567c1a3-6723-4019-939f-ea6e0af47625.jpg"
   },
   {
+    "id": "2bc060bf-7d10-45cb-893b-3911cc459c55",
+    "title": "test 2",
+    "date": "2026-01-22",
+    "time": "16:35:00",
+    "location": "sddsad",
+    "description": "sdadsad",
+    "status": "active",
+    "createdBy": "f95ecf0f-e788-4b7a-ade1-3fbb18006f83",
+    "created": "2026-01-06T02:36:02.887631+00:00",
+    "allowGuests": true,
+    "requiresMealChoice": true,
+    "customQuestions": [],
+    "eventDetails": {},
+    "seatingChart": {
+      "tables": [
+        {
+          "capacity": 8,
+          "vipTable": true,
+          "tableNumber": 1,
+          "assignedGuests": [
+            {
+              "rsvpId": "9ef7ff79-a913-4464-9cf2-3f78e6250ab0",
+              "name": "STEPHEN SHORTER",
+              "guestCount": 4,
+              "assignedAt": 1767667023051
+            }
+          ]
+        },
+        {
+          "capacity": 8,
+          "vipTable": false,
+          "tableNumber": 2,
+          "assignedGuests": []
+        },
+        {
+          "capacity": 8,
+          "vipTable": false,
+          "tableNumber": 3,
+          "assignedGuests": []
+        },
+        {
+          "capacity": 8,
+          "vipTable": false,
+          "tableNumber": 4,
+          "assignedGuests": []
+        },
+        {
+          "capacity": 8,
+          "vipTable": false,
+          "tableNumber": 5,
+          "assignedGuests": []
+        },
+        {
+          "capacity": 8,
+          "vipTable": false,
+          "tableNumber": 6,
+          "assignedGuests": []
+        },
+        {
+          "capacity": 8,
+          "vipTable": false,
+          "tableNumber": 7,
+          "assignedGuests": []
+        },
+        {
+          "capacity": 8,
+          "vipTable": false,
+          "tableNumber": 8,
+          "assignedGuests": []
+        },
+        {
+          "capacity": 8,
+          "vipTable": false,
+          "tableNumber": 9,
+          "assignedGuests": []
+        },
+        {
+          "capacity": 8,
+          "vipTable": false,
+          "tableNumber": 10,
+          "assignedGuests": []
+        }
+      ],
+      "enabled": true,
+      "lastModified": 1767667023051,
+      "seatsPerTable": 8,
+      "totalCapacity": 80,
+      "numberOfTables": 10,
+      "unassignedGuests": []
+    },
+    "createdByName": "Stephen Shorter",
+    "createdByUsername": "furby203824",
+    "coverImage": ""
+  },
+  {
     "title": "Winter Wonderland",
     "date": "2026-01-10",
     "time": "09:00",
