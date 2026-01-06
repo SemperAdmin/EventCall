@@ -2466,6 +2466,12 @@ Best regards`;
             submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
         }
 
+        // Hide Back button and Cancel button in edit mode (they're redundant with Cancel Edit)
+        const backBtn = document.querySelector('#create .btn-back');
+        const cancelBtn = document.querySelector('#create .form-actions .btn-secondary:not(#cancel-edit-btn)');
+        if (backBtn) backBtn.style.display = 'none';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+
         showPage('create');
         document.querySelector('#create h2').textContent = 'Edit Event';
         if (window.setupPhotoUpload) {
@@ -2526,6 +2532,12 @@ Best regards`;
 
         // Reset page title
         document.querySelector('#create h2').textContent = 'Create New Event';
+
+        // Restore Back button and Cancel button
+        const backBtn = document.querySelector('#create .btn-back');
+        const staticCancelBtn = document.querySelector('#create .form-actions .btn-secondary:not(#cancel-edit-btn)');
+        if (backBtn) backBtn.style.display = '';
+        if (staticCancelBtn) staticCancelBtn.style.display = '';
 
         showPage('dashboard');
     }
