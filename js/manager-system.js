@@ -10,6 +10,21 @@ console.log('📦 manager-system.js loaded - Version 2.0 (Tabbed Dashboard)');
 let syncInProgress = false;
 let pendingRSVPCount = 0;
 
+// Guard flag to prevent concurrent loadManagerData calls
+let loadManagerDataInProgress = false;
+
+// Debounce helper for loadManagerData
+let loadManagerDataDebounceTimer = null;
+function debouncedLoadManagerData(delay = 300) {
+    if (loadManagerDataDebounceTimer) {
+        clearTimeout(loadManagerDataDebounceTimer);
+    }
+    loadManagerDataDebounceTimer = setTimeout(() => {
+        loadManagerDataDebounceTimer = null;
+        loadManagerData();
+    }, delay);
+}
+
 // =============================================================================
 // EVENT CREATION CANCEL HANDLING
 // =============================================================================
@@ -111,11 +126,11 @@ function navigateToDashboard() {
         if (draftBanner) draftBanner.remove();
     }
 
-    // Navigate to dashboard
-    if (typeof showPage === 'function') {
+    // Navigate to dashboard using unified navigation
+    if (typeof window.navigateTo === 'function') {
+        window.navigateTo('dashboard');
+    } else if (typeof showPage === 'function') {
         showPage('dashboard');
-    } else if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
-        window.AppRouter.navigateToPage('dashboard');
     }
 }
 
@@ -505,29 +520,37 @@ function updateDashboardSyncStatus(pendingCount) {
  * Enhanced load manager data with sync status
  */
 async function loadManagerData() {
-    console.log('📊 Loading manager data...');
-    
-    if (!window.events) window.events = {};
-    if (!window.responses) window.responses = {};
-    if (typeof window.managerShowAllEvents !== 'boolean') window.managerShowAllEvents = false;
-    
-    if (!isUserAuthenticated()) {
-        console.log('⚠️ No authentication - using local events only');
-        renderDashboard();
+    // Guard against concurrent calls
+    if (loadManagerDataInProgress) {
+        console.log('⏳ loadManagerData already in progress, skipping...');
         return;
     }
 
-    // Show skeleton while fetching data
+    loadManagerDataInProgress = true;
+    console.log('📊 Loading manager data...');
+
     try {
-        const activeList = document.getElementById('active-events-list');
-        const pastList = document.getElementById('past-events-list');
-        if (activeList && window.LoadingUI && window.LoadingUI.Skeleton) {
-            window.LoadingUI.Skeleton.show(activeList, 'cards', 3);
+        if (!window.events) window.events = {};
+        if (!window.responses) window.responses = {};
+        if (typeof window.managerShowAllEvents !== 'boolean') window.managerShowAllEvents = false;
+
+        if (!isUserAuthenticated()) {
+            console.log('⚠️ No authentication - using local events only');
+            renderDashboard();
+            return;
         }
-        if (pastList && window.LoadingUI && window.LoadingUI.Skeleton) {
-            window.LoadingUI.Skeleton.show(pastList, 'cards', 3);
-        }
-    } catch (_) {}
+
+        // Show skeleton while fetching data
+        try {
+            const activeList = document.getElementById('active-events-list');
+            const pastList = document.getElementById('past-events-list');
+            if (activeList && window.LoadingUI && window.LoadingUI.Skeleton) {
+                window.LoadingUI.Skeleton.show(activeList, 'cards', 3);
+            }
+            if (pastList && window.LoadingUI && window.LoadingUI.Skeleton) {
+                window.LoadingUI.Skeleton.show(pastList, 'cards', 3);
+            }
+        } catch (_) {}
     
     // Helper to extract events array from API response
     const extractEventsFromResponse = (response) => {
@@ -724,20 +747,25 @@ async function loadManagerData() {
         }
     }
 
-    renderDashboard();
+        renderDashboard();
 
-    // Load user's RSVPs
-    if (window.displayUserRSVPs) {
-        window.displayUserRSVPs();
+        // Load user's RSVPs
+        if (window.displayUserRSVPs) {
+            window.displayUserRSVPs();
+        }
+    } finally {
+        // Always reset the guard flag
+        loadManagerDataInProgress = false;
     }
 }
 
 function initShowAllEventsToggle() {
     const el = document.getElementById('show-all-events-toggle');
     if (!el) return;
-    el.addEventListener('change', async () => {
+    el.addEventListener('change', () => {
         window.managerShowAllEvents = !!el.checked;
-        await loadManagerData();
+        // Use debounced version to prevent rapid toggle calls
+        debouncedLoadManagerData(300);
     });
 }
 
@@ -774,7 +802,9 @@ async function deleteEvent(eventId) {
         await loadManagerData();
         
         if (window.location.hash.includes('manage/')) {
-            if (window.showPage) {
+            if (typeof window.navigateTo === 'function') {
+                window.navigateTo('dashboard');
+            } else if (window.showPage) {
                 window.showPage('dashboard');
             }
         }

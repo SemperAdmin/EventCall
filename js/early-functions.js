@@ -19,47 +19,174 @@ document.documentElement.setAttribute('data-theme', 'light');
 window.events = {};
 window.responses = {};
 
+// =============================================================================
+// APP INITIALIZATION MUTEX
+// =============================================================================
+
+/**
+ * AppInit - Manages application initialization with mutex protection
+ * Ensures initialization happens exactly once and in the correct order
+ */
+const AppInit = {
+    _initialized: false,
+    _initializing: false,
+    _initPromise: null,
+    _readyCallbacks: [],
+
+    /**
+     * Check if app is fully initialized
+     */
+    isReady() {
+        return this._initialized;
+    },
+
+    /**
+     * Wait for initialization to complete
+     * @returns {Promise<void>}
+     */
+    async waitForReady() {
+        if (this._initialized) return;
+        if (this._initPromise) return this._initPromise;
+        return new Promise(resolve => {
+            this._readyCallbacks.push(resolve);
+        });
+    },
+
+    /**
+     * Run initialization with mutex protection
+     * @returns {Promise<void>}
+     */
+    async initialize() {
+        // Already initialized - nothing to do
+        if (this._initialized) {
+            console.log('✅ AppInit: Already initialized');
+            return;
+        }
+
+        // Another initialization in progress - wait for it
+        if (this._initializing && this._initPromise) {
+            console.log('⏳ AppInit: Waiting for existing initialization...');
+            return this._initPromise;
+        }
+
+        // Start initialization with mutex
+        this._initializing = true;
+        this._initPromise = this._doInitialize();
+
+        try {
+            await this._initPromise;
+        } finally {
+            this._initializing = false;
+        }
+
+        return this._initPromise;
+    },
+
+    /**
+     * Internal initialization logic
+     */
+    async _doInitialize() {
+        console.log('🚀 AppInit: Starting initialization...');
+
+        // Step 1: Wait for userAuth to be available (with timeout)
+        const userAuthReady = await this._waitForDependency(
+            () => window.userAuth && typeof window.userAuth.init === 'function',
+            'userAuth',
+            3000
+        );
+
+        if (!userAuthReady) {
+            console.warn('⚠️ AppInit: userAuth not available, showing fallback login');
+            showLoginPage();
+            this._markReady();
+            return;
+        }
+
+        // Step 2: Initialize userAuth
+        try {
+            await window.userAuth.init();
+        } catch (err) {
+            console.error('❌ AppInit: userAuth.init() failed:', err);
+        }
+
+        // Step 3: Handle authentication state
+        if (!window.userAuth.isAuthenticated()) {
+            console.log('🔒 AppInit: Not authenticated - showing login');
+            if (typeof window.userAuth.showLoginScreen === 'function') {
+                window.userAuth.showLoginScreen();
+            }
+            this._markReady();
+            return;
+        }
+
+        console.log('✅ AppInit: User authenticated');
+        enforceLogin();
+
+        // Step 4: Load initial data for dashboard
+        const hash = window.location.hash.substring(1);
+        const isDefaultDashboard = !hash || hash === 'dashboard';
+
+        if (isDefaultDashboard) {
+            // Wait for loadManagerData to be available
+            const loadDataReady = await this._waitForDependency(
+                () => typeof window.loadManagerData === 'function',
+                'loadManagerData',
+                5000
+            );
+
+            if (loadDataReady) {
+                console.log('📊 AppInit: Loading dashboard data...');
+                try {
+                    await window.loadManagerData();
+                } catch (err) {
+                    console.error('❌ AppInit: loadManagerData failed:', err);
+                }
+            }
+        }
+
+        this._markReady();
+    },
+
+    /**
+     * Wait for a dependency to become available
+     */
+    async _waitForDependency(checkFn, name, timeoutMs) {
+        const startTime = Date.now();
+        while (!checkFn()) {
+            if (Date.now() - startTime > timeoutMs) {
+                console.warn(`⚠️ AppInit: ${name} not available after ${timeoutMs}ms timeout`);
+                return false;
+            }
+            await new Promise(r => setTimeout(r, 50));
+        }
+        console.log(`✅ AppInit: ${name} is available`);
+        return true;
+    },
+
+    /**
+     * Mark initialization as complete and notify waiters
+     */
+    _markReady() {
+        this._initialized = true;
+        console.log('🎉 AppInit: Initialization complete');
+
+        // Notify all waiters
+        this._readyCallbacks.forEach(cb => cb());
+        this._readyCallbacks = [];
+    }
+};
+
+// Export to window for global access
+window.AppInit = AppInit;
+
 async function initialAuthAndLoad() {
     const isInvitePage = window.location.hash.includes('invite/') || window.location.search.includes('data=');
     if (isInvitePage) {
         return;
     }
-    if (window.userAuth && typeof window.userAuth.init === 'function') {
-        try {
-            await window.userAuth.init();
-        } catch (err) {
-            console.error('Failed to initialize userAuth:', err);
-        }
-        if (!window.userAuth.isAuthenticated()) {
-            console.log('🔒 Not authenticated - showing new login screen');
-            if (typeof window.userAuth.showLoginScreen === 'function') {
-                window.userAuth.showLoginScreen();
-            }
-            return;
-        }
-        console.log('✅ Authenticated - showing app');
-        enforceLogin();
-        const hash = window.location.hash.substring(1);
-        const isDefaultDashboard = !hash || hash === 'dashboard';
-        if (isDefaultDashboard) {
-            console.log('📊 Initial load: Loading dashboard data...');
-            const waitForLoad = setInterval(() => {
-                if (typeof window.loadManagerData === 'function') {
-                    clearInterval(waitForLoad);
-                    window.loadManagerData();
-                }
-            }, 100);
-            setTimeout(() => {
-                clearInterval(waitForLoad);
-                if (typeof window.loadManagerData !== 'function') {
-                    console.error('❌ loadManagerData function not available after timeout');
-                }
-            }, 5000);
-        }
-        return;
-    }
-    console.warn('⚠️ userAuth not available; showing built-in login page UI');
-    showLoginPage();
+
+    // Use the new AppInit mutex system for guaranteed single initialization
+    await AppInit.initialize();
 }
 
 if (document.readyState === 'loading') {
@@ -67,6 +194,56 @@ if (document.readyState === 'loading') {
 } else {
     initialAuthAndLoad();
 }
+
+// =============================================================================
+// UNIFIED NAVIGATION
+// =============================================================================
+
+/**
+ * Unified navigation function - single entry point for all navigation
+ * Handles AppRouter, showPage fallback, and authentication checks
+ * @param {string} pageId - The page to navigate to (e.g., 'dashboard', 'manage', 'create')
+ * @param {string} [param] - Optional parameter (e.g., event ID for manage page)
+ * @returns {Promise<void>}
+ */
+async function navigateTo(pageId, param = '') {
+    console.log('🧭 navigateTo:', pageId, param || '');
+
+    // Check authentication for protected pages
+    const publicPages = ['invite', 'login'];
+    if (!publicPages.includes(pageId)) {
+        if (!window.userAuth || !window.userAuth.isAuthenticated()) {
+            console.log('🔒 navigateTo: Not authenticated, redirecting to login');
+            if (typeof window.userAuth?.showLoginScreen === 'function') {
+                window.userAuth.showLoginScreen();
+            }
+            return;
+        }
+    }
+
+    // Use AppRouter if available (preferred)
+    if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
+        window.AppRouter.navigateToPage(pageId, param);
+        return;
+    }
+
+    // Fallback to showPage
+    if (typeof showPage === 'function') {
+        showPage(pageId, param);
+        return;
+    }
+
+    // Last resort: direct hash manipulation
+    console.warn('⚠️ navigateTo: No router available, using hash fallback');
+    if (param) {
+        window.location.hash = `${pageId}/${param}`;
+    } else {
+        window.location.hash = pageId;
+    }
+}
+
+// Export to window for global access
+window.navigateTo = navigateTo;
 
 /**
  * Enforce login - show login page if not authenticated
@@ -1053,10 +1230,10 @@ async function deleteEvent(eventId) {
         }
         
         showToast('🗑️ Event deleted successfully', 'success');
-        
+
         // Navigate to dashboard if on manage page
         if (window.location.hash.includes('manage/')) {
-            showPage('dashboard');
+            navigateTo('dashboard');
         }
         
     } catch (error) {
@@ -1142,13 +1319,10 @@ function checkURLHash() {
 
 /**
  * Navigate to dashboard - Available immediately for HTML onclick
+ * Uses unified navigation internally
  */
 function goToDashboard() {
-    if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
-        window.AppRouter.navigateToPage('dashboard');
-    } else {
-        showPage('dashboard');
-    }
+    navigateTo('dashboard');
 }
 
 /**

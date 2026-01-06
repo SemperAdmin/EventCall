@@ -130,10 +130,11 @@ class EventManager {
             backBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (typeof goToDashboard === 'function') {
+                // Use unified navigation
+                if (typeof window.navigateTo === 'function') {
+                    window.navigateTo('dashboard');
+                } else if (typeof goToDashboard === 'function') {
                     goToDashboard();
-                } else if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
-                    window.AppRouter.navigateToPage('dashboard');
                 } else if (typeof showPage === 'function') {
                     showPage('dashboard');
                 }
@@ -2546,7 +2547,12 @@ Best regards`;
         // Restore Back button and Cancel button
         this._toggleRedundantEditButtons(true);
 
-        showPage('dashboard');
+        // Use unified navigation
+        if (typeof window.navigateTo === 'function') {
+            window.navigateTo('dashboard');
+        } else {
+            showPage('dashboard');
+        }
     }
 
     /**
@@ -2648,6 +2654,7 @@ Best regards`;
 
     /**
      * Delete a specific RSVP response
+     * Uses PESSIMISTIC approach: server confirmation BEFORE local state update
      * @param {string} eventId - Event ID
      * @param {number} responseIndex - Index of response to delete
      */
@@ -2657,66 +2664,75 @@ Best regards`;
         }
 
         try {
-            const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+            const eventResponses = window.responses ? [...(window.responses[eventId] || [])] : [];
             const deletedResponse = eventResponses[responseIndex];
-            
+
             if (!deletedResponse) {
                 showToast('Response not found', 'error');
                 return;
             }
 
-            // Remove from local array
-            eventResponses.splice(responseIndex, 1);
-            if (window.responses) {
-                window.responses[eventId] = eventResponses;
+            // PESSIMISTIC: Prepare the new array but don't apply to local state yet
+            const updatedResponses = [...eventResponses];
+            updatedResponses.splice(responseIndex, 1);
+
+            // Try backend API first (if available)
+            let serverSuccess = false;
+            if (window.BackendAPI && window.BackendAPI.deleteRsvp && deletedResponse.id) {
+                await window.BackendAPI.deleteRsvp(deletedResponse.id);
+                serverSuccess = true;
+            } else if (window.githubAPI && window.githubAPI.hasToken()) {
+                // Fall back to GitHub
+                const path = `rsvps/${eventId}.json`;
+                const content = window.githubAPI.safeBase64Encode(JSON.stringify(updatedResponses, null, 2));
+
+                // Get existing file info
+                const existingResponse = await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
+                    headers: {
+                        'Authorization': `token ${window.githubAPI.getToken()}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'EventCall-App'
+                    }
+                });
+
+                let createData = {
+                    message: `Delete RSVP response: ${deletedResponse.name}`,
+                    content: content,
+                    branch: 'main'
+                };
+
+                if (existingResponse.ok) {
+                    const existingData = await existingResponse.json();
+                    createData.sha = existingData.sha;
+                }
+
+                const saveResponse = await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${window.githubAPI.getToken()}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'EventCall-App'
+                    },
+                    body: JSON.stringify(createData)
+                });
+
+                if (!saveResponse.ok) {
+                    throw new Error('Failed to save changes to server');
+                }
+                serverSuccess = true;
             }
 
-            // Update GitHub if connected
-            if (window.githubAPI && window.githubAPI.hasToken()) {
-                try {
-                    const path = `rsvps/${eventId}.json`;
-                    const content = window.githubAPI.safeBase64Encode(JSON.stringify(eventResponses, null, 2));
-                    
-                    // Get existing file info
-                    const existingResponse = await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
-                        headers: {
-                            'Authorization': `token ${window.githubAPI.getToken()}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'User-Agent': 'EventCall-App'
-                        }
-                    });
-
-                    let createData = {
-                        message: `Delete RSVP response: ${deletedResponse.name}`,
-                        content: content,
-                        branch: 'main'
-                    };
-
-                    if (existingResponse.ok) {
-                        const existingData = await existingResponse.json();
-                        createData.sha = existingData.sha;
-                    }
-
-                    await fetch(window.GITHUB_CONFIG.getContentsUrl('main', path), {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${window.githubAPI.getToken()}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'Content-Type': 'application/json',
-                            'User-Agent': 'EventCall-App'
-                        },
-                        body: JSON.stringify(createData)
-                    });
-
-                } catch (error) {
-                    console.error('Failed to update GitHub:', error);
-                    // Continue anyway - local deletion succeeded
+            // PESSIMISTIC: Only update local state AFTER server success
+            if (serverSuccess || (!window.BackendAPI && !window.githubAPI)) {
+                if (window.responses) {
+                    window.responses[eventId] = updatedResponses;
                 }
             }
 
             // Refresh the event management view
             this.showEventManagement(eventId);
-            showToast('🗑️ RSVP response deleted successfully', 'success');
+            showToast('RSVP response deleted successfully', 'success');
 
         } catch (error) {
             console.error('Failed to delete response:', error);
@@ -3280,6 +3296,7 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
 
     /**
      * Delete selected responses
+     * Uses PESSIMISTIC approach: server confirmation BEFORE local state update
      * @param {string} eventId - Event ID
      */
     async bulkDeleteSelected(eventId) {
@@ -3301,22 +3318,24 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
                 .map(cb => parseInt(cb.dataset.responseIndex))
                 .sort((a, b) => b - a);
 
-            const allResponses = window.responses[eventId] || [];
+            // PESSIMISTIC: Create a copy and prepare new array without modifying original yet
+            const originalResponses = window.responses[eventId] || [];
+            const updatedResponses = [...originalResponses];
 
             // Delete from end to beginning to maintain correct indices
             for (const index of selectedIndices) {
-                allResponses.splice(index, 1);
+                updatedResponses.splice(index, 1);
             }
 
-            // Update storage
-            window.responses[eventId] = allResponses;
-
-            // Save to GitHub
+            // PESSIMISTIC: Save to server FIRST, before updating local state
             if (window.githubAPI) {
-                await window.githubAPI.saveResponses(eventId, allResponses);
+                await window.githubAPI.saveResponses(eventId, updatedResponses);
             }
 
-            showToast(`🗑️ Deleted ${count} response${count > 1 ? 's' : ''}`, 'success');
+            // Only update local storage AFTER server success
+            window.responses[eventId] = updatedResponses;
+
+            showToast(`Deleted ${count} response${count > 1 ? 's' : ''}`, 'success');
 
             // Refresh the view
             this.showEventManagement(eventId);
