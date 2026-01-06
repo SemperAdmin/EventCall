@@ -36,7 +36,9 @@ const userAuth = {
 
         if (savedUser) {
             const uname = savedUser.username || '';
-            const hasValidId = typeof savedUser.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedUser.id);
+            // Accept any non-empty ID (UUID, integer, or Supabase format)
+            const savedId = savedUser.id;
+            const hasValidId = savedId !== null && savedId !== undefined && String(savedId).trim() !== '';
             try {
                 if (window.BackendAPI && typeof window.BackendAPI.loadUserByUsername === 'function' && uname) {
                     const backendUser = await window.BackendAPI.loadUserByUsername(uname);
@@ -504,8 +506,11 @@ const userAuth = {
                     console.error('❌ userData is null - check fetchUserData logs above');
                     throw new Error(errorMsg);
                 }
-                const hasValidId = typeof userData.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userData.id || '');
+                // Accept any non-empty ID (UUID, integer, or Supabase format)
+                const userId = userData.id;
+                const hasValidId = userId !== null && userId !== undefined && String(userId).trim() !== '';
                 if (!hasValidId) {
+                    console.error('❌ Invalid user ID:', userId);
                     throw new Error('Invalid credentials');
                 }
 
