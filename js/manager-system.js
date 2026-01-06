@@ -1046,19 +1046,20 @@ function updateEventList(container, events, isPast, listType) {
     eventsToShow.forEach((event, index) => {
         const hash = getEventHash(event);
         const cached = dashboardState.renderedEvents.get(event.id);
+        const existsInDOM = existingCardsMap.has(event.id);
 
-        // Check if event needs update
-        if (cached && cached.hash === hash) {
-            // Event unchanged, skip re-render
+        // Check if event needs update - ONLY skip if card exists in DOM AND hash matches
+        if (cached && cached.hash === hash && existsInDOM) {
+            // Event unchanged and card exists in DOM, skip re-render
             return;
         }
 
-        // Event changed or new - create element
+        // Event changed, new, or card missing from DOM - create element
         const card = createEventCardElement(event, isPast);
         dashboardState.renderedEvents.set(event.id, { element: card, hash });
 
         // Check if we need to replace existing card using the map for O(1) lookup
-        if (existingCardsMap.has(event.id)) {
+        if (existsInDOM) {
             const existingCard = existingCardsMap.get(event.id);
             existingCard.replaceWith(card);
         } else {
