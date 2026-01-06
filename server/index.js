@@ -334,6 +334,366 @@ app.get('/api/csrf', (req, res) => {
   res.json({ clientId, token, expires });
 });
 
+// =============================================================================
+// EVENTS API - Fetch events from Supabase or GitHub
+// =============================================================================
+
+// Helper: Get events from Supabase
+async function getEventsFromSupabase(creatorId = null) {
+  if (!supabase) return [];
+  let query = supabase.from('ec_events').select('*');
+  if (creatorId) {
+    query = query.eq('creator_id', creatorId);
+  }
+  const { data, error } = await query.order('date', { ascending: true });
+  if (error) {
+    console.error('Supabase getEvents error:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+// Helper: Get events from GitHub
+async function getEventsFromGitHub() {
+  try {
+    const eventsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events`;
+    const response = await fetch(eventsUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'EventCall-Backend'
+      }
+    });
+    if (!response.ok) return [];
+    const eventsData = await response.json();
+    if (!Array.isArray(eventsData)) return [];
+    const eventPromises = eventsData.map(async file => {
+      const eventResponse = await fetch(file.url, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      const eventData = await eventResponse.json();
+      return JSON.parse(Buffer.from(eventData.content, 'base64').toString('utf-8'));
+    });
+    return await Promise.all(eventPromises);
+  } catch (err) {
+    console.error('GitHub getEvents error:', err.message);
+    return [];
+  }
+}
+
+// GET /api/events - Fetch all events
+app.get('/api/events', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const creatorId = req.query.creator_id || req.query.created_by || null;
+    let events;
+    if (USE_SUPABASE) {
+      events = await getEventsFromSupabase(creatorId);
+      // Map Supabase fields to frontend-expected format
+      events = events.map(e => ({
+        id: e.id,
+        title: e.title || '',
+        date: e.date || '',
+        time: e.time || '',
+        location: e.location || '',
+        description: e.description || '',
+        dress_code: e.dress_code || '',
+        cover_image_url: e.cover_image_url || e.image_url || '',
+        status: e.status || 'active',
+        created_by: e.creator_id || e.created_by || '',
+        creator_id: e.creator_id || e.created_by || '',
+        created_at: e.created_at || '',
+        allow_guests: e.allow_guests ?? true,
+        requires_meal_choice: e.requires_meal_choice ?? false,
+        custom_questions: e.custom_questions || [],
+        event_details: e.event_details || {},
+        seating_chart: e.seating_chart || null
+      }));
+    } else {
+      events = await getEventsFromGitHub();
+      // Filter by creator if specified
+      if (creatorId) {
+        events = events.filter(e => e.creator_id === creatorId || e.creatorId === creatorId);
+      }
+    }
+    res.json({ success: true, events });
+  } catch (error) {
+    console.error('Failed to fetch events:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/events/:id - Fetch single event
+app.get('/api/events/:id', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const eventId = req.params.id;
+    let event = null;
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase
+        .from('ec_events')
+        .select('*')
+        .eq('id', eventId)
+        .maybeSingle();
+      if (error) {
+        console.error('Supabase getEvent error:', error.message);
+      }
+      if (data) {
+        // Map Supabase fields to frontend-expected format
+        event = {
+          id: data.id,
+          title: data.title || '',
+          date: data.date || '',
+          time: data.time || '',
+          location: data.location || '',
+          description: data.description || '',
+          dress_code: data.dress_code || '',
+          cover_image_url: data.cover_image_url || data.image_url || '',
+          status: data.status || 'active',
+          created_by: data.creator_id || data.created_by || '',
+          creator_id: data.creator_id || data.created_by || '',
+          created_at: data.created_at || '',
+          allow_guests: data.allow_guests ?? true,
+          requires_meal_choice: data.requires_meal_choice ?? false,
+          custom_questions: data.custom_questions || [],
+          event_details: data.event_details || {},
+          seating_chart: data.seating_chart || null
+        };
+      }
+    } else {
+      const events = await getEventsFromGitHub();
+      event = events.find(e => e.id === eventId);
+    }
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    res.json({ success: true, event });
+  } catch (error) {
+    console.error('Failed to fetch event:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// =============================================================================
+// RSVPS API - Fetch RSVPs from Supabase or GitHub
+// =============================================================================
+
+// Helper: Get RSVPs from Supabase
+async function getRsvpsFromSupabase(eventId = null, email = null) {
+  if (!supabase) return [];
+  let query = supabase.from('ec_rsvps').select('*');
+  if (eventId) {
+    query = query.eq('event_id', eventId);
+  }
+  if (email) {
+    query = query.ilike('email', email);
+  }
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) {
+    console.error('Supabase getRsvps error:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+// Helper: Get RSVPs from GitHub
+async function getRsvpsFromGitHub() {
+  try {
+    const rsvpsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps`;
+    const response = await fetch(rsvpsUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'EventCall-Backend'
+      }
+    });
+    if (!response.ok) return [];
+    const rsvpsData = await response.json();
+    if (!Array.isArray(rsvpsData)) return [];
+    const rsvpPromises = rsvpsData.map(async file => {
+      const rsvpResponse = await fetch(file.url, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      const rsvpData = await rsvpResponse.json();
+      return JSON.parse(Buffer.from(rsvpData.content, 'base64').toString('utf-8'));
+    });
+    return await Promise.all(rsvpPromises);
+  } catch (err) {
+    console.error('GitHub getRsvps error:', err.message);
+    return [];
+  }
+}
+
+// GET /api/rsvps - Fetch RSVPs (optionally filtered by event_id or email)
+app.get('/api/rsvps', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const eventId = req.query.event_id || null;
+    const email = req.query.email || null;
+    let rsvps;
+    if (USE_SUPABASE) {
+      rsvps = await getRsvpsFromSupabase(eventId, email);
+      // Map Supabase fields to frontend-expected format
+      rsvps = rsvps.map(r => ({
+        id: r.id,
+        event_id: r.event_id,
+        eventId: r.event_id,
+        name: r.name || '',
+        email: r.email || '',
+        phone: r.phone || '',
+        guests: r.guests || 0,
+        dietary: r.dietary || '',
+        notes: r.notes || '',
+        status: r.status || 'confirmed',
+        created_at: r.created_at || '',
+        response: r.response || 'yes'
+      }));
+    } else {
+      rsvps = await getRsvpsFromGitHub();
+      if (eventId) {
+        rsvps = rsvps.filter(r => r.event_id === eventId || r.eventId === eventId);
+      }
+      if (email) {
+        rsvps = rsvps.filter(r => r.email && r.email.toLowerCase() === email.toLowerCase());
+      }
+    }
+    res.json({ success: true, rsvps });
+  } catch (error) {
+    console.error('Failed to fetch RSVPs:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/events - Create a new event
+app.post('/api/events', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const eventData = req.body;
+    if (!eventData.title || !eventData.date) {
+      return res.status(400).json({ error: 'Title and date are required' });
+    }
+    const eventId = eventData.id || crypto.randomUUID();
+    const event = {
+      id: eventId,
+      title: eventData.title,
+      date: eventData.date,
+      time: eventData.time || '',
+      location: eventData.location || '',
+      description: eventData.description || '',
+      dress_code: eventData.dress_code || eventData.dressCode || '',
+      creator_id: eventData.creator_id || eventData.creatorId || '',
+      created_at: new Date().toISOString()
+    };
+    if (USE_SUPABASE) {
+      const { error } = await supabase.from('ec_events').insert([event]);
+      if (error) {
+        console.error('Supabase createEvent error:', error.message);
+        return res.status(500).json({ error: error.message });
+      }
+    } else {
+      // Save to GitHub
+      const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
+      const ghResp = await fetch(eventUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'EventCall-Backend'
+        },
+        body: JSON.stringify({
+          message: `Create event: ${event.title}`,
+          content: Buffer.from(JSON.stringify(event, null, 2)).toString('base64')
+        })
+      });
+      if (!ghResp.ok) {
+        const errData = await ghResp.json();
+        return res.status(500).json({ error: errData.message || 'Failed to create event' });
+      }
+    }
+    res.json({ success: true, event, eventId });
+  } catch (error) {
+    console.error('Failed to create event:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/rsvps - Create a new RSVP
+app.post('/api/rsvps', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const rsvpData = req.body;
+    if (!rsvpData.event_id && !rsvpData.eventId) {
+      return res.status(400).json({ error: 'event_id is required' });
+    }
+    if (!rsvpData.name || !rsvpData.email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+    const rsvpId = rsvpData.id || crypto.randomUUID();
+    const rsvp = {
+      id: rsvpId,
+      event_id: rsvpData.event_id || rsvpData.eventId,
+      name: rsvpData.name,
+      email: rsvpData.email.toLowerCase(),
+      phone: rsvpData.phone || '',
+      guests: rsvpData.guests || 0,
+      dietary: rsvpData.dietary || '',
+      notes: rsvpData.notes || '',
+      status: rsvpData.status || 'confirmed',
+      created_at: new Date().toISOString()
+    };
+    if (USE_SUPABASE) {
+      const { error } = await supabase.from('ec_rsvps').insert([rsvp]);
+      if (error) {
+        console.error('Supabase createRsvp error:', error.message);
+        return res.status(500).json({ error: error.message });
+      }
+    } else {
+      // Save to GitHub
+      const rsvpUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps/${rsvpId}.json`;
+      const ghResp = await fetch(rsvpUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'EventCall-Backend'
+        },
+        body: JSON.stringify({
+          message: `RSVP from ${rsvp.name}`,
+          content: Buffer.from(JSON.stringify(rsvp, null, 2)).toString('base64')
+        })
+      });
+      if (!ghResp.ok) {
+        const errData = await ghResp.json();
+        return res.status(500).json({ error: errData.message || 'Failed to create RSVP' });
+      }
+    }
+    res.json({ success: true, rsvp, rsvpId });
+  } catch (error) {
+    console.error('Failed to create RSVP:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Proxy the workflow dispatch to GitHub, validating CSRF headers
 app.post('/api/dispatch', async (req, res) => {
   try {
