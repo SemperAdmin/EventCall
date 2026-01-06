@@ -751,29 +751,43 @@ app.post('/api/dispatch', async (req, res) => {
 
 app.get('/api/admin/users', isAdmin, async (req, res) => {
   try {
-    const usersUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users`;
-    const response = await fetch(usersUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': 'EventCall-Backend'
+    let users = [];
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase
+        .from('ec_users')
+        .select('id, username, name, email, branch, rank, role, created_at')
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Supabase getUsers error:', error.message);
+        return res.status(500).json({ error: error.message });
       }
-    });
-    const usersData = await response.json();
-    const userPromises = usersData.map(async file => {
-      const userResponse = await fetch(file.url, {
+      users = data || [];
+    } else {
+      // GitHub fallback
+      const usersUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users`;
+      const response = await fetch(usersUrl, {
         headers: {
           'Authorization': `token ${GITHUB_TOKEN}`,
           'Accept': 'application/vnd.github+json',
           'User-Agent': 'EventCall-Backend'
         }
       });
-      const userData = await userResponse.json();
-      const user = JSON.parse(Buffer.from(userData.content, 'base64').toString('utf-8'));
-      delete user.passwordHash;
-      return user;
-    });
-    const users = await Promise.all(userPromises);
+      const usersData = await response.json();
+      const userPromises = usersData.map(async file => {
+        const userResponse = await fetch(file.url, {
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'EventCall-Backend'
+          }
+        });
+        const userData = await userResponse.json();
+        const user = JSON.parse(Buffer.from(userData.content, 'base64').toString('utf-8'));
+        delete user.passwordHash;
+        return user;
+      });
+      users = await Promise.all(userPromises);
+    }
     res.json(users);
   } catch (error) {
     console.error('Failed to fetch all users:', error);
@@ -783,51 +797,81 @@ app.get('/api/admin/users', isAdmin, async (req, res) => {
 
 app.get('/api/admin/dashboard-data', isAdmin, async (req, res) => {
   try {
-    // Fetch all events
-    const eventsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events`;
-    const eventsResponse = await fetch(eventsUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': 'EventCall-Backend'
-      }
-    });
-    const eventsData = await eventsResponse.json();
-    const eventPromises = eventsData.map(async file => {
-      const eventResponse = await fetch(file.url, {
-        headers: {
-          'Authorization': `token ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github+json',
-          'User-Agent': 'EventCall-Backend'
-        }
-      });
-      const eventData = await eventResponse.json();
-      return JSON.parse(Buffer.from(eventData.content, 'base64').toString('utf-8'));
-    });
-    const events = await Promise.all(eventPromises);
+    let events = [];
+    let rsvps = [];
 
-    // Fetch all RSVPs
-    const rsvpsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps`;
-    const rsvpsResponse = await fetch(rsvpsUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': 'EventCall-Backend'
+    if (USE_SUPABASE) {
+      // Fetch events from Supabase
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('ec_events')
+        .select('*')
+        .order('date', { ascending: true });
+      if (eventsError) {
+        console.error('Supabase getEvents error:', eventsError.message);
+      } else {
+        events = eventsData || [];
       }
-    });
-    const rsvpsData = await rsvpsResponse.json();
-    const rsvpPromises = rsvpsData.map(async file => {
-      const rsvpResponse = await fetch(file.url, {
+
+      // Fetch RSVPs from Supabase
+      const { data: rsvpsData, error: rsvpsError } = await supabase
+        .from('ec_rsvps')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (rsvpsError) {
+        console.error('Supabase getRsvps error:', rsvpsError.message);
+      } else {
+        rsvps = rsvpsData || [];
+      }
+    } else {
+      // GitHub fallback
+      const eventsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events`;
+      const eventsResponse = await fetch(eventsUrl, {
         headers: {
           'Authorization': `token ${GITHUB_TOKEN}`,
           'Accept': 'application/vnd.github+json',
           'User-Agent': 'EventCall-Backend'
         }
       });
-      const rsvpData = await rsvpResponse.json();
-      return JSON.parse(Buffer.from(rsvpData.content, 'base64').toString('utf-8'));
-    });
-    const rsvps = await Promise.all(rsvpPromises);
+      const eventsDataRaw = await eventsResponse.json();
+      if (Array.isArray(eventsDataRaw)) {
+        const eventPromises = eventsDataRaw.map(async file => {
+          const eventResponse = await fetch(file.url, {
+            headers: {
+              'Authorization': `token ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github+json',
+              'User-Agent': 'EventCall-Backend'
+            }
+          });
+          const eventData = await eventResponse.json();
+          return JSON.parse(Buffer.from(eventData.content, 'base64').toString('utf-8'));
+        });
+        events = await Promise.all(eventPromises);
+      }
+
+      const rsvpsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps`;
+      const rsvpsResponse = await fetch(rsvpsUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      const rsvpsDataRaw = await rsvpsResponse.json();
+      if (Array.isArray(rsvpsDataRaw)) {
+        const rsvpPromises = rsvpsDataRaw.map(async file => {
+          const rsvpResponse = await fetch(file.url, {
+            headers: {
+              'Authorization': `token ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github+json',
+              'User-Agent': 'EventCall-Backend'
+            }
+          });
+          const rsvpData = await rsvpResponse.json();
+          return JSON.parse(Buffer.from(rsvpData.content, 'base64').toString('utf-8'));
+        });
+        rsvps = await Promise.all(rsvpPromises);
+      }
+    }
 
     res.json({ events, rsvps });
   } catch (error) {
@@ -1028,21 +1072,27 @@ setInterval(() => {
 async function findUserForReset(username) {
   let user = null;
   let userFileSha = null;
-  const userPath = `users/${username.toLowerCase()}.json`;
-  const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
 
   try {
-    const userResp = await fetch(userUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    if (USE_SUPABASE) {
+      // Use Supabase
+      user = await getUserFromSupabase(username);
+    } else {
+      // GitHub fallback
+      const userPath = `users/${username.toLowerCase()}.json`;
+      const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
+      const userResp = await fetch(userUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
 
-    if (userResp.ok) {
-      const fileData = await userResp.json();
-      user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
-      userFileSha = fileData.sha;
+      if (userResp.ok) {
+        const fileData = await userResp.json();
+        user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+        userFileSha = fileData.sha;
+      }
     }
   } catch (err) {
     console.log(`[RESET] Error fetching user: ${err.message}`);
@@ -1236,52 +1286,66 @@ app.post('/api/auth/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Reset token has expired' });
     }
 
-    // Fetch current user data
-    const userPath = `users/${tokenData.username}.json`;
-    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
-
-    const userResp = await fetch(userUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
-
-    if (!userResp.ok) {
-      return res.status(400).json({ error: 'User not found' });
-    }
-
-    const fileData = await userResp.json();
-    const user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
-
     // Hash new password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Update user with new password
-    const updatedUser = {
-      ...user,
-      passwordHash,
-      passwordResetAt: new Date().toISOString()
-    };
+    if (USE_SUPABASE) {
+      // Update password in Supabase
+      const { error } = await supabase
+        .from('ec_users')
+        .update({
+          password_hash: passwordHash,
+          updated_at: new Date().toISOString()
+        })
+        .eq('username', tokenData.username);
 
-    // Save updated user
-    const updateResp = await fetch(userUrl, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: `Reset password for ${tokenData.username}`,
-        content: Buffer.from(JSON.stringify(updatedUser, null, 2)).toString('base64'),
-        sha: fileData.sha
-      })
-    });
+      if (error) {
+        console.error('Supabase password reset error:', error.message);
+        return res.status(500).json({ error: 'Failed to update password' });
+      }
+    } else {
+      // GitHub fallback
+      const userPath = `users/${tokenData.username}.json`;
+      const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
 
-    if (!updateResp.ok) {
-      const error = await updateResp.json();
-      return res.status(500).json({ error: error.message || 'Failed to update password' });
+      const userResp = await fetch(userUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (!userResp.ok) {
+        return res.status(400).json({ error: 'User not found' });
+      }
+
+      const fileData = await userResp.json();
+      const user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+
+      const updatedUser = {
+        ...user,
+        passwordHash,
+        passwordResetAt: new Date().toISOString()
+      };
+
+      const updateResp = await fetch(userUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `Reset password for ${tokenData.username}`,
+          content: Buffer.from(JSON.stringify(updatedUser, null, 2)).toString('base64'),
+          sha: fileData.sha
+        })
+      });
+
+      if (!updateResp.ok) {
+        const error = await updateResp.json();
+        return res.status(500).json({ error: error.message || 'Failed to update password' });
+      }
     }
 
     // Invalidate the token
@@ -1342,26 +1406,15 @@ app.post('/api/auth/change-password', async (req, res) => {
       });
     }
 
-    // Fetch user from GitHub
-    const userPath = `users/${username.toLowerCase()}.json`;
-    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
-
-    const userResp = await fetch(userUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
-
-    if (!userResp.ok) {
+    // Fetch user using unified function
+    const user = await getUser(username);
+    if (!user) {
       return res.status(400).json({ error: 'User not found' });
     }
 
-    const fileData = await userResp.json();
-    const user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
-
-    // Verify current password
-    const isCurrentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    // Verify current password (support both field names)
+    const currentHash = user.passwordHash || user.password_hash;
+    const isCurrentValid = await bcrypt.compare(currentPassword, currentHash);
     if (!isCurrentValid) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
@@ -1369,31 +1422,63 @@ app.post('/api/auth/change-password', async (req, res) => {
     // Hash new password
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-    // Update user with new password
-    const updatedUser = {
-      ...user,
-      passwordHash: newPasswordHash,
-      passwordChangedAt: new Date().toISOString()
-    };
+    if (USE_SUPABASE) {
+      // Update password in Supabase
+      const { error } = await supabase
+        .from('ec_users')
+        .update({
+          password_hash: newPasswordHash,
+          updated_at: new Date().toISOString()
+        })
+        .eq('username', username.toLowerCase());
 
-    // Save updated user
-    const updateResp = await fetch(userUrl, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: `Change password for ${username}`,
-        content: Buffer.from(JSON.stringify(updatedUser, null, 2)).toString('base64'),
-        sha: fileData.sha
-      })
-    });
+      if (error) {
+        console.error('Supabase password change error:', error.message);
+        return res.status(500).json({ error: 'Failed to update password' });
+      }
+    } else {
+      // GitHub fallback
+      const userPath = `users/${username.toLowerCase()}.json`;
+      const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
 
-    if (!updateResp.ok) {
-      const error = await updateResp.json();
-      return res.status(500).json({ error: error.message || 'Failed to update password' });
+      // Get current file SHA
+      const userResp = await fetch(userUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (!userResp.ok) {
+        return res.status(400).json({ error: 'User not found' });
+      }
+
+      const fileData = await userResp.json();
+
+      const updatedUser = {
+        ...user,
+        passwordHash: newPasswordHash,
+        passwordChangedAt: new Date().toISOString()
+      };
+
+      const updateResp = await fetch(userUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `Change password for ${username}`,
+          content: Buffer.from(JSON.stringify(updatedUser, null, 2)).toString('base64'),
+          sha: fileData.sha
+        })
+      });
+
+      if (!updateResp.ok) {
+        const error = await updateResp.json();
+        return res.status(500).json({ error: error.message || 'Failed to update password' });
+      }
     }
 
     console.log(`[AUTH] Password changed successfully for: ${username}`);
