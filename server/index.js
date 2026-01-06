@@ -773,34 +773,32 @@ app.post('/api/images/upload', async (req, res) => {
 
     const publicUrl = urlData?.publicUrl || '';
 
-    // Optionally store metadata in a table (if ec_photos table exists)
+    // Store photo metadata in ec_event_photos table
     let photoId = null;
-    try {
-      const photoRecord = {
-        id: crypto.randomUUID(),
-        event_id: event_id || null,
-        file_name: sanitizedFileName,
-        storage_path: storagePath,
-        public_url: publicUrl,
-        caption: caption || '',
-        tags: tags || [],
-        uploader_username: uploader_username || '',
-        uploader_id: uploader_id || '',
-        created_at: new Date().toISOString()
-      };
+    if (event_id) {
+      try {
+        const photoRecord = {
+          event_id: event_id,
+          url: publicUrl,
+          storage_path: storagePath,
+          caption: caption || null,
+          uploaded_by: uploader_id || null
+        };
 
-      const { data: photoData, error: photoError } = await supabase
-        .from('ec_photos')
-        .insert([photoRecord])
-        .select('id')
-        .single();
+        const { data: photoData, error: photoError } = await supabase
+          .from('ec_event_photos')
+          .insert([photoRecord])
+          .select('id')
+          .single();
 
-      if (!photoError && photoData) {
-        photoId = photoData.id;
+        if (photoError) {
+          console.error('Failed to save photo metadata:', photoError.message);
+        } else if (photoData) {
+          photoId = photoData.id;
+        }
+      } catch (metaError) {
+        console.error('Photo metadata error:', metaError.message);
       }
-    } catch (metaError) {
-      // Photo metadata table might not exist, continue without it
-      console.log('Photo metadata not saved (table may not exist):', metaError.message);
     }
 
     res.json({
@@ -830,17 +828,16 @@ app.get('/api/events/:id/photos', async (req, res) => {
       return res.json({ success: true, photos: [] });
     }
 
-    // Try to fetch from ec_photos table
+    // Fetch from ec_event_photos table
     const { data, error } = await supabase
-      .from('ec_photos')
-      .select('*')
+      .from('ec_event_photos')
+      .select('id, event_id, url, storage_path, caption, uploaded_by, created_at')
       .eq('event_id', eventId)
       .order('created_at', { ascending: false });
 
     if (error) {
-      // Table might not exist
-      console.log('Could not fetch photos:', error.message);
-      return res.json({ success: true, photos: [] });
+      console.error('Failed to fetch photos:', error.message);
+      return res.status(500).json({ error: 'Failed to fetch photos' });
     }
 
     res.json({ success: true, photos: data || [] });
@@ -866,7 +863,7 @@ app.delete('/api/photos/:id', async (req, res) => {
 
     // Get photo record to find storage path
     const { data: photo, error: fetchError } = await supabase
-      .from('ec_photos')
+      .from('ec_event_photos')
       .select('storage_path')
       .eq('id', photoId)
       .single();
@@ -884,9 +881,9 @@ app.delete('/api/photos/:id', async (req, res) => {
       console.error('Storage deletion error:', storageError.message);
     }
 
-    // Delete metadata record
+    // Delete metadata record (will cascade due to foreign key)
     const { error: deleteError } = await supabase
-      .from('ec_photos')
+      .from('ec_event_photos')
       .delete()
       .eq('id', photoId);
 
