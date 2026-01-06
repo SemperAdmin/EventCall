@@ -654,7 +654,7 @@ function enforceLogin() {
             console.log('📊 Dashboard page activated (no specific URL)');
         }
     } else {
-        console.log('🔗 URL has specific page, letting router handle:', hash || pathname);
+        console.log('🔗 URL has specific page, letting router handle:', hash || path);
     }
 
     return true;
@@ -824,6 +824,10 @@ function showPageContent(pageId, param) {
             window.updateFormProgress();
         }
     } else if (pageId === 'dashboard') {
+        // Reset dashboard state for clean render after navigation
+        if (typeof window.resetDashboardState === 'function') {
+            window.resetDashboardState();
+        }
         // Load dashboard data
         if (typeof window.loadManagerData === 'function') {
             window.loadManagerData();
