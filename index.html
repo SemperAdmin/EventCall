@@ -640,6 +640,13 @@ function verifyDashboardTabs() {
                         placeholder="Search events by title, location, or date..."
                         autocomplete="off"
                     >
+                    <span class="event-search-icon">🔍</span>
+                    <button
+                        type="button"
+                        id="event-search-clear"
+                        class="event-search-clear"
+                        aria-label="Clear search"
+                    >×</button>
                 </div>
                 <div id="event-search-results" class="event-search-results"></div>
             </div>
@@ -771,21 +778,21 @@ function verifyDashboardTabs() {
                         <span class="form-section__optional">Optional</span>
                     </div>
 
-                    <div class="checkbox-card">
+                    <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="ask-reason">
                             <span>Ask guests why they're attending</span>
                         </label>
                     </div>
 
-                    <div class="checkbox-card">
+                    <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="allow-guests">
                             <span>Allow guests to bring additional people</span>
                         </label>
                     </div>
 
-                    <div class="checkbox-card">
+                    <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="requires-meal-choice">
                             <span>Event requires meal/dietary choices</span>
@@ -847,6 +854,9 @@ function verifyDashboardTabs() {
 
                 <!-- Form Actions -->
                 <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="handleCancelEventCreation()" aria-label="Cancel and return to dashboard">
+                        Cancel
+                    </button>
                     <button type="submit" class="btn btn-primary" aria-label="Deploy event and create invitation">
                         🚀 Deploy Event
                     </button>
@@ -1017,51 +1027,46 @@ function verifyDashboardTabs() {
             </form>
 
             <!-- Password Change Section -->
-            <details class="profile-password-section" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; margin-top: 1rem;">
-                <summary style="cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 0.25rem;">
-                    <h4 style="margin: 0; display: inline-block;">Change Password</h4>
-                    <span style="font-size: 0.8rem; opacity: 0.7;">▼</span>
-                </summary>
-                <div style="margin-top: 1rem;">
-                    <form id="profile-password-form">
-                        <div class="form-group">
-                            <label for="profile-current-password" class="form-label">Current Password</label>
-                            <input
-                                type="password"
-                                id="profile-current-password"
-                                class="form-control"
-                                placeholder="Enter current password"
-                                autocomplete="current-password"
-                            >
-                        </div>
-                        <div class="form-group">
-                            <label for="profile-new-password" class="form-label">New Password</label>
-                            <input
-                                type="password"
-                                id="profile-new-password"
-                                class="form-control"
-                                placeholder="Enter new password (min 8 characters)"
-                                minlength="8"
-                                autocomplete="new-password"
-                            >
-                            <div id="profile-password-strength"></div>
-                        </div>
-                        <div class="form-group">
-                            <label for="profile-confirm-password" class="form-label">Confirm New Password</label>
-                            <input
-                                type="password"
-                                id="profile-confirm-password"
-                                class="form-control"
-                                placeholder="Confirm new password"
-                                autocomplete="new-password"
-                            >
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-full-width">
-                            Update Password
-                        </button>
-                    </form>
-                </div>
-            </details>
+            <div class="profile-password-section">
+                <h4>Change Password</h4>
+                <form id="profile-password-form">
+                    <div class="form-group">
+                        <label for="profile-current-password" class="form-label">Current Password</label>
+                        <input
+                            type="password"
+                            id="profile-current-password"
+                            class="form-control"
+                            placeholder="Enter current password"
+                            autocomplete="current-password"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="profile-new-password" class="form-label">New Password</label>
+                        <input
+                            type="password"
+                            id="profile-new-password"
+                            class="form-control"
+                            placeholder="Enter new password (min 8 characters)"
+                            minlength="8"
+                            autocomplete="new-password"
+                        >
+                        <div id="profile-password-strength"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="profile-confirm-password" class="form-label">Confirm New Password</label>
+                        <input
+                            type="password"
+                            id="profile-confirm-password"
+                            class="form-control"
+                            placeholder="Confirm new password"
+                            autocomplete="new-password"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full-width">
+                        Update Password
+                    </button>
+                </form>
+            </div>
         </div>
         <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: flex-end;">
             <button type="button" class="btn btn-secondary" onclick="closeUserProfile()">Cancel</button>

@@ -2254,7 +2254,6 @@ function filterEventsBySearch(query) {
 
 // Initialize search when DOM is ready
 document.addEventListener('DOMContentLoaded', initEventSearch);
-document.addEventListener('DOMContentLoaded', initShowAllEventsToggle);
 
 // Re-apply search filter after dashboard renders
 const _originalRenderDashboard = window.renderDashboard;

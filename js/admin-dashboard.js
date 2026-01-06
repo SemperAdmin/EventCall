@@ -441,12 +441,8 @@
             if (!confirm(`Are you sure you want to delete user ${username}?`)) return;
 
             const currentUser = window.userAuth?.currentUser;
-            const url = this._getAdminApiUrl(`/api/admin/users/${username}`);
-            const response = await fetch(url, {
-                method: 'DELETE',
-                headers: {
-                    'x-username': currentUser?.username || ''
-                }
+            const response = await fetch(`/api/admin/users/${username}`, {
+                method: 'DELETE'
             });
 
             if (response.ok) {

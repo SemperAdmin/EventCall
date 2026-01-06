@@ -4,7 +4,7 @@
  */
 
 // Increment version number to force cache refresh
-const CACHE_NAME = 'eventcall-v3';
+const CACHE_NAME = 'eventcall-v4';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Assets to cache on install
@@ -88,10 +88,19 @@ self.addEventListener('fetch', (event) => {
 
     if (isNavigationRequest && request.method === 'GET') {
         event.respondWith(
-            fetch(request).catch(() => {
-                // Only use cache as last resort fallback when network is completely unavailable
-                return caches.match('/index.html');
-            })
+            fetch(request)
+                .then(response => {
+                    // If we get a 404, it's likely an SPA route - serve index.html
+                    if (response.status === 404) {
+                        console.log('[Service Worker] 404 for SPA route, serving index.html:', url.pathname);
+                        return fetch('/EventCall/index.html').catch(() => caches.match('/index.html'));
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    // Only use cache as last resort fallback when network is completely unavailable
+                    return caches.match('/index.html');
+                })
         );
         return;
     }
