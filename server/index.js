@@ -420,9 +420,9 @@ async function getEventsFromSupabase(creatorId = null, unassigned = false) {
   if (!supabase) return [];
   let query = supabase.from('ec_events').select('*');
   if (creatorId) {
-    query = query.eq('creator_id', creatorId);
+    query = query.eq('created_by', String(creatorId));
   } else if (unassigned) {
-    query = query.is('creator_id', null);
+    query = query.is('created_by', null);
   }
   const { data, error } = await query.order('date', { ascending: true });
   if (error) {
@@ -473,14 +473,33 @@ app.get('/api/events', async (req, res) => {
     const creatorId = req.query.creator_id || req.query.created_by || null;
     const unassigned = req.query.unassigned === 'true';
 
-    let events;
-    if (USE_SUPABASE) {
-      events = await getEventsFromSupabase(creatorId, unassigned);
-      events = events.map(mapSupabaseEvent);
+  let events;
+  if (USE_SUPABASE) {
+    events = await getEventsFromSupabase(creatorId, unassigned);
+    console.log('[api/events] Supabase result', { creatorId, unassigned, count: Array.isArray(events) ? events.length : 0 });
+    events = (events || []).map(mapSupabaseEvent).filter(e => !!e);
+    // Fallback to GitHub data store if Supabase has no events or mapping failed
+    if (!events || events.length === 0) {
+      const gh = await getEventsFromGitHub();
+      console.log('[api/events] GitHub fallback result', { creatorId, unassigned, count: Array.isArray(gh) ? gh.length : 0 });
+      if (creatorId) {
+        events = gh.filter(e => {
+          const owner = (e.creator_id || e.created_by || e.creatorId || e.owner || '').toString();
+          return owner === creatorId;
+        });
+        } else if (unassigned) {
+          events = gh.filter(e => {
+            const owner = (e.creator_id || e.created_by || e.creatorId || e.owner || '').toString();
+            return owner === '' || owner === 'null' || owner === 'undefined';
+          });
+        } else {
+          events = gh;
+        }
+      }
     } else {
       events = await getEventsFromGitHub();
       if (creatorId) {
-        events = events.filter(e => e.creator_id === creatorId || e.creatorId === creatorId);
+        events = events.filter(e => e.creator_id === creatorId || e.creatorId === creatorId || e.created_by === creatorId);
       } else if (unassigned) {
         events = events.filter(e => !e.creator_id && !e.creatorId && !e.created_by);
       }
@@ -855,7 +874,7 @@ app.post('/api/events', async (req, res) => {
       description: eventData.description || '',
       dress_code: eventData.dress_code || eventData.dressCode || '',
       cover_image_url: eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '',
-      creator_id: creatorId,
+      created_by: creatorId,
       created_at: new Date().toISOString(),
       status: eventData.status || 'active',
       allow_guests: eventData.allow_guests ?? true,
