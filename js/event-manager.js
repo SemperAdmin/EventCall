@@ -197,30 +197,9 @@ class EventManager {
         if (rangeSel) rangeSel.addEventListener('change', () => {
             this._renderChartSafe(() => this.renderResponsesChart(eventResponses), 'responses chart');
         });
-        // Show manage page content with proper URL param
-        if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
-            window.AppRouter.navigateToPage('manage', eventId);
-        } else {
-            showPage('manage', eventId);
-        }
-        
         // Initialize photo upload for manage page
         if (window.setupPhotoUpload) {
-            // Reset init state if needed, though setupPhotoUpload handles it per element usually.
-            // But since elements are re-created, they won't have the dataset flag.
             window.setupPhotoUpload();
-        }
-
-        // Legacy fallback: update hash only if router is unavailable
-        if (!(window.AppRouter && typeof window.AppRouter.navigateToPage === 'function')) {
-            const targetHash = `#manage/${eventId}`;
-            if (window.location.hash !== targetHash) {
-                setTimeout(() => {
-                    if (window.location.hash !== targetHash) {
-                        window.location.hash = targetHash;
-                    }
-                }, 0);
-            }
         }
     }
 
