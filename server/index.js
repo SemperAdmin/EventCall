@@ -1124,6 +1124,63 @@ app.post('/api/rsvps', async (req, res) => {
   }
 });
 
+// DELETE /api/rsvps/:id - Delete a single RSVP
+app.delete('/api/rsvps/:id', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    const rsvpId = req.params.id;
+    if (!rsvpId) {
+      return res.status(400).json({ error: 'RSVP ID is required' });
+    }
+
+    if (!USE_SUPABASE || !supabase) {
+      return res.status(503).json({ error: 'RSVP deletion requires Supabase configuration' });
+    }
+
+    // Verify RSVP exists before deleting
+    const { data: existingRsvp, error: fetchError } = await supabase
+      .from('ec_rsvps')
+      .select('id, name, email, event_id')
+      .eq('id', rsvpId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Failed to fetch RSVP for deletion:', fetchError.message);
+      return res.status(500).json({ error: 'Failed to verify RSVP' });
+    }
+
+    if (!existingRsvp) {
+      return res.status(404).json({ error: 'RSVP not found' });
+    }
+
+    // Delete the RSVP
+    const { error: deleteError } = await supabase
+      .from('ec_rsvps')
+      .delete()
+      .eq('id', rsvpId);
+
+    if (deleteError) {
+      console.error('Failed to delete RSVP:', deleteError.message);
+      return res.status(500).json({ error: 'Failed to delete RSVP' });
+    }
+
+    console.log(`[RSVP] Deleted RSVP ${rsvpId} (${existingRsvp.name}) for event ${existingRsvp.event_id}`);
+    res.json({
+      success: true,
+      deletedId: rsvpId,
+      deletedName: existingRsvp.name,
+      eventId: existingRsvp.event_id
+    });
+
+  } catch (error) {
+    console.error('RSVP deletion error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // =============================================================================
 // IMAGE UPLOAD API - Upload images to Supabase Storage
 // =============================================================================
