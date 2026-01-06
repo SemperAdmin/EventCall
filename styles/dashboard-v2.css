@@ -491,16 +491,19 @@ body::before {
 
 .dashboard-tabs {
     display: flex !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
     justify-content: center;
     gap: 0.5rem;
+    height: 56px !important;
     margin-bottom: 2rem;
     border-bottom: 2px solid #3a4556;
     padding-bottom: 0;
+    overflow: visible !important;
 }
 
 .dashboard-tab {
-    padding: 1rem 1.5rem !important;
+    padding: 0.75rem 1.25rem !important;
     font-size: 1rem !important;
     font-weight: 600 !important;
     color: #94a3b8 !important;
@@ -539,16 +542,19 @@ body::before {
 /* Responsive tabs */
 @media (max-width: 768px) {
     .dashboard-tabs {
-        flex-direction: column;
-        gap: 0;
+        flex-direction: row;
+        gap: 0.25rem;
+        height: 56px !important;
         border-bottom: none;
+        overflow: visible !important;
     }
 
     .dashboard-tab {
         border-bottom: 1px solid #3a4556 !important;
         border-left: 3px solid transparent !important;
-        padding: 1rem !important;
+        padding: 0.75rem 1rem !important;
         bottom: 0;
+        white-space: nowrap;
     }
 
     .dashboard-tab--active {

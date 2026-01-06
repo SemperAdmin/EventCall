@@ -89,16 +89,28 @@ function enforceLogin() {
     }
     
     console.log('✅ User authenticated:', window.userAuth.getCurrentUser().email);
-    
+
     const loginPage = document.getElementById('login-page');
     const appContent = document.querySelector('.app-content');
-    
+
     if (loginPage) loginPage.style.display = 'none';
     if (appContent) {
         appContent.classList.remove('hidden');
         appContent.style.display = 'block';
     }
-    
+
+    // Ensure dashboard page is shown by default
+    const dashboardPage = document.getElementById('dashboard');
+    if (dashboardPage && !dashboardPage.classList.contains('active')) {
+        // Hide all pages first
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+        });
+        // Show dashboard
+        dashboardPage.classList.add('active');
+        console.log('📊 Dashboard page activated');
+    }
+
     return true;
 }
 
@@ -352,6 +364,11 @@ function showUserMenu() {
 
     // Show modal
     modal.style.display = 'flex';
+    const innerModal = modal.querySelector('.modal');
+    if (innerModal) {
+        innerModal.style.display = 'block';
+        innerModal.classList.add('show');
+    }
     requestAnimationFrame(() => {
         modal.classList.add('active', 'is-visible');
     });
@@ -552,6 +569,11 @@ async function saveUserProfile() {
 function closeUserProfile() {
     const modal = document.getElementById('user-profile-modal');
     if (modal) {
+        const innerModal = modal.querySelector('.modal');
+        if (innerModal) {
+            innerModal.style.display = '';
+            innerModal.classList.remove('show');
+        }
         modal.style.display = 'none';
         modal.classList.remove('active', 'is-visible');
     }
@@ -1119,10 +1141,20 @@ function goToDashboard() {
  * Initialize hash change listener
  */
 function initializeHashListener() {
-    // Use History API popstate for navigation
-    window.addEventListener('popstate', handleURLPath);
-    // Check initial path
-    setTimeout(handleURLPath, 100);
+    // If AppRouter is available, let it handle routing
+    if (window.AppRouter) {
+        console.log('📡 AppRouter detected - yielding routing control');
+        return;
+    }
+
+    const isGitHubPages = window.location.hostname.endsWith('.github.io');
+    if (isGitHubPages) {
+        window.addEventListener('popstate', handleURLPath);
+        setTimeout(handleURLPath, 100);
+    } else {
+        window.addEventListener('hashchange', checkURLHash);
+        setTimeout(checkURLHash, 100);
+    }
 }
 
 // Make functions globally available immediately

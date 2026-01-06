@@ -532,7 +532,12 @@ async function loadManagerData() {
     if (window.BackendAPI) {
         try {
             const currentUser = window.userAuth && window.userAuth.isAuthenticated() ? window.userAuth.getCurrentUser() : null;
-            const rawResponse = await window.BackendAPI.loadEvents();
+            const filterParams = {};
+            // Only filter by creator if we're not explicitly asked to show all events
+            if (!window.managerShowAllEvents && currentUser && currentUser.id) {
+                filterParams.created_by = currentUser.id;
+            }
+            const rawResponse = await window.BackendAPI.loadEvents(filterParams);
             
             // Handle BackendAPI response format { success: true, events: [] }
             let allEventsList = [];
@@ -1141,7 +1146,11 @@ function attachCardListeners(card, eventId) {
     const manageBtn = card.querySelector('[data-action="manage"]');
     const manageHandler = (e) => {
         e.stopPropagation();
-        showPage('manage', eventId);
+        if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
+            window.AppRouter.navigateToPage('manage', eventId);
+        } else {
+            showPage('manage', eventId);
+        }
     };
     manageBtn.addEventListener('click', manageHandler);
     cleanupFunctions.push(() => manageBtn.removeEventListener('click', manageHandler));
@@ -2271,3 +2280,20 @@ window.filterEventsBySearch = filterEventsBySearch;
 window.initEventSearch = initEventSearch;
 
 console.log('✅ Enhanced manager system loaded with RSVP sync functionality and username auth support');
+
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action="manage"]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const card = btn.closest('[data-event-id]');
+    const eventId = card ? card.getAttribute('data-event-id') : null;
+    if (!eventId) return;
+    if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
+        window.AppRouter.navigateToPage('manage', eventId);
+    } else if (window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
+        window.eventManager.showEventManagement(eventId);
+    } else {
+        showPage('manage', eventId);
+    }
+});
