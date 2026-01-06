@@ -67,10 +67,16 @@
   }
 
   // Centralized route handler to ensure consistent behavior
-  function handleRoute(pageId, param) {
+  async function handleRoute(pageId, param) {
     console.log('🔄 Routing to:', pageId, param);
-    
     if (pageId === 'manage' && param && window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
+      if (!window.events || !window.events[param]) {
+        try {
+          if (typeof window.loadManagerData === 'function') {
+            await window.loadManagerData();
+          }
+        } catch (_) {}
+      }
       window.eventManager.showEventManagement(param);
       // Ensure page visibility is toggled - CRITICAL FIX
       if (window.showPageContent) window.showPageContent('manage');

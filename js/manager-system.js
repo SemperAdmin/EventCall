@@ -872,7 +872,12 @@ function updateEventList(container, events, isPast, listType) {
     let eventsGrid = eventsSection?.querySelector('.events-grid');
 
     if (events.length === 0) {
-        // Show empty state
+        let root = container.querySelector('.events-section');
+        if (!root) {
+            root = document.createElement('div');
+            root.className = 'events-section';
+            container.appendChild(root);
+        }
         const emptyHtml = listType === 'active' ? `
             <div class="empty-state">
                 <div class="empty-state-icon">📅</div>
@@ -887,8 +892,7 @@ function updateEventList(container, events, isPast, listType) {
                 <p>Completed events will appear here</p>
             </div>
         `;
-        container.innerHTML = emptyHtml;
-        // Reset pagination
+        root.innerHTML = emptyHtml;
         dashboardState.pagination[listType].shown = 0;
         return;
     }
