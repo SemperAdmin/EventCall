@@ -153,10 +153,13 @@ async function displayUserRSVPs() {
 
     } catch (error) {
         console.error('Error displaying user RSVPs:', error);
+        const safeMessage = window.utils && window.utils.escapeHTML
+            ? window.utils.escapeHTML(error.message)
+            : String(error.message).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
         container.innerHTML = `
             <div style="text-align: center; padding: 2rem; background: rgba(239, 68, 68, 0.1); border-radius: 0.5rem; border: 2px solid rgba(239, 68, 68, 0.3);">
                 <strong style="color: #ef4444;">❌ Error loading RSVPs</strong>
-                <p style="margin: 0.5rem 0 0 0; color: #9ca3af;">${error.message}</p>
+                <p style="margin: 0.5rem 0 0 0; color: #9ca3af;">${safeMessage}</p>
             </div>
         `;
     }

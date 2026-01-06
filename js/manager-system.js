@@ -1632,7 +1632,7 @@ async function handleEventSubmit(e) {
             eventDetails: getEventDetails(),
             created: Date.now(),
             status: 'active',
-            createdBy: currentUser.id || currentUser.username || 'unknown',
+            createdBy: currentUser.id || null,
             createdByUsername: currentUser.username || 'unknown',
             createdByName: currentUser.name || currentUser.username || 'unknown'
         };

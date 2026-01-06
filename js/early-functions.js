@@ -102,8 +102,15 @@ function enforceLogin() {
     // Only show dashboard by default if there's no URL path/hash indicating another page
     // Let the router handle page selection when there's a specific URL
     const hash = window.location.hash.replace(/^#/, '');
-    const pathname = window.location.pathname.replace(/\/$/, '').split('/').pop();
-    const hasSpecificPage = hash || (pathname && pathname !== '' && pathname !== 'index.html');
+
+    // Handle base path correctly for GitHub Pages (e.g., /repo-name/)
+    const basePath = (typeof getBasePath === 'function' && getBasePath()) || '/';
+    let path = window.location.pathname;
+    if (basePath !== '/' && path.startsWith(basePath)) {
+        path = path.substring(basePath.length);
+    }
+    path = path.replace(/^[#/]+/, '').replace(/\/$/, '');
+    const hasSpecificPage = hash || (path && path !== 'index.html');
 
     if (!hasSpecificPage) {
         const dashboardPage = document.getElementById('dashboard');
