@@ -2,8 +2,23 @@
 // Provides navigation without hash-based URLs, with active state tracking.
 
 (function(){
+  function isGitHubPagesHost() {
+    return window.location.hostname.endsWith('.github.io');
+  }
+
   function pageToPath(pageId, param) {
-    // Get the base path (e.g., '/EventCall/' for GitHub Pages or '/' for local)
+    // Use hash-based routing on local to avoid asset path issues on refresh
+    if (!isGitHubPagesHost()) {
+      switch(pageId) {
+        case 'dashboard': return '#dashboard';
+        case 'create': return '#create';
+        case 'manage': return param ? `#manage/${param}` : '#manage';
+        case 'invite': return param ? `#invite/${param}` : '#invite';
+        default: return `#${pageId || ''}`;
+      }
+    }
+
+    // GitHub Pages: history-based paths with repo base
     const basePath = (window.getBasePath && window.getBasePath()) || '/';
     const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
 
@@ -63,7 +78,13 @@
         const url = new URL(redirectPath, window.location.origin);
         const parsed = pathToPage(url.pathname);
 
-        history.replaceState(parsed, '', redirectPath);
+        if (isGitHubPagesHost()) {
+          history.replaceState(parsed, '', redirectPath);
+        } else {
+          // Local dev: reflect redirect in hash
+          const hashPath = pageToPath(parsed.pageId, parsed.param);
+          window.location.replace(hashPath + url.search);
+        }
 
         // Handle invite pages specially
         if (parsed.pageId === 'invite' && parsed.param) {
@@ -96,33 +117,79 @@
         // Handle invite URLs with hash
         if (pageId === 'invite' || hasInviteData) {
           const path = pageToPath('invite', param);
-          history.replaceState({ pageId: 'invite', param }, '', path + location.search);
+          if (isGitHubPagesHost()) {
+            history.replaceState({ pageId: 'invite', param }, '', path + location.search);
+          } else {
+            window.location.replace(path + location.search);
+          }
           if (window.showPageContent) window.showPageContent('invite');
           if (param && window.uiComponents && window.uiComponents.showInvite) {
             window.uiComponents.showInvite(param);
           }
         } else {
           const path = pageToPath(pageId, param);
-          history.replaceState({ pageId, param }, '', path);
+          if (isGitHubPagesHost()) {
+            history.replaceState({ pageId, param }, '', path);
+          } else {
+            window.location.replace(path);
+          }
           if (window.showPage) window.showPage(pageId);
         }
       } else if (hasInviteData) {
         // Handle invite data in query parameter without hash
         const parsed = pathToPage(location.pathname);
         const pageId = parsed.pageId === 'dashboard' ? 'invite' : parsed.pageId;
-        history.replaceState({ pageId, param: '' }, '', pageToPath(pageId, ''));
+        const p = pageToPath(pageId, '');
+        if (isGitHubPagesHost()) {
+          history.replaceState({ pageId, param: '' }, '', p);
+        } else {
+          window.location.replace(p + location.search);
+        }
         if (window.showPageContent) window.showPageContent('invite');
       } else {
         const parsed = pathToPage(location.pathname);
-        history.replaceState(parsed, '', pageToPath(parsed.pageId, parsed.param));
+        const p = pageToPath(parsed.pageId, parsed.param);
+        if (isGitHubPagesHost()) {
+          history.replaceState(parsed, '', p);
+        } else {
+          // Ensure we stay on root with hash for local dev
+          if (!location.hash) {
+            window.location.replace(p);
+          }
+        }
         if (window.showPage) window.showPage(parsed.pageId);
       }
-      window.addEventListener('popstate', this.handlePopState.bind(this));
+      if (isGitHubPagesHost()) {
+        window.addEventListener('popstate', this.handlePopState.bind(this));
+      } else {
+        window.addEventListener('hashchange', () => {
+          const hash = location.hash.replace(/^#/, '');
+          const parts = hash.split('/');
+          const pageId = parts[0] || 'dashboard';
+          const param = parts[1] || '';
+          if (pageId === 'manage' && param && window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
+            window.eventManager.showEventManagement(param);
+            setActiveNav('manage');
+            return;
+          }
+          if (pageId === 'invite' && param && window.uiComponents && typeof window.uiComponents.showInvite === 'function') {
+            window.uiComponents.showInvite(param);
+            if (window.showPageContent) window.showPageContent('invite');
+            return;
+          }
+          if (window.showPage) window.showPage(pageId);
+          setActiveNav(pageId);
+        });
+      }
     },
 
     navigateToPage: function(pageId, param) {
       const path = pageToPath(pageId, param);
-      history.pushState({ pageId, param }, '', path);
+      if (isGitHubPagesHost()) {
+        history.pushState({ pageId, param }, '', path);
+      } else {
+        window.location.hash = path.replace(/^#/, '');
+      }
       if (pageId === 'manage' && param && window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
         window.eventManager.showEventManagement(param);
       } else if (pageId === 'invite' && param && window.uiComponents && typeof window.uiComponents.showInvite === 'function') {
@@ -135,10 +202,18 @@
     },
 
     updateURLForPage: function(pageId) {
-      const st = history.state || {};
-      if (st.pageId !== pageId) {
-        const path = pageToPath(pageId, st.param);
-        history.replaceState({ pageId, param: st.param }, '', path);
+      if (isGitHubPagesHost()) {
+        const st = history.state || {};
+        if (st.pageId !== pageId) {
+          const path = pageToPath(pageId, st.param);
+          history.replaceState({ pageId, param: st.param }, '', path);
+        }
+      } else {
+        const current = (location.hash || '').replace(/^#/, '').split('/')[0];
+        if (current !== pageId) {
+          const path = pageToPath(pageId, (location.hash || '').split('/')[1] || '');
+          window.location.replace(path);
+        }
       }
       setActiveNav(pageId);
     },
@@ -173,4 +248,3 @@
     try { AppRouter.init(); } catch (e) { console.warn('Router init failed:', e); }
   });
 })();
-

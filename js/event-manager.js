@@ -7,6 +7,61 @@ class EventManager {
     constructor() {
         this.currentEvent = null;
         this.editMode = false;
+        // RSVP pagination state
+        this.rsvpPagination = {
+            pageSize: 25,
+            shownByEvent: {} // eventId -> number of RSVPs shown
+        };
+    }
+
+    /**
+     * Reset RSVP pagination for an event
+     * @param {string} eventId - Event ID
+     */
+    resetRsvpPagination(eventId) {
+        this.rsvpPagination.shownByEvent[eventId] = this.rsvpPagination.pageSize;
+    }
+
+    /**
+     * Load more RSVPs for an event
+     * @param {string} eventId - Event ID
+     */
+    loadMoreRsvps(eventId) {
+        const current = this.rsvpPagination.shownByEvent[eventId] || this.rsvpPagination.pageSize;
+        this.rsvpPagination.shownByEvent[eventId] = current + this.rsvpPagination.pageSize;
+
+        // Re-render the response table
+        const event = window.events ? window.events[eventId] : null;
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+
+        if (event && eventResponses.length > 0) {
+            const stats = calculateEventStats(eventResponses);
+            const tableBody = document.getElementById(`response-table-body-${eventId}`);
+            const loadMoreContainer = document.getElementById(`rsvp-load-more-${eventId}`);
+
+            if (tableBody) {
+                // Render additional rows
+                const shown = this.rsvpPagination.shownByEvent[eventId];
+                const newRows = this.generateResponseRows(event, eventResponses, stats, current, shown);
+                tableBody.insertAdjacentHTML('beforeend', newRows);
+
+                // Update or remove load more button
+                if (loadMoreContainer) {
+                    if (shown >= eventResponses.length) {
+                        loadMoreContainer.remove();
+                    } else {
+                        const remaining = eventResponses.length - shown;
+                        loadMoreContainer.querySelector('button').textContent = `📋 Load More RSVPs (${remaining} remaining)`;
+                    }
+                }
+
+                // Update stats display
+                const statsEl = document.getElementById(`search-stats-${eventId}`);
+                if (statsEl) {
+                    statsEl.textContent = `📊 Showing ${Math.min(shown, eventResponses.length)} of ${eventResponses.length} responses`;
+                }
+            }
+        }
     }
     
     /**
@@ -57,7 +112,7 @@ class EventManager {
                     <p>No RSVPs yet. Share your invite link to start collecting responses!</p>
                     <div style="margin-top: 1rem;">
                         <button class="btn btn-success" onclick="syncWithGitHub()" style="margin-right: 0.5rem;">
-                            🔗„ Check for New RSVPs
+                            🔗 Check for New RSVPs
                         </button>
                         <button class="btn" onclick="copyInviteLink('${eventId}')">
                             🔗 Share Invite Link
@@ -144,6 +199,14 @@ class EventManager {
         });
         // Show manage page content; URL updates should be orchestrated by the router, not here
         showPage('manage');
+        
+        // Initialize photo upload for manage page
+        if (window.setupPhotoUpload) {
+            // Reset init state if needed, though setupPhotoUpload handles it per element usually.
+            // But since elements are re-created, they won't have the dataset flag.
+            window.setupPhotoUpload();
+        }
+
         // Legacy fallback: update hash only if router is unavailable
         if (!(window.AppRouter && typeof window.AppRouter.navigateToPage === 'function')) {
             const targetHash = `#manage/${eventId}`;
@@ -366,11 +429,17 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                             </div>
                         ` : ''}
                     </div>
-                    ${event.coverImage ? `
-                        <div class="event-cover-large">
-                            <img src="${h(event.coverImage)}" alt="${h(event.title)}">
+                    
+                    <!-- Cover Image Upload -->
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label for="manage-cover-input" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--semper-navy);">Cover Image</label>
+                        <div class="image-upload" id="manage-cover-upload" role="button" tabindex="0" aria-label="Change cover image">
+                            <p>${event.coverImage ? 'Click or drag to change image' : 'Click or drag to upload cover image'}</p>
+                            <input type="file" id="manage-cover-input" accept="image/*" class="file-input">
                         </div>
-                    ` : ''}
+                        <img id="manage-cover-preview" class="image-preview ${event.coverImage ? '' : 'hidden'}" src="${h(event.coverImage || '')}" alt="Event cover image">
+                        <input type="hidden" id="manage-cover-image-url" value="${h(event.coverImage || '')}">
+                    </div>
                 </div>
 
                 <!-- Event Timeline -->
@@ -494,6 +563,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 ${this.generateAttendeeCards(eventResponses, eventId)}
             </div>
 
+            <!-- Photos Gallery (Removed) -->
             ${event.seatingChart && event.seatingChart.enabled ? this.generateSeatingChartSection(event, eventId, eventResponses) : ''}
         </div>
     `;
@@ -504,11 +574,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const btnOverview = document.getElementById('tab-overview-btn');
         const btnGuests = document.getElementById('tab-guests-btn');
         const btnSpecial = document.getElementById('tab-special-btn');
-        // Note: rsvp-dashboard-section is now nested in event-overview-section, no need to list separately
-        // Note: invite-roster-section is now nested in attendee-list-section, no need to list separately
+        
         const overviewSelectors = ['.overview-subtabs', '.event-overview-section'];
         const guestSelectors = ['.attendee-list-section'];
-        // Remove invite-link-section from Special; invite link should only appear under Event Timeline
         const specialSelectors = ['.dashboard-actions', '.seating-chart-section'];
 
         const showElems = (selectors) => selectors.forEach(sel => {
@@ -546,7 +614,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             hideElems(overviewSelectors);
             hideElems(guestSelectors);
             showElems(specialSelectors);
-            // Ensure invite link is hidden when Special tab is active
             hideElems(['.invite-link-section']);
         };
 
@@ -554,7 +621,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         if (btnGuests) btnGuests.addEventListener('click', activateGuests);
         if (btnSpecial) btnSpecial.addEventListener('click', activateSpecial);
 
-        // Keyboard navigation for tabs
         const tabs = Array.from(document.querySelectorAll('.manage-tabs .tab-btn'));
         tabs.forEach((btn, idx) => {
             btn.addEventListener('keydown', (e) => {
@@ -563,7 +629,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             });
         });
 
-        // Default to Overview
         activateOverview();
     }
 
@@ -1730,7 +1795,7 @@ Best regards`;
                 syncBtn.disabled = true;
             }
 
-            showToast('🔗„ Syncing RSVPs for this event...', 'success');
+            showToast('🔗 Syncing RSVPs for this event...', 'success');
 
             // Process RSVP issues for all events (GitHub doesn't allow filtering by event easily)
             const result = await window.githubAPI.processRSVPIssues();
@@ -1962,6 +2027,10 @@ Best regards`;
     generateResponseTable(event, eventResponses, stats) {
         const eventId = event.id;
 
+        // PAGINATION: Calculate how many to show initially
+        this.resetRsvpPagination(eventId);
+        const shownCount = Math.min(this.rsvpPagination.pageSize, eventResponses.length);
+
         let html = `
             <div style="margin-bottom: 2rem;">
                 <div class="response-stats">
@@ -1998,12 +2067,12 @@ Best regards`;
                     
                     <button class="clear-search" onclick="eventManager.clearSearch('${eventId}')">Clear</button>
                     <button class="btn btn-success" onclick="eventManager.syncEventRSVPs('${eventId}')" style="margin-left: 0.5rem;">
-                        🔗„ Refresh
+                        🔗 Refresh
                     </button>
                 </div>
                 
                 <div class="search-stats" id="search-stats-${eventId}">
-                    📊 Showing ${eventResponses.length} of ${eventResponses.length} responses
+                    📊 Showing ${shownCount} of ${eventResponses.length} responses
                 </div>
             </div>
 
@@ -2045,8 +2114,11 @@ Best regards`;
                     </thead>
                     <tbody id="response-table-body-${eventId}">
         `;
-        
-        eventResponses.forEach((response, index) => {
+
+        // Show only the first batch (shownCount calculated at top of function)
+        const responsesToShow = eventResponses.slice(0, shownCount);
+
+        responsesToShow.forEach((response, index) => {
             const displayName = response.name || 'Unknown';
             const email = response.email || 'N/A';
             const phone = response.phone || 'N/A';
@@ -2104,8 +2176,95 @@ Best regards`;
                 </tr>
             `;
         });
-        
+
         html += '</tbody></table></div>';
+
+        // Add "Load More" button if there are more responses
+        if (shownCount < eventResponses.length) {
+            const remaining = eventResponses.length - shownCount;
+            html += `
+                <div id="rsvp-load-more-${eventId}" class="load-more-btn" style="text-align: center; margin-top: 1.5rem;">
+                    <button class="btn btn-secondary" onclick="eventManager.loadMoreRsvps('${eventId}')">
+                        📋 Load More RSVPs (${remaining} remaining)
+                    </button>
+                </div>
+            `;
+        }
+
+        return html;
+    }
+
+    /**
+     * Generate response table rows for a subset of responses
+     * Used by both initial render and loadMoreRsvps
+     * @param {Object} event - Event data
+     * @param {Array} allResponses - All RSVP responses
+     * @param {Object} stats - Event statistics (unused, kept for consistency)
+     * @param {number} startIdx - Starting index in allResponses
+     * @param {number} endIdx - Ending index in allResponses (exclusive)
+     * @returns {string} HTML for table rows
+     */
+    generateResponseRows(event, allResponses, stats, startIdx, endIdx) {
+        const eventId = event.id;
+        const responses = allResponses.slice(startIdx, endIdx);
+        let html = '';
+
+        responses.forEach((response, i) => {
+            const index = startIdx + i; // Original index for data attributes
+            const displayName = response.name || 'Unknown';
+            const email = response.email || 'N/A';
+            const phone = response.phone || 'N/A';
+            const source = response.issueNumber ? `GitHub Issue #${response.issueNumber}` : 'Direct Entry';
+            const sourceIcon = response.issueNumber ? '🔗' : '📝';
+
+            html += `
+                <tr class="response-row" data-response-index="${index}"
+                    data-name="${displayName.toLowerCase()}"
+                    data-attending="${response.attending}"
+                    data-reason="${(response.reason || '').toLowerCase()}"
+                    data-guest-count="${response.guestCount || 0}"
+                    data-phone="${phone.toLowerCase()}"
+                    data-email="${email.toLowerCase()}"
+                    data-branch="${(response.branch || '').toLowerCase()}"
+                    data-rank="${(response.rank || '').toLowerCase()}"
+                    data-unit="${(response.unit || '').toLowerCase()}">
+                    <td>
+                        <input type="checkbox" class="response-checkbox" data-response-index="${index}" onchange="eventManager.updateBulkActions('${eventId}')">
+                    </td>
+                    <td><strong>${displayName}</strong></td>
+                    <td><a href="mailto:${email}" style="color: var(--semper-red); text-decoration: none;">${email}</a></td>
+                    <td>${phone !== 'N/A' ? `<a href="tel:${phone}" style="color: var(--semper-red); text-decoration: none;">${phone}</a>` : phone}</td>
+                    <td class="${response.attending ? 'attending-yes' : 'attending-no'}">
+                        ${response.attending ? '✅ Yes' : '❌ No'}
+                    </td>
+                    ${event.askReason ? `<td style="max-width: 200px; word-wrap: break-word;">${response.reason || '-'}</td>` : ''}
+                    ${event.allowGuests ? `<td><strong>${response.guestCount || 0}</strong> ${(response.guestCount || 0) === 1 ? 'guest' : 'guests'}</td>` : ''}
+                    ${event.customQuestions ? event.customQuestions.map(q => {
+                        let answer = response.customAnswers && response.customAnswers[q.id] ? response.customAnswers[q.id] : '-';
+                        if (answer !== '-' && q.type === 'datetime' && answer.includes('T')) {
+                            const [datePart, timePart] = answer.split('T');
+                            answer = `${datePart} ${timePart}`;
+                        }
+                        return `<td style="max-width: 150px; word-wrap: break-word;">${answer}</td>`;
+                    }).join('') : ''}
+                    <td style="font-size: 0.875rem;">${new Date(response.timestamp).toLocaleString()}</td>
+                    <td style="font-size: 0.875rem;" title="${source}">
+                        ${sourceIcon} ${response.issueNumber ? `#${response.issueNumber}` : 'Direct'}
+                    </td>
+                    <td>
+                        <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"
+                                onclick="eventManager.deleteResponse('${eventId}', ${index})"
+                                title="Delete this RSVP">🗑️</button>
+                        ${response.issueUrl ? `
+                            <a href="${response.issueUrl}" target="_blank" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-left: 0.25rem;" title="View GitHub Issue">
+                                🔗
+                            </a>
+                        ` : ''}
+                    </td>
+                </tr>
+            `;
+        });
+
         return html;
     }
 
@@ -2256,27 +2415,36 @@ Best regards`;
         // Handle cover image
         const coverPreview = document.getElementById('cover-preview');
         if (event.coverImage) {
-    coverPreview.src = event.coverImage;
-    coverPreview.classList.remove('hidden');
-    
-    // Update upload area to show existing image
-    const uploadArea = document.getElementById('cover-upload');
-    if (uploadArea) {
-        uploadArea.innerHTML = window.utils.sanitizeHTML(`
-            <p style="color: #10b981; font-weight: 600;">✅ Current image loaded</p>
-            <p style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Click to change image</p>
-        `);
-    }
-} else {
-    // Reset upload area for new image
-    const uploadArea = document.getElementById('cover-upload');
-    if (uploadArea) {
-        uploadArea.innerHTML = window.utils.sanitizeHTML(`<p>Click or drag to upload cover image</p>`);
-    }
-}
+            coverPreview.src = event.coverImage;
+            coverPreview.classList.remove('hidden');
+            const urlInput = document.getElementById('cover-image-url');
+            if (urlInput) urlInput.value = event.coverImage;
+            
+            // Update upload area to show existing image
+            const uploadArea = document.getElementById('cover-upload');
+            if (uploadArea) {
+                uploadArea.innerHTML = window.utils.sanitizeHTML(`
+                    <p style="color: #10b981; font-weight: 600;">✅ Current image loaded</p>
+                    <p style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Click to change image</p>
+                `);
+            }
+        } else {
+            // Reset upload area for new image
+            const uploadArea = document.getElementById('cover-upload');
+            if (uploadArea) {
+                uploadArea.innerHTML = window.utils.sanitizeHTML(`<p>Click or drag to upload cover image</p>`);
+            }
+        }
 
         // Populate custom questions
         this.populateCustomQuestions(event.customQuestions || []);
+
+        // Populate event details fields (template-specific fields)
+        if (event.eventDetails && Object.keys(event.eventDetails).length > 0) {
+            if (window.eventTemplates) {
+                window.eventTemplates.populateEventDetailsFields(event.eventDetails);
+            }
+        }
 
         // Seating configuration UI: reflect existing event seating settings
         const enableSeating = document.getElementById('enable-seating');
@@ -2317,6 +2485,13 @@ Best regards`;
 
         showPage('create');
         document.querySelector('#create h2').textContent = 'Edit Event';
+        if (window.setupPhotoUpload) {
+            const uploadAreaInit = document.getElementById('cover-upload');
+            if (uploadAreaInit) {
+                uploadAreaInit.dataset.uploadInitialized = 'false';
+            }
+            window.setupPhotoUpload();
+        }
     }
 
     /**
@@ -2385,12 +2560,23 @@ Best regards`;
             eventData.createdByName = this.currentEvent.createdByName;
             eventData.lastModified = Date.now();
 
-            // Save directly to EventCall-Data using GitHub API
-            // github-api.js saveEvent handles both create and update operations
-            if (window.githubAPI) {
-                await window.githubAPI.saveEvent(eventData);
+            if (window.BackendAPI) {
+                await window.BackendAPI.updateEvent(eventData.id, {
+                    title: eventData.title,
+                    description: eventData.description,
+                    date: eventData.date,
+                    time: eventData.time,
+                    location: eventData.location,
+                    coverImageUrl: eventData.coverImage,
+                    status: eventData.status,
+                    allowGuests: eventData.allowGuests,
+                    requiresMealChoice: eventData.requiresMealChoice,
+                    customQuestions: eventData.customQuestions,
+                    eventDetails: eventData.eventDetails,
+                    seatingChart: eventData.seatingChart
+                });
             } else {
-                throw new Error('GitHub API not available');
+                throw new Error('Backend API not available');
             }
 
             // Update local state
@@ -2398,7 +2584,7 @@ Best regards`;
                 window.events[eventData.id] = eventData;
             }
 
-            showToast('âœ… Event updated successfully!', 'success');
+            showToast('✅ Event updated successfully!', 'success');
 
             // Reset edit mode
             this.cancelEdit();
@@ -3145,9 +3331,16 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
      */
     async saveEventSeatingData(event) {
         try {
-            // Persist to GitHub if available
-            if (window.githubAPI) {
-                await window.githubAPI.saveEvent(event);
+            if (window.BackendAPI) {
+                await window.BackendAPI.updateEvent(event.id, {
+                    title: event.title,
+                    description: event.description,
+                    date: event.date,
+                    time: event.time,
+                    location: event.location,
+                    coverImageUrl: event.coverImage,
+                    status: event.status
+                });
             }
             // Always update local state so UI refresh uses latest seating data
             if (window.events) {
@@ -3171,6 +3364,113 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
                 console.error('Background save failed:', error);
                 // Don't show toast for background saves to avoid interrupting user
             });
+        }
+    }
+
+    // ----- Photo Gallery Methods -----
+
+    async renderPhotoGallery(eventId) {
+        const grid = document.getElementById(`photo-gallery-grid-${eventId}`);
+        if (!grid) return;
+
+        try {
+            grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 2rem;">Loading photos...</div>';
+            
+            if (!window.BackendAPI || !window.BackendAPI.getEventPhotos) {
+                throw new Error('Backend API not available');
+            }
+
+            const result = await window.BackendAPI.getEventPhotos(eventId);
+            const photos = result.photos || [];
+
+            if (photos.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 2rem;">No photos uploaded yet. Be the first to share!</div>';
+                return;
+            }
+
+            grid.innerHTML = photos.map(photo => `
+                <div class="photo-card">
+                    <img src="${window.utils && window.utils.escapeHTML ? window.utils.escapeHTML(photo.url) : photo.url}" alt="Event photo" class="photo-card-img" loading="lazy">
+                    <div class="photo-card-overlay">
+                        <button class="btn-delete-photo" onclick="window.eventManager.deletePhoto('${photo.id}', '${eventId}')" title="Delete photo">
+                            🗑️
+                        </button>
+                    </div>
+                    ${photo.caption ? `<div class="photo-card-caption">${window.utils && window.utils.escapeHTML ? window.utils.escapeHTML(photo.caption) : photo.caption}</div>` : ''}
+                </div>
+            `).join('');
+
+        } catch (error) {
+            console.error('Failed to load photos:', error);
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 2rem;">Failed to load photos: ${error.message}</div>`;
+        }
+    }
+
+    async handlePhotoUpload(event, eventId) {
+        const fileInput = event.target;
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const uploadArea = document.getElementById(`photo-gallery-upload-${eventId}`);
+        
+        try {
+            // Show loading state
+            if (uploadArea) {
+                uploadArea.classList.add('loading');
+                const originalContent = uploadArea.innerHTML;
+                uploadArea.innerHTML = '<div style="color: #e2e8f0; font-weight: 500;">Uploading... <span class="spinner"></span></div>';
+            }
+
+            if (!window.BackendAPI || !window.BackendAPI.uploadImage) {
+                throw new Error('Backend API not available');
+            }
+
+            await window.BackendAPI.uploadImage(file, file.name, {
+                eventId: eventId,
+                caption: '' // Could add a prompt for caption later
+            });
+
+            showToast('✅ Photo uploaded successfully!', 'success');
+            
+            // Refresh gallery
+            this.renderPhotoGallery(eventId);
+
+        } catch (error) {
+            console.error('Photo upload failed:', error);
+            showToast('❌ Upload failed: ' + error.message, 'error');
+        } finally {
+            // Reset upload area
+            if (uploadArea) {
+                uploadArea.classList.remove('loading');
+                uploadArea.innerHTML = `
+                    <input type="file" id="gallery-upload-input-${eventId}" accept="image/*" style="display:none" onchange="window.eventManager.handlePhotoUpload(event, '${eventId}')">
+                    <span class="photo-upload-icon">☁️</span>
+                    <div class="photo-upload-text">Click or drag photos here to upload</div>
+                    <div class="photo-upload-subtext">Supports JPG, PNG, GIF, WEBP</div>
+                `;
+            }
+            // Clear input
+            fileInput.value = '';
+        }
+    }
+
+    async deletePhoto(photoId, eventId) {
+        if (!confirm('Are you sure you want to delete this photo? This cannot be undone.')) return;
+
+        try {
+            if (!window.BackendAPI || !window.BackendAPI.deletePhoto) {
+                throw new Error('Backend API not available');
+            }
+
+            await window.BackendAPI.deletePhoto(photoId);
+            showToast('✅ Photo deleted', 'success');
+            
+            // Refresh gallery
+            this.renderPhotoGallery(eventId);
+
+        } catch (error) {
+            console.error('Delete photo failed:', error);
+            showToast('❌ Delete failed: ' + error.message, 'error');
         }
     }
 }

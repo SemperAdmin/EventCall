@@ -661,3 +661,199 @@
 .auth-form.active {
     display: block;
 }
+
+/* Auth Form Header */
+.auth__form-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.auth__form-header h3 {
+    margin-bottom: 0.5rem;
+}
+
+.auth__form-header p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Full-width button utility */
+.btn--full {
+    width: 100%;
+}
+
+/* =============================================================================
+   LOGIN PAGE TEXT STYLING
+   White text for login page dark background
+   ============================================================================= */
+
+/* Auth form header - white text on dark background */
+.auth__form-header h3 {
+    color: var(--semper-gold);
+}
+
+.auth__form-header p {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Form labels - white text */
+#login-page .form-label,
+.login-box .form-label {
+    color: #e5e7eb;
+}
+
+/* Input fields - light styling on dark background */
+#login-page .form-control,
+.login-box .form-control {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #f3f4f6;
+}
+
+#login-page .form-control::placeholder,
+.login-box .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+#login-page .form-control:focus,
+.login-box .form-control:focus {
+    border-color: var(--semper-gold);
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+/* Remember me checkbox label */
+#login-page .auth__remember-label,
+#login-page .checkbox-label,
+.login-box .checkbox-label {
+    color: #d1d5db;
+}
+
+/* Tab buttons - inactive state */
+#login-page .tab-btn:not(.active),
+.login-box .tab-btn:not(.active) {
+    color: #d1d5db;
+}
+
+/* Button link styling */
+.auth__form .btn-link,
+#login-page .btn-link,
+.auth__link-container .btn-link {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--semper-gold) !important;
+    text-decoration: underline;
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+}
+
+.auth__form .btn-link:hover,
+#login-page .btn-link:hover {
+    opacity: 0.8;
+    color: #f0d060 !important;
+}
+
+/* Reset Password Form headers */
+#forgot-password-form .auth__form-header h3,
+#reset-confirm-form .auth__form-header h3 {
+    color: var(--semper-gold);
+    font-size: 1.5rem;
+}
+
+#forgot-password-form .auth__form-header p,
+#reset-confirm-form .auth__form-header p {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* =============================================================================
+   MODAL FORM STYLING - Light mode text contrast
+   Ensures dark text on white modal backgrounds
+   ============================================================================= */
+
+/* Modal form labels - ensure dark text on white background */
+.modal .form-label,
+.modal-body .form-label,
+#user-profile-modal .form-label {
+    color: #1f2937 !important; /* gray-800 */
+    font-weight: 600;
+}
+
+/* Modal form inputs - dark text, light background */
+.modal .form-control,
+.modal-body .form-control,
+#user-profile-modal .form-control {
+    color: #111827 !important; /* gray-900 */
+    background-color: #ffffff !important;
+    border: 2px solid #d1d5db !important; /* gray-300 */
+}
+
+.modal .form-control:focus,
+.modal-body .form-control:focus,
+#user-profile-modal .form-control:focus {
+    border-color: var(--semper-red) !important;
+    box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.1) !important;
+}
+
+/* Disabled/readonly inputs */
+.modal .form-control:disabled,
+.modal .form-control[readonly],
+#user-profile-modal .form-control:disabled,
+#user-profile-modal .form-control[readonly] {
+    background-color: #f3f4f6 !important; /* gray-100 */
+    color: #6b7280 !important; /* gray-500 */
+}
+
+/* Modal form help text */
+.modal .form-help,
+.modal-body .form-help,
+#user-profile-modal .form-help {
+    color: #6b7280 !important; /* gray-500 */
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* Modal select dropdowns */
+.modal select.form-control,
+#user-profile-modal select.form-control {
+    color: #111827 !important;
+    background-color: #ffffff !important;
+}
+
+/* Modal form group spacing */
+.modal .form-group,
+#user-profile-modal .form-group {
+    margin-bottom: 1.25rem;
+}
+
+/* Profile password section styling */
+.profile-password-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e5e7eb;
+}
+
+.profile-password-section h4 {
+    margin: 0 0 1rem 0;
+    color: #1f2937;
+    font-size: 1.1rem;
+}
+
+/* Password strength indicator */
+.password-strength-bar {
+    height: 4px;
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    transition: width 0.2s ease, background 0.2s ease;
+}
+
+.password-strength-text {
+    font-size: 0.85rem;
+    display: block;
+    margin-top: 0.25rem;
+}
+
+/* Full width button utility */
+.btn-full-width {
+    width: 100%;
+}

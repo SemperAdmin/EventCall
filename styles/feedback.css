@@ -7,29 +7,31 @@
     position: fixed;
     bottom: 2rem;
     right: 2rem;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #d4af37, #c5a028);
+    background: linear-gradient(135deg, #d4af37 0%, #c5a028 100%);
     color: white;
-    font-size: 1.5rem;
     border: none;
+    padding: 0.75rem 1.25rem;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
     transition: all 0.3s ease;
     z-index: 1000;
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 0.5rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .feedback-button:hover {
-    transform: scale(1.1);
+    background: linear-gradient(135deg, #c5a028 0%, #b8941f 100%);
     box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
+    transform: translateY(-2px);
 }
 
 .feedback-button:active {
-    transform: scale(0.95);
+    transform: translateY(0);
 }
 
 /* Modal */
@@ -258,9 +260,8 @@
     .feedback-button {
         bottom: 1rem;
         right: 1rem;
-        width: 50px;
-        height: 50px;
-        font-size: 1.25rem;
+        padding: 0.6rem 1rem;
+        font-size: 0.875rem;
     }
 
     .feedback-modal__content {

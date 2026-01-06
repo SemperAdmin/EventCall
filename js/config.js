@@ -1,25 +1,8 @@
 /**
  * EventCall Secure Configuration
- * NO hardcoded tokens - Service token managed by GitHub Actions only
+ * Service token managed by Backend only
  */
 
-/**
- * Function to construct and return the full token.
- * This pattern helps to limit the scope of the sensitive string fragments.
- */
-function assembleToken() {
-  // Define the string fragments inside the function
-  const part1 = "ghp_";
-  const part2 = "MTCElZr8OJt";
-  const part3 = "Yw82TjX3N2eGpR";
-  const part4 = "Vkg3l2Me8Fo";
-
-  // Create the array
-  const fragments = [part1, part2, part3, part4];
-
-  // Combine them and return the complete token
-  return fragments.join('');
-}
 // **The main configuration object**
 const GITHUB_CONFIG = {
     owner: 'SemperAdmin',
@@ -27,7 +10,7 @@ const GITHUB_CONFIG = {
     dataRepo: 'EventCall-Data',  // Private repository for events, RSVPs, and user data
     imageRepo: 'EventCall-Images',  // Public repository for event cover images
     branch: 'main',
-    token: assembleToken(),
+    token: null, // Token removed for security - use BackendAPI
     // Optional: provide multiple tokens to rotate under rate limiting
     tokens: [],
 
@@ -60,6 +43,30 @@ const GITHUB_CONFIG = {
         return `https://api.github.com/repos/${this.owner}/${repoName}/contents/${path}`;
     }
 };
+
+// Backend Configuration
+const BACKEND_CONFIG = (function() {
+    // Default proxy URL - use local backend in dev, Render in production
+    const host = (window.location.hostname || '').toLowerCase();
+    const isLocal = ['localhost', '127.0.0.1', '0.0.0.0'].includes(host);
+    const defaultURL = isLocal ? 'http://localhost:10000' : 'https://eventcall.onrender.com';
+    
+    // Optional override from storage
+    const fromStorage = localStorage.getItem('eventcall_proxy_url') || '';
+    const dispatchURL = fromStorage || defaultURL;
+
+    if (host.endsWith('github.io')) {
+        console.log('[EventCall] Using proxy dispatchURL:', dispatchURL);
+    }
+
+    return {
+        dispatchURL: dispatchURL,
+        useProxyOnGithubPages: true
+    };
+})();
+
+// Make available globally
+window.BACKEND_CONFIG = BACKEND_CONFIG;
 
 // Application Configuration
 const APP_CONFIG = {
@@ -98,7 +105,7 @@ const AUTH_CONFIG = {
     simpleAuth: false,
     // Force backend workflow dispatch and issue polling even on localhost.
     // Enable this in local dev to test real saving to EventCall-Data.
-    forceBackendInDev: false,
+    forceBackendInDev: true,
     // Polling configuration for server-driven authentication workflows
     // Increase timeout to accommodate GitHub Actions queuing delays
     authTimeoutMs: 120000,
@@ -121,6 +128,21 @@ const SECURITY_CONFIG = {
     csrfCookieName: 'eventcall_csrf',
     csrfStorageKey: 'eventcall_csrf_token',
     csrfRotateMs: 30 * 60 * 1000 // rotate every 30 minutes
+};
+
+// Error Tracking Configuration
+// To enable Sentry: add the Sentry SDK script and set enabled: true
+// To use custom endpoint: set endpoint to your error logging API
+const ERROR_TRACKING_CONFIG = {
+    enabled: false, // Set to true to enable remote error tracking
+    appVersion: '1.0.0',
+    environment: window.location.hostname.includes('github.io') ? 'production' : 'development',
+    // Sentry DSN (optional) - add Sentry SDK script to index.html if using
+    // sentryDsn: 'https://your-sentry-dsn@sentry.io/project-id',
+    // Custom endpoint for self-hosted error logging (optional)
+    // endpoint: 'https://your-api.com/errors',
+    // Sample rate (0-1) - reduce to log fewer errors in high-traffic scenarios
+    sampleRate: 1.0
 };
 
 // reCAPTCHA v3 Configuration (client-side only; server must validate tokens)
@@ -217,6 +239,7 @@ if (typeof window !== 'undefined') {
     window.GITHUB_CONFIG = GITHUB_CONFIG;
     window.APP_CONFIG = APP_CONFIG;
     window.SECURITY_CONFIG = SECURITY_CONFIG;
+    window.ERROR_TRACKING_CONFIG = ERROR_TRACKING_CONFIG;
     window.CODE_CONFIG = CODE_CONFIG;
     window.AUTH_CONFIG = AUTH_CONFIG;
     window.RECAPTCHA_CONFIG = RECAPTCHA_CONFIG;

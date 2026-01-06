@@ -306,6 +306,190 @@
     }
   }
 
+  // Enhanced autosave for event creation form (handles custom questions)
+  function enableEventFormAutosave(form) {
+    if (!form) return;
+    const key = 'eventcall_event_draft';
+
+    const save = debounce(() => {
+      const data = {
+        fields: {},
+        customQuestions: [],
+        savedAt: Date.now()
+      };
+
+      // Save standard form fields
+      form.querySelectorAll('input, select, textarea').forEach(f => {
+        const name = f.name || f.id;
+        if (!name || name.startsWith('custom-q-')) return; // Skip custom question inputs
+        if (f.type === 'checkbox') data.fields[name] = !!f.checked;
+        else if (f.type === 'radio') {
+          if (f.checked) data.fields[name] = f.value;
+        } else if (f.type !== 'file') { // Skip file inputs
+          data.fields[name] = f.value;
+        }
+      });
+
+      // Save custom questions structure
+      const customContainer = document.getElementById('custom-questions-container');
+      if (customContainer) {
+        customContainer.querySelectorAll('.custom-question-item').forEach((item, idx) => {
+          const questionInput = item.querySelector('.custom-question-text');
+          const typeSelect = item.querySelector('.custom-question-type');
+          const optionsInput = item.querySelector('.custom-question-options');
+          const requiredCheckbox = item.querySelector('.custom-question-required');
+
+          if (questionInput) {
+            data.customQuestions.push({
+              question: questionInput.value || '',
+              type: typeSelect ? typeSelect.value : 'text',
+              options: optionsInput ? optionsInput.value : '',
+              required: requiredCheckbox ? requiredCheckbox.checked : false
+            });
+          }
+        });
+      }
+
+      localStorage.setItem(key, JSON.stringify(data));
+
+      // Show autosave indicator
+      showAutosaveIndicator();
+    }, 500);
+
+    // Attach save listener
+    form.addEventListener('input', save);
+    form.addEventListener('change', save);
+
+    // Also save when custom questions change
+    const customContainer = document.getElementById('custom-questions-container');
+    if (customContainer) {
+      const observer = new MutationObserver(save);
+      observer.observe(customContainer, { childList: true, subtree: true });
+    }
+  }
+
+  function showAutosaveIndicator() {
+    let indicator = document.getElementById('event-autosave-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = 'event-autosave-indicator';
+      indicator.style.cssText = `
+        position: fixed; bottom: 20px; right: 20px; padding: 8px 16px;
+        background: rgba(16, 185, 129, 0.9); color: white; border-radius: 8px;
+        font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      `;
+      indicator.textContent = '✓ Draft saved';
+      document.body.appendChild(indicator);
+    }
+    if (indicator.fadeTimeout) clearTimeout(indicator.fadeTimeout);
+    indicator.style.opacity = '1';
+    indicator.fadeTimeout = setTimeout(() => {
+      indicator.style.opacity = '0';
+    }, 2000);
+  }
+
+  // Restore event form draft
+  function restoreEventFormDraft(form) {
+    if (!form) return;
+    const key = 'eventcall_event_draft';
+    const savedRaw = localStorage.getItem(key);
+    if (!savedRaw) return;
+
+    try {
+      const saved = JSON.parse(savedRaw);
+      if (!saved || !saved.fields) return;
+
+      // Check if draft is less than 24 hours old
+      const ageHours = (Date.now() - saved.savedAt) / (1000 * 60 * 60);
+      if (ageHours > 24) {
+        localStorage.removeItem(key);
+        return;
+      }
+
+      // Check if form is empty
+      const hasContent = Array.from(form.querySelectorAll('input:not([type="file"]), select, textarea'))
+        .some(f => f.type === 'checkbox' ? f.checked : (f.value || '').trim() !== '');
+      if (hasContent) return;
+
+      // Show recovery prompt
+      const recoveryBanner = document.createElement('div');
+      recoveryBanner.id = 'draft-recovery-banner';
+      recoveryBanner.className = 'draft-recovery-banner';
+      recoveryBanner.innerHTML = `
+        <div class="draft-recovery-banner__content">
+          <span class="draft-recovery-banner__icon">📝</span>
+          <div>
+            <div class="draft-recovery-banner__title">Draft found</div>
+            <div class="draft-recovery-banner__subtitle">You have an unsaved event from earlier</div>
+          </div>
+        </div>
+        <div class="draft-recovery-banner__actions">
+          <button type="button" id="restore-draft-btn" class="btn btn-primary">
+            Restore Draft
+          </button>
+          <button type="button" id="discard-draft-btn" class="btn">
+            Start Fresh
+          </button>
+        </div>
+      `;
+
+      const firstFormGroup = form.querySelector('.form-group');
+      if (firstFormGroup) {
+        form.insertBefore(recoveryBanner, firstFormGroup);
+      }
+
+      document.getElementById('restore-draft-btn').addEventListener('click', () => {
+        // Restore standard fields
+        Object.entries(saved.fields).forEach(([name, value]) => {
+          const f = form.querySelector(`[name="${name}"]`) || form.querySelector(`#${name}`);
+          if (!f) return;
+          if (typeof value === 'boolean' && f.type === 'checkbox') {
+            f.checked = value;
+          } else if (f.type !== 'file') {
+            f.value = value;
+          }
+        });
+
+        // Restore custom questions
+        if (saved.customQuestions && saved.customQuestions.length > 0 && window.addCustomQuestion) {
+          saved.customQuestions.forEach(q => {
+            window.addCustomQuestion();
+            const container = document.getElementById('custom-questions-container');
+            const lastItem = container.lastElementChild;
+            if (lastItem) {
+              const questionInput = lastItem.querySelector('.custom-question-text');
+              const typeSelect = lastItem.querySelector('.custom-question-type');
+              const optionsInput = lastItem.querySelector('.custom-question-options');
+              const requiredCheckbox = lastItem.querySelector('.custom-question-required');
+
+              if (questionInput) questionInput.value = q.question;
+              if (typeSelect) typeSelect.value = q.type;
+              if (optionsInput) optionsInput.value = q.options;
+              if (requiredCheckbox) requiredCheckbox.checked = q.required;
+            }
+          });
+        }
+
+        recoveryBanner.remove();
+        if (window.showToast) window.showToast('Draft restored!', 'success');
+      });
+
+      document.getElementById('discard-draft-btn').addEventListener('click', () => {
+        localStorage.removeItem(key);
+        recoveryBanner.remove();
+      });
+
+    } catch (e) {
+      console.warn('Failed to restore event draft:', e);
+    }
+  }
+
+  // Clear draft on successful form submission
+  window.clearEventFormDraft = function() {
+    localStorage.removeItem('eventcall_event_draft');
+  };
+
   document.addEventListener('DOMContentLoaded', () => {
     // Attach validation to login/register forms
     attachRealtimeValidation(document.getElementById('login-form'));
@@ -320,6 +504,13 @@
     // Autosave for login/register only (RSVP handled in ui-components.js)
     enableAutosave(document.getElementById('login-form'), 'form:login');
     enableAutosave(document.getElementById('register-form'), 'form:register');
+
+    // Event form autosave (with draft recovery)
+    const eventForm = document.getElementById('event-form');
+    if (eventForm) {
+      restoreEventFormDraft(eventForm);
+      enableEventFormAutosave(eventForm);
+    }
   });
 
   // Export function for RSVP form (called from ui-components.js setupRSVPForm)

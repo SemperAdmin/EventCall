@@ -168,14 +168,72 @@
     });
   }
 
+  // Global loading overlay
+  let overlayEl = null;
+  let overlayStartedAt = null;
+
+  function createOverlay() {
+    if (overlayEl) return overlayEl;
+    overlayEl = document.createElement('div');
+    overlayEl.className = 'loading-overlay';
+    overlayEl.setAttribute('role', 'alert');
+    overlayEl.setAttribute('aria-busy', 'true');
+    overlayEl.innerHTML = `
+      <span class="spinner" aria-hidden="true"></span>
+      <div class="loading-text" aria-live="polite">Loading...</div>
+    `;
+    document.body.appendChild(overlayEl);
+    return overlayEl;
+  }
+
+  function showOverlay(message = 'Loading...') {
+    const el = createOverlay();
+    const textEl = el.querySelector('.loading-text');
+    if (textEl) textEl.textContent = message;
+    overlayStartedAt = now();
+    el.classList.add('active');
+  }
+
+  function hideOverlay() {
+    if (!overlayEl) return;
+    const elapsed = now() - (overlayStartedAt || 0);
+    const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
+    setTimeout(() => {
+      if (overlayEl) overlayEl.classList.remove('active');
+    }, wait);
+  }
+
+  function updateOverlayMessage(message) {
+    if (!overlayEl) return;
+    const textEl = overlayEl.querySelector('.loading-text');
+    if (textEl) textEl.textContent = message;
+  }
+
   window.LoadingUI = {
     MIN_VISIBLE_MS,
     startSpinner,
     withButtonLoading,
     Skeleton: { show: showSkeleton },
     Progress: { create: createProgressBar },
+    Overlay: {
+      show: showOverlay,
+      hide: hideOverlay,
+      updateMessage: updateOverlayMessage
+    },
     attachAutoHandlers
   };
+
+  // Legacy global functions - only override if not already defined
+  // (early-functions.js may have set these up with existing #app-loader element)
+  if (typeof window.showAppLoader !== 'function') {
+    window.showAppLoader = showOverlay;
+  }
+  if (typeof window.hideAppLoader !== 'function') {
+    window.hideAppLoader = hideOverlay;
+  }
+  if (typeof window.updateLoaderMessage !== 'function') {
+    window.updateLoaderMessage = updateOverlayMessage;
+  }
 
   // Initialize auto handlers
   if (document.readyState === 'loading') {

@@ -85,6 +85,11 @@ function escapeHTML(str) {
         .replace(/'/g, '&#39;');
 }
 
+// Helper for escaping HTML while preserving line breaks
+function escapeHTMLPreserveNewlines(str) {
+    return escapeHTML(str).replace(/\n/g, '<br>');
+}
+
 // function createInviteWithoutImageHTML(event, eventId) {
 function createInviteWithoutImageHTML(event, eventId) {
     return `
@@ -367,7 +372,7 @@ function createEventDetailsHTML(eventDetails) {
             <span style="font-size: 1.25rem; flex-shrink: 0;">${getIcon(detail.label)}</span>
             <div style="flex: 1;">
                 <div style="font-weight: 600; color: #86efac; font-size: 0.875rem; margin-bottom: 0.25rem;">${escapeHTML(detail.label)}</div>
-                <div style="color: #d4af37; font-size: 1rem; font-weight: 600;">${escapeHTML(detail.value)}</div>
+                <div style="color: #d4af37; font-size: 1rem; font-weight: 600;">${escapeHTMLPreserveNewlines(detail.value)}</div>
             </div>
         </div>
     `).join('');

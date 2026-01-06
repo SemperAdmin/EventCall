@@ -1,3 +1,4 @@
+
 /**
  * EventCall User Authentication - Username/Password System
  * Secure authentication with bcrypt password hashing via GitHub Actions
@@ -34,15 +35,44 @@ const userAuth = {
         const savedUser = this.loadUserFromStorage();
 
         if (savedUser) {
-            this.currentUser = savedUser;
-            console.log('✅ User restored from storage:', savedUser.username);
-
-            // Update UI
-            if (window.updateUserDisplay) {
-                window.updateUserDisplay();
+            const uname = savedUser.username || '';
+            const hasValidId = typeof savedUser.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedUser.id);
+            try {
+                if (window.BackendAPI && typeof window.BackendAPI.loadUserByUsername === 'function' && uname) {
+                    const backendUser = await window.BackendAPI.loadUserByUsername(uname);
+                    if (backendUser && backendUser.id) {
+                        const mergedUser = {
+                            ...savedUser,
+                            id: backendUser.id,
+                            name: savedUser.name || backendUser.name,
+                            email: savedUser.email || backendUser.email
+                        };
+                        this.currentUser = mergedUser;
+                        this.saveUserToStorage(mergedUser, true);
+                        console.log('🔄 Synced user ID from backend:', mergedUser.id);
+                    } else {
+                        this.clearUserFromStorage();
+                        this.currentUser = null;
+                    }
+                } else if (!hasValidId) {
+                    this.clearUserFromStorage();
+                    this.currentUser = null;
+                } else {
+                    this.currentUser = savedUser;
+                }
+            } catch (_) {
+                this.clearUserFromStorage();
+                this.currentUser = null;
             }
 
-            this.hideLoginScreen();
+            if (this.currentUser) {
+                if (window.updateUserDisplay) {
+                    window.updateUserDisplay();
+                }
+                this.hideLoginScreen();
+            } else {
+                this.showLoginScreen();
+            }
         } else {
             console.log('🔒 No saved user - showing login screen');
             this.showLoginScreen();
@@ -461,15 +491,22 @@ const userAuth = {
 
             if (response.success) {
                 console.log(`⏱️ [T+${Date.now() - startTime}ms] Auth response received, success`);
-                // Fetch full user data from EventCall-Data (auth response only has userId/username)
-                console.log(`⏱️ [T+${Date.now() - startTime}ms] Fetching full user data from EventCall-Data...`);
-                const userData = await this.fetchUserData(response.username);
-                console.log(`⏱️ [T+${Date.now() - startTime}ms] User data fetch completed`);
+                // Use direct backend user object when available to avoid GitHub fetch
+                let userData = response.user;
+                if (!userData) {
+                    console.log(`⏱️ [T+${Date.now() - startTime}ms] Fetching full user data from EventCall-Data...`);
+                    userData = await this.fetchUserData(response.username);
+                    console.log(`⏱️ [T+${Date.now() - startTime}ms] User data fetch completed`);
+                }
 
                 if (!userData) {
                     const errorMsg = 'Failed to fetch user data from EventCall-Data repository. Please check console for details.';
                     console.error('❌ userData is null - check fetchUserData logs above');
                     throw new Error(errorMsg);
+                }
+                const hasValidId = typeof userData.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userData.id || '');
+                if (!hasValidId) {
+                    throw new Error('Invalid credentials');
                 }
 
                 console.log(`⏱️ [T+${Date.now() - startTime}ms] Showing success toast and updating UI...`);
@@ -604,8 +641,7 @@ const userAuth = {
                     return result;
 
                 } catch (directAuthError) {
-                    console.warn('⚠️ Direct auth failed, falling back to GitHub Actions:', directAuthError.message);
-                    // Fall through to GitHub Actions workflow below
+                    throw new Error(directAuthError.message || 'Authentication failed');
                 }
             }
 
@@ -653,7 +689,8 @@ const userAuth = {
                 }
             })();
             const forceBackendInDev = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.forceBackendInDev);
-            if (isLocalDev && !forceBackendInDev) {
+            const isLoginOrRegister = actionType === 'login_user' || actionType === 'register_user';
+            if (isLocalDev && !forceBackendInDev && !isLoginOrRegister) {
                 console.log('🧪 Local dev detected: skipping GitHub workflow dispatch and polling (set AUTH_CONFIG.forceBackendInDev=true to enable)');
 
                 // Handle profile updates differently in local dev
@@ -709,10 +746,10 @@ const userAuth = {
             // NOTE: Loader should already be shown by the calling function (handleLogin/handleRegister)
             // Do NOT call showAppLoader here to avoid duplicate calls
 
-            // For profile updates, try direct file update first (faster and doesn't require polling)
+            // For profile updates, try direct backend update first (Supabase)
             if (actionType === 'update_profile') {
                 try {
-                    console.log('📝 Attempting direct profile file update...');
+                    console.log('📝 Attempting direct profile backend update...');
                     const result = await window.BackendAPI.updateUserProfile(payload);
                     console.log('✅ Profile updated directly:', result);
                     return {
@@ -720,8 +757,7 @@ const userAuth = {
                         user: result.user
                     };
                 } catch (directError) {
-                    console.warn('⚠️ Direct profile update failed, falling back to workflow:', directError.message);
-                    // Fall through to workflow dispatch
+                    throw directError;
                 }
             }
 
@@ -1180,6 +1216,247 @@ const userAuth = {
     }
 };
 
+// =============================================================================
+// PASSWORD RESET FUNCTIONS
+// =============================================================================
+
+/**
+ * Show forgot password form, hide login form
+ */
+function showForgotPassword() {
+    const loginForm = document.getElementById('login-form');
+    const forgotForm = document.getElementById('forgot-password-form');
+    const resetConfirmForm = document.getElementById('reset-confirm-form');
+
+    if (loginForm) loginForm.style.display = 'none';
+    if (forgotForm) forgotForm.style.display = 'block';
+    if (resetConfirmForm) resetConfirmForm.style.display = 'none';
+
+    // Focus on username field
+    const usernameInput = document.getElementById('reset-username');
+    if (usernameInput) usernameInput.focus();
+}
+
+/**
+ * Show login form, hide forgot password form
+ */
+function showLoginForm() {
+    const loginForm = document.getElementById('login-form');
+    const forgotForm = document.getElementById('forgot-password-form');
+    const resetConfirmForm = document.getElementById('reset-confirm-form');
+
+    if (loginForm) loginForm.style.display = 'block';
+    if (forgotForm) forgotForm.style.display = 'none';
+    if (resetConfirmForm) resetConfirmForm.style.display = 'none';
+}
+
+/**
+ * Show reset confirmation form (for when user clicks reset link)
+ */
+function showResetConfirmForm(token) {
+    const loginForm = document.getElementById('login-form');
+    const forgotForm = document.getElementById('forgot-password-form');
+    const resetConfirmForm = document.getElementById('reset-confirm-form');
+    const tokenInput = document.getElementById('reset-token');
+
+    if (loginForm) loginForm.style.display = 'none';
+    if (forgotForm) forgotForm.style.display = 'none';
+    if (resetConfirmForm) resetConfirmForm.style.display = 'block';
+    if (tokenInput) tokenInput.value = token;
+
+    // Focus on new password field
+    const newPasswordInput = document.getElementById('new-password');
+    if (newPasswordInput) newPasswordInput.focus();
+}
+
+/**
+ * Handle forgot password form submission
+ * Uses UI-based verification - if username+email match, shows password reset form directly
+ */
+async function handleForgotPassword(e) {
+    e.preventDefault();
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+
+    // Use unified loading UI if available
+    const useLoadingUI = window.LoadingUI && window.LoadingUI.withButtonLoading;
+
+    const doVerify = async () => {
+        const username = document.getElementById('reset-username').value.trim().toLowerCase();
+        const email = document.getElementById('reset-email').value.trim().toLowerCase();
+
+        if (!username || !email) {
+            throw new Error('Please enter both username and email');
+        }
+
+        // Call backend API to verify username + email
+        const cfg = window.BACKEND_CONFIG || {};
+        const baseUrl = String(cfg.dispatchURL || '').replace(/\/$/, '');
+
+        if (!baseUrl) {
+            throw new Error('Password reset service is currently unavailable. Please contact support.');
+        }
+
+        const response = await fetch(`${baseUrl}/api/auth/verify-reset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Verification failed');
+        }
+
+        // Verification successful - show reset password form with token
+        console.log('✅ Identity verified, showing password reset form');
+
+        if (window.showToast) {
+            window.showToast('✅ Identity verified! Please enter your new password.', 'success');
+        }
+
+        // Show the password reset form with the token
+        showResetConfirmForm(result.token);
+
+        // Clear the forgot password form
+        e.target.reset();
+    };
+
+    try {
+        if (useLoadingUI) {
+            await window.LoadingUI.withButtonLoading(submitBtn, 'Verifying...', doVerify);
+        } else {
+            // Fallback for when LoadingUI is not available
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner"></span> Verifying...';
+            submitBtn.disabled = true;
+            try {
+                await doVerify();
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        // Show error with fallback if toast not available
+        if (window.showToast) {
+            window.showToast('❌ ' + error.message, 'error');
+        } else {
+            alert('Error: ' + error.message);
+        }
+    }
+}
+
+/**
+ * Handle reset password confirmation form submission
+ */
+async function handleResetPassword(e) {
+    e.preventDefault();
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+
+    // Use unified loading UI if available
+    const useLoadingUI = window.LoadingUI && window.LoadingUI.withButtonLoading;
+
+    const doReset = async () => {
+        const token = document.getElementById('reset-token').value;
+        const password = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-new-password').value;
+
+        if (!token) {
+            throw new Error('Invalid reset token');
+        }
+
+        if (!password || password.length < 8) {
+            throw new Error('Password must be at least 8 characters');
+        }
+
+        if (password !== confirmPassword) {
+            throw new Error('Passwords do not match');
+        }
+
+        // Call backend API
+        const cfg = window.BACKEND_CONFIG || {};
+        const baseUrl = String(cfg.dispatchURL || '').replace(/\/$/, '');
+
+        if (!baseUrl) {
+            throw new Error('Backend not configured');
+        }
+
+        const response = await fetch(`${baseUrl}/api/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, password })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Reset failed');
+        }
+
+        // Show success message
+        if (window.showToast) {
+            window.showToast('✅ Password reset successfully! You can now log in.', 'success');
+        }
+
+        // Clear URL parameter
+        const url = new URL(window.location);
+        url.searchParams.delete('reset');
+        window.history.replaceState({}, '', url);
+
+        // Return to login form
+        setTimeout(() => {
+            showLoginForm();
+            e.target.reset();
+        }, 1500);
+    };
+
+    try {
+        if (useLoadingUI) {
+            await window.LoadingUI.withButtonLoading(submitBtn, 'Resetting...', doReset);
+        } else {
+            // Fallback for when LoadingUI is not available
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner"></span> Resetting...';
+            submitBtn.disabled = true;
+            try {
+                await doReset();
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+    } catch (error) {
+        console.error('Reset password error:', error);
+        if (window.showToast) {
+            window.showToast('❌ ' + error.message, 'error');
+        }
+    }
+}
+
+/**
+ * Check URL for reset token on page load
+ */
+function checkForResetToken() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('reset');
+
+    if (resetToken) {
+        console.log('🔑 Reset token detected in URL');
+        showResetConfirmForm(resetToken);
+    }
+}
+
+// Make password reset functions globally available
+window.showForgotPassword = showForgotPassword;
+window.showLoginForm = showLoginForm;
+window.showResetConfirmForm = showResetConfirmForm;
+window.handleForgotPassword = handleForgotPassword;
+window.handleResetPassword = handleResetPassword;
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     // Skip initialization in test mode
@@ -1189,6 +1466,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     userAuth.init();
+
+    // Check for password reset token in URL
+    checkForResetToken();
 
     // Attach login form handler
     const loginForm = document.getElementById('login-form');
@@ -1204,7 +1484,37 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('✅ Registration form attached');
     }
 
-    // Password strength indicator
+    // Attach forgot password form handler
+    const forgotForm = document.getElementById('forgot-password-form');
+    if (forgotForm) {
+        forgotForm.addEventListener('submit', handleForgotPassword);
+        console.log('✅ Forgot password form attached');
+    }
+
+    // Attach reset confirmation form handler
+    const resetConfirmForm = document.getElementById('reset-confirm-form');
+    if (resetConfirmForm) {
+        resetConfirmForm.addEventListener('submit', handleResetPassword);
+        console.log('✅ Reset password form attached');
+    }
+
+    // Attach navigation button handlers (instead of inline onclick)
+    const showForgotBtn = document.getElementById('show-forgot-password-btn');
+    if (showForgotBtn) {
+        showForgotBtn.addEventListener('click', showForgotPassword);
+    }
+
+    const showLoginBtn = document.getElementById('show-login-btn');
+    if (showLoginBtn) {
+        showLoginBtn.addEventListener('click', showLoginForm);
+    }
+
+    const resetBackToLoginBtn = document.getElementById('reset-back-to-login-btn');
+    if (resetBackToLoginBtn) {
+        resetBackToLoginBtn.addEventListener('click', showLoginForm);
+    }
+
+    // Password strength indicator for registration
     const regPassword = document.getElementById('reg-password');
     const strengthIndicator = document.getElementById('password-strength');
 
@@ -1212,6 +1522,20 @@ document.addEventListener('DOMContentLoaded', () => {
         regPassword.addEventListener('input', (e) => {
             const result = userAuth.checkPasswordStrength(e.target.value);
             strengthIndicator.innerHTML = window.utils.sanitizeHTML(`
+                <div class="strength-bar" style="background: ${result.color}; width: ${(result.score / 6) * 100}%"></div>
+                <span class="strength-text" style="color: ${result.color}">${window.utils.escapeHTML(result.message)}</span>
+            `);
+        });
+    }
+
+    // Password strength indicator for reset
+    const newPassword = document.getElementById('new-password');
+    const newStrengthIndicator = document.getElementById('new-password-strength');
+
+    if (newPassword && newStrengthIndicator) {
+        newPassword.addEventListener('input', (e) => {
+            const result = userAuth.checkPasswordStrength(e.target.value);
+            newStrengthIndicator.innerHTML = window.utils.sanitizeHTML(`
                 <div class="strength-bar" style="background: ${result.color}; width: ${(result.score / 6) * 100}%"></div>
                 <span class="strength-text" style="color: ${result.color}">${window.utils.escapeHTML(result.message)}</span>
             `);

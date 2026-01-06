@@ -22,13 +22,20 @@ function generateUUID() {
  * @returns {string} Formatted date
  */
 function formatDate(date, options = {}) {
-    // Parse date string with timezone-safe approach
-    let dateObj;
+    // Parse date string without timezone conversion
+    let year, month, day;
+
     if (typeof date === 'string') {
-        // Add time component to parse in local timezone instead of UTC
-        dateObj = date.includes('T') ? new Date(date) : new Date(`${date}T00:00:00`);
+        // Parse YYYY-MM-DD format directly without timezone conversion
+        const parts = date.split('T')[0].split('-');
+        year = parseInt(parts[0]);
+        month = parseInt(parts[1]) - 1; // 0-indexed
+        day = parseInt(parts[2]);
     } else {
-        dateObj = date;
+        // Handle Date object
+        year = date.getFullYear();
+        month = date.getMonth();
+        day = date.getDate();
     }
 
     const defaultOptions = {
@@ -37,6 +44,9 @@ function formatDate(date, options = {}) {
         day: 'numeric',
         ...options
     };
+
+    // Create a date object using local date components (no timezone shift)
+    const dateObj = new Date(year, month, day);
 
     // Use undefined to respect user's locale instead of hardcoded 'en-US'
     return dateObj.toLocaleDateString(undefined, defaultOptions);
