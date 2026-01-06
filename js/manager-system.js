@@ -1632,7 +1632,8 @@ async function handleEventSubmit(e) {
             eventDetails: getEventDetails(),
             created: Date.now(),
             status: 'active',
-            createdBy: (currentUser.username || 'unknown'),
+            createdBy: currentUser.id || currentUser.username || 'unknown',
+            createdByUsername: currentUser.username || 'unknown',
             createdByName: currentUser.name || currentUser.username || 'unknown'
         };
 
@@ -1702,7 +1703,7 @@ async function handleEventSubmit(e) {
             time: eventData.time,
             location: eventData.location,
             coverImageUrl: eventData.coverImage,
-            createdByUserId: null,
+            createdByUserId: currentUser.id || null,
             status: eventData.status,
             allowGuests: eventData.askReason ? true : eventData.allowGuests, // keep existing behavior
             requiresMealChoice: eventData.requiresMealChoice,
