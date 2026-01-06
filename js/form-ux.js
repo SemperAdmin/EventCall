@@ -134,7 +134,8 @@
       if (!window.userAuth || !window.userAuth.isValidUsername(v)) return '3-50 chars: letters, numbers, . - _ only';
       return null;
     },
-    password: (v) => {
+    password: (v, form) => {
+      if (form && form.id === 'login-form') return null;
       if (!v) return 'Password is required';
       if (v.length < 8) return 'At least 8 characters';
       if (!/[A-Z]/.test(v)) return 'Include an uppercase letter';
@@ -530,4 +531,3 @@
 })();
 
 console.log('✅ UX-004 form enhancements loaded');
-

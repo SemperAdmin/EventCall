@@ -197,8 +197,12 @@ class EventManager {
         if (rangeSel) rangeSel.addEventListener('change', () => {
             this._renderChartSafe(() => this.renderResponsesChart(eventResponses), 'responses chart');
         });
-        // Show manage page content; URL updates should be orchestrated by the router, not here
-        showPage('manage');
+        // Show manage page content with proper URL param
+        if (window.AppRouter && typeof window.AppRouter.navigateToPage === 'function') {
+            window.AppRouter.navigateToPage('manage', eventId);
+        } else {
+            showPage('manage', eventId);
+        }
         
         // Initialize photo upload for manage page
         if (window.setupPhotoUpload) {

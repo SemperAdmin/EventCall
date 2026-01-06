@@ -66,6 +66,23 @@
     } catch (_) {}
   }
 
+  // Centralized route handler to ensure consistent behavior
+  function handleRoute(pageId, param) {
+    console.log('🔄 Routing to:', pageId, param);
+    
+    if (pageId === 'manage' && param && window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
+      window.eventManager.showEventManagement(param);
+      // Ensure page visibility is toggled - CRITICAL FIX
+      if (window.showPageContent) window.showPageContent('manage');
+    } else if (pageId === 'invite' && param && window.uiComponents && typeof window.uiComponents.showInvite === 'function') {
+      window.uiComponents.showInvite(param);
+      if (window.showPageContent) window.showPageContent('invite');
+    } else {
+      if (window.showPage) window.showPage(pageId);
+    }
+    setActiveNav(pageId);
+  }
+
   const AppRouter = {
     init: function() {
       // Check for redirected path from 404.html (GitHub Pages SPA routing)
@@ -80,85 +97,63 @@
 
         if (isGitHubPagesHost()) {
           history.replaceState(parsed, '', redirectPath);
+          handleRoute(parsed.pageId, parsed.param);
         } else {
           // Local dev: reflect redirect in hash
+          // This triggers hashchange, which calls handleRoute
           const hashPath = pageToPath(parsed.pageId, parsed.param);
           window.location.replace(hashPath + url.search);
         }
-
-        // Handle invite pages specially
-        if (parsed.pageId === 'invite' && parsed.param) {
-          if (window.uiComponents && window.uiComponents.showInvite) {
-            window.uiComponents.showInvite(parsed.param);
-          }
-          if (window.showPageContent) window.showPageContent('invite');
-        } else if (parsed.pageId === 'manage' && parsed.param) {
-          if (window.eventManager && window.eventManager.showEventManagement) {
-            window.eventManager.showEventManagement(parsed.param);
-          }
-        } else {
-          if (window.showPage) window.showPage(parsed.pageId);
-        }
-
-        setActiveNav(parsed.pageId);
-        return;
-      }
-
-      // Check for query parameter with event data (invite links)
-      const hasInviteData = location.search && location.search.includes('data=');
-
-      // Translate hash on first load for back-compat
-      if (location.hash) {
-        const hash = location.hash.replace(/^#/, '');
-        const parts = hash.split('/');
-        const pageId = parts[0] || 'dashboard';
-        const param = parts[1] || '';
-
-        // Handle invite URLs with hash
-        if (pageId === 'invite' || hasInviteData) {
-          const path = pageToPath('invite', param);
-          if (isGitHubPagesHost()) {
-            history.replaceState({ pageId: 'invite', param }, '', path + location.search);
-          } else {
-            window.location.replace(path + location.search);
-          }
-          if (window.showPageContent) window.showPageContent('invite');
-          if (param && window.uiComponents && window.uiComponents.showInvite) {
-            window.uiComponents.showInvite(param);
-          }
-        } else {
-          const path = pageToPath(pageId, param);
-          if (isGitHubPagesHost()) {
-            history.replaceState({ pageId, param }, '', path);
-          } else {
-            window.location.replace(path);
-          }
-          if (window.showPage) window.showPage(pageId);
-        }
-      } else if (hasInviteData) {
-        // Handle invite data in query parameter without hash
-        const parsed = pathToPage(location.pathname);
-        const pageId = parsed.pageId === 'dashboard' ? 'invite' : parsed.pageId;
-        const p = pageToPath(pageId, '');
-        if (isGitHubPagesHost()) {
-          history.replaceState({ pageId, param: '' }, '', p);
-        } else {
-          window.location.replace(p + location.search);
-        }
-        if (window.showPageContent) window.showPageContent('invite');
       } else {
-        const parsed = pathToPage(location.pathname);
-        const p = pageToPath(parsed.pageId, parsed.param);
-        if (isGitHubPagesHost()) {
-          history.replaceState(parsed, '', p);
+        // Normal initialization
+        
+        // Check for query parameter with event data (invite links)
+        const hasInviteData = location.search && location.search.includes('data=');
+        
+        if (location.hash) {
+            // Hash exists, parse it
+            const hash = location.hash.replace(/^#/, '');
+            const parts = hash.split('/');
+            const pageId = parts[0] || 'dashboard';
+            const param = parts[1] || '';
+            
+            // For invite links with hash
+            if (pageId === 'invite' || hasInviteData) {
+                const path = pageToPath('invite', param);
+                if (isGitHubPagesHost()) {
+                    history.replaceState({ pageId: 'invite', param }, '', path + location.search);
+                } else {
+                    window.location.replace(path + location.search);
+                }
+            }
+            handleRoute(pageId, param);
+        } else if (hasInviteData) {
+             // Query param only
+             const parsed = pathToPage(location.pathname);
+             const pageId = parsed.pageId === 'dashboard' ? 'invite' : parsed.pageId;
+             const p = pageToPath(pageId, '');
+             if (isGitHubPagesHost()) {
+                 history.replaceState({ pageId, param: '' }, '', p);
+                 handleRoute(pageId, '');
+             } else {
+                 window.location.replace(p + location.search);
+             }
         } else {
-          // Ensure we stay on root with hash for local dev
-          if (!location.hash) {
-            window.location.replace(p);
-          }
+            // No hash, standard load
+            const parsed = pathToPage(location.pathname);
+            const p = pageToPath(parsed.pageId, parsed.param);
+            
+            if (isGitHubPagesHost()) {
+                history.replaceState(parsed, '', p);
+            } else if (!location.hash && parsed.pageId !== 'dashboard') {
+                 // Ensure hash matches if we are deep linking locally without hash?
+                 // Usually local deep links are already hash-based.
+            }
+            handleRoute(parsed.pageId, parsed.param);
         }
-        if (window.showPage) window.showPage(parsed.pageId);
       }
+
+      // Set up listeners
       if (isGitHubPagesHost()) {
         window.addEventListener('popstate', this.handlePopState.bind(this));
       } else {
@@ -167,18 +162,7 @@
           const parts = hash.split('/');
           const pageId = parts[0] || 'dashboard';
           const param = parts[1] || '';
-          if (pageId === 'manage' && param && window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
-            window.eventManager.showEventManagement(param);
-            setActiveNav('manage');
-            return;
-          }
-          if (pageId === 'invite' && param && window.uiComponents && typeof window.uiComponents.showInvite === 'function') {
-            window.uiComponents.showInvite(param);
-            if (window.showPageContent) window.showPageContent('invite');
-            return;
-          }
-          if (window.showPage) window.showPage(pageId);
-          setActiveNav(pageId);
+          handleRoute(pageId, param);
         });
       }
     },
@@ -187,31 +171,27 @@
       const path = pageToPath(pageId, param);
       if (isGitHubPagesHost()) {
         history.pushState({ pageId, param }, '', path);
+        handleRoute(pageId, param);
       } else {
         window.location.hash = path.replace(/^#/, '');
+        // hashchange will trigger handleRoute
       }
-      if (pageId === 'manage' && param && window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
-        window.eventManager.showEventManagement(param);
-      } else if (pageId === 'invite' && param && window.uiComponents && typeof window.uiComponents.showInvite === 'function') {
-        window.uiComponents.showInvite(param);
-        if (window.showPageContent) window.showPageContent('invite');
-      } else if (window.showPage) {
-        window.showPage(pageId);
-      }
-      setActiveNav(pageId);
     },
 
-    updateURLForPage: function(pageId) {
+    updateURLForPage: function(pageId, param) {
       if (isGitHubPagesHost()) {
         const st = history.state || {};
         if (st.pageId !== pageId) {
-          const path = pageToPath(pageId, st.param);
-          history.replaceState({ pageId, param: st.param }, '', path);
+          const path = pageToPath(pageId, typeof param !== 'undefined' ? param : st.param);
+          history.replaceState({ pageId, param: typeof param !== 'undefined' ? param : st.param }, '', path);
         }
       } else {
-        const current = (location.hash || '').replace(/^#/, '').split('/')[0];
-        if (current !== pageId) {
-          const path = pageToPath(pageId, (location.hash || '').split('/')[1] || '');
+        const hashParts = (location.hash || '').replace(/^#/, '').split('/');
+        const current = hashParts[0];
+        const currentParam = hashParts[1] || '';
+        const desiredParam = typeof param !== 'undefined' ? param : currentParam;
+        if (current !== pageId || currentParam !== desiredParam) {
+          const path = pageToPath(pageId, desiredParam);
           window.location.replace(path);
         }
       }
@@ -222,18 +202,7 @@
       const st = event.state || pathToPage(location.pathname);
       const pageId = st.pageId || 'dashboard';
       const param = st.param;
-      if (pageId === 'manage' && param && window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
-        window.eventManager.showEventManagement(param);
-        setActiveNav('manage');
-        return;
-      }
-      if (pageId === 'invite' && param && window.uiComponents && typeof window.uiComponents.showInvite === 'function') {
-        window.uiComponents.showInvite(param);
-        if (window.showPageContent) window.showPageContent('invite');
-        return;
-      }
-      if (window.showPage) window.showPage(pageId);
-      setActiveNav(pageId);
+      handleRoute(pageId, param);
     }
   };
 

@@ -1141,10 +1141,20 @@ function goToDashboard() {
  * Initialize hash change listener
  */
 function initializeHashListener() {
-    // Use History API popstate for navigation
-    window.addEventListener('popstate', handleURLPath);
-    // Check initial path
-    setTimeout(handleURLPath, 100);
+    // If AppRouter is available, let it handle routing
+    if (window.AppRouter) {
+        console.log('📡 AppRouter detected - yielding routing control');
+        return;
+    }
+
+    const isGitHubPages = window.location.hostname.endsWith('.github.io');
+    if (isGitHubPages) {
+        window.addEventListener('popstate', handleURLPath);
+        setTimeout(handleURLPath, 100);
+    } else {
+        window.addEventListener('hashchange', checkURLHash);
+        setTimeout(checkURLHash, 100);
+    }
 }
 
 // Make functions globally available immediately

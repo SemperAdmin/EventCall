@@ -87,20 +87,12 @@ self.addEventListener('fetch', (event) => {
                                 (request.method === 'GET' && request.headers.get('accept')?.includes('text/html'));
 
     if (isNavigationRequest && request.method === 'GET') {
+        const parts = url.pathname.split('/').filter(p => p);
+        const basePath = parts.length > 0 ? `/${parts[0]}/` : '/';
         event.respondWith(
-            fetch(request)
-                .then(response => {
-                    // If we get a 404, it's likely an SPA route - serve index.html
-                    if (response.status === 404) {
-                        console.log('[Service Worker] 404 for SPA route, serving index.html:', url.pathname);
-                        return fetch('/EventCall/index.html').catch(() => caches.match('/index.html'));
-                    }
-                    return response;
-                })
-                .catch(() => {
-                    // Only use cache as last resort fallback when network is completely unavailable
-                    return caches.match('/index.html');
-                })
+            fetch(basePath + 'index.html')
+                .catch(() => caches.match(basePath + 'index.html')
+                    .then(res => res || caches.match('/index.html')))
         );
         return;
     }

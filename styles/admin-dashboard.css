@@ -210,6 +210,8 @@
     }
 
     .dashboard-tabs {
-        overflow-x: auto;
+        height: 56px;
+        overflow: visible;
+        align-items: center;
     }
 }

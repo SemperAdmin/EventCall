@@ -365,7 +365,6 @@ body {
     opacity: 1;
     transition: opacity 0.2s ease;
 }
-
 /* When .modal is inside .modal-overlay, reset positioning for flex centering */
 .modal-overlay .modal {
     position: relative;
@@ -380,7 +379,6 @@ body {
     overflow-y: auto;
     padding: 1.5rem;
 }
-
 /* Custom questions form group spacing */
 .form-group--custom-questions {
     margin-top: 1.5rem;
@@ -422,11 +420,16 @@ body {
    ============================================================================= */
 .event-search-container {
     margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .event-search-wrapper {
     position: relative;
     max-width: 400px;
+    width: 100%;
+    margin: 0 auto;
 }
 
 .event-search-wrapper .form-control {
@@ -476,6 +479,16 @@ body {
 
 .event-search-results.visible {
     display: block;
+}
+
+/* =============================================================================
+   WELCOME BANNER CENTERING
+   ============================================================================= */
+.welcome-title,
+.welcome-description {
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* =============================================================================

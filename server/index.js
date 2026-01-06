@@ -129,6 +129,31 @@ function getMimeTypeFromExt(name) {
   return 'application/octet-stream';
 }
 
+function extractStoragePathFromPublicUrl(url) {
+  if (!url) return null;
+  try {
+    const u = String(url);
+    const marker = `/storage/v1/object/public/${IMAGE_BUCKET}/`;
+    const idx = u.indexOf(marker);
+    if (idx >= 0) return u.slice(idx + marker.length);
+    if (SUPABASE_HOST) {
+      const alt = `https://${SUPABASE_HOST}${marker}`;
+      const idx2 = u.indexOf(alt);
+      if (idx2 >= 0) return u.slice(idx2 + alt.length);
+    }
+    const generic = '/object/public/';
+    const idx3 = u.indexOf(generic);
+    if (idx3 >= 0) {
+      const post = u.slice(idx3 + generic.length);
+      const parts = post.split('/');
+      if (parts[0] === IMAGE_BUCKET) return parts.slice(1).join('/');
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
 async function ensurePublicBucket(bucket) {
   if (!supabase) return { ok: false, error: 'Supabase not configured' };
   const { data } = await supabase.storage.getBucket(bucket);
@@ -250,6 +275,7 @@ async function saveUser(username, userData) {
 function mapSupabaseEvent(e) {
   if (!e) return null;
   const coverUrl = e.cover_image_url || e.image_url || '';
+
   return {
     id: e.id,
     title: e.title || '',
@@ -260,6 +286,7 @@ function mapSupabaseEvent(e) {
     dress_code: e.dress_code || '',
     cover_image_url: coverUrl,
     coverImage: coverUrl, // Frontend UI expects this alias
+
     status: e.status || 'active',
     created_by: e.creator_id || e.created_by || '',
     creator_id: e.creator_id || e.created_by || '',
@@ -389,11 +416,13 @@ app.get('/api/csrf', (req, res) => {
 // =============================================================================
 
 // Helper: Get events from Supabase
-async function getEventsFromSupabase(creatorId = null) {
+async function getEventsFromSupabase(creatorId = null, unassigned = false) {
   if (!supabase) return [];
   let query = supabase.from('ec_events').select('*');
   if (creatorId) {
     query = query.eq('creator_id', creatorId);
+  } else if (unassigned) {
+    query = query.is('creator_id', null);
   }
   const { data, error } = await query.order('date', { ascending: true });
   if (error) {
@@ -442,19 +471,84 @@ app.get('/api/events', async (req, res) => {
       return res.status(403).json({ error: 'Origin not allowed' });
     }
     const creatorId = req.query.creator_id || req.query.created_by || null;
+    const unassigned = req.query.unassigned === 'true';
+
     let events;
     if (USE_SUPABASE) {
-      events = await getEventsFromSupabase(creatorId);
+      events = await getEventsFromSupabase(creatorId, unassigned);
       events = events.map(mapSupabaseEvent);
     } else {
       events = await getEventsFromGitHub();
       if (creatorId) {
         events = events.filter(e => e.creator_id === creatorId || e.creatorId === creatorId);
+      } else if (unassigned) {
+        events = events.filter(e => !e.creator_id && !e.creatorId && !e.created_by);
       }
     }
     res.json({ success: true, events });
   } catch (error) {
     console.error('Failed to fetch events:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/users', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const idsParam = String(req.query.ids || '').trim();
+    if (!idsParam) {
+      return res.json({ success: true, users: [] });
+    }
+    const ids = idsParam.split(',').map(s => String(s).trim()).filter(s => s);
+    let users = [];
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase
+        .from('ec_users')
+        .select('id, username, name, email')
+        .in('id', ids);
+      if (error) {
+        return res.status(500).json({ error: 'Failed to fetch users' });
+      }
+      users = data || [];
+    } else {
+      const usersUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users`;
+      const response = await fetch(usersUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      if (!response.ok) {
+        return res.status(500).json({ error: 'Failed to fetch users' });
+      }
+      const usersData = await response.json();
+      const idSet = new Set(ids);
+      const userPromises = (Array.isArray(usersData) ? usersData : []).map(async file => {
+        const userResponse = await fetch(file.url, {
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'EventCall-Backend'
+          }
+        });
+        const userData = await userResponse.json();
+        const user = JSON.parse(Buffer.from(userData.content, 'base64').toString('utf-8'));
+        const out = {
+          id: String(user.id || ''),
+          username: String(user.username || ''),
+          name: String(user.name || ''),
+          email: String(user.email || '').toLowerCase()
+        };
+        return idSet.has(out.id) ? out : null;
+      });
+      const loaded = await Promise.all(userPromises);
+      users = loaded.filter(u => !!u);
+    }
+    res.json({ success: true, users });
+  } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -515,6 +609,14 @@ app.put('/api/events/:id', async (req, res) => {
       return res.status(503).json({ error: 'Event updates require Supabase configuration' });
     }
 
+    let oldCoverUrl = null;
+    const { data: existingRow } = await supabase
+      .from('ec_events')
+      .select('cover_image_url')
+      .eq('id', eventId)
+      .maybeSingle();
+    oldCoverUrl = existingRow?.cover_image_url || null;
+
     // Map frontend field names to database column names
     const dbUpdates = {};
     if (updates.title !== undefined) dbUpdates.title = updates.title;
@@ -547,12 +649,106 @@ app.put('/api/events/:id', async (req, res) => {
       return res.status(500).json({ error: 'Failed to update event' });
     }
 
+    const newCoverUrl = data?.cover_image_url || null;
+    if (oldCoverUrl && newCoverUrl && oldCoverUrl !== newCoverUrl) {
+      const oldPath = extractStoragePathFromPublicUrl(oldCoverUrl);
+      if (oldPath) {
+        const { error: delErr } = await supabase.storage
+          .from(IMAGE_BUCKET)
+          .remove([oldPath]);
+        if (delErr) {
+          console.error('Failed to delete old cover image:', delErr.message);
+        }
+      }
+    }
+
     res.json({ success: true, event: mapSupabaseEvent(data) });
   } catch (error) {
     console.error('Failed to update event:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+app.delete('/api/events/:id', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const eventId = req.params.id;
+    if (!USE_SUPABASE || !supabase) {
+      return res.status(503).json({ error: 'Event deletion requires Supabase configuration' });
+    }
+    const { data: photos, error: photosError } = await supabase
+      .from('ec_event_photos')
+      .select('id, storage_path')
+      .eq('event_id', eventId);
+    if (photosError) {
+      console.error('Failed to fetch event photos:', photosError.message);
+      return res.status(500).json({ error: 'Failed to fetch event photos' });
+    }
+    const photoPaths = (photos || []).map(p => p.storage_path).filter(p => !!p);
+    if (photoPaths.length > 0) {
+      const { error: storageDelErr } = await supabase.storage
+        .from(IMAGE_BUCKET)
+        .remove(photoPaths);
+      if (storageDelErr) {
+        console.error('Failed to delete photos from storage:', storageDelErr.message);
+      }
+      const { error: delPhotosErr } = await supabase
+        .from('ec_event_photos')
+        .delete()
+        .eq('event_id', eventId);
+      if (delPhotosErr) {
+        console.error('Failed to delete photo records:', delPhotosErr.message);
+      }
+    }
+    const { data: eventRow } = await supabase
+      .from('ec_events')
+      .select('id, cover_image_url')
+      .eq('id', eventId)
+      .maybeSingle();
+    let coverDeleted = false;
+    if (eventRow && eventRow.cover_image_url) {
+      const coverPath = extractStoragePathFromPublicUrl(eventRow.cover_image_url);
+      if (coverPath && !photoPaths.includes(coverPath)) {
+        const { error: coverStorageErr } = await supabase.storage
+          .from(IMAGE_BUCKET)
+          .remove([coverPath]);
+        if (coverStorageErr) {
+          console.error('Failed to delete cover image from storage:', coverStorageErr.message);
+        } else {
+          coverDeleted = true;
+        }
+      }
+    }
+    let deletedRsvps = 0;
+    const { count: rsvpCount } = await supabase
+      .from('ec_rsvps')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId);
+    deletedRsvps = rsvpCount || 0;
+    const { error: delRsvpsErr } = await supabase
+      .from('ec_rsvps')
+      .delete()
+      .eq('event_id', eventId);
+    if (delRsvpsErr) {
+      console.error('Failed to delete RSVPs:', delRsvpsErr.message);
+    }
+    const { error: eventDelErr } = await supabase
+      .from('ec_events')
+      .delete()
+      .eq('id', eventId);
+    if (eventDelErr) {
+      console.error('Failed to delete event:', eventDelErr.message);
+      return res.status(500).json({ error: 'Failed to delete event' });
+    }
+    res.json({ success: true, deletedPhotos: photoPaths.length, coverDeleted, deletedRsvps });
+  } catch (error) {
+    console.error('Event deletion error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 // =============================================================================
 // RSVPS API - Fetch RSVPs from Supabase or GitHub
@@ -649,6 +845,7 @@ app.post('/api/events', async (req, res) => {
     const eventId = eventData.id || crypto.randomUUID();
     // Accept both creator_id and created_by from frontend
     const creatorId = eventData.creator_id || eventData.creatorId || eventData.created_by || eventData.createdBy || '';
+
     const event = {
       id: eventId,
       title: eventData.title,
@@ -666,6 +863,7 @@ app.post('/api/events', async (req, res) => {
       custom_questions: eventData.custom_questions || [],
       event_details: eventData.event_details || {},
       seating_chart: eventData.seating_chart || null
+
     };
     if (USE_SUPABASE) {
       const { error } = await supabase.from('ec_events').insert([event]);
@@ -976,6 +1174,114 @@ app.delete('/api/photos/:id', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+app.post('/api/migrate/images', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    if (!USE_SUPABASE || !supabase) {
+      return res.status(503).json({ error: 'Supabase not configured' });
+    }
+    const bucketResult = await ensurePublicBucket(IMAGE_BUCKET);
+    if (!bucketResult.ok) {
+      return res.status(500).json({ error: 'Failed to initialize storage' });
+    }
+    const summary = { githubFilesMigrated: 0, githubFilesSkipped: 0, eventCoversMigrated: 0, eventCoversSkipped: 0, errors: [] };
+    const ghUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Images/contents/images`;
+    const ghHeaders = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'EventCall-Backend' };
+    if (GITHUB_TOKEN) ghHeaders['Authorization'] = `token ${GITHUB_TOKEN}`;
+    try {
+      const listResp = await fetch(ghUrl, { headers: ghHeaders });
+      if (listResp.ok) {
+        const items = await listResp.json();
+        for (const item of items) {
+          if (!item || item.type !== 'file' || !item.download_url) continue;
+          const name = item.name || 'file';
+          const storagePath = `github-mirror/${name}`;
+          try {
+            const dl = await fetch(item.download_url);
+            if (!dl.ok) { summary.errors.push(`download ${name}`); continue; }
+            const buf = Buffer.from(await dl.arrayBuffer());
+            const { error: uploadError } = await supabase.storage
+              .from(IMAGE_BUCKET)
+              .upload(storagePath, buf, { contentType: getMimeTypeFromExt(name), upsert: false });
+            if (uploadError) {
+              const msg = String(uploadError.message || '').toLowerCase();
+              if (msg.includes('already exists')) {
+                summary.githubFilesSkipped++;
+              } else {
+                summary.errors.push(`upload ${name}: ${uploadError.message}`);
+              }
+            } else {
+              summary.githubFilesMigrated++;
+            }
+          } catch (e) {
+            summary.errors.push(`mirror ${name}: ${e.message}`);
+          }
+        }
+      } else {
+        summary.errors.push('list github images failed');
+      }
+    } catch (e) {
+      summary.errors.push(`github list error: ${e.message}`);
+    }
+    try {
+      const { data: events, error: evErr } = await supabase
+        .from('ec_events')
+        .select('id, cover_image_url');
+      if (evErr) {
+        summary.errors.push(`fetch events: ${evErr.message}`);
+      } else {
+        for (const e of events || []) {
+          const url = e.cover_image_url || '';
+          if (!url || url.indexOf('raw.githubusercontent.com/SemperAdmin/EventCall-Images') < 0) continue;
+          const name = url.split('/').pop();
+          const storagePath = `events/${e.id}/${name}`;
+          try {
+            const dl = await fetch(url);
+            if (!dl.ok) { summary.errors.push(`download cover ${e.id}`); summary.eventCoversSkipped++; continue; }
+            const buf = Buffer.from(await dl.arrayBuffer());
+            const { error: upErr } = await supabase.storage
+              .from(IMAGE_BUCKET)
+              .upload(storagePath, buf, { contentType: getMimeTypeFromExt(name), upsert: false });
+            let publicUrl = '';
+            if (upErr) {
+              const msg = String(upErr.message || '').toLowerCase();
+              if (msg.includes('already exists')) {
+                const { data: urlData } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(storagePath);
+                publicUrl = urlData?.publicUrl || '';
+                summary.eventCoversSkipped++;
+              } else {
+                summary.errors.push(`upload cover ${e.id}: ${upErr.message}`);
+                continue;
+              }
+            } else {
+              const { data: urlData } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(storagePath);
+              publicUrl = urlData?.publicUrl || '';
+              summary.eventCoversMigrated++;
+            }
+            if (publicUrl) {
+              await supabase
+                .from('ec_events')
+                .update({ cover_image_url: publicUrl, updated_at: new Date().toISOString() })
+                .eq('id', e.id);
+            }
+          } catch (e2) {
+            summary.errors.push(`migrate cover ${e.id}: ${e2.message}`);
+          }
+        }
+      }
+    } catch (e) {
+      summary.errors.push(`events scan error: ${e.message}`);
+    }
+    res.json({ success: true, summary });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 // Proxy the workflow dispatch to GitHub, validating CSRF headers
 app.post('/api/dispatch', async (req, res) => {
