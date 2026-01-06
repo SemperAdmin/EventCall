@@ -241,6 +241,53 @@ async function saveUser(username, userData) {
   return await saveUserToGitHub(username, userData);
 }
 
+// =============================================================================
+// HELPER FUNCTIONS - Data mapping (DRY)
+// =============================================================================
+
+// Map Supabase event data to frontend-expected format
+function mapSupabaseEvent(e) {
+  if (!e) return null;
+  return {
+    id: e.id,
+    title: e.title || '',
+    date: e.date || '',
+    time: e.time || '',
+    location: e.location || '',
+    description: e.description || '',
+    dress_code: e.dress_code || '',
+    cover_image_url: e.cover_image_url || e.image_url || '',
+    status: e.status || 'active',
+    created_by: e.creator_id || e.created_by || '',
+    creator_id: e.creator_id || e.created_by || '',
+    created_at: e.created_at || '',
+    allow_guests: e.allow_guests ?? true,
+    requires_meal_choice: e.requires_meal_choice ?? false,
+    custom_questions: e.custom_questions || [],
+    event_details: e.event_details || {},
+    seating_chart: e.seating_chart || null
+  };
+}
+
+// Map Supabase RSVP data to frontend-expected format
+function mapSupabaseRsvp(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    event_id: r.event_id,
+    eventId: r.event_id,
+    name: r.name || '',
+    email: r.email || '',
+    phone: r.phone || '',
+    guests: r.guests || 0,
+    dietary: r.dietary || '',
+    notes: r.notes || '',
+    status: r.status || 'confirmed',
+    created_at: r.created_at || '',
+    response: r.response || 'yes'
+  };
+}
+
 // Configure Helmet with an explicit CSP including frame-ancestors.
 app.use(helmet({
   contentSecurityPolicy: {
@@ -395,29 +442,9 @@ app.get('/api/events', async (req, res) => {
     let events;
     if (USE_SUPABASE) {
       events = await getEventsFromSupabase(creatorId);
-      // Map Supabase fields to frontend-expected format
-      events = events.map(e => ({
-        id: e.id,
-        title: e.title || '',
-        date: e.date || '',
-        time: e.time || '',
-        location: e.location || '',
-        description: e.description || '',
-        dress_code: e.dress_code || '',
-        cover_image_url: e.cover_image_url || e.image_url || '',
-        status: e.status || 'active',
-        created_by: e.creator_id || e.created_by || '',
-        creator_id: e.creator_id || e.created_by || '',
-        created_at: e.created_at || '',
-        allow_guests: e.allow_guests ?? true,
-        requires_meal_choice: e.requires_meal_choice ?? false,
-        custom_questions: e.custom_questions || [],
-        event_details: e.event_details || {},
-        seating_chart: e.seating_chart || null
-      }));
+      events = events.map(mapSupabaseEvent);
     } else {
       events = await getEventsFromGitHub();
-      // Filter by creator if specified
       if (creatorId) {
         events = events.filter(e => e.creator_id === creatorId || e.creatorId === creatorId);
       }
@@ -446,31 +473,21 @@ app.get('/api/events/:id', async (req, res) => {
       if (error) {
         console.error('Supabase getEvent error:', error.message);
       }
-      if (data) {
-        // Map Supabase fields to frontend-expected format
-        event = {
-          id: data.id,
-          title: data.title || '',
-          date: data.date || '',
-          time: data.time || '',
-          location: data.location || '',
-          description: data.description || '',
-          dress_code: data.dress_code || '',
-          cover_image_url: data.cover_image_url || data.image_url || '',
-          status: data.status || 'active',
-          created_by: data.creator_id || data.created_by || '',
-          creator_id: data.creator_id || data.created_by || '',
-          created_at: data.created_at || '',
-          allow_guests: data.allow_guests ?? true,
-          requires_meal_choice: data.requires_meal_choice ?? false,
-          custom_questions: data.custom_questions || [],
-          event_details: data.event_details || {},
-          seating_chart: data.seating_chart || null
-        };
-      }
+      event = mapSupabaseEvent(data);
     } else {
-      const events = await getEventsFromGitHub();
-      event = events.find(e => e.id === eventId);
+      // Fetch single event directly from GitHub (more efficient than fetching all)
+      const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
+      const response = await fetch(eventUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      if (response.ok) {
+        const eventData = await response.json();
+        event = JSON.parse(Buffer.from(eventData.content, 'base64').toString('utf-8'));
+      }
     }
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
@@ -547,21 +564,7 @@ app.get('/api/rsvps', async (req, res) => {
     let rsvps;
     if (USE_SUPABASE) {
       rsvps = await getRsvpsFromSupabase(eventId, email);
-      // Map Supabase fields to frontend-expected format
-      rsvps = rsvps.map(r => ({
-        id: r.id,
-        event_id: r.event_id,
-        eventId: r.event_id,
-        name: r.name || '',
-        email: r.email || '',
-        phone: r.phone || '',
-        guests: r.guests || 0,
-        dietary: r.dietary || '',
-        notes: r.notes || '',
-        status: r.status || 'confirmed',
-        created_at: r.created_at || '',
-        response: r.response || 'yes'
-      }));
+      rsvps = rsvps.map(mapSupabaseRsvp);
     } else {
       rsvps = await getRsvpsFromGitHub();
       if (eventId) {
@@ -604,7 +607,7 @@ app.post('/api/events', async (req, res) => {
       const { error } = await supabase.from('ec_events').insert([event]);
       if (error) {
         console.error('Supabase createEvent error:', error.message);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: 'Failed to create event' });
       }
     } else {
       // Save to GitHub
@@ -624,7 +627,8 @@ app.post('/api/events', async (req, res) => {
       });
       if (!ghResp.ok) {
         const errData = await ghResp.json();
-        return res.status(500).json({ error: errData.message || 'Failed to create event' });
+        console.error('GitHub createEvent error:', errData.message);
+        return res.status(500).json({ error: 'Failed to create event' });
       }
     }
     res.json({ success: true, event, eventId });
@@ -664,7 +668,7 @@ app.post('/api/rsvps', async (req, res) => {
       const { error } = await supabase.from('ec_rsvps').insert([rsvp]);
       if (error) {
         console.error('Supabase createRsvp error:', error.message);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: 'Failed to create RSVP' });
       }
     } else {
       // Save to GitHub
@@ -684,7 +688,8 @@ app.post('/api/rsvps', async (req, res) => {
       });
       if (!ghResp.ok) {
         const errData = await ghResp.json();
-        return res.status(500).json({ error: errData.message || 'Failed to create RSVP' });
+        console.error('GitHub createRsvp error:', errData.message);
+        return res.status(500).json({ error: 'Failed to create RSVP' });
       }
     }
     res.json({ success: true, rsvp, rsvpId });
@@ -759,7 +764,7 @@ app.get('/api/admin/users', isAdmin, async (req, res) => {
         .order('created_at', { ascending: false });
       if (error) {
         console.error('Supabase getUsers error:', error.message);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: 'Failed to fetch users' });
       }
       users = data || [];
     } else {
@@ -808,9 +813,9 @@ app.get('/api/admin/dashboard-data', isAdmin, async (req, res) => {
         .order('date', { ascending: true });
       if (eventsError) {
         console.error('Supabase getEvents error:', eventsError.message);
-      } else {
-        events = eventsData || [];
+        return res.status(500).json({ error: 'Failed to fetch events' });
       }
+      events = eventsData || [];
 
       // Fetch RSVPs from Supabase
       const { data: rsvpsData, error: rsvpsError } = await supabase
@@ -819,9 +824,9 @@ app.get('/api/admin/dashboard-data', isAdmin, async (req, res) => {
         .order('created_at', { ascending: false });
       if (rsvpsError) {
         console.error('Supabase getRsvps error:', rsvpsError.message);
-      } else {
-        rsvps = rsvpsData || [];
+        return res.status(500).json({ error: 'Failed to fetch RSVPs' });
       }
+      rsvps = rsvpsData || [];
     } else {
       // GitHub fallback
       const eventsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events`;
