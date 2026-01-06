@@ -89,16 +89,28 @@ function enforceLogin() {
     }
     
     console.log('✅ User authenticated:', window.userAuth.getCurrentUser().email);
-    
+
     const loginPage = document.getElementById('login-page');
     const appContent = document.querySelector('.app-content');
-    
+
     if (loginPage) loginPage.style.display = 'none';
     if (appContent) {
         appContent.classList.remove('hidden');
         appContent.style.display = 'block';
     }
-    
+
+    // Ensure dashboard page is shown by default
+    const dashboardPage = document.getElementById('dashboard');
+    if (dashboardPage && !dashboardPage.classList.contains('active')) {
+        // Hide all pages first
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+        });
+        // Show dashboard
+        dashboardPage.classList.add('active');
+        console.log('📊 Dashboard page activated');
+    }
+
     return true;
 }
 
