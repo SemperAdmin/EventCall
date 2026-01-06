@@ -99,16 +99,23 @@ function enforceLogin() {
         appContent.style.display = 'block';
     }
 
-    // Ensure dashboard page is shown by default
-    const dashboardPage = document.getElementById('dashboard');
-    if (dashboardPage && !dashboardPage.classList.contains('active')) {
-        // Hide all pages first
-        document.querySelectorAll('.page').forEach(page => {
-            page.classList.remove('active');
-        });
-        // Show dashboard
-        dashboardPage.classList.add('active');
-        console.log('📊 Dashboard page activated');
+    // Only show dashboard by default if there's no URL path/hash indicating another page
+    // Let the router handle page selection when there's a specific URL
+    const hash = window.location.hash.replace(/^#/, '');
+    const pathname = window.location.pathname.replace(/\/$/, '').split('/').pop();
+    const hasSpecificPage = hash || (pathname && pathname !== '' && pathname !== 'index.html');
+
+    if (!hasSpecificPage) {
+        const dashboardPage = document.getElementById('dashboard');
+        if (dashboardPage && !dashboardPage.classList.contains('active')) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            dashboardPage.classList.add('active');
+            console.log('📊 Dashboard page activated (no specific URL)');
+        }
+    } else {
+        console.log('🔗 URL has specific page, letting router handle:', hash || pathname);
     }
 
     return true;
