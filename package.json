@@ -2,6 +2,7 @@
   "name": "eventcall",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "description": "EventCall - Military Event Management System",
   "scripts": {
     "start": "http-server -p 8080",
@@ -10,14 +11,21 @@
     "lint:css": "stylelint \"styles/**/*.css\""
   },
   "devDependencies": {
-    "http-server": "^14.1.1",
+    "@fullhuman/postcss-purgecss": "^5.0.0",
     "autoprefixer": "^10.4.19",
+    "cross-env": "^7.0.3",
     "cssnano": "^6.1.0",
+    "http-server": "^14.1.1",
     "postcss": "^8.4.35",
     "postcss-cli": "^10.1.0",
-    "@fullhuman/postcss-purgecss": "^5.0.0",
     "stylelint": "^16.9.0",
-    "stylelint-config-standard": "^36.0.0",
-    "cross-env": "^7.0.3"
+    "stylelint-config-standard": "^36.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.89.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0"
   }
 }

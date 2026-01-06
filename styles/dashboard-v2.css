@@ -491,6 +491,8 @@ body::before {
 
 .dashboard-tabs {
     display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center;
     gap: 0.5rem;
     margin-bottom: 2rem;
     border-bottom: 2px solid #3a4556;

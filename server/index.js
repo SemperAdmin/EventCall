@@ -4,6 +4,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import { createClient } from '@supabase/supabase-js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 // =============================================================================
 // RATE LIMITING - Brute force protection (no external dependencies)
@@ -86,10 +89,23 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const REPO_OWNER = process.env.REPO_OWNER || '';
 const REPO_NAME = process.env.REPO_NAME || '';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '';
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(s => String(s).trim())
+  .filter(Boolean)
+  .concat(ALLOWED_ORIGIN ? [ALLOWED_ORIGIN] : []);
 const CSRF_SHARED_SECRET = process.env.CSRF_SHARED_SECRET || '';
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const USE_SUPABASE = !!(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const MIGRATION_SECRET = process.env.MIGRATION_SECRET || '';
+const MIGRATE_ON_START = String(process.env.MIGRATE_ON_START || '').toLowerCase() === 'true' || process.env.MIGRATE_ON_START === '1';
+const MIGRATION_SOURCE_DIR = process.env.MIGRATION_SOURCE_DIR || '';
+const IMAGE_BUCKET = process.env.IMAGE_BUCKET || 'event-images';
+const SUPABASE_HOST = SUPABASE_URL ? (new URL(SUPABASE_URL)).hostname : '';
 
-if (!GITHUB_TOKEN || !REPO_OWNER || !REPO_NAME) {
-  console.error('Missing required env: GITHUB_TOKEN, REPO_OWNER, REPO_NAME. Exiting.');
+if (!USE_SUPABASE && (!GITHUB_TOKEN || !REPO_OWNER || !REPO_NAME)) {
+  console.error('Missing required env for GitHub mode: GITHUB_TOKEN, REPO_OWNER, REPO_NAME. Exiting.');
   process.exit(1);
 }
 if (!ALLOWED_ORIGIN) {
@@ -100,6 +116,31 @@ if (!CSRF_SHARED_SECRET) {
 }
 
 const app = express();
+const supabase = USE_SUPABASE ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
+
+function getMimeTypeFromExt(name) {
+  const lower = String(name || '').toLowerCase();
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.svg')) return 'image/svg+xml';
+  if (lower.endsWith('.bmp')) return 'image/bmp';
+  return 'application/octet-stream';
+}
+
+async function ensurePublicBucket(bucket) {
+  if (!supabase) return { ok: false, error: 'Supabase not configured' };
+  const { data } = await supabase.storage.getBucket(bucket);
+  if (data && data.name) return { ok: true };
+  const { error } = await supabase.storage.createBucket(bucket, {
+    public: true,
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp'],
+    fileSizeLimit: '10MB'
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
 
 // Helper functions for GitHub API interactions
 async function getUserFromGitHub(username) {
@@ -139,6 +180,114 @@ async function saveUserToGitHub(username, userData) {
   return response;
 }
 
+async function getUserFromSupabase(username) {
+  if (!supabase) return null;
+  const uname = String(username || '').toLowerCase();
+  let { data, error } = await supabase
+    .from('ec_users')
+    .select('*')
+    .eq('username', uname)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error('Supabase getUser error:', error.message);
+    return null;
+  }
+  if (data) return data;
+  // Fallback: try original casing if lowercased lookup failed
+  const { data: data2, error: error2 } = await supabase
+    .from('ec_users')
+    .select('*')
+    .eq('username', username)
+    .limit(1)
+    .maybeSingle();
+  if (error2) {
+    console.error('Supabase getUser fallback error:', error2.message);
+    return null;
+  }
+  return data2 || null;
+}
+
+async function saveUserToSupabase(userRow) {
+  if (!supabase) return { ok: false, error: 'Supabase not configured' };
+  const { error } = await supabase.from('ec_users').insert([userRow]);
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+async function getUser(username) {
+  if (USE_SUPABASE) {
+    return await getUserFromSupabase(username);
+  }
+  return await getUserFromGitHub(username);
+}
+
+async function saveUser(username, userData) {
+  if (USE_SUPABASE) {
+    const row = {
+      id: userData.id || undefined,
+      username: userData.username,
+      name: userData.name,
+      email: (userData.email || '').toLowerCase(),
+      branch: userData.branch || '',
+      rank: userData.rank || '',
+      role: userData.role || 'user',
+      password_hash: userData.passwordHash
+    };
+    return await saveUserToSupabase(row);
+  }
+  return await saveUserToGitHub(username, userData);
+}
+
+// =============================================================================
+// HELPER FUNCTIONS - Data mapping (DRY)
+// =============================================================================
+
+// Map Supabase event data to frontend-expected format
+function mapSupabaseEvent(e) {
+  if (!e) return null;
+  return {
+    id: e.id,
+    title: e.title || '',
+    date: e.date || '',
+    time: e.time || '',
+    location: e.location || '',
+    description: e.description || '',
+    dress_code: e.dress_code || '',
+    cover_image_url: e.cover_image_url || e.image_url || '',
+    status: e.status || 'active',
+    created_by: e.creator_id || e.created_by || '',
+    creator_id: e.creator_id || e.created_by || '',
+    created_at: e.created_at || '',
+    allow_guests: e.allow_guests ?? true,
+    requires_meal_choice: e.requires_meal_choice ?? false,
+    custom_questions: e.custom_questions || [],
+    event_details: e.event_details || {},
+    seating_chart: e.seating_chart || null
+  };
+}
+
+// Map Supabase RSVP data to frontend-expected format
+function mapSupabaseRsvp(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    event_id: r.event_id,
+    eventId: r.event_id,
+    name: r.name || '',
+    email: r.email || '',
+    phone: r.phone || '',
+    guests: r.guests || 0,
+    dietary: r.dietary || '',
+    notes: r.notes || '',
+    status: r.status || 'confirmed',
+    created_at: r.created_at || '',
+    response: r.response || 'yes'
+  };
+}
+
 // Configure Helmet with an explicit CSP including frame-ancestors.
 app.use(helmet({
   contentSecurityPolicy: {
@@ -160,21 +309,35 @@ app.use(helmet({
   },
 }));
 app.use(express.json({ limit: '256kb' }));
+// CORS configuration with explicit preflight handling
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || origin === ALLOWED_ORIGIN) return callback(null, true);
+    if (!origin || ALLOWED_ORIGINS.some(o => origin === o)) return callback(null, true);
     return callback(new Error('Origin not allowed'));
   },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-csrf-client', 'x-csrf-token', 'x-csrf-expires', 'x-username'],
+  credentials: true,
+  optionsSuccessStatus: 204
+}));
+app.options('*', cors({
+  origin: function (origin, callback) {
+    if (!origin || ALLOWED_ORIGINS.some(o => origin === o)) return callback(null, true);
+    return callback(new Error('Origin not allowed'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-csrf-client', 'x-csrf-token', 'x-csrf-expires', 'x-username'],
+  credentials: true,
+  optionsSuccessStatus: 204
 }));
 
 function isOriginAllowed(req) {
   const origin = req.headers.origin;
-  // Allow non-browser clients (no Origin) like curl and server-to-server
   if (!origin) return true;
-  if (origin !== ALLOWED_ORIGIN) return false;
-  // If referer exists, it must be consistent; otherwise allow
+  const ok = ALLOWED_ORIGINS.some(o => origin === o || String(origin).startsWith(o));
+  if (!ok) return false;
   const referer = req.headers.referer;
-  return !referer || referer.startsWith(ALLOWED_ORIGIN);
+  return !referer || ALLOWED_ORIGINS.some(o => String(referer).startsWith(o));
 }
 
 function hmacToken(clientId, expiresMs) {
@@ -195,7 +358,8 @@ async function isAdmin(req, res, next) {
   }
 
   try {
-    const user = await getUserFromGitHub(username);
+    // Use unified getUser to support both GitHub and Supabase modes
+    const user = await getUser(username);
     if (!user || user.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden' });
     }
@@ -215,6 +379,324 @@ app.get('/api/csrf', (req, res) => {
   const expires = Date.now() + ttlMs;
   const token = hmacToken(clientId, expires);
   res.json({ clientId, token, expires });
+});
+
+// =============================================================================
+// EVENTS API - Fetch events from Supabase or GitHub
+// =============================================================================
+
+// Helper: Get events from Supabase
+async function getEventsFromSupabase(creatorId = null) {
+  if (!supabase) return [];
+  let query = supabase.from('ec_events').select('*');
+  if (creatorId) {
+    query = query.eq('creator_id', creatorId);
+  }
+  const { data, error } = await query.order('date', { ascending: true });
+  if (error) {
+    console.error('Supabase getEvents error:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+// Helper: Get events from GitHub
+async function getEventsFromGitHub() {
+  try {
+    const eventsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events`;
+    const response = await fetch(eventsUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'EventCall-Backend'
+      }
+    });
+    if (!response.ok) return [];
+    const eventsData = await response.json();
+    if (!Array.isArray(eventsData)) return [];
+    const eventPromises = eventsData.map(async file => {
+      const eventResponse = await fetch(file.url, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      const eventData = await eventResponse.json();
+      return JSON.parse(Buffer.from(eventData.content, 'base64').toString('utf-8'));
+    });
+    return await Promise.all(eventPromises);
+  } catch (err) {
+    console.error('GitHub getEvents error:', err.message);
+    return [];
+  }
+}
+
+// GET /api/events - Fetch all events
+app.get('/api/events', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const creatorId = req.query.creator_id || req.query.created_by || null;
+    let events;
+    if (USE_SUPABASE) {
+      events = await getEventsFromSupabase(creatorId);
+      events = events.map(mapSupabaseEvent);
+    } else {
+      events = await getEventsFromGitHub();
+      if (creatorId) {
+        events = events.filter(e => e.creator_id === creatorId || e.creatorId === creatorId);
+      }
+    }
+    res.json({ success: true, events });
+  } catch (error) {
+    console.error('Failed to fetch events:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/events/:id - Fetch single event
+app.get('/api/events/:id', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const eventId = req.params.id;
+    let event = null;
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase
+        .from('ec_events')
+        .select('*')
+        .eq('id', eventId)
+        .maybeSingle();
+      if (error) {
+        console.error('Supabase getEvent error:', error.message);
+      }
+      event = mapSupabaseEvent(data);
+    } else {
+      // Fetch single event directly from GitHub (more efficient than fetching all)
+      const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
+      const response = await fetch(eventUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      if (response.ok) {
+        const eventData = await response.json();
+        event = JSON.parse(Buffer.from(eventData.content, 'base64').toString('utf-8'));
+      }
+    }
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    res.json({ success: true, event });
+  } catch (error) {
+    console.error('Failed to fetch event:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// =============================================================================
+// RSVPS API - Fetch RSVPs from Supabase or GitHub
+// =============================================================================
+
+// Helper: Get RSVPs from Supabase
+async function getRsvpsFromSupabase(eventId = null, email = null) {
+  if (!supabase) return [];
+  let query = supabase.from('ec_rsvps').select('*');
+  if (eventId) {
+    query = query.eq('event_id', eventId);
+  }
+  if (email) {
+    query = query.ilike('email', email);
+  }
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) {
+    console.error('Supabase getRsvps error:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+// Helper: Get RSVPs from GitHub
+async function getRsvpsFromGitHub() {
+  try {
+    const rsvpsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps`;
+    const response = await fetch(rsvpsUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'EventCall-Backend'
+      }
+    });
+    if (!response.ok) return [];
+    const rsvpsData = await response.json();
+    if (!Array.isArray(rsvpsData)) return [];
+    const rsvpPromises = rsvpsData.map(async file => {
+      const rsvpResponse = await fetch(file.url, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      const rsvpData = await rsvpResponse.json();
+      return JSON.parse(Buffer.from(rsvpData.content, 'base64').toString('utf-8'));
+    });
+    return await Promise.all(rsvpPromises);
+  } catch (err) {
+    console.error('GitHub getRsvps error:', err.message);
+    return [];
+  }
+}
+
+// GET /api/rsvps - Fetch RSVPs (optionally filtered by event_id or email)
+app.get('/api/rsvps', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const eventId = req.query.event_id || null;
+    const email = req.query.email || null;
+    let rsvps;
+    if (USE_SUPABASE) {
+      rsvps = await getRsvpsFromSupabase(eventId, email);
+      rsvps = rsvps.map(mapSupabaseRsvp);
+    } else {
+      rsvps = await getRsvpsFromGitHub();
+      if (eventId) {
+        rsvps = rsvps.filter(r => r.event_id === eventId || r.eventId === eventId);
+      }
+      if (email) {
+        rsvps = rsvps.filter(r => r.email && r.email.toLowerCase() === email.toLowerCase());
+      }
+    }
+    res.json({ success: true, rsvps });
+  } catch (error) {
+    console.error('Failed to fetch RSVPs:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/events - Create a new event
+app.post('/api/events', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const eventData = req.body;
+    if (!eventData.title || !eventData.date) {
+      return res.status(400).json({ error: 'Title and date are required' });
+    }
+    const eventId = eventData.id || crypto.randomUUID();
+    const event = {
+      id: eventId,
+      title: eventData.title,
+      date: eventData.date,
+      time: eventData.time || '',
+      location: eventData.location || '',
+      description: eventData.description || '',
+      dress_code: eventData.dress_code || eventData.dressCode || '',
+      creator_id: eventData.creator_id || eventData.creatorId || '',
+      created_at: new Date().toISOString()
+    };
+    if (USE_SUPABASE) {
+      const { error } = await supabase.from('ec_events').insert([event]);
+      if (error) {
+        console.error('Supabase createEvent error:', error.message);
+        return res.status(500).json({ error: 'Failed to create event' });
+      }
+    } else {
+      // Save to GitHub
+      const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
+      const ghResp = await fetch(eventUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'EventCall-Backend'
+        },
+        body: JSON.stringify({
+          message: `Create event: ${event.title}`,
+          content: Buffer.from(JSON.stringify(event, null, 2)).toString('base64')
+        })
+      });
+      if (!ghResp.ok) {
+        const errData = await ghResp.json();
+        console.error('GitHub createEvent error:', errData.message);
+        return res.status(500).json({ error: 'Failed to create event' });
+      }
+    }
+    res.json({ success: true, event, eventId });
+  } catch (error) {
+    console.error('Failed to create event:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/rsvps - Create a new RSVP
+app.post('/api/rsvps', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const rsvpData = req.body;
+    if (!rsvpData.event_id && !rsvpData.eventId) {
+      return res.status(400).json({ error: 'event_id is required' });
+    }
+    if (!rsvpData.name || !rsvpData.email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+    const rsvpId = rsvpData.id || crypto.randomUUID();
+    const rsvp = {
+      id: rsvpId,
+      event_id: rsvpData.event_id || rsvpData.eventId,
+      name: rsvpData.name,
+      email: rsvpData.email.toLowerCase(),
+      phone: rsvpData.phone || '',
+      guests: rsvpData.guests || 0,
+      dietary: rsvpData.dietary || '',
+      notes: rsvpData.notes || '',
+      status: rsvpData.status || 'confirmed',
+      created_at: new Date().toISOString()
+    };
+    if (USE_SUPABASE) {
+      const { error } = await supabase.from('ec_rsvps').insert([rsvp]);
+      if (error) {
+        console.error('Supabase createRsvp error:', error.message);
+        return res.status(500).json({ error: 'Failed to create RSVP' });
+      }
+    } else {
+      // Save to GitHub
+      const rsvpUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps/${rsvpId}.json`;
+      const ghResp = await fetch(rsvpUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'EventCall-Backend'
+        },
+        body: JSON.stringify({
+          message: `RSVP from ${rsvp.name}`,
+          content: Buffer.from(JSON.stringify(rsvp, null, 2)).toString('base64')
+        })
+      });
+      if (!ghResp.ok) {
+        const errData = await ghResp.json();
+        console.error('GitHub createRsvp error:', errData.message);
+        return res.status(500).json({ error: 'Failed to create RSVP' });
+      }
+    }
+    res.json({ success: true, rsvp, rsvpId });
+  } catch (error) {
+    console.error('Failed to create RSVP:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // Proxy the workflow dispatch to GitHub, validating CSRF headers
@@ -274,29 +756,43 @@ app.post('/api/dispatch', async (req, res) => {
 
 app.get('/api/admin/users', isAdmin, async (req, res) => {
   try {
-    const usersUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users`;
-    const response = await fetch(usersUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': 'EventCall-Backend'
+    let users = [];
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase
+        .from('ec_users')
+        .select('id, username, name, email, branch, rank, role, created_at')
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Supabase getUsers error:', error.message);
+        return res.status(500).json({ error: 'Failed to fetch users' });
       }
-    });
-    const usersData = await response.json();
-    const userPromises = usersData.map(async file => {
-      const userResponse = await fetch(file.url, {
+      users = data || [];
+    } else {
+      // GitHub fallback
+      const usersUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/users`;
+      const response = await fetch(usersUrl, {
         headers: {
           'Authorization': `token ${GITHUB_TOKEN}`,
           'Accept': 'application/vnd.github+json',
           'User-Agent': 'EventCall-Backend'
         }
       });
-      const userData = await userResponse.json();
-      const user = JSON.parse(Buffer.from(userData.content, 'base64').toString('utf-8'));
-      delete user.passwordHash;
-      return user;
-    });
-    const users = await Promise.all(userPromises);
+      const usersData = await response.json();
+      const userPromises = usersData.map(async file => {
+        const userResponse = await fetch(file.url, {
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'EventCall-Backend'
+          }
+        });
+        const userData = await userResponse.json();
+        const user = JSON.parse(Buffer.from(userData.content, 'base64').toString('utf-8'));
+        delete user.passwordHash;
+        return user;
+      });
+      users = await Promise.all(userPromises);
+    }
     res.json(users);
   } catch (error) {
     console.error('Failed to fetch all users:', error);
@@ -306,51 +802,81 @@ app.get('/api/admin/users', isAdmin, async (req, res) => {
 
 app.get('/api/admin/dashboard-data', isAdmin, async (req, res) => {
   try {
-    // Fetch all events
-    const eventsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events`;
-    const eventsResponse = await fetch(eventsUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': 'EventCall-Backend'
-      }
-    });
-    const eventsData = await eventsResponse.json();
-    const eventPromises = eventsData.map(async file => {
-      const eventResponse = await fetch(file.url, {
-        headers: {
-          'Authorization': `token ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github+json',
-          'User-Agent': 'EventCall-Backend'
-        }
-      });
-      const eventData = await eventResponse.json();
-      return JSON.parse(Buffer.from(eventData.content, 'base64').toString('utf-8'));
-    });
-    const events = await Promise.all(eventPromises);
+    let events = [];
+    let rsvps = [];
 
-    // Fetch all RSVPs
-    const rsvpsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps`;
-    const rsvpsResponse = await fetch(rsvpsUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': 'EventCall-Backend'
+    if (USE_SUPABASE) {
+      // Fetch events from Supabase
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('ec_events')
+        .select('*')
+        .order('date', { ascending: true });
+      if (eventsError) {
+        console.error('Supabase getEvents error:', eventsError.message);
+        return res.status(500).json({ error: 'Failed to fetch events' });
       }
-    });
-    const rsvpsData = await rsvpsResponse.json();
-    const rsvpPromises = rsvpsData.map(async file => {
-      const rsvpResponse = await fetch(file.url, {
+      events = eventsData || [];
+
+      // Fetch RSVPs from Supabase
+      const { data: rsvpsData, error: rsvpsError } = await supabase
+        .from('ec_rsvps')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (rsvpsError) {
+        console.error('Supabase getRsvps error:', rsvpsError.message);
+        return res.status(500).json({ error: 'Failed to fetch RSVPs' });
+      }
+      rsvps = rsvpsData || [];
+    } else {
+      // GitHub fallback
+      const eventsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events`;
+      const eventsResponse = await fetch(eventsUrl, {
         headers: {
           'Authorization': `token ${GITHUB_TOKEN}`,
           'Accept': 'application/vnd.github+json',
           'User-Agent': 'EventCall-Backend'
         }
       });
-      const rsvpData = await rsvpResponse.json();
-      return JSON.parse(Buffer.from(rsvpData.content, 'base64').toString('utf-8'));
-    });
-    const rsvps = await Promise.all(rsvpPromises);
+      const eventsDataRaw = await eventsResponse.json();
+      if (Array.isArray(eventsDataRaw)) {
+        const eventPromises = eventsDataRaw.map(async file => {
+          const eventResponse = await fetch(file.url, {
+            headers: {
+              'Authorization': `token ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github+json',
+              'User-Agent': 'EventCall-Backend'
+            }
+          });
+          const eventData = await eventResponse.json();
+          return JSON.parse(Buffer.from(eventData.content, 'base64').toString('utf-8'));
+        });
+        events = await Promise.all(eventPromises);
+      }
+
+      const rsvpsUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/rsvps`;
+      const rsvpsResponse = await fetch(rsvpsUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'EventCall-Backend'
+        }
+      });
+      const rsvpsDataRaw = await rsvpsResponse.json();
+      if (Array.isArray(rsvpsDataRaw)) {
+        const rsvpPromises = rsvpsDataRaw.map(async file => {
+          const rsvpResponse = await fetch(file.url, {
+            headers: {
+              'Authorization': `token ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github+json',
+              'User-Agent': 'EventCall-Backend'
+            }
+          });
+          const rsvpData = await rsvpResponse.json();
+          return JSON.parse(Buffer.from(rsvpData.content, 'base64').toString('utf-8'));
+        });
+        rsvps = await Promise.all(rsvpPromises);
+      }
+    }
 
     res.json({ events, rsvps });
   } catch (error) {
@@ -380,13 +906,14 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const { username, password } = req.body;
+    const uname = String(username || '').trim().toLowerCase();
 
-    if (!username || !password) {
+    if (!uname || !password) {
       return res.status(400).json({ error: 'Missing credentials' });
     }
 
     // SECURITY: Validate username format to prevent path traversal
-    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username);
+    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(uname);
     if (!isValidUsername) {
       return res.status(400).json({ error: 'Invalid username format' });
     }
@@ -396,27 +923,33 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    // Load user from EventCall-Data repo
-    const user = await getUserFromGitHub(username);
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
-    }
+  const user = await getUser(uname);
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid credentials'
+    });
+  }
 
-    // Verify password with bcrypt
-    const isValid = await bcrypt.compare(password, user.passwordHash);
+  const hash = user.passwordHash || user.password_hash;
+  if (typeof hash !== 'string' || !hash.startsWith('$2')) {
+    // Require bcrypt hashes only
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid credentials'
+    });
+  }
+  const isValid = await bcrypt.compare(password, hash);
 
-    if (!isValid) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
+  if (!isValid) {
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid credentials'
+    });
     }
 
     // Return user data (without password hash)
-    const { passwordHash, ...safeUser } = user;
+    const { passwordHash, password_hash, ...safeUser } = user;
     res.json({
       success: true,
       user: safeUser,
@@ -452,14 +985,15 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const { username, password, name, email, branch, rank } = req.body;
+    const uname = String(username || '').trim().toLowerCase();
 
     // Validation
-    if (!username || !password || !name || !email) {
+    if (!uname || !password || !name || !email) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     // SECURITY: Validate username format to prevent path traversal
-    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username);
+    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(uname);
     if (!isValidUsername) {
       return res.status(400).json({ error: 'Invalid username format' });
     }
@@ -470,7 +1004,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     // Check if user exists
-    const existingUser = await getUserFromGitHub(username);
+    const existingUser = await getUser(uname);
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -483,8 +1017,8 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Create user object
     const user = {
-      id: `user_${username}`,
-      username,
+      id: crypto.randomUUID(),
+      username: uname,
       name,
       email: email.toLowerCase(),
       branch: branch || '',
@@ -494,14 +1028,11 @@ app.post('/api/auth/register', async (req, res) => {
       created: new Date().toISOString()
     };
 
-    // Save to GitHub
-    const createResp = await saveUserToGitHub(username, user);
-
-    if (!createResp.ok) {
-      const error = await createResp.json();
+    const saveResp = await saveUser(username, user);
+    if (!saveResp.ok) {
       return res.status(500).json({
         success: false,
-        error: error.message || 'Failed to create user'
+        error: typeof saveResp.error === 'string' ? saveResp.error : 'Failed to create user'
       });
     }
 
@@ -546,21 +1077,27 @@ setInterval(() => {
 async function findUserForReset(username) {
   let user = null;
   let userFileSha = null;
-  const userPath = `users/${username.toLowerCase()}.json`;
-  const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
 
   try {
-    const userResp = await fetch(userUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    if (USE_SUPABASE) {
+      // Use Supabase
+      user = await getUserFromSupabase(username);
+    } else {
+      // GitHub fallback
+      const userPath = `users/${username.toLowerCase()}.json`;
+      const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
+      const userResp = await fetch(userUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
 
-    if (userResp.ok) {
-      const fileData = await userResp.json();
-      user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
-      userFileSha = fileData.sha;
+      if (userResp.ok) {
+        const fileData = await userResp.json();
+        user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+        userFileSha = fileData.sha;
+      }
     }
   } catch (err) {
     console.log(`[RESET] Error fetching user: ${err.message}`);
@@ -754,52 +1291,66 @@ app.post('/api/auth/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Reset token has expired' });
     }
 
-    // Fetch current user data
-    const userPath = `users/${tokenData.username}.json`;
-    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
-
-    const userResp = await fetch(userUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
-
-    if (!userResp.ok) {
-      return res.status(400).json({ error: 'User not found' });
-    }
-
-    const fileData = await userResp.json();
-    const user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
-
     // Hash new password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Update user with new password
-    const updatedUser = {
-      ...user,
-      passwordHash,
-      passwordResetAt: new Date().toISOString()
-    };
+    if (USE_SUPABASE) {
+      // Update password in Supabase
+      const { error } = await supabase
+        .from('ec_users')
+        .update({
+          password_hash: passwordHash,
+          updated_at: new Date().toISOString()
+        })
+        .eq('username', tokenData.username);
 
-    // Save updated user
-    const updateResp = await fetch(userUrl, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: `Reset password for ${tokenData.username}`,
-        content: Buffer.from(JSON.stringify(updatedUser, null, 2)).toString('base64'),
-        sha: fileData.sha
-      })
-    });
+      if (error) {
+        console.error('Supabase password reset error:', error.message);
+        return res.status(500).json({ error: 'Failed to update password' });
+      }
+    } else {
+      // GitHub fallback
+      const userPath = `users/${tokenData.username}.json`;
+      const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
 
-    if (!updateResp.ok) {
-      const error = await updateResp.json();
-      return res.status(500).json({ error: error.message || 'Failed to update password' });
+      const userResp = await fetch(userUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (!userResp.ok) {
+        return res.status(400).json({ error: 'User not found' });
+      }
+
+      const fileData = await userResp.json();
+      const user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
+
+      const updatedUser = {
+        ...user,
+        passwordHash,
+        passwordResetAt: new Date().toISOString()
+      };
+
+      const updateResp = await fetch(userUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `Reset password for ${tokenData.username}`,
+          content: Buffer.from(JSON.stringify(updatedUser, null, 2)).toString('base64'),
+          sha: fileData.sha
+        })
+      });
+
+      if (!updateResp.ok) {
+        const error = await updateResp.json();
+        return res.status(500).json({ error: error.message || 'Failed to update password' });
+      }
     }
 
     // Invalidate the token
@@ -860,26 +1411,15 @@ app.post('/api/auth/change-password', async (req, res) => {
       });
     }
 
-    // Fetch user from GitHub
-    const userPath = `users/${username.toLowerCase()}.json`;
-    const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
-
-    const userResp = await fetch(userUrl, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
-
-    if (!userResp.ok) {
+    // Fetch user using unified function
+    const user = await getUser(username);
+    if (!user) {
       return res.status(400).json({ error: 'User not found' });
     }
 
-    const fileData = await userResp.json();
-    const user = JSON.parse(Buffer.from(fileData.content, 'base64').toString('utf-8'));
-
-    // Verify current password
-    const isCurrentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    // Verify current password (support both field names)
+    const currentHash = user.passwordHash || user.password_hash;
+    const isCurrentValid = await bcrypt.compare(currentPassword, currentHash);
     if (!isCurrentValid) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
@@ -887,31 +1427,63 @@ app.post('/api/auth/change-password', async (req, res) => {
     // Hash new password
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-    // Update user with new password
-    const updatedUser = {
-      ...user,
-      passwordHash: newPasswordHash,
-      passwordChangedAt: new Date().toISOString()
-    };
+    if (USE_SUPABASE) {
+      // Update password in Supabase
+      const { error } = await supabase
+        .from('ec_users')
+        .update({
+          password_hash: newPasswordHash,
+          updated_at: new Date().toISOString()
+        })
+        .eq('username', username.toLowerCase());
 
-    // Save updated user
-    const updateResp = await fetch(userUrl, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: `Change password for ${username}`,
-        content: Buffer.from(JSON.stringify(updatedUser, null, 2)).toString('base64'),
-        sha: fileData.sha
-      })
-    });
+      if (error) {
+        console.error('Supabase password change error:', error.message);
+        return res.status(500).json({ error: 'Failed to update password' });
+      }
+    } else {
+      // GitHub fallback
+      const userPath = `users/${username.toLowerCase()}.json`;
+      const userUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/${userPath}`;
 
-    if (!updateResp.ok) {
-      const error = await updateResp.json();
-      return res.status(500).json({ error: error.message || 'Failed to update password' });
+      // Get current file SHA
+      const userResp = await fetch(userUrl, {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (!userResp.ok) {
+        return res.status(400).json({ error: 'User not found' });
+      }
+
+      const fileData = await userResp.json();
+
+      const updatedUser = {
+        ...user,
+        passwordHash: newPasswordHash,
+        passwordChangedAt: new Date().toISOString()
+      };
+
+      const updateResp = await fetch(userUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `Change password for ${username}`,
+          content: Buffer.from(JSON.stringify(updatedUser, null, 2)).toString('base64'),
+          sha: fileData.sha
+        })
+      });
+
+      if (!updateResp.ok) {
+        const error = await updateResp.json();
+        return res.status(500).json({ error: error.message || 'Failed to update password' });
+      }
     }
 
     console.log(`[AUTH] Password changed successfully for: ${username}`);
@@ -930,4 +1502,5 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {
   console.log(`EventCall proxy listening on port ${PORT}`);
+  console.log(`Mode: ${USE_SUPABASE ? 'Supabase' : 'GitHub'}`);
 });

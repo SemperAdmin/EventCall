@@ -199,6 +199,14 @@ class EventManager {
         });
         // Show manage page content; URL updates should be orchestrated by the router, not here
         showPage('manage');
+        
+        // Initialize photo upload for manage page
+        if (window.setupPhotoUpload) {
+            // Reset init state if needed, though setupPhotoUpload handles it per element usually.
+            // But since elements are re-created, they won't have the dataset flag.
+            window.setupPhotoUpload();
+        }
+
         // Legacy fallback: update hash only if router is unavailable
         if (!(window.AppRouter && typeof window.AppRouter.navigateToPage === 'function')) {
             const targetHash = `#manage/${eventId}`;
@@ -421,11 +429,17 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                             </div>
                         ` : ''}
                     </div>
-                    ${event.coverImage ? `
-                        <div class="event-cover-large">
-                            <img src="${h(event.coverImage)}" alt="${h(event.title)}">
+                    
+                    <!-- Cover Image Upload -->
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label for="manage-cover-input" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--semper-navy);">Cover Image</label>
+                        <div class="image-upload" id="manage-cover-upload" role="button" tabindex="0" aria-label="Change cover image">
+                            <p>${event.coverImage ? 'Click or drag to change image' : 'Click or drag to upload cover image'}</p>
+                            <input type="file" id="manage-cover-input" accept="image/*" class="file-input">
                         </div>
-                    ` : ''}
+                        <img id="manage-cover-preview" class="image-preview ${event.coverImage ? '' : 'hidden'}" src="${h(event.coverImage || '')}" alt="Event cover image">
+                        <input type="hidden" id="manage-cover-image-url" value="${h(event.coverImage || '')}">
+                    </div>
                 </div>
 
                 <!-- Event Timeline -->
@@ -549,6 +563,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                 ${this.generateAttendeeCards(eventResponses, eventId)}
             </div>
 
+            <!-- Photos Gallery (Removed) -->
             ${event.seatingChart && event.seatingChart.enabled ? this.generateSeatingChartSection(event, eventId, eventResponses) : ''}
         </div>
     `;
@@ -559,11 +574,9 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         const btnOverview = document.getElementById('tab-overview-btn');
         const btnGuests = document.getElementById('tab-guests-btn');
         const btnSpecial = document.getElementById('tab-special-btn');
-        // Note: rsvp-dashboard-section is now nested in event-overview-section, no need to list separately
-        // Note: invite-roster-section is now nested in attendee-list-section, no need to list separately
+        
         const overviewSelectors = ['.overview-subtabs', '.event-overview-section'];
         const guestSelectors = ['.attendee-list-section'];
-        // Remove invite-link-section from Special; invite link should only appear under Event Timeline
         const specialSelectors = ['.dashboard-actions', '.seating-chart-section'];
 
         const showElems = (selectors) => selectors.forEach(sel => {
@@ -601,7 +614,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             hideElems(overviewSelectors);
             hideElems(guestSelectors);
             showElems(specialSelectors);
-            // Ensure invite link is hidden when Special tab is active
             hideElems(['.invite-link-section']);
         };
 
@@ -609,7 +621,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
         if (btnGuests) btnGuests.addEventListener('click', activateGuests);
         if (btnSpecial) btnSpecial.addEventListener('click', activateSpecial);
 
-        // Keyboard navigation for tabs
         const tabs = Array.from(document.querySelectorAll('.manage-tabs .tab-btn'));
         tabs.forEach((btn, idx) => {
             btn.addEventListener('keydown', (e) => {
@@ -618,7 +629,6 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
             });
         });
 
-        // Default to Overview
         activateOverview();
     }
 
@@ -2405,24 +2415,26 @@ Best regards`;
         // Handle cover image
         const coverPreview = document.getElementById('cover-preview');
         if (event.coverImage) {
-    coverPreview.src = event.coverImage;
-    coverPreview.classList.remove('hidden');
-    
-    // Update upload area to show existing image
-    const uploadArea = document.getElementById('cover-upload');
-    if (uploadArea) {
-        uploadArea.innerHTML = window.utils.sanitizeHTML(`
-            <p style="color: #10b981; font-weight: 600;">✅ Current image loaded</p>
-            <p style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Click to change image</p>
-        `);
-    }
-} else {
-    // Reset upload area for new image
-    const uploadArea = document.getElementById('cover-upload');
-    if (uploadArea) {
-        uploadArea.innerHTML = window.utils.sanitizeHTML(`<p>Click or drag to upload cover image</p>`);
-    }
-}
+            coverPreview.src = event.coverImage;
+            coverPreview.classList.remove('hidden');
+            const urlInput = document.getElementById('cover-image-url');
+            if (urlInput) urlInput.value = event.coverImage;
+            
+            // Update upload area to show existing image
+            const uploadArea = document.getElementById('cover-upload');
+            if (uploadArea) {
+                uploadArea.innerHTML = window.utils.sanitizeHTML(`
+                    <p style="color: #10b981; font-weight: 600;">✅ Current image loaded</p>
+                    <p style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Click to change image</p>
+                `);
+            }
+        } else {
+            // Reset upload area for new image
+            const uploadArea = document.getElementById('cover-upload');
+            if (uploadArea) {
+                uploadArea.innerHTML = window.utils.sanitizeHTML(`<p>Click or drag to upload cover image</p>`);
+            }
+        }
 
         // Populate custom questions
         this.populateCustomQuestions(event.customQuestions || []);
@@ -2473,6 +2485,13 @@ Best regards`;
 
         showPage('create');
         document.querySelector('#create h2').textContent = 'Edit Event';
+        if (window.setupPhotoUpload) {
+            const uploadAreaInit = document.getElementById('cover-upload');
+            if (uploadAreaInit) {
+                uploadAreaInit.dataset.uploadInitialized = 'false';
+            }
+            window.setupPhotoUpload();
+        }
     }
 
     /**
@@ -2541,12 +2560,23 @@ Best regards`;
             eventData.createdByName = this.currentEvent.createdByName;
             eventData.lastModified = Date.now();
 
-            // Save directly to EventCall-Data using GitHub API
-            // github-api.js saveEvent handles both create and update operations
-            if (window.githubAPI) {
-                await window.githubAPI.saveEvent(eventData);
+            if (window.BackendAPI) {
+                await window.BackendAPI.updateEvent(eventData.id, {
+                    title: eventData.title,
+                    description: eventData.description,
+                    date: eventData.date,
+                    time: eventData.time,
+                    location: eventData.location,
+                    coverImageUrl: eventData.coverImage,
+                    status: eventData.status,
+                    allowGuests: eventData.allowGuests,
+                    requiresMealChoice: eventData.requiresMealChoice,
+                    customQuestions: eventData.customQuestions,
+                    eventDetails: eventData.eventDetails,
+                    seatingChart: eventData.seatingChart
+                });
             } else {
-                throw new Error('GitHub API not available');
+                throw new Error('Backend API not available');
             }
 
             // Update local state
@@ -2554,7 +2584,7 @@ Best regards`;
                 window.events[eventData.id] = eventData;
             }
 
-            showToast('âœ… Event updated successfully!', 'success');
+            showToast('✅ Event updated successfully!', 'success');
 
             // Reset edit mode
             this.cancelEdit();
@@ -3301,9 +3331,16 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
      */
     async saveEventSeatingData(event) {
         try {
-            // Persist to GitHub if available
-            if (window.githubAPI) {
-                await window.githubAPI.saveEvent(event);
+            if (window.BackendAPI) {
+                await window.BackendAPI.updateEvent(event.id, {
+                    title: event.title,
+                    description: event.description,
+                    date: event.date,
+                    time: event.time,
+                    location: event.location,
+                    coverImageUrl: event.coverImage,
+                    status: event.status
+                });
             }
             // Always update local state so UI refresh uses latest seating data
             if (window.events) {
@@ -3327,6 +3364,113 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
                 console.error('Background save failed:', error);
                 // Don't show toast for background saves to avoid interrupting user
             });
+        }
+    }
+
+    // ----- Photo Gallery Methods -----
+
+    async renderPhotoGallery(eventId) {
+        const grid = document.getElementById(`photo-gallery-grid-${eventId}`);
+        if (!grid) return;
+
+        try {
+            grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 2rem;">Loading photos...</div>';
+            
+            if (!window.BackendAPI || !window.BackendAPI.getEventPhotos) {
+                throw new Error('Backend API not available');
+            }
+
+            const result = await window.BackendAPI.getEventPhotos(eventId);
+            const photos = result.photos || [];
+
+            if (photos.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 2rem;">No photos uploaded yet. Be the first to share!</div>';
+                return;
+            }
+
+            grid.innerHTML = photos.map(photo => `
+                <div class="photo-card">
+                    <img src="${window.utils && window.utils.escapeHTML ? window.utils.escapeHTML(photo.url) : photo.url}" alt="Event photo" class="photo-card-img" loading="lazy">
+                    <div class="photo-card-overlay">
+                        <button class="btn-delete-photo" onclick="window.eventManager.deletePhoto('${photo.id}', '${eventId}')" title="Delete photo">
+                            🗑️
+                        </button>
+                    </div>
+                    ${photo.caption ? `<div class="photo-card-caption">${window.utils && window.utils.escapeHTML ? window.utils.escapeHTML(photo.caption) : photo.caption}</div>` : ''}
+                </div>
+            `).join('');
+
+        } catch (error) {
+            console.error('Failed to load photos:', error);
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 2rem;">Failed to load photos: ${error.message}</div>`;
+        }
+    }
+
+    async handlePhotoUpload(event, eventId) {
+        const fileInput = event.target;
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const uploadArea = document.getElementById(`photo-gallery-upload-${eventId}`);
+        
+        try {
+            // Show loading state
+            if (uploadArea) {
+                uploadArea.classList.add('loading');
+                const originalContent = uploadArea.innerHTML;
+                uploadArea.innerHTML = '<div style="color: #e2e8f0; font-weight: 500;">Uploading... <span class="spinner"></span></div>';
+            }
+
+            if (!window.BackendAPI || !window.BackendAPI.uploadImage) {
+                throw new Error('Backend API not available');
+            }
+
+            await window.BackendAPI.uploadImage(file, file.name, {
+                eventId: eventId,
+                caption: '' // Could add a prompt for caption later
+            });
+
+            showToast('✅ Photo uploaded successfully!', 'success');
+            
+            // Refresh gallery
+            this.renderPhotoGallery(eventId);
+
+        } catch (error) {
+            console.error('Photo upload failed:', error);
+            showToast('❌ Upload failed: ' + error.message, 'error');
+        } finally {
+            // Reset upload area
+            if (uploadArea) {
+                uploadArea.classList.remove('loading');
+                uploadArea.innerHTML = `
+                    <input type="file" id="gallery-upload-input-${eventId}" accept="image/*" style="display:none" onchange="window.eventManager.handlePhotoUpload(event, '${eventId}')">
+                    <span class="photo-upload-icon">☁️</span>
+                    <div class="photo-upload-text">Click or drag photos here to upload</div>
+                    <div class="photo-upload-subtext">Supports JPG, PNG, GIF, WEBP</div>
+                `;
+            }
+            // Clear input
+            fileInput.value = '';
+        }
+    }
+
+    async deletePhoto(photoId, eventId) {
+        if (!confirm('Are you sure you want to delete this photo? This cannot be undone.')) return;
+
+        try {
+            if (!window.BackendAPI || !window.BackendAPI.deletePhoto) {
+                throw new Error('Backend API not available');
+            }
+
+            await window.BackendAPI.deletePhoto(photoId);
+            showToast('✅ Photo deleted', 'success');
+            
+            // Refresh gallery
+            this.renderPhotoGallery(eventId);
+
+        } catch (error) {
+            console.error('Delete photo failed:', error);
+            showToast('❌ Delete failed: ' + error.message, 'error');
         }
     }
 }

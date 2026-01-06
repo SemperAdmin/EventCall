@@ -325,28 +325,36 @@ class BackendAPI {
         }
 
         console.log('Submitting RSVP payload with guestCount:', payload.guestCount);
-        if (!payload.csrfToken) {
-            const err = new Error('Missing CSRF token');
-            if (window.errorHandler) window.errorHandler.handleError(err, 'Security-CSRF', { form: 'rsvp' });
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const url = base + '/api/rsvps';
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event_id: payload.eventId,
+                name: payload.name,
+                email: payload.email,
+                phone: payload.phone,
+                attending: payload.attending,
+                guest_count: payload.guestCount,
+                reason: payload.reason,
+                rank: payload.rank,
+                unit: payload.unit,
+                branch: payload.branch,
+                dietary_restrictions: payload.dietaryRestrictions,
+                allergy_details: payload.allergyDetails,
+                custom_answers: payload.customAnswers,
+                check_in_token: payload.checkInToken,
+                edit_token: payload.editToken
+            })
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'RSVP submission failed');
         }
-
-        // Try direct file write first (most reliable), then fallback to workflow/issue
-        try {
-            console.log('💾 Attempting direct RSVP file write to GitHub...');
-            return await this.submitRSVPDirectToFile(payload);
-        } catch (directError) {
-            console.warn('⚠️ Direct file write failed:', directError.message);
-
-            // Try workflow dispatch as fallback
-            try {
-                console.log('🔄 Attempting workflow dispatch...');
-                return await this.triggerWorkflow('submit_rsvp', payload);
-            } catch (workflowError) {
-                console.error('❌ All submission methods failed');
-                // Throw a comprehensive error
-                throw new Error(`RSVP submission failed: Direct (${directError.message}), Workflow (${workflowError.message})`);
-            }
-        }
+        return await resp.json();
     }
 
     async submitRSVPDirectToFile(rsvpData) {
@@ -464,7 +472,7 @@ class BackendAPI {
     }
 
     async createEvent(eventData) {
-        console.log('Creating event via workflow...');
+        console.log('Creating event via backend...');
 
         // Get manager token and info
         const token = window.GITHUB_CONFIG && window.GITHUB_CONFIG.token ? window.GITHUB_CONFIG.token : null;
@@ -477,128 +485,314 @@ class BackendAPI {
         const creatorUsername = user?.username || (eventData.createdBy ? String(eventData.createdBy).trim() : '');
         const creatorName = eventData.createdByName || user?.name || user?.username || 'unknown';
 
-        if (!token) {
-            throw new Error('Manager token required to create event');
-        }
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
 
-        // Prepare event payload for workflow
         const payload = {
-        id: eventData.id,
-        title: String(eventData.title || '').trim(),
-        description: String(eventData.description || '').trim().substring(0, 500),
-        date: String(eventData.date || '').trim(),
-        time: String(eventData.time || '').trim(),
-        location: String(eventData.location || '').trim().substring(0, 200),
-        coverImage: eventData.coverImage ? 'yes' : 'no',
-        askReason: Boolean(eventData.askReason),
-        allowGuests: Boolean(eventData.allowGuests),
-        requiresMealChoice: Boolean(eventData.requiresMealChoice),
-        customQuestionsCount: (eventData.customQuestions || []).length,
-        managerEmail: managerEmail || 'unknown',
-        createdBy: creatorUsername || managerEmail || 'unknown',
-        createdByUsername: creatorUsername || '',
-        createdByName: creatorName,
-        created: eventData.created || Date.now(),
-        status: 'active',
-        csrfToken: (window.csrf && window.csrf.getToken && window.csrf.getToken()) || ''
-    };
+            title: String(eventData.title || '').trim(),
+            description: String(eventData.description || '').trim().substring(0, 500),
+            date: String(eventData.date || '').trim(),
+            time: String(eventData.time || '').trim(),
+            location: String(eventData.location || '').trim().substring(0, 200),
+            cover_image_url: (eventData.coverImage || eventData.coverImageUrl || ''),
+            created_by: (user && user.id) ? user.id : (eventData.createdByUserId || null),
+            status: 'active',
+            allow_guests: !!eventData.allowGuests,
+            requires_meal_choice: !!eventData.requiresMealChoice,
+            custom_questions: Array.isArray(eventData.customQuestions) ? eventData.customQuestions : [],
+            event_details: typeof eventData.eventDetails === 'object' && eventData.eventDetails !== null ? eventData.eventDetails : {},
+            seating_chart: typeof eventData.seatingChart === 'object' && eventData.seatingChart !== null ? eventData.seatingChart : null
+        };
 
         if (!payload.title || !payload.date || !payload.time) {
             throw new Error('Missing required event fields');
         }
 
-        return await this.triggerWorkflow('create_event', payload);
+        const url = base + '/api/events';
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Event creation failed');
+        }
+        return await resp.json();
+    }
+
+    async uploadImage(file, fileName, options = {}) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const contentBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const s = String(reader.result || '');
+                const idx = s.indexOf(',');
+                resolve(idx >= 0 ? s.slice(idx + 1) : s);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        const url = base + '/api/images/upload';
+        const currentUser = (window.userAuth && window.userAuth.getCurrentUser && window.userAuth.getCurrentUser()) || window.userAuth?.currentUser || null;
+        const payload = {
+            file_name: String(fileName || '').trim(),
+            content_base64: contentBase64,
+            event_id: options.eventId || null,
+            caption: options.caption || '',
+            tags: Array.isArray(options.tags) ? options.tags : [],
+            uploader_username: currentUser?.username || '',
+            uploader_id: currentUser?.id || ''
+        };
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Image upload failed');
+        }
+        const data = await resp.json();
+        return data;
+    }
+
+    async getEventPhotos(eventId) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const url = base + '/api/events/' + encodeURIComponent(String(eventId)) + '/photos';
+        const resp = await fetch(url, { method: 'GET' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to load photos');
+        }
+        return await resp.json();
+    }
+
+    async deletePhoto(photoId) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const url = base + '/api/photos/' + encodeURIComponent(String(photoId));
+        const resp = await fetch(url, { method: 'DELETE' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to delete photo');
+        }
+        return await resp.json();
+    }
+
+    async loadEvents(params = {}) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const q = new URLSearchParams();
+        if (params.created_by) q.set('created_by', params.created_by);
+        if (params.unassigned === true) q.set('unassigned', 'true');
+        if (params.status) q.set('status', params.status);
+        const url = base + '/api/events' + (q.toString() ? ('?' + q.toString()) : '');
+        const resp = await fetch(url, { method: 'GET' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to load events');
+        }
+        const data = await resp.json();
+        const list = Array.isArray(data.events) ? data.events : [];
+        const out = {};
+        for (const e of list) {
+            const id = String(e.id ?? e.eventId ?? '');
+            if (!id) continue;
+            out[id] = {
+                id,
+                title: String(e.title || '').trim(),
+                date: String(e.date || '').trim(),
+                time: String(e.time || '').trim(),
+                location: String(e.location || '').trim(),
+                description: String(e.description || '').trim(),
+                coverImage: e.cover_image_url || '',
+                status: String(e.status || 'active').trim(),
+                createdBy: e.created_by || '',
+                created: e.created_at || Date.now(),
+                allowGuests: !!e.allow_guests,
+                requiresMealChoice: !!e.requires_meal_choice,
+                customQuestions: e.custom_questions || [],
+                eventDetails: e.event_details || {},
+                seatingChart: e.seating_chart || null
+            };
+        }
+        return out;
+    }
+
+    async loadUsersByIds(ids = []) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const q = new URLSearchParams();
+        if (Array.isArray(ids) && ids.length > 0) q.set('ids', ids.join(','));
+        const url = base + '/api/users' + (q.toString() ? ('?' + q.toString()) : '');
+        const resp = await fetch(url, { method: 'GET' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to load users');
+        }
+        const data = await resp.json();
+        const list = Array.isArray(data.users) ? data.users : [];
+        const map = {};
+        for (const u of list) {
+            const id = String(u.id || '');
+            if (!id) continue;
+            map[id] = {
+                id,
+                username: String(u.username || '').trim(),
+                name: String(u.name || '').trim(),
+                email: String(u.email || '').trim().toLowerCase()
+            };
+        }
+        return map;
+    }
+
+    async loadUserByUsername(username) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const uname = String(username || '').trim().toLowerCase();
+        if (!uname) throw new Error('Username required');
+        const url = base + '/api/users/by-username/' + encodeURIComponent(uname);
+        const resp = await fetch(url, { method: 'GET' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to load user');
+        }
+        const data = await resp.json();
+        const u = data.user;
+        if (!u) return null;
+        return {
+            id: String(u.id || ''),
+            username: String(u.username || '').trim(),
+            name: String(u.name || '').trim(),
+            email: String(u.email || '').trim().toLowerCase()
+        };
+    }
+
+    async loadResponses(params = {}) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const q = new URLSearchParams();
+        if (params.event_id) q.set('event_id', params.event_id);
+        if (Array.isArray(params.event_ids) && params.event_ids.length > 0) {
+            q.set('event_ids', params.event_ids.join(','));
+        }
+        const url = base + '/api/rsvps' + (q.toString() ? ('?' + q.toString()) : '');
+        const resp = await fetch(url, { method: 'GET' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to load RSVPs');
+        }
+        const data = await resp.json();
+        const list = Array.isArray(data.rsvps) ? data.rsvps : [];
+        const out = {};
+        for (const r of list) {
+            const eid = String(r.event_id ?? r.eventId ?? '');
+            if (!eid) continue;
+            if (!out[eid]) out[eid] = [];
+            out[eid].push({
+                rsvpId: String(r.id ?? r.rsvpId ?? ''),
+                eventId: eid,
+                name: String(r.name || '').trim(),
+                email: String(r.email || '').trim().toLowerCase(),
+                phone: String(r.phone || '').trim(),
+                attending: !!r.attending,
+                guestCount: Number(r.guest_count ?? r.guestCount ?? 0),
+                reason: String(r.reason || '').trim(),
+                rank: String(r.rank || '').trim(),
+                unit: String(r.unit || '').trim(),
+                branch: String(r.branch || '').trim(),
+                dietaryRestrictions: Array.isArray(r.dietary_restrictions ?? r.dietaryRestrictions) ? (r.dietary_restrictions ?? r.dietaryRestrictions) : [],
+                allergyDetails: String(r.allergy_details ?? r.allergyDetails ?? '').trim(),
+                customAnswers: typeof (r.custom_answers ?? r.customAnswers) === 'object' && (r.custom_answers ?? r.customAnswers) !== null ? (r.custom_answers ?? r.customAnswers) : {},
+                checkInToken: String(r.check_in_token ?? r.checkInToken ?? '').trim(),
+                editToken: String(r.edit_token ?? r.editToken ?? '').trim(),
+                timestamp: r.created_at || Date.now()
+            });
+        }
+        return out;
+    }
+
+    async updateEvent(eventId, update) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const url = base + '/api/events/' + encodeURIComponent(String(eventId));
+        const payload = {
+            title: update.title,
+            date: update.date,
+            time: update.time,
+            location: update.location,
+            description: update.description,
+            cover_image_url: update.coverImageUrl || update.coverImage || '',
+            status: update.status,
+            allow_guests: update.allowGuests,
+            requires_meal_choice: update.requiresMealChoice,
+            custom_questions: Array.isArray(update.customQuestions) ? update.customQuestions : undefined,
+            event_details: typeof update.eventDetails === 'object' && update.eventDetails !== null ? update.eventDetails : undefined,
+            seating_chart: typeof update.seatingChart === 'object' && update.seatingChart !== null ? update.seatingChart : undefined,
+            created_by: update.created_by
+        };
+        const resp = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to update event');
+        }
+        return await resp.json();
+    }
+
+    async deleteEvent(eventId) {
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) throw new Error('Backend not configured');
+        const url = base + '/api/events/' + encodeURIComponent(String(eventId));
+        const resp = await fetch(url, { method: 'DELETE' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to delete event');
+        }
+        return await resp.json();
     }
 
     async updateUserProfile(userData) {
-        console.log('Updating user profile in backend...');
-
-        const token = this.getToken();
-        if (!token) {
-            throw new Error('GitHub token not available');
+        console.log('Updating user profile in Supabase...');
+        const cfg = window.BACKEND_CONFIG || {};
+        const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
+        if (!base) {
+            throw new Error('Backend not configured');
         }
-
-        const username = userData.username;
-        const filePath = `data/users/${username}.json`;
-
-        try {
-            // Get existing user file
-            const checkResponse = await window.safeFetchGitHub(
-                `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
-                {
-                    headers: {
-                        'Authorization': 'token ' + token,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                },
-                'Get existing user profile'
-            );
-
-            if (!checkResponse.ok) {
-                throw new Error(`User file not found: ${username}`);
-            }
-
-            const fileData = await checkResponse.json();
-            const sha = fileData.sha;
-
-            // Decode existing content
-            const existingContent = JSON.parse(atob(fileData.content));
-
-            // Merge with new data, preserving critical fields
-            const updatedUser = {
-                ...existingContent,
-                name: userData.name || existingContent.name,
-                email: userData.email || existingContent.email || '',
-                branch: userData.branch || existingContent.branch || '',
-                rank: userData.rank || existingContent.rank || '',
-                lastUpdated: new Date().toISOString()
-            };
-
-            // Encode updated content
-            const content = btoa(JSON.stringify(updatedUser, null, 2));
-            const commitMessage = `Update profile for ${username}`;
-
-            // Update file
-            const response = await window.safeFetchGitHub(
-                `${this.apiBase}/repos/${this.owner}/${this.repo}/contents/${filePath}`,
-                {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': 'token ' + token,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: commitMessage,
-                        content: content,
-                        sha: sha,
-                        branch: 'main'
-                    })
-                },
-                'Update user profile'
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error('User profile update failed:', errorData);
-                throw new Error(`User profile update failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
-            }
-
-            const result = await response.json();
-            console.log('✅ User profile updated in backend:', filePath);
-
-            return {
-                success: true,
-                method: 'direct_file_update',
-                filePath: filePath,
-                commitSha: result.commit?.sha,
-                user: updatedUser
-            };
-
-        } catch (error) {
-            console.error('Failed to update user profile:', error);
-            throw error;
+        const url = base + '/api/users/update-profile';
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: userData.username,
+                name: userData.name,
+                email: userData.email,
+                branch: userData.branch,
+                rank: userData.rank
+            })
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to update profile');
         }
+        const data = await resp.json();
+        return { success: true, user: data.user };
     }
 }
 
