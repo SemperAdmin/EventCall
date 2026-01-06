@@ -352,6 +352,11 @@ function showUserMenu() {
 
     // Show modal
     modal.style.display = 'flex';
+    const innerModal = modal.querySelector('.modal');
+    if (innerModal) {
+        innerModal.style.display = 'block';
+        innerModal.classList.add('show');
+    }
     requestAnimationFrame(() => {
         modal.classList.add('active', 'is-visible');
     });
@@ -552,6 +557,11 @@ async function saveUserProfile() {
 function closeUserProfile() {
     const modal = document.getElementById('user-profile-modal');
     if (modal) {
+        const innerModal = modal.querySelector('.modal');
+        if (innerModal) {
+            innerModal.style.display = '';
+            innerModal.classList.remove('show');
+        }
         modal.style.display = 'none';
         modal.classList.remove('active', 'is-visible');
     }
