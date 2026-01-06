@@ -982,13 +982,28 @@ app.post('/api/rsvps', async (req, res) => {
       if (existingRsvp) {
         // If explicit update flag is set, update existing RSVP
         if (rsvpData.isUpdate || rsvpData.rsvpId === existingRsvp.id) {
+          // Map attending boolean to status string
+          let updateStatus = rsvpData.status || existingRsvp.status;
+          if (typeof rsvpData.attending === 'boolean') {
+            updateStatus = rsvpData.attending ? 'confirmed' : 'declined';
+          } else if (rsvpData.attending === 'yes') {
+            updateStatus = 'confirmed';
+          } else if (rsvpData.attending === 'no') {
+            updateStatus = 'declined';
+          }
+
           const updateData = {
             name: rsvpData.name,
             phone: rsvpData.phone || '',
-            guests: rsvpData.guests || 0,
-            dietary: rsvpData.dietary || '',
-            notes: rsvpData.notes || '',
-            status: rsvpData.status || existingRsvp.status,
+            guests: rsvpData.guests || rsvpData.guest_count || 0,
+            dietary: rsvpData.dietary || rsvpData.dietary_restrictions || '',
+            allergy_details: rsvpData.allergy_details || '',
+            notes: rsvpData.notes || rsvpData.reason || '',
+            status: updateStatus,
+            rank: rsvpData.rank || '',
+            unit: rsvpData.unit || '',
+            branch: rsvpData.branch || '',
+            custom_answers: rsvpData.custom_answers || {},
             updated_at: new Date().toISOString()
           };
 
@@ -1026,16 +1041,34 @@ app.post('/api/rsvps', async (req, res) => {
 
     // No existing RSVP found - create new one
     const rsvpId = rsvpData.id || rsvpData.rsvpId || crypto.randomUUID();
+
+    // Map attending boolean to status string
+    let status = rsvpData.status || 'confirmed';
+    if (typeof rsvpData.attending === 'boolean') {
+      status = rsvpData.attending ? 'confirmed' : 'declined';
+    } else if (rsvpData.attending === 'yes') {
+      status = 'confirmed';
+    } else if (rsvpData.attending === 'no') {
+      status = 'declined';
+    }
+
     const rsvp = {
       id: rsvpId,
       event_id: eventId,
       name: rsvpData.name,
       email: normalizedEmail,
       phone: rsvpData.phone || '',
-      guests: rsvpData.guests || 0,
-      dietary: rsvpData.dietary || '',
-      notes: rsvpData.notes || '',
-      status: rsvpData.status || 'confirmed',
+      guests: rsvpData.guests || rsvpData.guest_count || 0,
+      dietary: rsvpData.dietary || rsvpData.dietary_restrictions || '',
+      allergy_details: rsvpData.allergy_details || '',
+      notes: rsvpData.notes || rsvpData.reason || '',
+      status: status,
+      rank: rsvpData.rank || '',
+      unit: rsvpData.unit || '',
+      branch: rsvpData.branch || '',
+      custom_answers: rsvpData.custom_answers || {},
+      check_in_token: rsvpData.check_in_token || '',
+      edit_token: rsvpData.edit_token || '',
       created_at: new Date().toISOString()
     };
 
