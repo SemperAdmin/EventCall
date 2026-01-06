@@ -97,15 +97,11 @@ async function getEventForRSVP(eventId) {
         if (event) return event;
     }
 
-    // Fallback: try to fetch from events-index.json if it exists
-    try {
-        const response = await fetch('events-index.json');
-        if (response.ok) {
-            const eventsIndex = await response.json();
-            return eventsIndex.events?.find(e => e.id === eventId);
-        }
-    } catch (e) {
-        // File doesn't exist or fetch failed, that's okay
+    if (window.BackendAPI) {
+        try {
+            const all = await window.BackendAPI.loadEvents();
+            return all[eventId] || null;
+        } catch (_) {}
     }
 
     return null;

@@ -4,6 +4,84 @@ import cors from 'cors';
 import helmet from 'helmet';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import { createClient } from '@supabase/supabase-js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+// =============================================================================
+// RATE LIMITING - Brute force protection (no external dependencies)
+// =============================================================================
+class RateLimiter {
+  constructor(windowMs, maxAttempts) {
+    this.windowMs = windowMs;
+    this.maxAttempts = maxAttempts;
+    this.attempts = new Map();
+
+    // Cleanup old entries every minute
+    setInterval(() => this.cleanup(), 60 * 1000);
+  }
+
+  cleanup() {
+    const now = Date.now();
+    for (const [key, data] of this.attempts) {
+      if (now - data.firstAttempt > this.windowMs) {
+        this.attempts.delete(key);
+      }
+    }
+  }
+
+  isRateLimited(key) {
+    const now = Date.now();
+    const data = this.attempts.get(key);
+
+    if (!data) {
+      this.attempts.set(key, { count: 1, firstAttempt: now });
+      return false;
+    }
+
+    // Reset if window has passed
+    if (now - data.firstAttempt > this.windowMs) {
+      this.attempts.set(key, { count: 1, firstAttempt: now });
+      return false;
+    }
+
+    // Increment and check
+    data.count++;
+    if (data.count > this.maxAttempts) {
+      return true;
+    }
+
+    return false;
+  }
+
+  getRemainingTime(key) {
+    const data = this.attempts.get(key);
+    if (!data) return 0;
+    const elapsed = Date.now() - data.firstAttempt;
+    return Math.max(0, Math.ceil((this.windowMs - elapsed) / 1000));
+  }
+
+  getAttempts(key) {
+    const data = this.attempts.get(key);
+    return data ? data.count : 0;
+  }
+}
+
+// Rate limiters for auth endpoints
+// Login: 5 attempts per 15 minutes per IP
+const loginLimiter = new RateLimiter(15 * 60 * 1000, 5);
+// Registration: 3 attempts per hour per IP
+const registerLimiter = new RateLimiter(60 * 60 * 1000, 3);
+
+function getClientIP(req) {
+  // Support common proxy headers
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+         req.headers['x-real-ip'] ||
+         req.socket?.remoteAddress ||
+         'unknown';
+}
+
+// =============================================================================
 
 // =============================================================================
 // RATE LIMITING - Brute force protection (no external dependencies)
@@ -86,10 +164,23 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const REPO_OWNER = process.env.REPO_OWNER || '';
 const REPO_NAME = process.env.REPO_NAME || '';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '';
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(s => String(s).trim())
+  .filter(Boolean)
+  .concat(ALLOWED_ORIGIN ? [ALLOWED_ORIGIN] : []);
 const CSRF_SHARED_SECRET = process.env.CSRF_SHARED_SECRET || '';
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const USE_SUPABASE = !!(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const MIGRATION_SECRET = process.env.MIGRATION_SECRET || '';
+const MIGRATE_ON_START = String(process.env.MIGRATE_ON_START || '').toLowerCase() === 'true' || process.env.MIGRATE_ON_START === '1';
+const MIGRATION_SOURCE_DIR = process.env.MIGRATION_SOURCE_DIR || '';
+const IMAGE_BUCKET = process.env.IMAGE_BUCKET || 'event-images';
+const SUPABASE_HOST = SUPABASE_URL ? (new URL(SUPABASE_URL)).hostname : '';
 
-if (!GITHUB_TOKEN || !REPO_OWNER || !REPO_NAME) {
-  console.error('Missing required env: GITHUB_TOKEN, REPO_OWNER, REPO_NAME. Exiting.');
+if (!USE_SUPABASE && (!GITHUB_TOKEN || !REPO_OWNER || !REPO_NAME)) {
+  console.error('Missing required env for GitHub mode: GITHUB_TOKEN, REPO_OWNER, REPO_NAME. Exiting.');
   process.exit(1);
 }
 if (!ALLOWED_ORIGIN) {
@@ -100,6 +191,31 @@ if (!CSRF_SHARED_SECRET) {
 }
 
 const app = express();
+const supabase = USE_SUPABASE ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
+
+function getMimeTypeFromExt(name) {
+  const lower = String(name || '').toLowerCase();
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.svg')) return 'image/svg+xml';
+  if (lower.endsWith('.bmp')) return 'image/bmp';
+  return 'application/octet-stream';
+}
+
+async function ensurePublicBucket(bucket) {
+  if (!supabase) return { ok: false, error: 'Supabase not configured' };
+  const { data } = await supabase.storage.getBucket(bucket);
+  if (data && data.name) return { ok: true };
+  const { error } = await supabase.storage.createBucket(bucket, {
+    public: true,
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp'],
+    fileSizeLimit: '10MB'
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
 
 // Helper functions for GitHub API interactions
 async function getUserFromGitHub(username) {
@@ -139,6 +255,67 @@ async function saveUserToGitHub(username, userData) {
   return response;
 }
 
+async function getUserFromSupabase(username) {
+  if (!supabase) return null;
+  const uname = String(username || '').toLowerCase();
+  let { data, error } = await supabase
+    .from('ec_users')
+    .select('*')
+    .eq('username', uname)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error('Supabase getUser error:', error.message);
+    return null;
+  }
+  if (data) return data;
+  // Fallback: try original casing if lowercased lookup failed
+  const { data: data2, error: error2 } = await supabase
+    .from('ec_users')
+    .select('*')
+    .eq('username', username)
+    .limit(1)
+    .maybeSingle();
+  if (error2) {
+    console.error('Supabase getUser fallback error:', error2.message);
+    return null;
+  }
+  return data2 || null;
+}
+
+async function saveUserToSupabase(userRow) {
+  if (!supabase) return { ok: false, error: 'Supabase not configured' };
+  const { error } = await supabase.from('ec_users').insert([userRow]);
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+async function getUser(username) {
+  if (USE_SUPABASE) {
+    return await getUserFromSupabase(username);
+  }
+  return await getUserFromGitHub(username);
+}
+
+async function saveUser(username, userData) {
+  if (USE_SUPABASE) {
+    const row = {
+      id: userData.id || undefined,
+      username: userData.username,
+      name: userData.name,
+      email: (userData.email || '').toLowerCase(),
+      branch: userData.branch || '',
+      rank: userData.rank || '',
+      role: userData.role || 'user',
+      password_hash: userData.passwordHash
+    };
+    return await saveUserToSupabase(row);
+  }
+  return await saveUserToGitHub(username, userData);
+}
+
 // Configure Helmet with an explicit CSP including frame-ancestors.
 app.use(helmet({
   contentSecurityPolicy: {
@@ -160,21 +337,35 @@ app.use(helmet({
   },
 }));
 app.use(express.json({ limit: '256kb' }));
+// CORS configuration with explicit preflight handling
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || origin === ALLOWED_ORIGIN) return callback(null, true);
+    if (!origin || ALLOWED_ORIGINS.some(o => origin === o)) return callback(null, true);
     return callback(new Error('Origin not allowed'));
   },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-csrf-client', 'x-csrf-token', 'x-csrf-expires', 'x-username'],
+  credentials: true,
+  optionsSuccessStatus: 204
+}));
+app.options('*', cors({
+  origin: function (origin, callback) {
+    if (!origin || ALLOWED_ORIGINS.some(o => origin === o)) return callback(null, true);
+    return callback(new Error('Origin not allowed'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-csrf-client', 'x-csrf-token', 'x-csrf-expires', 'x-username'],
+  credentials: true,
+  optionsSuccessStatus: 204
 }));
 
 function isOriginAllowed(req) {
   const origin = req.headers.origin;
-  // Allow non-browser clients (no Origin) like curl and server-to-server
   if (!origin) return true;
-  if (origin !== ALLOWED_ORIGIN) return false;
-  // If referer exists, it must be consistent; otherwise allow
+  const ok = ALLOWED_ORIGINS.some(o => origin === o || String(origin).startsWith(o));
+  if (!ok) return false;
   const referer = req.headers.referer;
-  return !referer || referer.startsWith(ALLOWED_ORIGIN);
+  return !referer || ALLOWED_ORIGINS.some(o => String(referer).startsWith(o));
 }
 
 function hmacToken(clientId, expiresMs) {
@@ -380,13 +571,14 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const { username, password } = req.body;
+    const uname = String(username || '').trim().toLowerCase();
 
-    if (!username || !password) {
+    if (!uname || !password) {
       return res.status(400).json({ error: 'Missing credentials' });
     }
 
     // SECURITY: Validate username format to prevent path traversal
-    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username);
+    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(uname);
     if (!isValidUsername) {
       return res.status(400).json({ error: 'Invalid username format' });
     }
@@ -396,27 +588,33 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    // Load user from EventCall-Data repo
-    const user = await getUserFromGitHub(username);
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
-    }
+  const user = await getUser(uname);
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid credentials'
+    });
+  }
 
-    // Verify password with bcrypt
-    const isValid = await bcrypt.compare(password, user.passwordHash);
+  const hash = user.passwordHash || user.password_hash;
+  if (typeof hash !== 'string' || !hash.startsWith('$2')) {
+    // Require bcrypt hashes only
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid credentials'
+    });
+  }
+  const isValid = await bcrypt.compare(password, hash);
 
-    if (!isValid) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
+  if (!isValid) {
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid credentials'
+    });
     }
 
     // Return user data (without password hash)
-    const { passwordHash, ...safeUser } = user;
+    const { passwordHash, password_hash, ...safeUser } = user;
     res.json({
       success: true,
       user: safeUser,
@@ -452,14 +650,15 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const { username, password, name, email, branch, rank } = req.body;
+    const uname = String(username || '').trim().toLowerCase();
 
     // Validation
-    if (!username || !password || !name || !email) {
+    if (!uname || !password || !name || !email) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     // SECURITY: Validate username format to prevent path traversal
-    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(username);
+    const isValidUsername = /^[a-z0-9._-]{3,50}$/.test(uname);
     if (!isValidUsername) {
       return res.status(400).json({ error: 'Invalid username format' });
     }
@@ -470,7 +669,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     // Check if user exists
-    const existingUser = await getUserFromGitHub(username);
+    const existingUser = await getUser(uname);
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -483,8 +682,8 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Create user object
     const user = {
-      id: `user_${username}`,
-      username,
+      id: crypto.randomUUID(),
+      username: uname,
       name,
       email: email.toLowerCase(),
       branch: branch || '',
@@ -494,14 +693,11 @@ app.post('/api/auth/register', async (req, res) => {
       created: new Date().toISOString()
     };
 
-    // Save to GitHub
-    const createResp = await saveUserToGitHub(username, user);
-
-    if (!createResp.ok) {
-      const error = await createResp.json();
+    const saveResp = await saveUser(username, user);
+    if (!saveResp.ok) {
       return res.status(500).json({
         success: false,
-        error: error.message || 'Failed to create user'
+        error: typeof saveResp.error === 'string' ? saveResp.error : 'Failed to create user'
       });
     }
 
@@ -930,4 +1126,9 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {
   console.log(`EventCall proxy listening on port ${PORT}`);
+  if (MIGRATE_ON_START && USE_SUPABASE) {
+    performMigration().then(r => {
+      console.log(`Migration completed: ${JSON.stringify(r)}`);
+    }).catch(() => {});
+  }
 });

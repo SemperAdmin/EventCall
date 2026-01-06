@@ -1,0 +1,1871 @@
+{
+  "users_with_events": [
+    {
+      "userUuid": "c9309467-8c85-4889-869e-1512e2c500b6",
+      "name": "Alexander Ontivero",
+      "username": "alex94",
+      "events": [
+        {
+          "eventId": "e8d9d0ea-b448-4d09-bae2-a42ba3ac4082",
+          "title": "Memorial Service",
+          "date": "2026-03-25",
+          "location": "",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "74438976-59ee-414b-9bd4-3f4056b7d17d",
+      "name": "Adam Wilkie",
+      "username": "awilkie05",
+      "events": [
+        {
+          "eventId": "583c8ca2-9450-45af-8e11-28284207644b",
+          "title": "Retirement Ceremony for Lieutenant Colonel Adam Wilkie",
+          "date": "2026-03-15",
+          "location": "Battleship North Carolina (1 Battleship Rd NE, Wilmington, NC 28401)",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "99942516-8130-460d-a1f9-8e03f81ab38a",
+      "name": "Breona",
+      "username": "b.delon",
+      "events": [
+        {
+          "eventId": "1d8ab440-4104-43e6-8671-b7dd64ec68a7",
+          "title": "Retirement Ceremony",
+          "date": "2025-12-20",
+          "location": "Camp Lejeune North Carolina 10th Marine Regimental LZ on Julian C. Smith Street across Area 5 Pool",
+          "rsvps": [
+            {
+              "rsvpId": "058a5a1e-3969-4b43-86a7-068f71aa5611",
+              "name": "Colone William R. Soucie",
+              "email": "william.soucie@usmc.mil",
+              "attending": true,
+              "guestCount": 2,
+              "rank": "Col",
+              "unit": "10th Marine Regiment"
+            },
+            {
+              "rsvpId": "0c6097b6-8894-4a22-a95a-59cf06bc9527",
+              "name": "Alex Navia",
+              "email": "alexander.navia@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "LtCol",
+              "unit": "HQMC Plans, Policies, and Operations"
+            },
+            {
+              "rsvpId": "56ad5197-b8cd-489e-8103-f40c732e03ec",
+              "name": "Elliot Eggert",
+              "email": "elliot.eggert@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "Maj",
+              "unit": "1st Battalion 10th Marines"
+            },
+            {
+              "rsvpId": "cb89c4aa-6b13-42c6-9a93-03f38250081c",
+              "name": "Scott Weibling",
+              "email": "scott.weibling@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "a18eaee3-993f-4e17-ad00-915c068a63e1",
+              "name": "James A. Carter II",
+              "email": "james.carter1@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "26ac90aa-eca4-47a0-9a9b-5ee32393b04c",
+              "name": "Marcelo Rios",
+              "email": "marcelo.rios@usmc.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "f3437289-2a08-41bb-8942-86f30e8cf7e4",
+              "name": "Joe Mozzi",
+              "email": "joseph.mozzi@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "f4f7c5dd-5140-4b52-8fc5-e293a96d5ef9",
+              "name": "Cheng Shen",
+              "email": "cheng.shen@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "eda49c13-2848-45d7-9238-20183f80a47c",
+              "name": "Brandon Bolt",
+              "email": "bradnon.j.bolt.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "16c9df4d-8d66-462a-9570-ea420b8a41cf",
+              "name": "MSgt Daniel Noll",
+              "email": "daniel.j.noll@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "MSgt",
+              "unit": "II MEF CE"
+            },
+            {
+              "rsvpId": "2a67aa3b-2fc2-41f0-8700-e524eae9be90",
+              "name": "MSgt Michael Birch",
+              "email": "birch1623@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "abf98f5c-2ce9-479e-b366-3271a8388556",
+              "name": "Derek J Bamba",
+              "email": "derek.bamba@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": "8th ESB"
+            },
+            {
+              "rsvpId": "44a1f620-b937-485d-81bc-c28fdda49ba0",
+              "name": "Joey Cruz",
+              "email": "joey91884@gmail.com",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "SgtMaj",
+              "unit": "2&#x2F;10"
+            },
+            {
+              "rsvpId": "b6f525ac-f39f-49ca-8ad6-4e893e1434e4",
+              "name": "MSgt Raudales Felix T",
+              "email": "felix.raudales@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "MSgt",
+              "unit": "MCAS NEW RIVER"
+            },
+            {
+              "rsvpId": "ad6fe707-d065-4286-bcb8-0a28604d5688",
+              "name": "Kelly Mack",
+              "email": "kelly.mack@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "57719f5f-7767-4322-9c81-ef60c666d565",
+              "name": "Nadia Sensing",
+              "email": "nadia.sensing@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "1c6cd706-88b4-4b1d-9234-f28bb32079b6",
+              "name": "KEVIN CLARK",
+              "email": "kevin.clark@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "3fa96a88-6cca-49ca-a637-06e01664763b",
+              "name": "Kevin Karaffa",
+              "email": "kevin.karaffa@usmc.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "cc91b034-faae-47b3-99d5-108ca26aff76",
+              "name": "Derek Bamba",
+              "email": "derek.bamba@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "bd48a425-d7df-4dba-a45a-488c914a6bde",
+              "name": "Alex Navia",
+              "email": "alexander.navia@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "LtCol",
+              "unit": "HQMC Plans, Policies, and Operations"
+            },
+            {
+              "rsvpId": "122d3188-e6a5-450a-94f4-0b5f6f047cfb",
+              "name": "Jason Borski",
+              "email": "jason.borski@usmc.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "496f7775-90f9-4c88-886b-803e052891ec",
+              "name": "Nicolas L Martinez",
+              "email": "nicolas.martinez@dla.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "LtCol",
+              "unit": "Defense Logistics Agency CENTCOM &amp; SOCOM"
+            },
+            {
+              "rsvpId": "c4a4b9ec-99c8-4f55-84ca-d82ee0ce08aa",
+              "name": "David Ickles",
+              "email": "david.ickles@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "61277b33-0d83-477f-8637-5b0a71861112",
+              "name": "Kelly Mack",
+              "email": "kelly.mack@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "948601c5-7a8f-46f1-b3d7-6436b0c6110a",
+              "name": "Joe Mozzi",
+              "email": "joseph.mozzi@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "LtCol",
+              "unit": "1&#x2F;10"
+            },
+            {
+              "rsvpId": "473e72c9-d03a-4636-9ddb-ab142d913aa8",
+              "name": "Enrique De Anda",
+              "email": "enrique.deanda@usmc.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "a46135fc-9cfc-41aa-9c5c-5be2cf08146d",
+              "name": "Tom Coffey",
+              "email": "thomas.r.coffey@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "SgtMaj",
+              "unit": "SOI-East"
+            },
+            {
+              "rsvpId": "9876b896-d882-4049-9d64-4578aa607c27",
+              "name": "MSgt Daniel Noll",
+              "email": "daniel.j.noll@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "MSgt",
+              "unit": "II MEF CE"
+            },
+            {
+              "rsvpId": "89bb91c1-0b22-4452-a7ca-55f576faac5a",
+              "name": "Justin P. Winters",
+              "email": "justin.p.winters.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "CWO2",
+              "unit": "1st Battalion 8th Marines Bn Gunner"
+            },
+            {
+              "rsvpId": "2acb56a1-4263-4f93-9111-5b1ad0b40f33",
+              "name": "Winford Morris",
+              "email": "winfordmorris274@yahoo.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "1fe92f6c-bdf4-4728-8ac4-d8d91422de62",
+              "name": "Cory Hye",
+              "email": "cory.hye@usmc.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "19493d8f-917e-4175-aeae-d0b6999f97ea",
+              "name": "Weston Taylor",
+              "email": "weston.taylor@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "6a8abe37-a3cc-4e67-8963-4aafdb683118",
+              "name": "LtCol Brian Pegram",
+              "email": "brian.pegram@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "LtCol",
+              "unit": "2d Battalion, 10th Marines"
+            },
+            {
+              "rsvpId": "69153d0a-c33e-4841-8ed3-4be50ff9d38d",
+              "name": "Daniel Best",
+              "email": "daniel.p.best@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "SgtMaj",
+              "unit": "2d AABN"
+            },
+            {
+              "rsvpId": "a4909901-a19f-4ed3-b46f-7073cf343b01",
+              "name": "Nicolas Martinez",
+              "email": "martinez.nl@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "LtCol",
+              "unit": "Defense Logistics Agency"
+            },
+            {
+              "rsvpId": "0b1177bc-d249-401c-9ac9-4d5831c6e89d",
+              "name": "Ryan ERVIN",
+              "email": "ervin0012@yahoo.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "77e14c89-a5d8-4b54-a51e-3dd5366f759b",
+              "name": "Neil R Berry",
+              "email": "neil.berry@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "72097374-c523-4155-af4c-43c41d5b2b29",
+              "name": "Brendan Dudeck",
+              "email": "brendan.j.dudeck.mil@socom.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "4a9b6a4d-8faa-480a-bbe3-2bd96952b0b3",
+              "name": "CMDCM APRIL MERRIMAN",
+              "email": "april.merriman.mil@usmc.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "d1ea1c04-e7a6-4a3a-9ae6-b25af8a9345f",
+              "name": "Ron Bess",
+              "email": "ronald.e.bess.stu@ndu.edu",
+              "attending": true,
+              "guestCount": 4,
+              "rank": "LtCol",
+              "unit": "National Defense University"
+            },
+            {
+              "rsvpId": "745e0c33-f4c4-40d4-928e-befd5fbb904e",
+              "name": "Joshua Cordy",
+              "email": "joshuacordy@gmail.com",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userUuid": "15ce980c-77d2-4d2b-a7cc-0bb80741cc2e",
+      "name": "Brandon Johnson",
+      "username": "bjohnson1812",
+      "events": [
+        {
+          "eventId": "dffaeabb-f73e-41ed-adf1-377cbf82c004",
+          "title": "A D&amp;B Festive Holiday Celebration",
+          "date": "2025-12-05",
+          "location": "Marine Barracks Washington SNCO Club",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "39e22a1f-a565-4f60-bd83-9c17d9ee2084",
+      "name": "Bryan E Seay",
+      "username": "brokentorque",
+      "events": [
+        {
+          "eventId": "7844d2f4-5a91-46c7-8026-647e4751ba83",
+          "title": "Marine Corps Birthday Ball",
+          "date": "2025-11-21",
+          "location": "Wilmington convention center wilmington north carolina",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "a06c6fb0-fd9f-40f7-984e-a5517344f47a",
+      "name": "brent Vines",
+      "username": "bvraider54",
+      "events": [
+        {
+          "eventId": "1b1b367d-8326-4b31-9402-d6bb719adcd4",
+          "title": "Retirement Ceremony",
+          "date": "2025-12-20",
+          "location": "VMMT 204",
+          "rsvps": [
+            {
+              "rsvpId": "c705c1b5-625d-47f8-82c0-a422a2b491da",
+              "name": "Joseph Schulten",
+              "email": "joseph.schulten@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "a4167011-98bb-4b27-a0a1-5a5cda78a953",
+              "name": "GySgt Devon Genova",
+              "email": "devon.genova@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "GySgt",
+              "unit": "MAG-26 S4"
+            },
+            {
+              "rsvpId": "32b41755-cfd1-4a71-8572-f3181c191830",
+              "name": "Kyle Meyer",
+              "email": "ktm1621@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "59ad2cce-cb64-4231-871b-81040c9a1f85",
+              "name": "LtCol Jordan",
+              "email": "charles.d.jordan@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "4907c8dd-6897-41c2-ae59-64eaef153bb1",
+              "name": "Nathan Stephens",
+              "email": "nathan.stephens@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "MSgt",
+              "unit": "24 MEU"
+            },
+            {
+              "rsvpId": "59cd64a1-dd6c-4c86-8018-c76b8d7b6ae2",
+              "name": "Azucena Mendoza",
+              "email": "azucena.mendoza@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "SSgt",
+              "unit": "MAG-26"
+            },
+            {
+              "rsvpId": "2326d192-c2ed-4097-919b-1c60717d4c88",
+              "name": "William Adam Hemme",
+              "email": "william.hemme@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Maj",
+              "unit": "MAG-26"
+            },
+            {
+              "rsvpId": "79c86a76-0806-44a2-b131-64e0bd53fc2f",
+              "name": "Jonathan Perez",
+              "email": "jonathan.perez1.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Sgt",
+              "unit": "MAG 26"
+            },
+            {
+              "rsvpId": "0bfebc43-b880-42d5-b5e1-7b41b5d03a44",
+              "name": "LtCol Paul Lancaster",
+              "email": "paul.lancaster@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "LtCol",
+              "unit": "VMM-264"
+            },
+            {
+              "rsvpId": "ef3a4a06-1909-4fd3-bdb4-19193b54baff",
+              "name": "Robert Ashby",
+              "email": "robert.ashby@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "SgtMaj",
+              "unit": "MAG-26"
+            },
+            {
+              "rsvpId": "4c0eaf80-10e9-4a19-9715-9894ccd66f25",
+              "name": "Brent",
+              "email": "brentvines.usmc@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "a52628d6-a34f-41bc-9b7d-967bf50b2cbb",
+              "name": "Zane Moorman",
+              "email": "zane.moorman@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "db4ffe4e-7003-4443-962f-580aa613b867",
+              "name": "Brent g vines",
+              "email": "brentvines.usmc@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "d0025fac-3bc1-41e2-bfe4-db84995e7fed",
+              "name": "Johni Meeks",
+              "email": "johni.meeks@usmc.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "52c2dd87-56e9-4c51-9deb-bd7c50ec09c0",
+              "name": "Pete",
+              "email": "peter.r.obrien.ctr@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "MCPO",
+              "unit": "ALL"
+            },
+            {
+              "rsvpId": "7586d48f-2a55-41aa-b706-dbbc2c65be63",
+              "name": "CALEB ELLIOTT",
+              "email": "caleb.t.elliott.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Sgt",
+              "unit": "MAG-26"
+            },
+            {
+              "rsvpId": "f3e723a7-55de-4e47-b584-8e08e1208b04",
+              "name": "Douglas Orr",
+              "email": "douglas.m.orr.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "189a8c53-8888-4f3f-ba4d-fd9b7bfe3e0e",
+              "name": "randall gonzaleztorres",
+              "email": "r.gonzaleztorres@usmc.mil",
+              "attending": true,
+              "guestCount": 2,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "bfa43817-ff69-41d3-a5f7-cee2936fcce0",
+              "name": "Hector E. Velilla Jr",
+              "email": "velilla.hector@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Civilian",
+              "unit": ""
+            },
+            {
+              "rsvpId": "9db871a2-3fdc-412d-97c3-eea574e786df",
+              "name": "Wendy Harris",
+              "email": "wgharris@magellanfederal.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "21422657-5174-455d-93af-4f9bfa7339f1",
+              "name": "Noelle Knight",
+              "email": "noelle.a.knight.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "LT",
+              "unit": "MAG-26"
+            },
+            {
+              "rsvpId": "ce03bcd5-5ed3-490f-b7aa-42e9e14052fd",
+              "name": "Sydney Duran",
+              "email": "sydneydurann@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "5edd4458-ac50-4833-9bfa-10dca5cd1102",
+              "name": "Christopher C. McGuire",
+              "email": "chris.mcguire@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "fd86defb-0ac4-4a67-99d4-2437c87f7134",
+              "name": "Sean ORourke",
+              "email": "sean.r.orourke.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "be09ca59-dab3-4380-a161-fcdfdec7e980",
+              "name": "Mack Whie",
+              "email": "mackenzie.white@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "LtCol",
+              "unit": "VMM-365"
+            },
+            {
+              "rsvpId": "bd5d8f8a-8b2f-44d6-b643-93fe138ed5d8",
+              "name": "Shanna Colman",
+              "email": "shanna.colman@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "b56cf246-b912-4701-b787-ed6b1aa2086d",
+              "name": "SIdney A. Stephens",
+              "email": "sidney.a.stephens.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Cpl",
+              "unit": "26th Marine Expeditionary Unit"
+            },
+            {
+              "rsvpId": "72911d78-1460-4135-9e00-fc6cb3fd1c4a",
+              "name": "Brian Mullery",
+              "email": "brianmullery@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Col",
+              "unit": "Retired"
+            },
+            {
+              "rsvpId": "72204543-64c5-45c8-b92b-431bb64e3c61",
+              "name": "Ahmed Rossi",
+              "email": "ahmed.rossi.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "dca8a9e2-97b5-4b15-b096-b9d304ef47a2",
+              "name": "Trey Graham",
+              "email": "treygraham@bellsouth.net",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "8802b16c-84da-4a01-ab7b-b06a02ba7363",
+              "name": "SgtMaj Sorgie",
+              "email": "joseph.sorgie.mil@socom.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "18c151c7-f627-42e9-a01c-00314ac9bdc8",
+              "name": "Chris Mollet",
+              "email": "christopher.d.mollet@usmc.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "b71036ce-f7ca-491b-a04c-144f9c9cba4d",
+              "name": "Daniel Dwyer",
+              "email": "daniel.m.dwyer@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userUuid": "1fdf791a-cdae-4c0b-b69f-59a42244f96b",
+      "name": "Gene C. Stone",
+      "username": "craige83",
+      "events": [
+        {
+          "eventId": "8ae6150b-a69e-4082-a6e7-8f0971b07a95",
+          "title": "Retirement Ceremony",
+          "date": "2026-02-20",
+          "location": "vjhg",
+          "rsvps": [
+            {
+              "rsvpId": "4d7505d3-5091-41b9-b405-603a8548dac0",
+              "name": "Amanda Stone",
+              "email": "lvn4clb@aol.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userUuid": "28982096-5756-473b-a329-ed9da4cd27ed",
+      "name": "Dalia Becerra",
+      "username": "dalia",
+      "events": [
+        {
+          "eventId": "f1b8168b-6cf9-4962-9fc1-e35c75637a0e",
+          "title": "Family Day Event",
+          "date": "2026-04-05",
+          "location": "Phoenix Lounge",
+          "rsvps": []
+        },
+        {
+          "eventId": "ccf951b8-f602-4ea4-84da-42bcd5eb0d8d",
+          "title": "Marine Corps Birthday Ball",
+          "date": "2025-11-14",
+          "location": "San Diego",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "e066e946-5891-4f4e-a62c-10b4c60aec10",
+      "name": "Daniel Cory Robinson",
+      "username": "danielr3432",
+      "events": [
+        {
+          "eventId": "1c0a18de-b8f9-4093-819c-4c1336bbde32",
+          "title": "Sgt Val&#x27;s going away",
+          "date": "2025-12-18",
+          "location": "BBW",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "08467032-74e4-403a-85a0-9b559b8de4c1",
+      "name": "Adrian Rodriguez",
+      "username": "dcil75",
+      "events": [
+        {
+          "eventId": "b40554ff-25bc-4dac-8bfa-3806224b19ed",
+          "title": "Installations Logistics Holiday Party",
+          "date": "2025-12-20",
+          "location": "JB MYER-HENDERSON HALL BOWLING CENTER",
+          "rsvps": []
+        },
+        {
+          "eventId": "1f2cc611-0132-4283-833a-a0229fdaf026",
+          "title": "IL Holiday Party",
+          "date": "2025-12-20",
+          "location": "Joint Base Myers-Henderson Hall Bowling Center",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "37cffea2-dd94-421e-b2dc-562294514fef",
+      "name": "Edward Argueta",
+      "username": "firstsergeant1833",
+      "events": [
+        {
+          "eventId": "69dcba9e-78cd-4179-9c24-7b413699faaf",
+          "title": "Training Event",
+          "date": "2025-12-16",
+          "location": "R800",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "dbfedee5-8d69-41fb-9329-20929bed487c",
+      "name": "Felicia Tanksley",
+      "username": "fmtanksley",
+      "events": [
+        {
+          "eventId": "538d514e-dfbd-4487-a207-cfa576c8f563",
+          "title": "Promotion Ceremony",
+          "date": "2026-02-20",
+          "location": "National Museum of the Marine Corps",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "f95ecf0f-e788-4b7a-ade1-3fbb18006f83",
+      "name": "Stephen Shorter",
+      "username": "furby203824",
+      "events": [
+        {
+          "eventId": "e686a26a-a737-4e05-bc1a-c4f908c70218",
+          "title": "Marine Corps Birthday Ball",
+          "date": "2025-11-29",
+          "location": "MCB Quantico Inns",
+          "rsvps": []
+        },
+        {
+          "eventId": "18641d7a-bf27-4511-8b88-127d33bc0588",
+          "title": "Unit Formation for Motivation",
+          "date": "2025-11-29",
+          "location": "Battalion",
+          "rsvps": [
+            {
+              "rsvpId": "4bb09f50-3fb9-4aa6-98c4-d9b64d8b15a7",
+              "name": "Stephen Shorter",
+              "email": "rebukes-pills4d@icloud.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Civilian",
+              "unit": "MISSO"
+            },
+            {
+              "rsvpId": "7badb923-8419-45f4-9f58-e4a066d2ce1c",
+              "name": "Stephen Shorter",
+              "email": "barbcardrw@aol.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "40578b9c-f685-432d-8570-ab086f7dd138",
+              "name": "Stephen Shorter",
+              "email": "barbcardrw@aol.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        },
+        {
+          "eventId": "2edf0d21-0e44-4723-bd60-e2ce7f2f752f",
+          "title": "Unit Formation",
+          "date": "2025-11-12",
+          "location": "MCB HAWAII",
+          "rsvps": [
+            {
+              "rsvpId": "ee10fd32-3082-4f81-a25e-c207c31a6553",
+              "name": "Stephen Shorter",
+              "email": "barbcardrw@aol.com",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": "MISSO-06"
+            }
+          ]
+        },
+        {
+          "eventId": "13a8c3a3-117c-47ba-942b-a92c828b5ad2",
+          "title": "Marine Corps Birthday Ball",
+          "date": "2025-11-29",
+          "location": "Ball room",
+          "rsvps": [
+            {
+              "rsvpId": "d3f7428f-5f49-4413-857f-85f8ae10ccfa",
+              "name": "Stephen Shorter",
+              "email": "rebukes-pills4d@icloud.com",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "7cb28a2a-3ebf-40d8-a318-4b80976084b3",
+              "name": "Stephen Shorter",
+              "email": "rebukes-pills4d@icloud.com",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "6b54428c-9a3b-481f-85e8-39eb7adfb11b",
+              "name": "Stephen Shorter",
+              "email": "barbcardrw@aol.com",
+              "attending": true,
+              "guestCount": 5,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userUuid": "1f864f5a-cae3-4dd1-ae85-7bcd359d547e",
+      "name": "Haley Spence",
+      "username": "haley.j.spence",
+      "events": [
+        {
+          "eventId": "86523b84-bb46-471e-a53b-b1c6fc3a886a",
+          "title": "Promotion Ceremony",
+          "date": "2025-11-26",
+          "location": "Base Chapel",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "fc025aff-3642-431e-8f9e-f2f5159f3ea0",
+      "name": "Jaylee Giffin",
+      "username": "jayleegiffin",
+      "events": [
+        {
+          "eventId": "2c45f276-34da-45d8-852e-a2bedd7eb996",
+          "title": "Winter Wonderland",
+          "date": "2026-01-10",
+          "location": "Crows Nest at Camp Shields",
+          "rsvps": [
+            {
+              "rsvpId": "4651192c-343e-4f63-a477-ec63a138cb58",
+              "name": "Jaylee Giffin",
+              "email": "jaylee.m.giffin.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "1ee3bef6-05da-46a0-b41e-36a88728ec03",
+              "name": "Michael Arguello",
+              "email": "michael.arguello@usmc.mil",
+              "attending": true,
+              "guestCount": 2,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "10929880-e4cd-400e-a437-6129ddffb30f",
+              "name": "Butch Vasquez",
+              "email": "gonzalo.vasquez@usmc.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "94dc7506-8201-4a6c-8b19-9db9757f4c7b",
+              "name": "Kimberly Cain",
+              "email": "kimberly.cain@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "CDR",
+              "unit": "3d MEB"
+            },
+            {
+              "rsvpId": "1037fe4c-fd7e-4fa4-9d82-2f3833148358",
+              "name": "Codi Mullen",
+              "email": "codi.a.mullen@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "0d11c63f-4c1b-4be5-8118-36c208b1fe98",
+              "name": "Petra Seipel",
+              "email": "petra.seipel@usmc.mil",
+              "attending": true,
+              "guestCount": 3,
+              "rank": "Col",
+              "unit": "3d MEB"
+            },
+            {
+              "rsvpId": "5effb920-e741-488c-bfbc-81fd2f6ee2fc",
+              "name": "Nicholas Balk",
+              "email": "nicholas.balk.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 4,
+              "rank": "LtCol",
+              "unit": "3d MEB"
+            },
+            {
+              "rsvpId": "017ef216-fecc-4309-9d63-7911dbcf4034",
+              "name": "Casey Cosgrove",
+              "email": "casey.cosgrove@usmc.mil",
+              "attending": true,
+              "guestCount": 2,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "fd082fd6-abb4-457b-8d3c-2d8cf095ba66",
+              "name": "Giovanni Jimenez",
+              "email": "giovanni.a.jimenez.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "c120c7b1-e9ac-4726-8e1a-0c5c6f4805b6",
+              "name": "Loretta Stein",
+              "email": "loretta.steinmd@gmail.com",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "9aaf973f-0f1a-4d5c-aaaa-eda60589dee5",
+              "name": "Patrick Lambert",
+              "email": "bart.p.lambert.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "c24f0621-8dea-4a92-b737-286ea809e343",
+              "name": "Jonathan Spitz",
+              "email": "jonathan.spitz@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Capt",
+              "unit": "3d MEB"
+            },
+            {
+              "rsvpId": "7b639e93-1458-4ea9-be20-921b09547a05",
+              "name": "SSgt Dieng Abdou",
+              "email": "abdou.dieng@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "SSgt",
+              "unit": "3D MEB"
+            },
+            {
+              "rsvpId": "9cc57de3-6299-42ad-a4a0-b156f2598de0",
+              "name": "Kevin Lee",
+              "email": "leekevin0602@gmail.com",
+              "attending": true,
+              "guestCount": 3,
+              "rank": "Maj",
+              "unit": "3d MEB"
+            },
+            {
+              "rsvpId": "613c0fa5-3120-4783-92a7-5928a2ab8e4c",
+              "name": "William Morrison",
+              "email": "william.c.morrison@usmc.mil",
+              "attending": true,
+              "guestCount": 5,
+              "rank": "LtCol",
+              "unit": "3d MEB"
+            },
+            {
+              "rsvpId": "6462a8b3-b7a3-48f4-a463-4932dd59feff",
+              "name": "Stephon Harris",
+              "email": "stephon.harris.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "25c798b5-7cc4-4f37-be77-171a9add0574",
+              "name": "Robert Riter",
+              "email": "robby.riter68@gmail.com",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "Cpl",
+              "unit": "3d MEB"
+            },
+            {
+              "rsvpId": "403e6f5f-cbf7-4645-8463-66c5a38f9d42",
+              "name": "Zachary Curry",
+              "email": "zachary.r.curry@usmc.mil",
+              "attending": true,
+              "guestCount": 2,
+              "rank": "SSgt",
+              "unit": "3D MEB"
+            },
+            {
+              "rsvpId": "a64b1812-3f20-4a05-82ef-6449342f0ed9",
+              "name": "The Powells",
+              "email": "517wolfpack@gmail.com",
+              "attending": true,
+              "guestCount": 3,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "8fb7febd-a257-42bb-8ec7-940ac1d14a24",
+              "name": "Drake Young",
+              "email": "drake.young@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Cpl",
+              "unit": "3d MEB"
+            },
+            {
+              "rsvpId": "592f96af-dd9a-47bb-a7a9-e8573d370b60",
+              "name": "Junior Escarment",
+              "email": "junior.escarment@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "bbbbb028-a82c-4292-af31-281eb375b9e0",
+              "name": "Haley Wiseman",
+              "email": "haley.a.wiseman.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 5,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "63b8b4a7-2579-43fe-898a-46387c07da10",
+              "name": "Alex Rodriguez",
+              "email": "alexrr1989@gmail.com",
+              "attending": true,
+              "guestCount": 3,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "41943b9a-5f59-451e-bdee-d8d99bae4bbd",
+              "name": "BGen Brodie",
+              "email": "robert.b.brodie.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "fcf15741-d9db-4589-895b-af4416816ca9",
+              "name": "Chandler Glover",
+              "email": "chandler.glover@usmc.mil",
+              "attending": true,
+              "guestCount": 3,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userUuid": "ef274b1f-8a05-41de-bb12-e21f6c755a48",
+      "name": "javier jesus barocio",
+      "username": "jjbarocio",
+      "events": [
+        {
+          "eventId": "12b9ab8c-3958-4a31-960a-724e7a3eab52",
+          "title": "Training Event",
+          "date": "2025-12-15",
+          "location": "BUILDING 1440",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "980be343-e065-4d11-be07-2871a68167c4",
+      "name": "Karen J Rector",
+      "username": "kjrector",
+      "events": [
+        {
+          "eventId": "ddaa8142-abf0-4398-98b0-89257c6806c7",
+          "title": "Retirement Ceremony",
+          "date": "2026-01-31",
+          "location": "Officers Club",
+          "rsvps": [
+            {
+              "rsvpId": "7d5e133d-51d8-4f0e-a6e1-0c394465f23a",
+              "name": "Chris West",
+              "email": "christopher.j.west@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "220c7c5e-8395-403b-8652-5480e9fe18ae",
+              "name": "Ryan Daffron",
+              "email": "ryan.d.daffron.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "aa45545b-3e41-4960-9354-2a49d90b466f",
+              "name": "Holale C Azondjagni",
+              "email": "holale.azondjagni@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "5fab4d5b-3af1-45ea-b6cd-b6496eb190ce",
+              "name": "LT David Eatman",
+              "email": "david.eatman@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "LT",
+              "unit": "MCRD PI, HQSVCBN"
+            },
+            {
+              "rsvpId": "83363b04-128f-4b00-a9ae-4f35c8fa20d8",
+              "name": "Lisa Comtois",
+              "email": "lisa.k.comtois.civ@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "71d2a66b-6345-4f8b-87d8-6550af3b5e0e",
+              "name": "Arthur Edwin Perry",
+              "email": "arthur@the-perrys.net",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userUuid": "b206fdcd-cf08-444a-bcf5-57546eddc5ff",
+      "name": "Michael",
+      "username": "m.arguello",
+      "events": [
+        {
+          "eventId": "1bdf2e9d-ce90-4413-9115-12dd345216b1",
+          "title": "Test test",
+          "date": "2025-12-19",
+          "location": "asdfasdf",
+          "rsvps": []
+        },
+        {
+          "eventId": "3dfe14b4-4cba-452c-b87c-a6ecfbc5ec03",
+          "title": "Winter Wonderland Test",
+          "date": "2025-12-18",
+          "location": "4412",
+          "rsvps": []
+        },
+        {
+          "eventId": "255d40bc-5227-4ea0-9e1d-eea2840d51ad",
+          "title": "Family Day Event (Test for 3d MEB)",
+          "date": "2025-12-25",
+          "location": "CG&#x27;s House.",
+          "rsvps": [
+            {
+              "rsvpId": "6d5553d0-3eaa-4975-96e4-02ef609c61a9",
+              "name": "john smith",
+              "email": "michael.arguello@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "ea56fcf3-113c-44a6-816e-6cee46dcecf7",
+              "name": "Test Test",
+              "email": "test.test@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "f26428ae-b21d-416f-b71b-264899050e98",
+              "name": "Jaylee Giffin",
+              "email": "jaylee.m.giffin.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userUuid": "562dba72-07a0-4f80-906c-0603bb361c89",
+      "name": "Anthony Oliveira",
+      "username": "oliveira1818",
+      "events": [
+        {
+          "eventId": "a2e7b933-b60b-4719-b7fd-db79b27f22ca",
+          "title": "Retirement Ceremony",
+          "date": "2025-11-20",
+          "location": "bldg31",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "ede6d6ee-1388-4ca5-8c5e-928cd52fe2b5",
+      "name": "Peter Vargo",
+      "username": "pdvargo85",
+      "events": [
+        {
+          "eventId": "def43e08-238e-48da-af33-4337ab22ee14",
+          "title": "Relief and Appointment",
+          "date": "2026-04-03",
+          "location": "Virginia War Memorial",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "9075d6eb-a3ef-4655-aaea-85d955f2a1be",
+      "name": "Portia Stewart",
+      "username": "portiastewart",
+      "events": [
+        {
+          "eventId": "e6c68af0-a6b7-435b-9287-06f9c84f9be1",
+          "title": "Change of Command Ceremony",
+          "date": "2026-01-22",
+          "location": "Parade deck, MCRD San Diego",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "ad7a40e9-1eb9-4621-83ab-52a709a84b7c",
+      "name": "Quinn Lilly",
+      "username": "quinn.lilly",
+      "events": [
+        {
+          "eventId": "1415d711-db4d-4ea2-aed6-098a87b8d191",
+          "title": "Firing Battery M, 1st Low Altitude Air Defense Battalion Activation Ceremony",
+          "date": "2025-12-06",
+          "location": "Dewey Square, Marine Corps Base Hawaii",
+          "rsvps": [
+            {
+              "rsvpId": "96601d32-5bde-43ce-ba46-4d636b73440b",
+              "name": "Diego Hurtado",
+              "email": "7hurtado@gmail.com",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "GySgt",
+              "unit": "1st LAAD Bn"
+            },
+            {
+              "rsvpId": "9bc1c17b-80c8-4eaf-b734-5018ce24e9cc",
+              "name": "Grant Broeder",
+              "email": "grant.broeder@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "76abeb03-544e-495b-a2df-d6fe6364b9f7",
+              "name": "Spencer Miles",
+              "email": "spencer.a.miles.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "1stLt",
+              "unit": "1st LAAD"
+            },
+            {
+              "rsvpId": "390e48f1-3aaf-4e80-aff3-0d46d2adce16",
+              "name": "Tim McGuire",
+              "email": "timothy.mcguire@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "68356a13-dbea-4e04-a50d-d32227573961",
+              "name": "Christopher Rivera",
+              "email": "christopher.l.rivera@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "9f876b04-6492-4a24-8474-7933c3be3b09",
+              "name": "LtCol P. Cordes",
+              "email": "mayra.moreno@usmc.mil",
+              "attending": true,
+              "guestCount": 2,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "b9c8e53e-ef7e-4dfb-ba00-07f72d81ced7",
+              "name": "Jeremy Beaven",
+              "email": "jeremy.beaven@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "10e15105-3377-4dcd-9e59-78d930c6862d",
+              "name": "Adan Moreno",
+              "email": "adan.moreno1@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "100e7223-e067-4550-b18f-8207efb90c0e",
+              "name": "Col Mike McCarthy",
+              "email": "michael.c.mccarthy@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userUuid": "f8fe42d3-886f-4000-8a79-ffa2662d3ad0",
+      "name": "Reese Johnson",
+      "username": "reese.johnson",
+      "events": [
+        {
+          "eventId": "3dbd951c-a284-4d21-ac9a-1dfe212f2297",
+          "title": "US Army War College Joint Ball",
+          "date": "2026-05-09",
+          "location": "Hershey, PA",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "57aad0ee-58c5-4589-b317-5fc11f966248",
+      "name": "R.T. Wilson",
+      "username": "rtwilson1",
+      "events": [
+        {
+          "eventId": "a7d34e70-6213-4a08-8f95-25cbf8493eb8",
+          "title": "Family Day Event",
+          "date": "2025-12-07",
+          "location": "Leatherneck Gallery, National Museum of the Marine Corps, 1775 Semper Fidelis Wy, Triangle, VA 22172",
+          "rsvps": [
+            {
+              "rsvpId": "ab026c67-1e5f-4fbc-be34-2ac542cff2ac",
+              "name": "Tonya Wilson",
+              "email": "tonyadwilson12@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "98a45be3-5c53-4fff-814e-dbf74f64f6ef",
+              "name": "Bryan Axelrod",
+              "email": "bryan.j.axelrod@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "SgtMaj",
+              "unit": ""
+            },
+            {
+              "rsvpId": "2fac1f26-5ef7-4ddb-8cb4-7b0ec4739659",
+              "name": "Tonya Wilson",
+              "email": "tonyadwilson12@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "1b8cdf21-c6f5-465e-b942-9229d95e71b0",
+              "name": "Robert Knauer",
+              "email": "rknauer@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "ef0482f8-66af-4c8f-8248-903807b3c870",
+              "name": "Spencer Schaffer",
+              "email": "spencerschaffer@gmail.com",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "fe2cb689-82fd-4999-a56a-3fa7a360098c",
+              "name": "Rich Canal",
+              "email": "rich.canal@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "d5159d96-79cf-462f-80b0-83cdd45bb3a4",
+              "name": "Sean Dunn",
+              "email": "sdunn47@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Col",
+              "unit": "Retired"
+            },
+            {
+              "rsvpId": "d9157344-7196-4108-85c3-b47e35378002",
+              "name": "Dave Kelm",
+              "email": "d.a.kelm@icloud.com",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "4a89592b-1c09-464b-afd5-8ab3bc4811d3",
+              "name": "Robert M. Barnhart Jr.",
+              "email": "robert_barnhart12@yahoo.com",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "Col",
+              "unit": "College of Enlisted Military Education, MCU"
+            },
+            {
+              "rsvpId": "b2f90903-6c83-4081-bb22-ed612466e9fc",
+              "name": "John Goering",
+              "email": "john.w.goering.mil@us.navy.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "5475d333-a00c-41d1-9407-81b92e749553",
+              "name": "Scott Baley",
+              "email": "baley13@gmail.com",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "3392533e-f98b-41fe-a134-8d4e66498ce3",
+              "name": "Col Del Palazzo",
+              "email": "michael.delpalazzo@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "25731daa-2e50-4af5-a8af-b4dc48eeb1b7",
+              "name": "Ryan Lynch",
+              "email": "ryan.a.lynch@usmc.mil",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "9b168ade-f5da-4bc2-b405-830fd579dc59",
+              "name": "Ahmed Dorghoud",
+              "email": "ahmedod@hotmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "707f2aa3-642c-413c-8d74-63938d6c025c",
+              "name": "Heydo Zando",
+              "email": "hzando@yahoo.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "MGySgt",
+              "unit": ""
+            },
+            {
+              "rsvpId": "6172b099-2f00-478a-bf7e-443c86637d5b",
+              "name": "Matt Ritchie",
+              "email": "ritchiematt29@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "82f66792-1b70-4f4d-aab4-577a1b2f42eb",
+              "name": "Scott Baley",
+              "email": "baley13@gmail.com",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "ec9e2523-cead-45dd-90c4-01e233278f1c",
+              "name": "Don Bishop",
+              "email": "bishop.don.e@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userUuid": "9c41d90c-cce5-445c-8481-9c3434df9189",
+      "name": "David E.  Schmidt",
+      "username": "schmidtde",
+      "events": [
+        {
+          "eventId": "414eee24-5b7c-4774-b2c8-e8da7a15ff55",
+          "title": "Retirement Ceremony",
+          "date": "2026-01-10",
+          "location": "MCAS Beaufort Officer&amp;amp;#x27;s Club",
+          "rsvps": [
+            {
+              "rsvpId": "8f011e13-b3b4-45fb-aef3-e9a176d54e87",
+              "name": "Stephen Shorter",
+              "email": "barbcardrw@aol.com",
+              "attending": false,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "8b41d5b3-c434-4197-9f5d-7c58a15f2ac9",
+              "name": "Cecil Westmoreland",
+              "email": "cecil.westmoreland@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "CWO3",
+              "unit": "MAG-31"
+            },
+            {
+              "rsvpId": "916093f9-6367-4901-95f2-5ed497c8c4ed",
+              "name": "Daniel Huerta",
+              "email": "daniel.huerta.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "Sgt",
+              "unit": "H&amp;HS"
+            },
+            {
+              "rsvpId": "97ded957-635d-4fc7-a0a6-363963537b6a",
+              "name": "Victor R Gonzalezcotto",
+              "email": "gonzalezcotto@icloud.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "626c73f8-05d5-4ed8-8d5b-bd646eb61ba7",
+              "name": "Karli Ralston",
+              "email": "karli.ralston@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "958b806c-70ba-4ce6-88ee-93181b45ed9c",
+              "name": "Karen J. Rector",
+              "email": "karen.j.rector.mil@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "59841535-d4b1-43c9-ae32-f1fa6feef3d7",
+              "name": "Sheena Dia",
+              "email": "sheena.kurui@usmc.mil",
+              "attending": true,
+              "guestCount": 1,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "9c86a4bd-6f4b-4ab9-8c0e-614561f66d48",
+              "name": "Nicholas Bingham",
+              "email": "nicholas.bingham@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "WO1",
+              "unit": "SSC Beaufort"
+            },
+            {
+              "rsvpId": "07fb0900-81e2-4d89-b898-58a34c9cffb5",
+              "name": "Emanuel Alston",
+              "email": "ealstonjr.1104@gmail.com",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "b30642a3-de85-4b39-ae3a-731aea5df818",
+              "name": "Etheridge Hart",
+              "email": "etheridge.hart@usmc.mil",
+              "attending": true,
+              "guestCount": 0,
+              "rank": "",
+              "unit": ""
+            },
+            {
+              "rsvpId": "db188f83-93be-497d-a1f5-8a60769b8566",
+              "name": "Tony Reyna",
+              "email": "anthonyreyna@att.net",
+              "attending": true,
+              "guestCount": 2,
+              "rank": "",
+              "unit": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userUuid": "b8211f77-9488-49e7-8dfe-e1b27c6f4756",
+      "name": "Steven Kalchik",
+      "username": "steven.kalchik",
+      "events": [
+        {
+          "eventId": "613a4b5d-f0cb-4770-9899-21026a1351b5",
+          "title": "Retirement Ceremony",
+          "date": "2026-08-15",
+          "location": "TBD",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "b24d1044-4cb9-41d6-9d71-b1a7b95163fd",
+      "name": "Tony Cedeno",
+      "username": "tonyjcedeno",
+      "events": [
+        {
+          "eventId": "20539968-8fa5-44b0-97f5-a15ebd37cd76",
+          "title": "Promotion Ceremony",
+          "date": "2025-12-01",
+          "location": "Detachment HQ",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "f7404745-03f9-464c-8966-da654d9f0d55",
+      "name": "Corderis  Brown",
+      "username": "uhrle502",
+      "events": [
+        {
+          "eventId": "c8cfc7af-5c16-495e-8817-29ca9275d474",
+          "title": "VMFAT-502 Change of Command Ceremony",
+          "date": "2025-12-05",
+          "location": "MCAS Miramar, VMFAT-502, Bldg 9270",
+          "rsvps": []
+        }
+      ]
+    },
+    {
+      "userUuid": "unknown_unknown",
+      "name": "unknown",
+      "username": "unknown",
+      "events": [
+        {
+          "eventId": "dae0ae5b-3bd4-4821-8b17-7b1f17c05e6f",
+          "title": "Marine Corps Birthday Ball",
+          "date": "2025-11-13",
+          "location": "Sheraton",
+          "rsvps": []
+        },
+        {
+          "eventId": "99d2ca30-fc61-49cc-9d7f-f0e21726412f",
+          "title": "Sgt Agronomoff Going-Away",
+          "date": "2025-11-14",
+          "location": "Klipper Grill, MCBH",
+          "rsvps": []
+        },
+        {
+          "eventId": "d617bb6e-ea8e-4f20-b024-079b0ba5d791",
+          "title": "Testing MCBH Command Deck Invitation",
+          "date": "2025-11-14",
+          "location": "B216",
+          "rsvps": []
+        }
+      ]
+    }
+  ]
+}

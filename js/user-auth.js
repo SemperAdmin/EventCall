@@ -35,15 +35,44 @@ const userAuth = {
         const savedUser = this.loadUserFromStorage();
 
         if (savedUser) {
-            this.currentUser = savedUser;
-            console.log('✅ User restored from storage:', savedUser.username);
-
-            // Update UI
-            if (window.updateUserDisplay) {
-                window.updateUserDisplay();
+            const uname = savedUser.username || '';
+            const hasValidId = typeof savedUser.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedUser.id);
+            try {
+                if (window.BackendAPI && typeof window.BackendAPI.loadUserByUsername === 'function' && uname) {
+                    const backendUser = await window.BackendAPI.loadUserByUsername(uname);
+                    if (backendUser && backendUser.id) {
+                        const mergedUser = {
+                            ...savedUser,
+                            id: backendUser.id,
+                            name: savedUser.name || backendUser.name,
+                            email: savedUser.email || backendUser.email
+                        };
+                        this.currentUser = mergedUser;
+                        this.saveUserToStorage(mergedUser, true);
+                        console.log('🔄 Synced user ID from backend:', mergedUser.id);
+                    } else {
+                        this.clearUserFromStorage();
+                        this.currentUser = null;
+                    }
+                } else if (!hasValidId) {
+                    this.clearUserFromStorage();
+                    this.currentUser = null;
+                } else {
+                    this.currentUser = savedUser;
+                }
+            } catch (_) {
+                this.clearUserFromStorage();
+                this.currentUser = null;
             }
 
-            this.hideLoginScreen();
+            if (this.currentUser) {
+                if (window.updateUserDisplay) {
+                    window.updateUserDisplay();
+                }
+                this.hideLoginScreen();
+            } else {
+                this.showLoginScreen();
+            }
         } else {
             console.log('🔒 No saved user - showing login screen');
             this.showLoginScreen();
@@ -462,15 +491,22 @@ const userAuth = {
 
             if (response.success) {
                 console.log(`⏱️ [T+${Date.now() - startTime}ms] Auth response received, success`);
-                // Fetch full user data from EventCall-Data (auth response only has userId/username)
-                console.log(`⏱️ [T+${Date.now() - startTime}ms] Fetching full user data from EventCall-Data...`);
-                const userData = await this.fetchUserData(response.username);
-                console.log(`⏱️ [T+${Date.now() - startTime}ms] User data fetch completed`);
+                // Use direct backend user object when available to avoid GitHub fetch
+                let userData = response.user;
+                if (!userData) {
+                    console.log(`⏱️ [T+${Date.now() - startTime}ms] Fetching full user data from EventCall-Data...`);
+                    userData = await this.fetchUserData(response.username);
+                    console.log(`⏱️ [T+${Date.now() - startTime}ms] User data fetch completed`);
+                }
 
                 if (!userData) {
                     const errorMsg = 'Failed to fetch user data from EventCall-Data repository. Please check console for details.';
                     console.error('❌ userData is null - check fetchUserData logs above');
                     throw new Error(errorMsg);
+                }
+                const hasValidId = typeof userData.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userData.id || '');
+                if (!hasValidId) {
+                    throw new Error('Invalid credentials');
                 }
 
                 console.log(`⏱️ [T+${Date.now() - startTime}ms] Showing success toast and updating UI...`);
@@ -605,8 +641,7 @@ const userAuth = {
                     return result;
 
                 } catch (directAuthError) {
-                    console.warn('⚠️ Direct auth failed, falling back to GitHub Actions:', directAuthError.message);
-                    // Fall through to GitHub Actions workflow below
+                    throw new Error(directAuthError.message || 'Authentication failed');
                 }
             }
 
@@ -654,7 +689,8 @@ const userAuth = {
                 }
             })();
             const forceBackendInDev = !!(window.AUTH_CONFIG && window.AUTH_CONFIG.forceBackendInDev);
-            if (isLocalDev && !forceBackendInDev) {
+            const isLoginOrRegister = actionType === 'login_user' || actionType === 'register_user';
+            if (isLocalDev && !forceBackendInDev && !isLoginOrRegister) {
                 console.log('🧪 Local dev detected: skipping GitHub workflow dispatch and polling (set AUTH_CONFIG.forceBackendInDev=true to enable)');
 
                 // Handle profile updates differently in local dev
@@ -710,10 +746,10 @@ const userAuth = {
             // NOTE: Loader should already be shown by the calling function (handleLogin/handleRegister)
             // Do NOT call showAppLoader here to avoid duplicate calls
 
-            // For profile updates, try direct file update first (faster and doesn't require polling)
+            // For profile updates, try direct backend update first (Supabase)
             if (actionType === 'update_profile') {
                 try {
-                    console.log('📝 Attempting direct profile file update...');
+                    console.log('📝 Attempting direct profile backend update...');
                     const result = await window.BackendAPI.updateUserProfile(payload);
                     console.log('✅ Profile updated directly:', result);
                     return {
@@ -721,8 +757,7 @@ const userAuth = {
                         user: result.user
                     };
                 } catch (directError) {
-                    console.warn('⚠️ Direct profile update failed, falling back to workflow:', directError.message);
-                    // Fall through to workflow dispatch
+                    throw directError;
                 }
             }
 

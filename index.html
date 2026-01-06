@@ -7,7 +7,7 @@
     <!-- Reduce referrer leakage to external sites -->
     <meta name="referrer" content="no-referrer">
     <!-- Strengthen CSP by upgrading insecure requests and allowing workers safely -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: https://www.google.com https://www.gstatic.com https://dns.google; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: http://localhost:10000 http://127.0.0.1:10000 http://0.0.0.0:10000 https://www.google.com https://www.gstatic.com https://dns.google; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; upgrade-insecure-requests">
     <title>EventCall - Where Every Event Matters</title>
     <!-- Explicit favicon to avoid default /favicon.ico on organization root -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%231a1f2e'/%3E%3Ccircle cx='32' cy='32' r='20' fill='%23d4af37'/%3E%3C/svg%3E">
@@ -536,6 +536,12 @@ function switchDashboardTab(tab) {
         console.log('  Content', contentId, ':', shouldShow ? 'VISIBLE' : 'hidden');
     });
 
+    if (tab === 'active-events' || tab === 'past-events') {
+        if (typeof window.renderDashboard === 'function') {
+            window.renderDashboard();
+        }
+    }
+
     // Load RSVPs when switching to Your RSVPs tab
     if (tab === 'your-rsvps') {
         console.log('📝 Loading Your RSVPs...');
@@ -756,9 +762,9 @@ function verifyDashboardTabs() {
                 <div class="form-group">
                     <label for="cover-input">Cover Image (Optional)</label>
                     <div class="image-upload" id="cover-upload" role="button" tabindex="0" aria-label="Upload cover image by clicking or dragging a file" aria-describedby="cover-help">
-                        <p>Click or drag to upload cover image</p>
-                        <input type="file" id="cover-input" accept="image/*" class="file-input" aria-label="Choose cover image file">
-                    </div>
+                            <p>Click or drag to upload cover image</p>
+                            <input type="file" id="cover-input" accept="image/*" class="file-input" aria-label="Choose cover image file">
+                        </div>
                     <span id="cover-help" class="sr-only">Upload a cover image for your event. Maximum size 5MB. Accepted formats: JPEG, PNG, GIF, WebP</span>
                     <img id="cover-preview" class="image-preview hidden" alt="Event cover image preview">
                     <input type="hidden" id="cover-image-url" value="">
@@ -953,8 +959,8 @@ function verifyDashboardTabs() {
             <h2>User Profile</h2>
         </div>
         <div class="modal-body">
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--ux2-gold); color: var(--ux2-navy); font-size: 2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+            <div style="text-align: center; margin-bottom: 1rem;">
+                <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--ux2-gold); color: var(--ux2-navy); font-size: 2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem;">
                     <span id="profile-avatar">👤</span>
                 </div>
             </div>
@@ -1189,6 +1195,7 @@ function verifyDashboardTabs() {
 <script defer src="js/rate-limiter.js"></script>
 <script defer src="js/validation.js"></script>
 <script defer src="js/loading.js"></script>
+<script defer src="js/app-loader.js"></script>
 <script defer src="js/csrf.js"></script>
 
 <!-- Core modules -->
@@ -1224,25 +1231,7 @@ function verifyDashboardTabs() {
 <!-- PHASE 3: zxcvbn (250KB) now lazy-loaded via LazyLoader (loads only when password field focused) -->
 
 <!-- Backend API (must load before auth if backend is used) -->
-<!-- Proxy configuration: set dispatchURL via localStorage or inline assignment -->
-<script>
-  (function () {
-    // Default proxy URL for production
-    const defaultURL = 'https://eventcall.onrender.com';
-    // Optional override without code changes:
-    // In DevTools: localStorage.setItem('eventcall_proxy_url', 'https://your-alt-render-url')
-    const fromStorage = localStorage.getItem('eventcall_proxy_url') || '';
-    const dispatchURL = fromStorage || defaultURL;
-    window.BACKEND_CONFIG = {
-      dispatchURL: dispatchURL,
-      // On *.github.io, prefer proxy to avoid CORS on GitHub API
-      useProxyOnGithubPages: true
-    };
-    if ((location.hostname || '').endsWith('github.io')) {
-      console.log('[EventCall] Using proxy dispatchURL:', dispatchURL);
-    }
-  })();
-</script>
+<!-- Proxy configuration now handled in js/config.js -->
 <script defer src="js/backend-api.js"></script>
 <!-- AUTHENTICATION - REPLACED manager-auth.js with user-auth.js -->
 <script defer src="js/user-auth.js?v=20251104-2"></script>

@@ -403,16 +403,16 @@ function isUserAuthenticated() {
 }
 
 /**
- * Sync RSVPs from GitHub Issues
+ * Sync/Refresh Data
  */
 async function syncWithGitHub() {
     if (syncInProgress) {
-        showToast('⏳ Sync already in progress...', 'error');
+        showToast('⏳ Refresh already in progress...', 'error');
         return;
     }
 
     if (!isUserAuthenticated()) {
-        showToast('🔒 Please login to sync RSVPs', 'error');
+        showToast('🔒 Please login to refresh data', 'error');
         return;
     }
 
@@ -422,40 +422,30 @@ async function syncWithGitHub() {
         // Update button state
         const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
         syncButtons.forEach(btn => {
-            // Safe HTML injection for spinner state
-            btn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Syncing...');
+            btn.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div> Refreshing...');
             btn.disabled = true;
         });
 
-        showToast('🔄 Syncing RSVPs from GitHub Issues...', 'success');
+        showToast('🔄 Refreshing data from backend...', 'success');
 
-        // Process RSVP issues
-        const result = await window.githubAPI.processRSVPIssues();
+        // Reload data
+        await loadManagerData();
         
-        if (result.processed > 0) {
-            // Reload data after processing
-            await loadManagerData();
-            
-            // Show success message
-            showToast(`✅ Synced ${result.processed} new RSVPs successfully!`, 'success');
-            
-            // Update pending count
-            await updatePendingRSVPCount();
-        } else {
-            showToast('ℹ️ No new RSVPs to sync', 'success');
-        }
+        showToast('✅ Data refreshed successfully!', 'success');
+        
+        // Clear pending count as we are now real-time
+        updateDashboardSyncStatus(0);
 
     } catch (error) {
-        console.error('Sync failed:', error);
-        showToast('❌ Sync failed: ' + error.message, 'error');
+        console.error('Refresh failed:', error);
+        showToast('❌ Refresh failed: ' + error.message, 'error');
     } finally {
         syncInProgress = false;
         
         // Reset button state
         const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
         syncButtons.forEach(btn => {
-            // Use textContent to avoid HTML parsing for simple text
-            btn.textContent = '🔄 Sync RSVPs';
+            btn.textContent = '🔄 Refresh Data';
             btn.disabled = false;
         });
     }
@@ -465,60 +455,8 @@ async function syncWithGitHub() {
  * Update pending RSVP count in UI
  */
 async function updatePendingRSVPCount() {
-    if (!isUserAuthenticated()) {
-        return;
-    }
-
-    try {
-        const count = await window.githubAPI.getPendingRSVPCount();
-        pendingRSVPCount = count;
-        
-        // Update sync button text if pending RSVPs exist
-        // PERFORMANCE: Batch both innerHTML and style updates to prevent layout thrashing
-        const syncButtons = document.querySelectorAll('[onclick*="syncWithGitHub"]');
-        const updatesToBatch = [];
-
-        syncButtons.forEach(btn => {
-            if (count > 0) {
-                updatesToBatch.push({
-                    element: btn,
-                    innerHTML: window.utils.sanitizeHTML(`🔄 Sync RSVPs (${String(count)} pending)`),
-                    styles: {
-                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                        animation: 'pulse 2s infinite'
-                    }
-                });
-            } else {
-                updatesToBatch.push({
-                    element: btn,
-                    innerHTML: window.utils.sanitizeHTML('🔄 Sync RSVPs'),
-                    styles: {
-                        background: '',
-                        animation: ''
-                    }
-                });
-            }
-        });
-
-        // Apply all DOM changes at once to prevent multiple reflows
-        if (updatesToBatch.length > 0) {
-            requestAnimationFrame(() => {
-                updatesToBatch.forEach(({ element, innerHTML, styles }) => {
-                    // Only update innerHTML if it has changed to avoid unnecessary DOM manipulation
-                    if (element.innerHTML !== innerHTML) {
-                        element.innerHTML = innerHTML;
-                    }
-                    Object.assign(element.style, styles);
-                });
-            });
-        }
-
-        // Add pending indicator to dashboard
-        updateDashboardSyncStatus(count);
-
-    } catch (error) {
-        console.error('Failed to update pending RSVP count:', error);
-    }
+    // Legacy function - no longer needed with direct backend
+    updateDashboardSyncStatus(0);
 }
 
 /**
@@ -571,6 +509,7 @@ async function loadManagerData() {
     
     if (!window.events) window.events = {};
     if (!window.responses) window.responses = {};
+    if (typeof window.managerShowAllEvents !== 'boolean') window.managerShowAllEvents = false;
     
     if (!isUserAuthenticated()) {
         console.log('⚠️ No authentication - using local events only');
@@ -590,28 +529,182 @@ async function loadManagerData() {
         }
     } catch (_) {}
     
-    if (window.githubAPI) {
+    if (window.BackendAPI) {
         try {
-            // PERFORMANCE: Load events and responses in parallel instead of sequentially
-            // This reduces load time from ~600-1000ms to ~300-500ms (60% faster)
-            const [events, responses] = await Promise.all([
-                window.githubAPI.loadEvents(),
-                window.githubAPI.loadResponses()
-            ]);
+            const currentUser = window.userAuth && window.userAuth.isAuthenticated() ? window.userAuth.getCurrentUser() : null;
+            const rawResponse = await window.BackendAPI.loadEvents();
+            
+            // Handle BackendAPI response format { success: true, events: [] }
+            let allEventsList = [];
+            if (rawResponse && Array.isArray(rawResponse.events)) {
+                allEventsList = rawResponse.events;
+            } else if (typeof rawResponse === 'object') {
+                // Legacy/Fallback support
+                allEventsList = Object.values(rawResponse);
+            }
 
-            window.events = events || {};
-            window.responses = responses || {};
-            console.log(`✅ Loaded ${Object.keys(window.events).length} events from GitHub`);
-            console.log(`✅ Loaded responses for ${Object.keys(window.responses).length} events from GitHub`);
-
-            // PERFORMANCE: Update pending count in background (not blocking dashboard render)
-            // This removes 300-500ms from the critical path
-            updatePendingRSVPCount().catch(err => {
-                console.warn('⚠️ Failed to update pending RSVP count:', err);
+            // Convert to map and normalize
+            const allEvents = {};
+            allEventsList.forEach(ev => {
+                if (!ev || typeof ev !== 'object') return;
+                
+                // Normalize snake_case to camelCase
+                const normalized = {
+                    ...ev,
+                    id: ev.id || ev.legacyId,
+                    title: ev.title,
+                    date: ev.date,
+                    time: ev.time,
+                    location: ev.location,
+                    description: ev.description,
+                    coverImage: ev.cover_image_url || ev.coverImageUrl || ev.coverImage,
+                    createdBy: ev.created_by || ev.createdBy || ev.owner || '',
+                    allowGuests: ev.allow_guests !== undefined ? ev.allow_guests : ev.allowGuests,
+                    requiresMealChoice: ev.requires_meal_choice !== undefined ? ev.requires_meal_choice : ev.requiresMealChoice
+                };
+                
+                if (normalized.id) {
+                    allEvents[normalized.id] = normalized;
+                }
             });
 
+            const myEvents = {};
+            const myId = String(currentUser && currentUser.id ? currentUser.id : '').trim().toLowerCase();
+            const myUsername = String(currentUser && currentUser.username ? currentUser.username : '').trim().toLowerCase();
+            
+            for (const [eid, ev] of Object.entries(allEvents || {})) {
+                const owner = String(ev.createdBy || '').trim().toLowerCase();
+                // Check against both ID and Username
+                const isOwner = (myId && owner === myId) || 
+                               (myUsername && owner === myUsername) ||
+                               (ev.created_by_username && ev.created_by_username === myUsername);
+                               
+                if (isOwner) {
+                    myEvents[eid] = ev;
+                }
+            }
+            const unassignedRaw = await window.BackendAPI.loadEvents({ unassigned: true });
+            let unassignedEvents = {};
+            if (unassignedRaw && Array.isArray(unassignedRaw.events)) {
+                unassignedRaw.events.forEach(ev => {
+                    if (ev && (ev.id || ev.legacyId)) unassignedEvents[ev.id || ev.legacyId] = ev;
+                });
+            } else if (typeof unassignedRaw === 'object') {
+                // Fallback for map-style return
+                if (unassignedRaw.events) delete unassignedRaw.events;
+                if (unassignedRaw.success) delete unassignedRaw.success;
+                unassignedEvents = unassignedRaw;
+            }
+
+            // Backfill: assign unassigned events to current user
+            if (currentUser && currentUser.id) {
+                for (const [eid, ev] of Object.entries(unassignedEvents || {})) {
+                    try {
+                        await window.BackendAPI.updateEvent(eid, { created_by: currentUser.id });
+                        // Add to myEvents if successful
+                        const normalized = {
+                            ...ev,
+                            id: ev.id || ev.legacyId || eid,
+                            title: ev.title,
+                            date: ev.date,
+                            time: ev.time,
+                            location: ev.location,
+                            description: ev.description,
+                            coverImage: ev.cover_image_url || ev.coverImageUrl || ev.coverImage,
+                            createdBy: currentUser.id,
+                            allowGuests: ev.allow_guests !== undefined ? ev.allow_guests : ev.allowGuests,
+                            requiresMealChoice: ev.requires_meal_choice !== undefined ? ev.requires_meal_choice : ev.requiresMealChoice
+                        };
+                        myEvents[eid] = normalized;
+                        // Also update in allEvents
+                        if (allEvents[eid]) {
+                            allEvents[eid] = normalized;
+                        } else {
+                            allEvents[eid] = normalized;
+                        }
+                    } catch (e) {
+                        console.warn('Failed to backfill created_by for event', eid, e);
+                    }
+                }
+                
+                // Backfill for events where username matches but ID is not set
+                for (const [eid, ev] of Object.entries(allEvents || {})) {
+                    const owner = String(ev.createdBy || '').trim().toLowerCase();
+                    if (owner && myUsername && owner === myUsername) {
+                        try {
+                            await window.BackendAPI.updateEvent(eid, { created_by: currentUser.id });
+                            myEvents[eid] = { ...ev, createdBy: currentUser.id };
+                        } catch (_) {}
+                    }
+                }
+            }
+            // Augment with creator details for display
+            const ownersRaw = Object.values(myEvents || {}).map(ev => ev.createdBy).filter(v => v);
+            const uniqueOwners = Array.from(new Set(ownersRaw));
+            const uuidLike = uniqueOwners.filter(v => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v)));
+            const usernameLike = uniqueOwners.filter(v => !uuidLike.includes(v));
+            let userMap = {};
+            if (uuidLike.length > 0 && window.BackendAPI.loadUsersByIds) {
+                try {
+                    userMap = await window.BackendAPI.loadUsersByIds(uuidLike);
+                } catch (e) {
+                    console.warn('Failed to load user details for event owners', e);
+                }
+            }
+            if (usernameLike.length > 0 && window.BackendAPI.loadUserByUsername) {
+                for (const uname of usernameLike) {
+                    try {
+                        const u = await window.BackendAPI.loadUserByUsername(String(uname).trim().toLowerCase());
+                        if (u && u.id) {
+                            userMap[u.id] = { id: u.id, username: u.username, name: u.name, email: u.email };
+                        }
+                    } catch (_) {}
+                }
+            }
+            for (const [eid, ev] of Object.entries(myEvents || {})) {
+                let u = userMap[ev.createdBy];
+                if (!u && String(ev.createdBy || '').trim() && window.BackendAPI.loadUserByUsername) {
+                    try {
+                        const fetched = await window.BackendAPI.loadUserByUsername(String(ev.createdBy).trim().toLowerCase());
+                        if (fetched && fetched.id) {
+                            u = fetched;
+                        }
+                    } catch (_) {}
+                }
+                if (u) {
+                    myEvents[eid] = { ...ev, createdByName: u.name || u.username || u.id, createdByUsername: u.username || '' };
+                }
+            }
+            let selectedEvents = window.managerShowAllEvents ? (allEvents || {}) : (myEvents || {});
+            if (!window.managerShowAllEvents) {
+                const myCount = Object.keys(myEvents || {}).length;
+                const allCount = Object.keys(allEvents || {}).length;
+                if (myCount === 0 && allCount > 0) {
+                    console.log('ℹ️ No events found for current user; showing all events as fallback');
+                    selectedEvents = allEvents || {};
+                }
+            }
+            for (const [eid, ev] of Object.entries(selectedEvents || {})) {
+                if (!ev.id) {
+                    selectedEvents[eid] = { ...ev, id: String(eid) };
+                }
+            }
+            const allEventIds = Object.keys(selectedEvents || {});
+            const responses = allEventIds.length > 0
+                ? await window.BackendAPI.loadResponses({ event_ids: allEventIds })
+                : {};
+
+            window.events = selectedEvents || {};
+            window.responses = responses || {};
+            console.log(`✅ Loaded ${Object.keys(window.events).length} events from backend`);
+            console.log(`✅ Loaded responses for ${Object.keys(window.responses).length} events from backend`);
+
+            if (typeof updatePendingRSVPCount === 'function' && window.githubAPI) {
+                updatePendingRSVPCount().catch(() => {});
+            }
+
         } catch (error) {
-            console.error('❌ Failed to load from GitHub:', error);
+            console.error('❌ Failed to load from backend:', error);
         }
     }
 
@@ -621,6 +714,15 @@ async function loadManagerData() {
     if (window.displayUserRSVPs) {
         window.displayUserRSVPs();
     }
+}
+
+function initShowAllEventsToggle() {
+    const el = document.getElementById('show-all-events-toggle');
+    if (!el) return;
+    el.addEventListener('change', async () => {
+        window.managerShowAllEvents = !!el.checked;
+        await loadManagerData();
+    });
 }
 
 async function deleteEvent(eventId) {
@@ -644,14 +746,8 @@ async function deleteEvent(eventId) {
             return;
         }
 
-        if (isUserAuthenticated() && window.githubAPI) {
-            try {
-                if (window.githubAPI && window.githubAPI.deleteEvent) {
-                    await window.githubAPI.deleteEvent(eventId, event.title, event.coverImage);
-                }
-            } catch (error) {
-                console.error('Failed to delete from GitHub:', error);
-            }
+        if (window.BackendAPI) {
+            await window.BackendAPI.deleteEvent(eventId);
         }
         
         if (window.events) delete window.events[eventId];
@@ -739,8 +835,15 @@ function renderDashboard() {
 
     // Separate active and past events
     const now = new Date();
-    const activeEvents = eventArray.filter(event => !isEventInPast(event.date, event.time));
-    const pastEvents = eventArray.filter(event => isEventInPast(event.date, event.time));
+    // Helper to check if event is in past (handles time correctly)
+    const checkIsPast = (event) => {
+        if (!event.date) return false;
+        const eventDate = new Date(event.date + 'T' + (event.time || '00:00'));
+        return eventDate < now;
+    };
+
+    const activeEvents = eventArray.filter(event => !checkIsPast(event));
+    const pastEvents = eventArray.filter(event => checkIsPast(event));
 
     // Sort: active by date ascending, past by date descending
     activeEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1563,23 +1666,37 @@ async function handleEventSubmit(e) {
             throw new Error('Event date cannot be more than 1 day in the past.');
         }
 
-        // Show progress update
-        submitBtn.innerHTML = '<div class="spinner"></div> Saving to GitHub...';
-
-        // Save to GitHub with retry logic
-        if (window.githubAPI) {
-            if (window.errorHandler) {
-                // Use error handler's retry mechanism
-                await window.errorHandler.retryWithBackoff(
-                    () => window.githubAPI.saveEvent(eventData),
-                    3,
-                    2000
-                );
-            } else {
-                await window.githubAPI.saveEvent(eventData);
-            }
-        } else {
-            throw new Error('GitHub API not available. Please check your connection.');
+        submitBtn.innerHTML = '<div class="spinner"></div> Saving...';
+        if (!window.BackendAPI) {
+            throw new Error('Backend API not available.');
+        }
+        const result = await window.BackendAPI.createEvent({
+            title: eventData.title,
+            description: eventData.description,
+            date: eventData.date,
+            time: eventData.time,
+            location: eventData.location,
+            coverImageUrl: eventData.coverImage,
+            createdByUserId: null,
+            status: eventData.status,
+            allowGuests: eventData.askReason ? true : eventData.allowGuests, // keep existing behavior
+            requiresMealChoice: eventData.requiresMealChoice,
+            customQuestions: eventData.customQuestions,
+            eventDetails: eventData.eventDetails,
+            seatingChart: eventData.seatingChart
+        });
+        const created = result && result.event ? result.event : null;
+        if (created && created.id) {
+            eventData.id = String(created.id);
+        }
+        if (window.BackendAPI && eventData.id) {
+            await window.BackendAPI.updateEvent(eventData.id, {
+                allowGuests: eventData.allowGuests,
+                requiresMealChoice: eventData.requiresMealChoice,
+                customQuestions: eventData.customQuestions,
+                eventDetails: eventData.eventDetails,
+                seatingChart: eventData.seatingChart
+            });
         }
 
         // Update local state
@@ -1615,10 +1732,15 @@ async function handleEventSubmit(e) {
         clearEventDetails();
 
         // Navigate to dashboard after successful creation
-        setTimeout(() => {
-            if (typeof window.loadManagerData === 'function') {
-                window.loadManagerData();
+        setTimeout(async () => {
+            try {
+                if (typeof window.loadManagerData === 'function') {
+                    await window.loadManagerData();
+                }
+            } catch (e) {
+                console.warn('Failed to refresh data after save:', e);
             }
+            
             if (window.showPage) {
                 window.showPage('dashboard');
             }
@@ -1705,18 +1827,31 @@ function setupSeatingChartToggle() {
  * Toggle past events visibility
  */
 function togglePastEvents() {
-    const pastSection = document.querySelector('.past-events-grid');
-    const toggle = document.querySelector('.past-events-toggle');
+    const pastEventsList = document.getElementById('past-events-list');
     
-    if (pastSection && toggle) {
-        const isCollapsed = toggle.classList.contains('collapsed');
+    if (pastEventsList) {
+        // Just switch tab to past events if not already there
+        // Or if this is a collapse/expand toggle inside the tab (legacy logic)
         
-        if (isCollapsed) {
-            pastSection.style.display = 'grid';
-            toggle.classList.remove('collapsed');
-        } else {
-            pastSection.style.display = 'none';
-            toggle.classList.add('collapsed');
+        // Check if we are using the new tab system
+        const pastTabBtn = document.querySelector('.dashboard-tab[data-tab="past-events"]');
+        if (pastTabBtn && window.switchDashboardTab) {
+            window.switchDashboardTab('past-events');
+            return;
+        }
+
+        // Legacy toggle logic
+        const pastSection = pastEventsList.querySelector('.events-grid');
+        const toggle = document.querySelector('.past-events-toggle');
+        
+        if (pastSection) {
+            if (pastSection.style.display === 'none') {
+                pastSection.style.display = 'grid';
+                if (toggle) toggle.classList.remove('collapsed');
+            } else {
+                pastSection.style.display = 'none';
+                if (toggle) toggle.classList.add('collapsed');
+            }
         }
     }
 }
@@ -1769,85 +1904,75 @@ function handleActionClick(e, callback) {
  * Setup photo upload handlers for cover image
  */
 function setupPhotoUpload() {
-    const coverUpload = document.getElementById('cover-upload');
-    const coverInput = document.getElementById('cover-input');
-    const coverPreview = document.getElementById('cover-preview');
-    const coverImageUrlInput = document.getElementById('cover-image-url');
-
-    if (!coverUpload || !coverInput || !coverPreview || !coverImageUrlInput) {
-        console.warn('⚠️ Photo upload elements not found. Ensure all IDs (cover-upload, cover-input, cover-preview, cover-image-url) are correct.');
+    const activePage = document.querySelector('.page.active');
+    if (!activePage || (activePage.id !== 'create' && activePage.id !== 'manage')) {
         return;
     }
 
-    // Skip if already initialized
-    if (coverUpload.dataset.uploadInitialized === 'true') {
-        console.log('ℹ️ Photo upload already initialized, skipping...');
-        return;
-    }
+    // Determine ID prefix based on active page
+    // Create page uses default IDs (cover-upload), Manage page uses prefixed IDs (manage-cover-upload)
+    const prefix = activePage.id === 'manage' ? 'manage-' : '';
 
-    // Click handler - open file picker when upload area is clicked
-    coverUpload.addEventListener('click', () => {
-        coverInput.click();
-    });
-
-    // Keyboard handler - Enter or Space key to open file picker (accessibility)
-    coverUpload.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            coverInput.click();
-        }
-    });
-
-    // File input change handler
-    coverInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            await handleImageFile(file, coverPreview, coverUpload, coverImageUrlInput);
-        }
-    });
-
-    // Drag and drop handlers
-    coverUpload.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        coverUpload.classList.add('dragover');
-        coverUpload.style.borderColor = 'var(--semper-gold)';
-        coverUpload.style.background = 'rgba(255, 215, 0, 0.05)';
-        coverUpload.setAttribute('aria-label', 'Drop image file here to upload');
-    });
-
-    coverUpload.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        coverUpload.classList.remove('dragover');
-        coverUpload.style.borderColor = '';
-        coverUpload.style.background = '';
-        coverUpload.setAttribute('aria-label', 'Upload cover image by clicking or dragging a file');
-    });
-
-    coverUpload.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        coverUpload.classList.remove('dragover');
-        coverUpload.style.borderColor = '';
-        coverUpload.style.background = '';
-        coverUpload.setAttribute('aria-label', 'Upload cover image by clicking or dragging a file');
-
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            // Validate that it's an image file
-            if (file.type.startsWith('image/')) {
-                await handleImageFile(file, coverPreview, coverUpload, coverImageUrlInput);
+    const maxTries = 10;
+    const tryInit = () => {
+        const coverUpload = document.getElementById(`${prefix}cover-upload`);
+        const coverInput = document.getElementById(`${prefix}cover-input`);
+        const coverPreview = document.getElementById(`${prefix}cover-preview`);
+        const coverImageUrlInput = document.getElementById(`${prefix}cover-image-url`);
+        
+        if (!coverUpload || !coverInput || !coverPreview || !coverImageUrlInput) {
+            const t = (window.__photoUploadInitTries || 0) + 1;
+            window.__photoUploadInitTries = t;
+            if (t < maxTries) {
+                setTimeout(tryInit, 100);
             } else {
-                showToast('❌ Please upload an image file (JPEG, PNG, GIF, WebP)', 'error');
+                console.warn(`⚠️ Photo upload elements not found (Page: ${activePage.id}, Prefix: "${prefix}"). Ensure all IDs exist.`);
             }
+            return;
         }
-    });
+        window.__photoUploadInitTries = 0;
+        
+        // Check initialization on the specific element
+        if (coverUpload.dataset.uploadInitialized === 'true') {
+            console.log(`ℹ️ Photo upload already initialized for ${activePage.id}, skipping...`);
+            return;
+        }
 
-    // Mark as initialized
-    coverUpload.dataset.uploadInitialized = 'true';
+        // Note: Click handling is now done via overlay input in CSS/HTML to ensure reliability
+        // We only need to handle the file selection change event and visual feedback
 
-    console.log('✅ Photo upload handlers attached with keyboard support');
+        coverInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                await handleImageFile(file, coverPreview, coverUpload, coverImageUrlInput);
+            }
+        });
+
+        // Visual feedback for drag and drop
+        // Since input covers the div, we listen on input
+        coverInput.addEventListener('dragenter', (e) => {
+            coverUpload.classList.add('dragover');
+            coverUpload.style.borderColor = 'var(--semper-gold)';
+            coverUpload.style.background = 'rgba(255, 215, 0, 0.05)';
+        });
+
+        coverInput.addEventListener('dragleave', (e) => {
+            coverUpload.classList.remove('dragover');
+            coverUpload.style.borderColor = '';
+            coverUpload.style.background = '';
+        });
+
+        coverInput.addEventListener('drop', (e) => {
+            coverUpload.classList.remove('dragover');
+            coverUpload.style.borderColor = '';
+            coverUpload.style.background = '';
+            // No need to handle file manually, 'change' event will fire
+        });
+        
+        coverUpload.dataset.uploadInitialized = 'true';
+        console.log(`✅ Photo upload handlers attached for ${activePage.id} (Overlay Input method)`);
+    };
+    tryInit();
 }
 
 /**
@@ -1884,8 +2009,51 @@ async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInp
         const fileExtension = file.name.split('.').pop();
         const uniqueFileName = `${generateUUID()}.${fileExtension}`;
 
-        // Upload image and get public URL
-        const imageUrl = await window.githubAPI.uploadImage(file, uniqueFileName);
+        let imageUrl = '';
+        let uploadResult = null;
+        const activePage = document.querySelector('.page.active');
+        const isManagePage = activePage && activePage.id === 'manage';
+        const isEdit = !!(window.eventManager && window.eventManager.currentEvent && (window.eventManager.editMode || isManagePage));
+        const eventIdForUpload = isEdit ? window.eventManager.currentEvent.id : null;
+        if (window.BackendAPI && window.BackendAPI.uploadImage) {
+            try {
+                uploadResult = await window.BackendAPI.uploadImage(file, uniqueFileName, { eventId: eventIdForUpload, tags: [] });
+                imageUrl = String(uploadResult.url || '');
+                if (uploadResult && uploadResult.supabase && uploadResult.supabase.attempted) {
+                    if (uploadResult.supabase.updated && uploadResult.supabase.verified) {
+                        showToast('✅ Image synced to Supabase', 'success');
+                    } else if (uploadResult.supabase.error) {
+                        showToast('⚠️ Supabase update failed: ' + uploadResult.supabase.error, 'warning');
+                    } else {
+                        showToast('⚠️ Supabase update not verified', 'warning');
+                    }
+                }
+            } catch (e) {
+                console.error('Backend upload failed:', e);
+                // No fallback to GitHub API as it is insecure
+            }
+        }
+        
+        if (!imageUrl) {
+            throw new Error('Image upload failed');
+        }
+
+        // Fallback: ensure Supabase cover_image_url is set in edit mode
+        if (eventIdForUpload && imageUrl) {
+            try {
+                const verified = !!(uploadResult && uploadResult.supabase && uploadResult.supabase.verified);
+                if (!verified && window.BackendAPI && window.BackendAPI.updateEvent) {
+                    await window.BackendAPI.updateEvent(eventIdForUpload, { coverImageUrl: imageUrl });
+                    showToast('✅ Cover image saved to Supabase', 'success');
+                }
+                if (window.events && window.events[eventIdForUpload]) {
+                    window.events[eventIdForUpload] = { ...window.events[eventIdForUpload], coverImage: imageUrl };
+                }
+            } catch (e) {
+                console.warn('Fallback Supabase save failed:', e);
+                showToast('⚠️ Fallback save failed: ' + e.message, 'warning');
+            }
+        }
 
         // Store the URL and update the preview
         coverImageUrlInput.value = imageUrl;

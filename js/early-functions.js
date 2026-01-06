@@ -19,49 +19,36 @@ document.documentElement.setAttribute('data-theme', 'light');
 window.events = {};
 window.responses = {};
 
-// Check authentication on page load
-document.addEventListener('DOMContentLoaded', async () => {
-    // Skip auth check for invite pages (guests don't need login)
+async function initialAuthAndLoad() {
     const isInvitePage = window.location.hash.includes('invite/') || window.location.search.includes('data=');
-
     if (isInvitePage) {
         return;
     }
-
-    // Prefer the new username/password auth flow
     if (window.userAuth && typeof window.userAuth.init === 'function') {
         try {
             await window.userAuth.init();
         } catch (err) {
             console.error('Failed to initialize userAuth:', err);
         }
-
         if (!window.userAuth.isAuthenticated()) {
             console.log('🔒 Not authenticated - showing new login screen');
-            // userAuth.showLoginScreen() is called inside init when needed, but call again for safety
             if (typeof window.userAuth.showLoginScreen === 'function') {
                 window.userAuth.showLoginScreen();
             }
             return;
         }
-
         console.log('✅ Authenticated - showing app');
-
-        // Load events on initial page load if on dashboard
+        enforceLogin();
         const hash = window.location.hash.substring(1);
         const isDefaultDashboard = !hash || hash === 'dashboard';
-
         if (isDefaultDashboard) {
             console.log('📊 Initial load: Loading dashboard data...');
-            // Wait for loadManagerData to be available
             const waitForLoad = setInterval(() => {
                 if (typeof window.loadManagerData === 'function') {
                     clearInterval(waitForLoad);
                     window.loadManagerData();
                 }
-            }, 100); // Check every 100ms
-
-            // Timeout after 5 seconds
+            }, 100);
             setTimeout(() => {
                 clearInterval(waitForLoad);
                 if (typeof window.loadManagerData !== 'function') {
@@ -71,11 +58,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return;
     }
-
-    // Fallback: if new auth is unavailable, show the generic login page UI
     console.warn('⚠️ userAuth not available; showing built-in login page UI');
     showLoginPage();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialAuthAndLoad);
+} else {
+    initialAuthAndLoad();
+}
 
 /**
  * Enforce login - show login page if not authenticated
@@ -300,7 +291,9 @@ function updateUserDisplay() {
         const avatar = document.getElementById('user-avatar');
 
         if (displayName) {
-            displayName.textContent = user.name || user.username || 'User';
+            displayName.textContent = (window.userAuth && typeof window.userAuth.getDisplayName === 'function')
+                ? window.userAuth.getDisplayName()
+                : (user.name || user.username || 'User');
         }
 
         if (avatar) {
@@ -333,10 +326,7 @@ function showUserMenu() {
     const user = window.userAuth.getCurrentUser();
     const modal = document.getElementById('user-profile-modal');
 
-    if (!modal) {
-        console.error('User profile modal not found');
-        return;
-    }
+    if (!modal) return;
 
     // Populate modal with user data
     const avatarEl = document.getElementById('profile-avatar');
@@ -347,20 +337,24 @@ function showUserMenu() {
     const rankEl = document.getElementById('profile-rank');
 
     if (avatarEl) avatarEl.textContent = window.userAuth.getInitials ? window.userAuth.getInitials() : '👤';
+    
     if (usernameEl) usernameEl.value = user.username || '';
     if (nameEl) nameEl.value = user.name || '';
     if (emailEl) emailEl.value = user.email || '';
     if (branchEl) branchEl.value = user.branch || '';
 
     // Update ranks for selected branch
-    if (user.branch) {
-        updateProfileRanksForBranch();
+    if (user.branch && window.updateProfileRanksForBranch) {
+        window.updateProfileRanksForBranch();
     }
 
     if (rankEl) rankEl.value = user.rank || '';
 
     // Show modal
     modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+        modal.classList.add('active', 'is-visible');
+    });
 }
 
 /**
@@ -490,8 +484,7 @@ async function saveUserProfile() {
                     });
 
                     if (response.success) {
-                        // Fetch fresh user data from EventCall-Data after successful backend sync
-                        const freshUserData = await window.userAuth.fetchUserData(response.username);
+                        const freshUserData = response.user;
                         if (freshUserData) {
                             window.userAuth.saveUserToStorage(freshUserData);
                             window.userAuth.currentUser = freshUserData;
@@ -526,8 +519,7 @@ async function saveUserProfile() {
                 });
 
                 if (response.success) {
-                    // Fetch fresh user data from EventCall-Data after successful backend sync
-                    const freshUserData = await window.userAuth.fetchUserData(response.username);
+                    const freshUserData = response.user;
                     if (freshUserData) {
                         window.userAuth.saveUserToStorage(freshUserData);
                         window.userAuth.currentUser = freshUserData;
@@ -561,6 +553,7 @@ function closeUserProfile() {
     const modal = document.getElementById('user-profile-modal');
     if (modal) {
         modal.style.display = 'none';
+        modal.classList.remove('active', 'is-visible');
     }
 }
 
@@ -994,8 +987,21 @@ async function deleteEvent(eventId) {
             return;
         }
 
-        // Delete from GitHub if available
-        if (window.githubAPI && window.githubAPI.deleteEvent) {
+        const currentUser = (window.userAuth && window.userAuth.getCurrentUser && window.userAuth.getCurrentUser()) || (window.userAuth && window.userAuth.currentUser) || (window.getCurrentAuthenticatedUser ? window.getCurrentAuthenticatedUser() : null);
+        const ownerId = String(currentUser && currentUser.id ? currentUser.id : '').trim().toLowerCase();
+        const ownerUsername = String(currentUser && currentUser.username ? currentUser.username : '').trim().toLowerCase();
+        const eventOwner = String(event.createdBy || event.createdByUsername || '').trim().toLowerCase();
+        if (ownerId || ownerUsername) {
+            const matchesOwner = (ownerId && eventOwner === ownerId) || (ownerUsername && eventOwner === ownerUsername);
+            if (!matchesOwner) {
+                showToast('❌ You can only delete your own events', 'error');
+                return;
+            }
+        }
+
+        if (window.BackendAPI && window.BackendAPI.deleteEvent) {
+            await window.BackendAPI.deleteEvent(eventId);
+        } else if (window.githubAPI && window.githubAPI.deleteEvent) {
             await window.githubAPI.deleteEvent(eventId, event.title, event.coverImage);
         }
         
@@ -1177,91 +1183,10 @@ window.updateUserDisplay = updateUserDisplay;
 window.showUserMenu = showUserMenu;
 
 /**
- * Show the app loading screen (called on successful login)
+ * App Loader functions have been moved to js/app-loader.js
+ * to ensure reliable loading and prevent initialization conflicts.
  */
-function showAppLoader() {
-    const timestamp = new Date().toISOString();
-    console.log(`🔵 [${timestamp}] showAppLoader() CALLED`);
-    console.log('🔍 Searching for #app-loader element...');
 
-    const loader = document.getElementById('app-loader');
-    console.log('📍 Element found:', loader ? 'YES' : 'NO');
-
-    if (loader) {
-        console.log('📊 Current loader state BEFORE changes:');
-        console.log('  - display:', window.getComputedStyle(loader).display);
-        console.log('  - opacity:', window.getComputedStyle(loader).opacity);
-        console.log('  - visibility:', window.getComputedStyle(loader).visibility);
-        console.log('  - classList:', loader.classList.toString());
-        console.log('  - z-index:', window.getComputedStyle(loader).zIndex);
-
-        // CRITICAL: Hide login page to prevent it from covering the loader
-        // Both have z-index: 10000, so login page (later in DOM) would cover loader
-        const loginPage = document.getElementById('login-page');
-        if (loginPage) {
-            console.log('🔧 Hiding login page to show loader...');
-            loginPage.style.display = 'none';
-        }
-
-        console.log('🔧 Removing "hidden" class from loader...');
-        loader.classList.remove('hidden');
-
-        // Force style recalculation
-        void loader.offsetHeight;
-
-        console.log('✅ "hidden" class removed');
-        console.log('📊 Current loader state AFTER changes:');
-        console.log('  - display:', window.getComputedStyle(loader).display);
-        console.log('  - opacity:', window.getComputedStyle(loader).opacity);
-        console.log('  - visibility:', window.getComputedStyle(loader).visibility);
-        console.log('  - classList:', loader.classList.toString());
-        console.log('  - z-index:', window.getComputedStyle(loader).zIndex);
-
-        console.log('✅ LOADER SHOULD NOW BE VISIBLE (login page hidden)');
-    } else {
-        console.error('❌ LOADER ELEMENT NOT FOUND - #app-loader does not exist in DOM');
-    }
-}
-window.showAppLoader = showAppLoader;
-
-/**
- * Hide the app loading screen
- */
-function hideAppLoader() {
-    const loader = document.getElementById('app-loader');
-    if (loader) {
-        // Reset loader message to default before hiding
-        const statusLabel = loader.querySelector('.app-loader__status-label');
-        if (statusLabel) {
-            statusLabel.textContent = 'Loading';
-        }
-
-        // Add hidden class to trigger fade out
-        loader.classList.add('hidden');
-        // Remove from DOM after transition completes
-        loader.addEventListener('transitionend', () => {
-            if (loader.parentNode) {
-                loader.remove();
-            }
-        }, { once: true });
-    }
-}
-window.hideAppLoader = hideAppLoader;
-
-/**
- * PERFORMANCE: Update loader message for progress feedback
- * @param {string} message - Message to display
- */
-function updateLoaderMessage(message) {
-    const loader = document.getElementById('app-loader');
-    if (loader) {
-        const statusLabel = loader.querySelector('.app-loader__status-label');
-        if (statusLabel) {
-            statusLabel.textContent = message;
-        }
-    }
-}
-window.updateLoaderMessage = updateLoaderMessage;
 
 // Initialize hash listener when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
