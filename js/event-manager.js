@@ -2372,6 +2372,19 @@ Best regards`;
     }
 
     /**
+     * Toggle visibility of redundant buttons in edit mode
+     * @param {boolean} show - true to show, false to hide
+     * @private
+     */
+    _toggleRedundantEditButtons(show) {
+        const displayStyle = show ? '' : 'none';
+        const backBtn = document.querySelector('#create .btn-back');
+        const cancelBtn = document.querySelector('#create .form-actions .btn-secondary:not(#cancel-edit-btn)');
+        if (backBtn) backBtn.style.display = displayStyle;
+        if (cancelBtn) cancelBtn.style.display = displayStyle;
+    }
+
+    /**
      * Edit an existing event
      * @param {string} eventId - Event ID
      */
@@ -2467,10 +2480,7 @@ Best regards`;
         }
 
         // Hide Back button and Cancel button in edit mode (they're redundant with Cancel Edit)
-        const backBtn = document.querySelector('#create .btn-back');
-        const cancelBtn = document.querySelector('#create .form-actions .btn-secondary:not(#cancel-edit-btn)');
-        if (backBtn) backBtn.style.display = 'none';
-        if (cancelBtn) cancelBtn.style.display = 'none';
+        this._toggleRedundantEditButtons(false);
 
         showPage('create');
         document.querySelector('#create h2').textContent = 'Edit Event';
@@ -2534,10 +2544,7 @@ Best regards`;
         document.querySelector('#create h2').textContent = 'Create New Event';
 
         // Restore Back button and Cancel button
-        const backBtn = document.querySelector('#create .btn-back');
-        const staticCancelBtn = document.querySelector('#create .form-actions .btn-secondary:not(#cancel-edit-btn)');
-        if (backBtn) backBtn.style.display = '';
-        if (staticCancelBtn) staticCancelBtn.style.display = '';
+        this._toggleRedundantEditButtons(true);
 
         showPage('dashboard');
     }
@@ -3397,7 +3404,10 @@ async assignGuestToTable(eventId, rsvpId, tableNumberStr) {
 
         } catch (error) {
             console.error('Failed to load photos:', error);
-            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 2rem;">Failed to load photos: ${error.message}</div>`;
+            const safeMessage = window.utils && window.utils.escapeHTML
+                ? window.utils.escapeHTML(error.message)
+                : String(error.message).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 2rem;">Failed to load photos: ${safeMessage}</div>`;
         }
     }
 

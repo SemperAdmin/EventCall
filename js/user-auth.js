@@ -1407,10 +1407,17 @@ async function handleResetPassword(e) {
             window.showToast('✅ Password reset successfully! You can now log in.', 'success');
         }
 
-        // Clear URL parameter
+        // Clear URL parameter (in case it wasn't already cleared)
         const url = new URL(window.location);
         url.searchParams.delete('reset');
         window.history.replaceState({}, '', url);
+
+        // SECURITY: Clear stored reset token from sessionStorage
+        try {
+            sessionStorage.removeItem('_ec_reset_token');
+        } catch (e) {
+            // sessionStorage not available
+        }
 
         // Return to login form
         setTimeout(() => {
@@ -1444,6 +1451,7 @@ async function handleResetPassword(e) {
 
 /**
  * Check URL for reset token on page load
+ * SECURITY: Token is immediately removed from URL to prevent exposure in browser history/logs
  */
 function checkForResetToken() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -1451,7 +1459,30 @@ function checkForResetToken() {
 
     if (resetToken) {
         console.log('🔑 Reset token detected in URL');
+
+        // SECURITY: Immediately clear token from URL to prevent exposure in browser history
+        const url = new URL(window.location);
+        url.searchParams.delete('reset');
+        window.history.replaceState({}, '', url);
+
+        // Store token securely in sessionStorage (cleared when tab closes)
+        try {
+            sessionStorage.setItem('_ec_reset_token', resetToken);
+        } catch (e) {
+            console.warn('Could not store reset token in sessionStorage');
+        }
+
         showResetConfirmForm(resetToken);
+    } else {
+        // Check if we have a token from sessionStorage (in case of page refresh)
+        try {
+            const storedToken = sessionStorage.getItem('_ec_reset_token');
+            if (storedToken) {
+                showResetConfirmForm(storedToken);
+            }
+        } catch (e) {
+            // sessionStorage not available
+        }
     }
 }
 
