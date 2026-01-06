@@ -124,8 +124,8 @@ function getMimeTypeFromExt(name) {
   if (lower.endsWith('.png')) return 'image/png';
   if (lower.endsWith('.gif')) return 'image/gif';
   if (lower.endsWith('.webp')) return 'image/webp';
-  if (lower.endsWith('.svg')) return 'image/svg+xml';
   if (lower.endsWith('.bmp')) return 'image/bmp';
+  // SVG excluded due to XSS risk
   return 'application/octet-stream';
 }
 
@@ -135,7 +135,8 @@ async function ensurePublicBucket(bucket) {
   if (data && data.name) return { ok: true };
   const { error } = await supabase.storage.createBucket(bucket, {
     public: true,
-    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp'],
+    // SVG excluded due to XSS risk
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'],
     fileSizeLimit: '10MB'
   });
   if (error) return { ok: false, error: error.message };
@@ -719,11 +720,11 @@ app.post('/api/images/upload', async (req, res) => {
       return res.status(400).json({ error: 'file_name and content_base64 are required' });
     }
 
-    // Validate file extension
+    // Validate file extension (SVG excluded due to XSS risk)
     const ext = path.extname(file_name).toLowerCase();
-    const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
     if (!allowedExts.includes(ext)) {
-      return res.status(400).json({ error: 'Invalid file type. Allowed: jpg, jpeg, png, gif, webp, svg, bmp' });
+      return res.status(400).json({ error: 'Invalid file type. Allowed: jpg, jpeg, png, gif, webp, bmp' });
     }
 
     // Decode base64 content
@@ -776,29 +777,27 @@ app.post('/api/images/upload', async (req, res) => {
     // Store photo metadata in ec_event_photos table
     let photoId = null;
     if (event_id) {
-      try {
-        const photoRecord = {
-          event_id: event_id,
-          url: publicUrl,
-          storage_path: storagePath,
-          caption: caption || null,
-          uploaded_by: uploader_id || null
-        };
+      const photoRecord = {
+        event_id: event_id,
+        url: publicUrl,
+        storage_path: storagePath,
+        caption: caption || null,
+        uploaded_by: uploader_id || null
+      };
 
-        const { data: photoData, error: photoError } = await supabase
-          .from('ec_event_photos')
-          .insert([photoRecord])
-          .select('id')
-          .single();
+      const { data: photoData, error: photoError } = await supabase
+        .from('ec_event_photos')
+        .insert([photoRecord])
+        .select('id')
+        .single();
 
-        if (photoError) {
-          console.error('Failed to save photo metadata:', photoError.message);
-        } else if (photoData) {
-          photoId = photoData.id;
-        }
-      } catch (metaError) {
-        console.error('Photo metadata error:', metaError.message);
+      if (photoError) {
+        console.error('Failed to save photo metadata:', photoError.message);
+        // Clean up orphaned file from storage
+        await supabase.storage.from(IMAGE_BUCKET).remove([storagePath]);
+        return res.status(500).json({ error: 'Failed to save photo metadata' });
       }
+      photoId = photoData?.id || null;
     }
 
     res.json({
@@ -872,16 +871,17 @@ app.delete('/api/photos/:id', async (req, res) => {
       return res.status(404).json({ error: 'Photo not found' });
     }
 
-    // Delete from storage
+    // Delete from storage first
     const { error: storageError } = await supabase.storage
       .from(IMAGE_BUCKET)
       .remove([photo.storage_path]);
 
     if (storageError) {
       console.error('Storage deletion error:', storageError.message);
+      return res.status(500).json({ error: 'Failed to delete image from storage' });
     }
 
-    // Delete metadata record (will cascade due to foreign key)
+    // Delete metadata record
     const { error: deleteError } = await supabase
       .from('ec_event_photos')
       .delete()
