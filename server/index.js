@@ -1348,8 +1348,9 @@ app.post('/api/auth/reset-password', async (req, res) => {
       });
 
       if (!updateResp.ok) {
-        const error = await updateResp.json();
-        return res.status(500).json({ error: error.message || 'Failed to update password' });
+        const errData = await updateResp.json();
+        console.error('GitHub password reset error:', errData.message);
+        return res.status(500).json({ error: 'Failed to update password' });
       }
     }
 
@@ -1481,8 +1482,9 @@ app.post('/api/auth/change-password', async (req, res) => {
       });
 
       if (!updateResp.ok) {
-        const error = await updateResp.json();
-        return res.status(500).json({ error: error.message || 'Failed to update password' });
+        const errData = await updateResp.json();
+        console.error('GitHub password change error:', errData.message);
+        return res.status(500).json({ error: 'Failed to update password' });
       }
     }
 
