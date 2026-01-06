@@ -628,13 +628,40 @@ app.put('/api/events/:id', async (req, res) => {
       return res.status(503).json({ error: 'Event updates require Supabase configuration' });
     }
 
-    let oldCoverUrl = null;
-    const { data: existingRow } = await supabase
+    // Fetch existing event for version checking and cover image cleanup
+    const { data: existingRow, error: fetchError } = await supabase
       .from('ec_events')
-      .select('cover_image_url')
+      .select('cover_image_url, updated_at')
       .eq('id', eventId)
       .maybeSingle();
-    oldCoverUrl = existingRow?.cover_image_url || null;
+
+    if (fetchError) {
+      console.error('Failed to fetch event for update:', fetchError.message);
+      return res.status(500).json({ error: 'Failed to fetch event' });
+    }
+
+    if (!existingRow) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // VERSION CHECK: Prevent concurrent edit conflicts
+    // Client must send the updated_at timestamp they received when fetching the event
+    const clientVersion = updates.updated_at || updates.updatedAt || updates.version;
+    if (clientVersion && existingRow.updated_at) {
+      const clientDate = new Date(clientVersion).getTime();
+      const serverDate = new Date(existingRow.updated_at).getTime();
+
+      // Allow 1 second tolerance for clock skew
+      if (clientDate < serverDate - 1000) {
+        return res.status(409).json({
+          error: 'Conflict: Event was modified by another user',
+          serverVersion: existingRow.updated_at,
+          clientVersion: clientVersion
+        });
+      }
+    }
+
+    const oldCoverUrl = existingRow?.cover_image_url || null;
 
     // Map frontend field names to database column names
     const dbUpdates = {};
@@ -922,25 +949,88 @@ app.post('/api/events', async (req, res) => {
   }
 });
 
-// POST /api/rsvps - Create a new RSVP
+// POST /api/rsvps - Create a new RSVP (with deduplication)
 app.post('/api/rsvps', async (req, res) => {
   try {
     if (!isOriginAllowed(req)) {
       return res.status(403).json({ error: 'Origin not allowed' });
     }
     const rsvpData = req.body;
-    if (!rsvpData.event_id && !rsvpData.eventId) {
+    const eventId = rsvpData.event_id || rsvpData.eventId;
+    if (!eventId) {
       return res.status(400).json({ error: 'event_id is required' });
     }
     if (!rsvpData.name || !rsvpData.email) {
       return res.status(400).json({ error: 'Name and email are required' });
     }
-    const rsvpId = rsvpData.id || crypto.randomUUID();
+
+    const normalizedEmail = rsvpData.email.toLowerCase().trim();
+
+    // DEDUPLICATION: Check for existing RSVP with same email for this event
+    if (USE_SUPABASE) {
+      const { data: existingRsvp, error: checkError } = await supabase
+        .from('ec_rsvps')
+        .select('id, name, email, status, created_at')
+        .eq('event_id', eventId)
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking for duplicate RSVP:', checkError.message);
+      }
+
+      if (existingRsvp) {
+        // If explicit update flag is set, update existing RSVP
+        if (rsvpData.isUpdate || rsvpData.rsvpId === existingRsvp.id) {
+          const updateData = {
+            name: rsvpData.name,
+            phone: rsvpData.phone || '',
+            guests: rsvpData.guests || 0,
+            dietary: rsvpData.dietary || '',
+            notes: rsvpData.notes || '',
+            status: rsvpData.status || existingRsvp.status,
+            updated_at: new Date().toISOString()
+          };
+
+          const { data: updatedRsvp, error: updateError } = await supabase
+            .from('ec_rsvps')
+            .update(updateData)
+            .eq('id', existingRsvp.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.error('Failed to update existing RSVP:', updateError.message);
+            return res.status(500).json({ error: 'Failed to update RSVP' });
+          }
+
+          return res.json({
+            success: true,
+            rsvp: updatedRsvp,
+            rsvpId: existingRsvp.id,
+            updated: true,
+            message: 'RSVP updated successfully'
+          });
+        }
+
+        // Duplicate detected without update flag - return existing RSVP info
+        return res.status(409).json({
+          error: 'An RSVP with this email already exists for this event',
+          existingRsvpId: existingRsvp.id,
+          existingName: existingRsvp.name,
+          existingStatus: existingRsvp.status,
+          createdAt: existingRsvp.created_at
+        });
+      }
+    }
+
+    // No existing RSVP found - create new one
+    const rsvpId = rsvpData.id || rsvpData.rsvpId || crypto.randomUUID();
     const rsvp = {
       id: rsvpId,
-      event_id: rsvpData.event_id || rsvpData.eventId,
+      event_id: eventId,
       name: rsvpData.name,
-      email: rsvpData.email.toLowerCase(),
+      email: normalizedEmail,
       phone: rsvpData.phone || '',
       guests: rsvpData.guests || 0,
       dietary: rsvpData.dietary || '',
@@ -948,6 +1038,7 @@ app.post('/api/rsvps', async (req, res) => {
       status: rsvpData.status || 'confirmed',
       created_at: new Date().toISOString()
     };
+
     if (USE_SUPABASE) {
       const { error } = await supabase.from('ec_rsvps').insert([rsvp]);
       if (error) {

@@ -20,6 +20,143 @@ window.events = {};
 window.responses = {};
 
 // =============================================================================
+// CACHE MANAGER - Centralized cache invalidation strategy
+// =============================================================================
+
+/**
+ * CacheManager - Centralized cache management with invalidation
+ * Provides consistent TTL, versioning, and invalidation across the app
+ */
+const CacheManager = {
+    // Cache version - increment to invalidate all caches
+    VERSION: 1,
+
+    // Default TTL values (in milliseconds)
+    TTL: {
+        EVENTS: 5 * 60 * 1000,      // 5 minutes
+        RESPONSES: 5 * 60 * 1000,   // 5 minutes
+        USER: 30 * 60 * 1000,       // 30 minutes
+        FORM_DRAFT: 60 * 60 * 1000  // 1 hour
+    },
+
+    // Track when data was last fetched
+    _timestamps: {
+        events: 0,
+        responses: 0
+    },
+
+    // Subscribers for cache invalidation events
+    _subscribers: [],
+
+    /**
+     * Check if cached data is stale
+     * @param {string} cacheKey - 'events' or 'responses'
+     * @returns {boolean}
+     */
+    isStale(cacheKey) {
+        const timestamp = this._timestamps[cacheKey] || 0;
+        const ttl = this.TTL[cacheKey.toUpperCase()] || this.TTL.EVENTS;
+        return Date.now() - timestamp > ttl;
+    },
+
+    /**
+     * Mark cache as fresh (just updated)
+     * @param {string} cacheKey - 'events' or 'responses'
+     */
+    markFresh(cacheKey) {
+        this._timestamps[cacheKey] = Date.now();
+    },
+
+    /**
+     * Invalidate specific cache or all caches
+     * @param {string} [cacheKey] - Optional specific cache to invalidate
+     */
+    invalidate(cacheKey) {
+        if (cacheKey) {
+            this._timestamps[cacheKey] = 0;
+            console.log(`🗑️ Cache invalidated: ${cacheKey}`);
+        } else {
+            // Invalidate all
+            Object.keys(this._timestamps).forEach(key => {
+                this._timestamps[key] = 0;
+            });
+            console.log('🗑️ All caches invalidated');
+        }
+
+        // Notify subscribers
+        this._notifySubscribers(cacheKey);
+
+        // Also clear GitHub API caches if available
+        if (window.githubAPI && typeof window.githubAPI.clearCache === 'function') {
+            window.githubAPI.clearCache();
+        }
+    },
+
+    /**
+     * Invalidate caches after a mutation (create/update/delete)
+     * @param {string} entityType - 'event' or 'rsvp'
+     * @param {string} eventId - Event ID affected
+     */
+    invalidateAfterMutation(entityType, eventId) {
+        if (entityType === 'event') {
+            this.invalidate('events');
+        }
+        this.invalidate('responses');
+        console.log(`🔄 Cache invalidated after ${entityType} mutation for event: ${eventId}`);
+    },
+
+    /**
+     * Subscribe to cache invalidation events
+     * @param {Function} callback - Called when cache is invalidated
+     * @returns {Function} Unsubscribe function
+     */
+    subscribe(callback) {
+        this._subscribers.push(callback);
+        return () => {
+            this._subscribers = this._subscribers.filter(cb => cb !== callback);
+        };
+    },
+
+    /**
+     * Notify all subscribers of cache invalidation
+     * @param {string} [cacheKey] - Which cache was invalidated
+     */
+    _notifySubscribers(cacheKey) {
+        this._subscribers.forEach(callback => {
+            try {
+                callback(cacheKey);
+            } catch (err) {
+                console.error('Cache subscriber error:', err);
+            }
+        });
+    },
+
+    /**
+     * Get cache statistics for debugging
+     * @returns {Object}
+     */
+    getStats() {
+        const now = Date.now();
+        return {
+            version: this.VERSION,
+            events: {
+                age: now - this._timestamps.events,
+                isStale: this.isStale('events'),
+                count: Object.keys(window.events || {}).length
+            },
+            responses: {
+                age: now - this._timestamps.responses,
+                isStale: this.isStale('responses'),
+                count: Object.keys(window.responses || {}).length
+            }
+        };
+    }
+};
+
+// Export to window for global access
+window.CacheManager = CacheManager;
+
+// =============================================================================
 // APP INITIALIZATION MUTEX
 // =============================================================================
 

@@ -10,8 +10,9 @@ console.log('📦 manager-system.js loaded - Version 2.0 (Tabbed Dashboard)');
 let syncInProgress = false;
 let pendingRSVPCount = 0;
 
-// Guard flag to prevent concurrent loadManagerData calls
+// Guard flag and promise for loadManagerData
 let loadManagerDataInProgress = false;
+let loadManagerDataPromise = null;
 
 // Debounce helper for loadManagerData
 let loadManagerDataDebounceTimer = null;
@@ -520,14 +521,17 @@ function updateDashboardSyncStatus(pendingCount) {
  * Enhanced load manager data with sync status
  */
 async function loadManagerData() {
-    // Guard against concurrent calls
-    if (loadManagerDataInProgress) {
-        console.log('⏳ loadManagerData already in progress, skipping...');
-        return;
+    // If already in progress, return the existing promise so callers can await it
+    if (loadManagerDataInProgress && loadManagerDataPromise) {
+        console.log('⏳ loadManagerData already in progress, awaiting existing promise...');
+        return loadManagerDataPromise;
     }
 
     loadManagerDataInProgress = true;
     console.log('📊 Loading manager data...');
+
+    // Create a promise that resolves when loading is complete
+    loadManagerDataPromise = (async () => {
 
     try {
         if (!window.events) window.events = {};
@@ -735,6 +739,13 @@ async function loadManagerData() {
 
             window.events = selectedEvents || {};
             window.responses = responses || {};
+
+            // Mark caches as fresh
+            if (window.CacheManager) {
+                window.CacheManager.markFresh('events');
+                window.CacheManager.markFresh('responses');
+            }
+
             console.log(`✅ Loaded ${Object.keys(window.events).length} events from backend`);
             console.log(`✅ Loaded responses for ${Object.keys(window.responses).length} events from backend`);
 
@@ -756,7 +767,11 @@ async function loadManagerData() {
     } finally {
         // Always reset the guard flag
         loadManagerDataInProgress = false;
+        loadManagerDataPromise = null;
     }
+    })();
+
+    return loadManagerDataPromise;
 }
 
 function initShowAllEventsToggle() {

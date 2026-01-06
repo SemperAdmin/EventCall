@@ -69,15 +69,24 @@
   // Centralized route handler to ensure consistent behavior
   async function handleRoute(pageId, param) {
     console.log('🔄 Routing to:', pageId, param);
-    if (pageId === 'manage' && param && window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
-      if (!window.events || !window.events[param]) {
-        try {
-          if (typeof window.loadManagerData === 'function') {
-            await window.loadManagerData();
-          }
-        } catch (_) {}
+
+    // Wait for app initialization before handling deep links
+    if (window.AppInit && !window.AppInit.isReady()) {
+      console.log('⏳ Waiting for AppInit before routing...');
+      try {
+        await window.AppInit.waitForReady();
+      } catch (err) {
+        console.warn('AppInit wait failed:', err);
       }
-      window.eventManager.showEventManagement(param);
+    }
+
+    if (pageId === 'manage' && param) {
+      // Ensure data is loaded before showing event management
+      await ensureDataLoaded(param);
+
+      if (window.eventManager && typeof window.eventManager.showEventManagement === 'function') {
+        window.eventManager.showEventManagement(param);
+      }
       // Ensure page visibility is toggled - CRITICAL FIX
       if (window.showPageContent) window.showPageContent('manage');
     } else if (pageId === 'invite' && param && window.uiComponents && typeof window.uiComponents.showInvite === 'function') {
@@ -87,6 +96,53 @@
       if (window.showPage) window.showPage(pageId);
     }
     setActiveNav(pageId);
+  }
+
+  /**
+   * Ensure event data is loaded before rendering
+   * Implements retry logic with promise queuing
+   * @param {string} eventId - Event ID to load
+   */
+  async function ensureDataLoaded(eventId) {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 500;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      // Check if event is already in cache
+      if (window.events && window.events[eventId]) {
+        console.log('✅ Event found in cache:', eventId);
+        return true;
+      }
+
+      // Check if cache is stale and needs refresh
+      const cacheStale = window.CacheManager && window.CacheManager.isStale('events');
+
+      if (!window.events || Object.keys(window.events).length === 0 || cacheStale) {
+        console.log(`📊 Loading data (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+
+        try {
+          // Wait for loadManagerData if it exists
+          if (typeof window.loadManagerData === 'function') {
+            await window.loadManagerData();
+          }
+        } catch (err) {
+          console.warn('loadManagerData failed:', err);
+        }
+
+        // Check again after loading
+        if (window.events && window.events[eventId]) {
+          return true;
+        }
+      }
+
+      // Wait before retrying
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      }
+    }
+
+    console.warn(`⚠️ Event ${eventId} not found after ${MAX_RETRIES} attempts`);
+    return false;
   }
 
   const AppRouter = {
