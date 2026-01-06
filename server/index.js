@@ -647,6 +647,8 @@ app.post('/api/events', async (req, res) => {
       return res.status(400).json({ error: 'Title and date are required' });
     }
     const eventId = eventData.id || crypto.randomUUID();
+    // Accept both creator_id and created_by from frontend
+    const creatorId = eventData.creator_id || eventData.creatorId || eventData.created_by || eventData.createdBy || '';
     const event = {
       id: eventId,
       title: eventData.title,
@@ -655,8 +657,15 @@ app.post('/api/events', async (req, res) => {
       location: eventData.location || '',
       description: eventData.description || '',
       dress_code: eventData.dress_code || eventData.dressCode || '',
-      creator_id: eventData.creator_id || eventData.creatorId || '',
-      created_at: new Date().toISOString()
+      cover_image_url: eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '',
+      creator_id: creatorId,
+      created_at: new Date().toISOString(),
+      status: eventData.status || 'active',
+      allow_guests: eventData.allow_guests ?? true,
+      requires_meal_choice: eventData.requires_meal_choice ?? false,
+      custom_questions: eventData.custom_questions || [],
+      event_details: eventData.event_details || {},
+      seating_chart: eventData.seating_chart || null
     };
     if (USE_SUPABASE) {
       const { error } = await supabase.from('ec_events').insert([event]);
@@ -852,6 +861,20 @@ app.post('/api/images/upload', async (req, res) => {
         return res.status(500).json({ error: 'Failed to save photo metadata' });
       }
       photoId = photoData?.id || null;
+
+      // Also update the event's cover_image_url if this is the first photo or no cover set
+      const { data: eventData } = await supabase
+        .from('ec_events')
+        .select('cover_image_url')
+        .eq('id', event_id)
+        .single();
+
+      if (!eventData?.cover_image_url) {
+        await supabase
+          .from('ec_events')
+          .update({ cover_image_url: publicUrl, updated_at: new Date().toISOString() })
+          .eq('id', event_id);
+      }
     }
 
     res.json({
