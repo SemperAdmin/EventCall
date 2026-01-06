@@ -885,6 +885,20 @@ const dashboardState = {
 };
 
 /**
+ * Reset dashboard state - call this when navigating to dashboard
+ * Ensures clean render by clearing cached state
+ */
+function resetDashboardState() {
+    console.log('🔄 Resetting dashboard state for clean render');
+    dashboardState.renderedEvents.clear();
+    dashboardState.pagination.active.shown = 0;
+    dashboardState.pagination.past.shown = 0;
+    // Don't clear activeListeners - they'll be cleaned up by cleanupEventListeners
+}
+
+window.resetDashboardState = resetDashboardState;
+
+/**
  * Generate a hash of event data to detect changes
  */
 function getEventHash(event) {
