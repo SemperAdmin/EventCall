@@ -699,6 +699,210 @@ app.post('/api/rsvps', async (req, res) => {
   }
 });
 
+// =============================================================================
+// IMAGE UPLOAD API - Upload images to Supabase Storage
+// =============================================================================
+
+app.post('/api/images/upload', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    if (!USE_SUPABASE || !supabase) {
+      return res.status(503).json({ error: 'Image upload requires Supabase configuration' });
+    }
+
+    const { file_name, content_base64, event_id, caption, tags, uploader_username, uploader_id } = req.body;
+
+    if (!file_name || !content_base64) {
+      return res.status(400).json({ error: 'file_name and content_base64 are required' });
+    }
+
+    // Validate file extension
+    const ext = path.extname(file_name).toLowerCase();
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
+    if (!allowedExts.includes(ext)) {
+      return res.status(400).json({ error: 'Invalid file type. Allowed: jpg, jpeg, png, gif, webp, svg, bmp' });
+    }
+
+    // Decode base64 content
+    const buffer = Buffer.from(content_base64, 'base64');
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (buffer.length > maxSize) {
+      return res.status(400).json({ error: 'File too large. Maximum size is 10MB' });
+    }
+
+    // Ensure bucket exists
+    const bucketResult = await ensurePublicBucket(IMAGE_BUCKET);
+    if (!bucketResult.ok) {
+      console.error('Failed to ensure bucket:', bucketResult.error);
+      return res.status(500).json({ error: 'Failed to initialize storage' });
+    }
+
+    // Generate unique file path
+    const timestamp = Date.now();
+    const randomId = crypto.randomBytes(8).toString('hex');
+    const sanitizedFileName = file_name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const storagePath = event_id
+      ? `events/${event_id}/${timestamp}-${randomId}-${sanitizedFileName}`
+      : `uploads/${timestamp}-${randomId}-${sanitizedFileName}`;
+
+    // Get MIME type
+    const mimeType = getMimeTypeFromExt(file_name);
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(IMAGE_BUCKET)
+      .upload(storagePath, buffer, {
+        contentType: mimeType,
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Supabase storage upload error:', uploadError.message);
+      return res.status(500).json({ error: 'Failed to upload image' });
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(IMAGE_BUCKET)
+      .getPublicUrl(storagePath);
+
+    const publicUrl = urlData?.publicUrl || '';
+
+    // Optionally store metadata in a table (if ec_photos table exists)
+    let photoId = null;
+    try {
+      const photoRecord = {
+        id: crypto.randomUUID(),
+        event_id: event_id || null,
+        file_name: sanitizedFileName,
+        storage_path: storagePath,
+        public_url: publicUrl,
+        caption: caption || '',
+        tags: tags || [],
+        uploader_username: uploader_username || '',
+        uploader_id: uploader_id || '',
+        created_at: new Date().toISOString()
+      };
+
+      const { data: photoData, error: photoError } = await supabase
+        .from('ec_photos')
+        .insert([photoRecord])
+        .select('id')
+        .single();
+
+      if (!photoError && photoData) {
+        photoId = photoData.id;
+      }
+    } catch (metaError) {
+      // Photo metadata table might not exist, continue without it
+      console.log('Photo metadata not saved (table may not exist):', metaError.message);
+    }
+
+    res.json({
+      success: true,
+      url: publicUrl,
+      photoId,
+      storagePath,
+      fileName: sanitizedFileName
+    });
+
+  } catch (error) {
+    console.error('Image upload error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/events/:id/photos - Get photos for an event
+app.get('/api/events/:id/photos', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    const eventId = req.params.id;
+
+    if (!USE_SUPABASE || !supabase) {
+      return res.json({ success: true, photos: [] });
+    }
+
+    // Try to fetch from ec_photos table
+    const { data, error } = await supabase
+      .from('ec_photos')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      // Table might not exist
+      console.log('Could not fetch photos:', error.message);
+      return res.json({ success: true, photos: [] });
+    }
+
+    res.json({ success: true, photos: data || [] });
+
+  } catch (error) {
+    console.error('Failed to fetch photos:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// DELETE /api/photos/:id - Delete a photo
+app.delete('/api/photos/:id', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+
+    const photoId = req.params.id;
+
+    if (!USE_SUPABASE || !supabase) {
+      return res.status(503).json({ error: 'Photo deletion requires Supabase configuration' });
+    }
+
+    // Get photo record to find storage path
+    const { data: photo, error: fetchError } = await supabase
+      .from('ec_photos')
+      .select('storage_path')
+      .eq('id', photoId)
+      .single();
+
+    if (fetchError || !photo) {
+      return res.status(404).json({ error: 'Photo not found' });
+    }
+
+    // Delete from storage
+    const { error: storageError } = await supabase.storage
+      .from(IMAGE_BUCKET)
+      .remove([photo.storage_path]);
+
+    if (storageError) {
+      console.error('Storage deletion error:', storageError.message);
+    }
+
+    // Delete metadata record
+    const { error: deleteError } = await supabase
+      .from('ec_photos')
+      .delete()
+      .eq('id', photoId);
+
+    if (deleteError) {
+      console.error('Photo record deletion error:', deleteError.message);
+      return res.status(500).json({ error: 'Failed to delete photo' });
+    }
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Photo deletion error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Proxy the workflow dispatch to GitHub, validating CSRF headers
 app.post('/api/dispatch', async (req, res) => {
   try {
