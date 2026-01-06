@@ -157,6 +157,224 @@ const CacheManager = {
 window.CacheManager = CacheManager;
 
 // =============================================================================
+// LOADING STATE MANAGER - Consistent loading/error states
+// =============================================================================
+
+/**
+ * LoadingStateManager - Centralized loading and error state management
+ * Provides consistent UI states across the application
+ */
+const LoadingStateManager = {
+    // Current loading states by key
+    _states: {},
+
+    // State change subscribers
+    _subscribers: [],
+
+    /**
+     * Check if any operation is loading
+     * @param {string} [key] - Optional specific key to check
+     * @returns {boolean}
+     */
+    isLoading(key) {
+        if (key) {
+            return this._states[key]?.loading || false;
+        }
+        return Object.values(this._states).some(s => s.loading);
+    },
+
+    /**
+     * Get error for a specific key
+     * @param {string} key
+     * @returns {Error|null}
+     */
+    getError(key) {
+        return this._states[key]?.error || null;
+    },
+
+    /**
+     * Start a loading operation
+     * @param {string} key - Unique operation key
+     * @param {Object} [options] - Options
+     * @param {boolean} [options.showOverlay] - Show global overlay
+     * @param {string} [options.message] - Loading message
+     */
+    startLoading(key, options = {}) {
+        const { showOverlay = false, message = 'Loading...' } = options;
+
+        this._states[key] = {
+            loading: true,
+            error: null,
+            startTime: Date.now(),
+            message
+        };
+
+        if (showOverlay && window.LoadingUI?.Overlay) {
+            window.LoadingUI.Overlay.show(message);
+        }
+
+        this._notify(key, 'loading');
+    },
+
+    /**
+     * End a loading operation with success
+     * @param {string} key - Operation key
+     */
+    endLoading(key) {
+        if (this._states[key]) {
+            const elapsed = Date.now() - (this._states[key].startTime || 0);
+            console.log(`✅ ${key} completed in ${elapsed}ms`);
+            this._states[key].loading = false;
+            this._states[key].error = null;
+        }
+
+        // Hide overlay if no more operations loading
+        if (!this.isLoading() && window.LoadingUI?.Overlay) {
+            window.LoadingUI.Overlay.hide();
+        }
+
+        this._notify(key, 'success');
+    },
+
+    /**
+     * End a loading operation with error
+     * @param {string} key - Operation key
+     * @param {Error|string} error - Error that occurred
+     * @param {Object} [options] - Options
+     * @param {boolean} [options.showToast] - Show error toast (default: true)
+     * @param {boolean} [options.retry] - Allow retry
+     */
+    setError(key, error, options = {}) {
+        const { showToast = true } = options;
+        const errorObj = typeof error === 'string' ? new Error(error) : error;
+
+        if (this._states[key]) {
+            this._states[key].loading = false;
+            this._states[key].error = errorObj;
+        } else {
+            this._states[key] = { loading: false, error: errorObj };
+        }
+
+        // Hide overlay
+        if (window.LoadingUI?.Overlay) {
+            window.LoadingUI.Overlay.hide();
+        }
+
+        // Show toast notification
+        if (showToast && window.showToast) {
+            const message = this._getUserFriendlyMessage(errorObj);
+            window.showToast(`❌ ${message}`, 'error');
+        }
+
+        console.error(`❌ ${key} failed:`, errorObj);
+        this._notify(key, 'error', errorObj);
+    },
+
+    /**
+     * Clear error state
+     * @param {string} key
+     */
+    clearError(key) {
+        if (this._states[key]) {
+            this._states[key].error = null;
+        }
+        this._notify(key, 'cleared');
+    },
+
+    /**
+     * Execute an operation with automatic loading/error state management
+     * @param {string} key - Operation key
+     * @param {Function} fn - Async function to execute
+     * @param {Object} [options] - Options
+     * @returns {Promise<any>}
+     */
+    async withLoading(key, fn, options = {}) {
+        this.startLoading(key, options);
+        try {
+            const result = await fn();
+            this.endLoading(key);
+            return result;
+        } catch (error) {
+            this.setError(key, error, options);
+            throw error;
+        }
+    },
+
+    /**
+     * Subscribe to state changes
+     * @param {Function} callback - Called with (key, state, error)
+     * @returns {Function} Unsubscribe function
+     */
+    subscribe(callback) {
+        this._subscribers.push(callback);
+        return () => {
+            this._subscribers = this._subscribers.filter(cb => cb !== callback);
+        };
+    },
+
+    /**
+     * Notify subscribers of state change
+     * @private
+     */
+    _notify(key, state, error = null) {
+        this._subscribers.forEach(cb => {
+            try {
+                cb(key, state, error);
+            } catch (err) {
+                console.error('LoadingStateManager subscriber error:', err);
+            }
+        });
+    },
+
+    /**
+     * Get user-friendly error message
+     * @private
+     */
+    _getUserFriendlyMessage(error) {
+        const msg = error?.message || String(error);
+
+        // Network errors
+        if (msg.includes('fetch') || msg.includes('network') || msg.includes('Network')) {
+            return 'Network error - please check your connection';
+        }
+
+        // Rate limiting
+        if (msg.includes('429') || msg.includes('rate limit')) {
+            return 'Too many requests - please wait a moment';
+        }
+
+        // Auth errors
+        if (msg.includes('401') || msg.includes('Authentication')) {
+            return 'Please log in again';
+        }
+
+        // Server errors
+        if (msg.includes('500') || msg.includes('Server')) {
+            return 'Server error - please try again later';
+        }
+
+        // Timeout
+        if (msg.includes('timeout') || msg.includes('Timeout')) {
+            return 'Request timed out - please try again';
+        }
+
+        // Default: use original message (truncated)
+        return msg.length > 100 ? msg.substring(0, 100) + '...' : msg;
+    },
+
+    /**
+     * Get all current states (for debugging)
+     * @returns {Object}
+     */
+    getStates() {
+        return { ...this._states };
+    }
+};
+
+// Export to window for global access
+window.LoadingStateManager = LoadingStateManager;
+
+// =============================================================================
 // APP INITIALIZATION MUTEX
 // =============================================================================
 

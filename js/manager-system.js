@@ -530,6 +530,11 @@ async function loadManagerData() {
     loadManagerDataInProgress = true;
     console.log('📊 Loading manager data...');
 
+    // Track loading state for consistent UI
+    if (window.LoadingStateManager) {
+        window.LoadingStateManager.startLoading('dashboard', { message: 'Loading events...' });
+    }
+
     // Create a promise that resolves when loading is complete
     loadManagerDataPromise = (async () => {
 
@@ -540,6 +545,9 @@ async function loadManagerData() {
 
         if (!isUserAuthenticated()) {
             console.log('⚠️ No authentication - using local events only');
+            if (window.LoadingStateManager) {
+                window.LoadingStateManager.endLoading('dashboard');
+            }
             renderDashboard();
             return;
         }
@@ -576,36 +584,44 @@ async function loadManagerData() {
             if (useCreatorFilter) {
                 filterParams.created_by = currentUser.id;
             }
-            let rawResponse = await window.BackendAPI.loadEvents(filterParams);
+
+            // PERFORMANCE: Load filtered events and unassigned events in PARALLEL
+            console.log('⚡ Loading events in parallel...');
+            const [rawResponse, unassignedRaw] = await Promise.all([
+                window.BackendAPI.loadEvents(filterParams),
+                window.BackendAPI.loadEvents({ unassigned: true })
+            ]);
+
             let allEventsList = extractEventsFromResponse(rawResponse);
 
             // Fallback: if filtered by creator returned nothing, load ALL events
             if (allEventsList.length === 0 && useCreatorFilter) {
                 console.log('ℹ️ No events found for user filter, loading all events as fallback');
-                rawResponse = await window.BackendAPI.loadEvents({});
-                allEventsList = extractEventsFromResponse(rawResponse);
+                const fallbackResponse = await window.BackendAPI.loadEvents({});
+                allEventsList = extractEventsFromResponse(fallbackResponse);
             }
+
+            // Helper to normalize event data
+            const normalizeEvent = (ev, overrides = {}) => ({
+                ...ev,
+                id: ev.id || ev.legacyId,
+                title: ev.title,
+                date: ev.date,
+                time: ev.time,
+                location: ev.location,
+                description: ev.description,
+                coverImage: ev.cover_image_url || ev.coverImageUrl || ev.coverImage,
+                createdBy: ev.created_by || ev.createdBy || ev.owner || '',
+                allowGuests: ev.allow_guests !== undefined ? ev.allow_guests : ev.allowGuests,
+                requiresMealChoice: ev.requires_meal_choice !== undefined ? ev.requires_meal_choice : ev.requiresMealChoice,
+                ...overrides
+            });
 
             // Convert to map and normalize
             const allEvents = {};
             allEventsList.forEach(ev => {
                 if (!ev || typeof ev !== 'object') return;
-                
-                // Normalize snake_case to camelCase
-                const normalized = {
-                    ...ev,
-                    id: ev.id || ev.legacyId,
-                    title: ev.title,
-                    date: ev.date,
-                    time: ev.time,
-                    location: ev.location,
-                    description: ev.description,
-                    coverImage: ev.cover_image_url || ev.coverImageUrl || ev.coverImage,
-                    createdBy: ev.created_by || ev.createdBy || ev.owner || '',
-                    allowGuests: ev.allow_guests !== undefined ? ev.allow_guests : ev.allowGuests,
-                    requiresMealChoice: ev.requires_meal_choice !== undefined ? ev.requires_meal_choice : ev.requiresMealChoice
-                };
-                
+                const normalized = normalizeEvent(ev);
                 if (normalized.id) {
                     allEvents[normalized.id] = normalized;
                 }
@@ -614,110 +630,118 @@ async function loadManagerData() {
             const myEvents = {};
             const myId = String(currentUser && currentUser.id ? currentUser.id : '').trim().toLowerCase();
             const myUsername = String(currentUser && currentUser.username ? currentUser.username : '').trim().toLowerCase();
-            
+
             for (const [eid, ev] of Object.entries(allEvents || {})) {
                 const owner = String(ev.createdBy || '').trim().toLowerCase();
-                // Check against both ID and Username
-                const isOwner = (myId && owner === myId) || 
+                const isOwner = (myId && owner === myId) ||
                                (myUsername && owner === myUsername) ||
                                (ev.created_by_username && ev.created_by_username === myUsername);
-                               
                 if (isOwner) {
                     myEvents[eid] = ev;
                 }
             }
-            const unassignedRaw = await window.BackendAPI.loadEvents({ unassigned: true });
+
+            // Process unassigned events
             let unassignedEvents = {};
             if (unassignedRaw && Array.isArray(unassignedRaw.events)) {
                 unassignedRaw.events.forEach(ev => {
                     if (ev && (ev.id || ev.legacyId)) unassignedEvents[ev.id || ev.legacyId] = ev;
                 });
             } else if (typeof unassignedRaw === 'object') {
-                // Fallback for map-style return
                 if (unassignedRaw.events) delete unassignedRaw.events;
                 if (unassignedRaw.success) delete unassignedRaw.success;
                 unassignedEvents = unassignedRaw;
             }
 
-            // Backfill: assign unassigned events to current user
-            if (currentUser && currentUser.id) {
-                for (const [eid, ev] of Object.entries(unassignedEvents || {})) {
-                    try {
-                        await window.BackendAPI.updateEvent(eid, { created_by: currentUser.id });
-                        // Add to myEvents if successful
-                        const normalized = {
-                            ...ev,
-                            id: ev.id || ev.legacyId || eid,
-                            title: ev.title,
-                            date: ev.date,
-                            time: ev.time,
-                            location: ev.location,
-                            description: ev.description,
-                            coverImage: ev.cover_image_url || ev.coverImageUrl || ev.coverImage,
-                            createdBy: currentUser.id,
-                            allowGuests: ev.allow_guests !== undefined ? ev.allow_guests : ev.allowGuests,
-                            requiresMealChoice: ev.requires_meal_choice !== undefined ? ev.requires_meal_choice : ev.requiresMealChoice
-                        };
+            // PERFORMANCE: Backfill unassigned events in PARALLEL using Promise.allSettled
+            if (currentUser && currentUser.id && Object.keys(unassignedEvents).length > 0) {
+                console.log(`⚡ Backfilling ${Object.keys(unassignedEvents).length} unassigned events in parallel...`);
+                const backfillPromises = Object.entries(unassignedEvents).map(async ([eid, ev]) => {
+                    await window.BackendAPI.updateEvent(eid, { created_by: currentUser.id });
+                    return { eid, ev };
+                });
+
+                const backfillResults = await Promise.allSettled(backfillPromises);
+                backfillResults.forEach(result => {
+                    if (result.status === 'fulfilled') {
+                        const { eid, ev } = result.value;
+                        const normalized = normalizeEvent(ev, { id: ev.id || ev.legacyId || eid, createdBy: currentUser.id });
                         myEvents[eid] = normalized;
-                        // Also update in allEvents
-                        if (allEvents[eid]) {
-                            allEvents[eid] = normalized;
-                        } else {
-                            allEvents[eid] = normalized;
-                        }
-                    } catch (e) {
-                        console.warn('Failed to backfill created_by for event', eid, e);
+                        allEvents[eid] = normalized;
                     }
-                }
-                
-                // Backfill for events where username matches but ID is not set
-                for (const [eid, ev] of Object.entries(allEvents || {})) {
-                    const owner = String(ev.createdBy || '').trim().toLowerCase();
-                    if (owner && myUsername && owner === myUsername) {
-                        try {
-                            await window.BackendAPI.updateEvent(eid, { created_by: currentUser.id });
+                });
+
+                // Backfill username-matched events in parallel
+                const usernameMatchEvents = Object.entries(allEvents)
+                    .filter(([eid, ev]) => {
+                        const owner = String(ev.createdBy || '').trim().toLowerCase();
+                        return owner && myUsername && owner === myUsername && !myEvents[eid];
+                    });
+
+                if (usernameMatchEvents.length > 0) {
+                    const usernameBackfillPromises = usernameMatchEvents.map(async ([eid, ev]) => {
+                        await window.BackendAPI.updateEvent(eid, { created_by: currentUser.id });
+                        return { eid, ev };
+                    });
+                    const usernameResults = await Promise.allSettled(usernameBackfillPromises);
+                    usernameResults.forEach(result => {
+                        if (result.status === 'fulfilled') {
+                            const { eid, ev } = result.value;
                             myEvents[eid] = { ...ev, createdBy: currentUser.id };
-                        } catch (_) {}
-                    }
+                        }
+                    });
                 }
             }
-            // Augment with creator details for display
+
+            // PERFORMANCE: Load user details in PARALLEL
             const ownersRaw = Object.values(myEvents || {}).map(ev => ev.createdBy).filter(v => v);
             const uniqueOwners = Array.from(new Set(ownersRaw));
             const uuidLike = uniqueOwners.filter(v => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v)));
             const usernameLike = uniqueOwners.filter(v => !uuidLike.includes(v));
             let userMap = {};
+
+            // Load UUID users and username users in parallel
+            const userLoadPromises = [];
             if (uuidLike.length > 0 && window.BackendAPI.loadUsersByIds) {
-                try {
-                    userMap = await window.BackendAPI.loadUsersByIds(uuidLike);
-                } catch (e) {
-                    console.warn('Failed to load user details for event owners', e);
-                }
+                userLoadPromises.push(
+                    window.BackendAPI.loadUsersByIds(uuidLike)
+                        .then(result => ({ type: 'uuids', data: result }))
+                        .catch(e => { console.warn('Failed to load user details:', e); return { type: 'uuids', data: {} }; })
+                );
             }
             if (usernameLike.length > 0 && window.BackendAPI.loadUserByUsername) {
-                for (const uname of usernameLike) {
-                    try {
-                        const u = await window.BackendAPI.loadUserByUsername(String(uname).trim().toLowerCase());
-                        if (u && u.id) {
-                            userMap[u.id] = { id: u.id, username: u.username, name: u.name, email: u.email };
-                        }
-                    } catch (_) {}
-                }
+                // Parallelize username lookups
+                const usernamePromises = usernameLike.map(uname =>
+                    window.BackendAPI.loadUserByUsername(String(uname).trim().toLowerCase())
+                        .then(u => u && u.id ? { id: u.id, username: u.username, name: u.name, email: u.email } : null)
+                        .catch(() => null)
+                );
+                userLoadPromises.push(
+                    Promise.all(usernamePromises)
+                        .then(results => ({ type: 'usernames', data: results.filter(Boolean) }))
+                );
             }
+
+            if (userLoadPromises.length > 0) {
+                console.log('⚡ Loading user details in parallel...');
+                const userResults = await Promise.all(userLoadPromises);
+                userResults.forEach(result => {
+                    if (result.type === 'uuids') {
+                        Object.assign(userMap, result.data);
+                    } else if (result.type === 'usernames') {
+                        result.data.forEach(u => { userMap[u.id] = u; });
+                    }
+                });
+            }
+
+            // Augment events with user details (no more API calls needed)
             for (const [eid, ev] of Object.entries(myEvents || {})) {
-                let u = userMap[ev.createdBy];
-                if (!u && String(ev.createdBy || '').trim() && window.BackendAPI.loadUserByUsername) {
-                    try {
-                        const fetched = await window.BackendAPI.loadUserByUsername(String(ev.createdBy).trim().toLowerCase());
-                        if (fetched && fetched.id) {
-                            u = fetched;
-                        }
-                    } catch (_) {}
-                }
+                const u = userMap[ev.createdBy];
                 if (u) {
                     myEvents[eid] = { ...ev, createdByName: u.name || u.username || u.id, createdByUsername: u.username || '' };
                 }
             }
+
             let selectedEvents = window.managerShowAllEvents ? (allEvents || {}) : (myEvents || {});
             if (!window.managerShowAllEvents) {
                 const myCount = Object.keys(myEvents || {}).length;
@@ -755,14 +779,29 @@ async function loadManagerData() {
 
         } catch (error) {
             console.error('❌ Failed to load from backend:', error);
+            // Track error state but don't show duplicate toast (already shown by catch)
+            if (window.LoadingStateManager) {
+                window.LoadingStateManager.setError('dashboard', error, { showToast: false });
+            }
         }
     }
+
+        // Mark loading as successful
+        if (window.LoadingStateManager) {
+            window.LoadingStateManager.endLoading('dashboard');
+        }
 
         renderDashboard();
 
         // Load user's RSVPs
         if (window.displayUserRSVPs) {
             window.displayUserRSVPs();
+        }
+    } catch (outerError) {
+        // Catch any unexpected errors
+        console.error('❌ loadManagerData failed:', outerError);
+        if (window.LoadingStateManager) {
+            window.LoadingStateManager.setError('dashboard', outerError);
         }
     } finally {
         // Always reset the guard flag

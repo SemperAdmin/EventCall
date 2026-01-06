@@ -12,6 +12,61 @@ class EventManager {
             pageSize: 25,
             shownByEvent: {} // eventId -> number of RSVPs shown
         };
+        // IntersectionObserver for infinite scroll
+        this._loadMoreObserver = null;
+        this._setupInfiniteScroll();
+    }
+
+    /**
+     * Setup IntersectionObserver for infinite scroll
+     * Automatically loads more RSVPs when user scrolls near the load more button
+     */
+    _setupInfiniteScroll() {
+        if (typeof IntersectionObserver === 'undefined') return;
+
+        this._loadMoreObserver = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const eventId = entry.target.dataset.eventId;
+                        if (eventId) {
+                            // Small delay to prevent rapid-fire loading
+                            setTimeout(() => this.loadMoreRsvps(eventId), 100);
+                        }
+                    }
+                });
+            },
+            {
+                root: null, // viewport
+                rootMargin: '200px', // trigger 200px before visible
+                threshold: 0
+            }
+        );
+    }
+
+    /**
+     * Observe a "Load More" button for infinite scroll
+     * @param {string} eventId - Event ID
+     */
+    observeLoadMore(eventId) {
+        if (!this._loadMoreObserver) return;
+        const container = document.getElementById(`rsvp-load-more-${eventId}`);
+        if (container) {
+            container.dataset.eventId = eventId;
+            this._loadMoreObserver.observe(container);
+        }
+    }
+
+    /**
+     * Stop observing a "Load More" button
+     * @param {string} eventId - Event ID
+     */
+    unobserveLoadMore(eventId) {
+        if (!this._loadMoreObserver) return;
+        const container = document.getElementById(`rsvp-load-more-${eventId}`);
+        if (container) {
+            this._loadMoreObserver.unobserve(container);
+        }
     }
 
     /**
@@ -28,11 +83,18 @@ class EventManager {
      */
     loadMoreRsvps(eventId) {
         const current = this.rsvpPagination.shownByEvent[eventId] || this.rsvpPagination.pageSize;
+
+        // Prevent loading if already at max
+        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
+        if (current >= eventResponses.length) {
+            this.unobserveLoadMore(eventId);
+            return;
+        }
+
         this.rsvpPagination.shownByEvent[eventId] = current + this.rsvpPagination.pageSize;
 
         // Re-render the response table
         const event = window.events ? window.events[eventId] : null;
-        const eventResponses = window.responses ? window.responses[eventId] || [] : [];
 
         if (event && eventResponses.length > 0) {
             const stats = calculateEventStats(eventResponses);
@@ -48,10 +110,15 @@ class EventManager {
                 // Update or remove load more button
                 if (loadMoreContainer) {
                     if (shown >= eventResponses.length) {
+                        // Stop observing and remove button
+                        this.unobserveLoadMore(eventId);
                         loadMoreContainer.remove();
                     } else {
                         const remaining = eventResponses.length - shown;
-                        loadMoreContainer.querySelector('button').textContent = `📋 Load More RSVPs (${remaining} remaining)`;
+                        const btn = loadMoreContainer.querySelector('button');
+                        if (btn) {
+                            btn.textContent = `📋 Load More RSVPs (${remaining} remaining)`;
+                        }
                     }
                 }
 
@@ -201,6 +268,12 @@ class EventManager {
         // Initialize photo upload for manage page
         if (window.setupPhotoUpload) {
             window.setupPhotoUpload();
+        }
+
+        // Setup infinite scroll for RSVP list
+        if (eventResponses.length > this.rsvpPagination.pageSize) {
+            // Use requestAnimationFrame to ensure DOM is ready
+            requestAnimationFrame(() => this.observeLoadMore(eventId));
         }
     }
 
