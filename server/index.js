@@ -300,8 +300,14 @@ function mapSupabaseEvent(e) {
 }
 
 // Map Supabase RSVP data to frontend-expected format
+// DB columns: attending (boolean), guest_count, dietary_restrictions (jsonb), reason
 function mapSupabaseRsvp(r) {
   if (!r) return null;
+  // Convert attending boolean to status string for frontend compatibility
+  let status = 'confirmed';
+  if (typeof r.attending === 'boolean') {
+    status = r.attending ? 'confirmed' : 'declined';
+  }
   return {
     id: r.id,
     event_id: r.event_id,
@@ -309,12 +315,21 @@ function mapSupabaseRsvp(r) {
     name: r.name || '',
     email: r.email || '',
     phone: r.phone || '',
-    guests: r.guests || 0,
-    dietary: r.dietary || '',
-    notes: r.notes || '',
-    status: r.status || 'confirmed',
+    guests: r.guest_count || 0,
+    guest_count: r.guest_count || 0,
+    dietary: r.dietary_restrictions || '',
+    dietary_restrictions: r.dietary_restrictions || '',
+    notes: r.reason || '',
+    reason: r.reason || '',
+    status: status,
+    attending: r.attending,
+    rank: r.rank || '',
+    unit: r.unit || '',
+    branch: r.branch || '',
+    allergy_details: r.allergy_details || '',
+    custom_answers: r.custom_answers || {},
     created_at: r.created_at || '',
-    response: r.response || 'yes'
+    response: r.attending ? 'yes' : 'no'
   };
 }
 
@@ -970,7 +985,7 @@ app.post('/api/rsvps', async (req, res) => {
     if (USE_SUPABASE) {
       const { data: existingRsvp, error: checkError } = await supabase
         .from('ec_rsvps')
-        .select('id, name, email, status, created_at')
+        .select('id, name, email, attending, created_at')
         .eq('event_id', eventId)
         .eq('email', normalizedEmail)
         .maybeSingle();
@@ -982,24 +997,25 @@ app.post('/api/rsvps', async (req, res) => {
       if (existingRsvp) {
         // If explicit update flag is set, update existing RSVP
         if (rsvpData.isUpdate || rsvpData.rsvpId === existingRsvp.id) {
-          // Map attending boolean to status string
-          let updateStatus = rsvpData.status || existingRsvp.status;
+          // Determine attending boolean from various input formats
+          let attending = existingRsvp.attending;
           if (typeof rsvpData.attending === 'boolean') {
-            updateStatus = rsvpData.attending ? 'confirmed' : 'declined';
-          } else if (rsvpData.attending === 'yes') {
-            updateStatus = 'confirmed';
-          } else if (rsvpData.attending === 'no') {
-            updateStatus = 'declined';
+            attending = rsvpData.attending;
+          } else if (rsvpData.attending === 'yes' || rsvpData.status === 'confirmed') {
+            attending = true;
+          } else if (rsvpData.attending === 'no' || rsvpData.status === 'declined') {
+            attending = false;
           }
 
+          // Use correct Supabase column names: guest_count, dietary_restrictions, reason, attending
           const updateData = {
             name: rsvpData.name,
             phone: rsvpData.phone || '',
-            guests: rsvpData.guests || rsvpData.guest_count || 0,
-            dietary: rsvpData.dietary || rsvpData.dietary_restrictions || '',
+            guest_count: rsvpData.guests || rsvpData.guest_count || 0,
+            dietary_restrictions: rsvpData.dietary || rsvpData.dietary_restrictions || '',
             allergy_details: rsvpData.allergy_details || '',
-            notes: rsvpData.notes || rsvpData.reason || '',
-            status: updateStatus,
+            reason: rsvpData.notes || rsvpData.reason || '',
+            attending: attending,
             rank: rsvpData.rank || '',
             unit: rsvpData.unit || '',
             branch: rsvpData.branch || '',
@@ -1033,7 +1049,7 @@ app.post('/api/rsvps', async (req, res) => {
           error: 'An RSVP with this email already exists for this event',
           existingRsvpId: existingRsvp.id,
           existingName: existingRsvp.name,
-          existingStatus: existingRsvp.status,
+          existingStatus: existingRsvp.attending ? 'confirmed' : 'declined',
           createdAt: existingRsvp.created_at
         });
       }
@@ -1042,27 +1058,28 @@ app.post('/api/rsvps', async (req, res) => {
     // No existing RSVP found - create new one
     const rsvpId = rsvpData.id || rsvpData.rsvpId || crypto.randomUUID();
 
-    // Map attending boolean to status string
-    let status = rsvpData.status || 'confirmed';
+    // Determine attending boolean from various input formats
+    let attending = true; // default to attending
     if (typeof rsvpData.attending === 'boolean') {
-      status = rsvpData.attending ? 'confirmed' : 'declined';
-    } else if (rsvpData.attending === 'yes') {
-      status = 'confirmed';
-    } else if (rsvpData.attending === 'no') {
-      status = 'declined';
+      attending = rsvpData.attending;
+    } else if (rsvpData.attending === 'yes' || rsvpData.status === 'confirmed') {
+      attending = true;
+    } else if (rsvpData.attending === 'no' || rsvpData.status === 'declined') {
+      attending = false;
     }
 
+    // Use correct Supabase column names: guest_count, dietary_restrictions, reason, attending
     const rsvp = {
       id: rsvpId,
       event_id: eventId,
       name: rsvpData.name,
       email: normalizedEmail,
       phone: rsvpData.phone || '',
-      guests: rsvpData.guests || rsvpData.guest_count || 0,
-      dietary: rsvpData.dietary || rsvpData.dietary_restrictions || '',
+      guest_count: rsvpData.guests || rsvpData.guest_count || 0,
+      dietary_restrictions: rsvpData.dietary || rsvpData.dietary_restrictions || '',
       allergy_details: rsvpData.allergy_details || '',
-      notes: rsvpData.notes || rsvpData.reason || '',
-      status: status,
+      reason: rsvpData.notes || rsvpData.reason || '',
+      attending: attending,
       rank: rsvpData.rank || '',
       unit: rsvpData.unit || '',
       branch: rsvpData.branch || '',
