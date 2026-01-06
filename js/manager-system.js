@@ -534,11 +534,12 @@ async function loadManagerData() {
             const currentUser = window.userAuth && window.userAuth.isAuthenticated() ? window.userAuth.getCurrentUser() : null;
             const filterParams = {};
             // Only filter by creator if we're not explicitly asked to show all events
-            if (!window.managerShowAllEvents && currentUser && currentUser.id) {
+            const useCreatorFilter = !window.managerShowAllEvents && currentUser && currentUser.id;
+            if (useCreatorFilter) {
                 filterParams.created_by = currentUser.id;
             }
-            const rawResponse = await window.BackendAPI.loadEvents(filterParams);
-            
+            let rawResponse = await window.BackendAPI.loadEvents(filterParams);
+
             // Handle BackendAPI response format { success: true, events: [] }
             let allEventsList = [];
             if (rawResponse && Array.isArray(rawResponse.events)) {
@@ -546,6 +547,17 @@ async function loadManagerData() {
             } else if (typeof rawResponse === 'object') {
                 // Legacy/Fallback support
                 allEventsList = Object.values(rawResponse);
+            }
+
+            // Fallback: if filtered by creator returned nothing, load ALL events
+            if (allEventsList.length === 0 && useCreatorFilter) {
+                console.log('ℹ️ No events found for user filter, loading all events as fallback');
+                rawResponse = await window.BackendAPI.loadEvents({});
+                if (rawResponse && Array.isArray(rawResponse.events)) {
+                    allEventsList = rawResponse.events;
+                } else if (typeof rawResponse === 'object') {
+                    allEventsList = Object.values(rawResponse);
+                }
             }
 
             // Convert to map and normalize
