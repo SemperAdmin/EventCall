@@ -1806,7 +1806,8 @@ async function handleEventSubmit(e) {
             coverImageUrl: eventData.coverImage,
             createdByUserId: currentUser.id || null,
             status: eventData.status,
-            allowGuests: eventData.askReason ? true : eventData.allowGuests, // keep existing behavior
+            askReason: eventData.askReason,
+            allowGuests: eventData.allowGuests,
             requiresMealChoice: eventData.requiresMealChoice,
             customQuestions: eventData.customQuestions,
             eventDetails: eventData.eventDetails,
