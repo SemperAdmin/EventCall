@@ -167,9 +167,22 @@ select {
     color: #000000 !important;
 }
 
+/* Exception: Auth/Login page needs WHITE text on dark background */
+.auth input,
+.auth textarea,
+.auth select {
+    color: #ffffff !important;
+}
+
 input::placeholder,
 textarea::placeholder {
     color: #64748b !important;
+}
+
+/* Auth placeholders should be lighter */
+.auth input::placeholder,
+.auth textarea::placeholder {
+    color: #94a3b8 !important;
 }
 
 /* Input wrapper for icons/addons */
