@@ -170,7 +170,11 @@ select {
 /* Exception: Auth/Login page needs WHITE text on dark background */
 .auth input,
 .auth textarea,
-.auth select {
+.auth select,
+.auth .form-control,
+.auth input.form-control,
+.auth textarea.form-control,
+.auth select.form-control {
     color: #ffffff !important;
 }
 
@@ -181,8 +185,9 @@ textarea::placeholder {
 
 /* Auth placeholders should be lighter */
 .auth input::placeholder,
-.auth textarea::placeholder {
-    color: #94a3b8 !important;
+.auth textarea::placeholder,
+.auth .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
 }
 
 /* Input wrapper for icons/addons */
