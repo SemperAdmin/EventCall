@@ -955,13 +955,22 @@ app.post('/api/events', async (req, res) => {
     };
 
     console.log('📸 Event object cover_image_url:', event.cover_image_url ? event.cover_image_url.substring(0, 80) + '...' : '(empty)');
+    console.log('📸 FULL EVENT OBJECT KEYS:', Object.keys(event));
+    console.log('📸 typeof cover_image_url:', typeof event.cover_image_url);
+    console.log('📸 cover_image_url length:', event.cover_image_url ? event.cover_image_url.length : 0);
 
     if (USE_SUPABASE) {
-      const { data, error } = await supabase.from('ec_events').insert([event]).select();
+      // Log the exact payload being sent
+      const insertPayload = JSON.parse(JSON.stringify(event));
+      console.log('📸 INSERT PAYLOAD cover_image_url VALUE:', insertPayload.cover_image_url);
+
+      const { data, error } = await supabase.from('ec_events').insert([insertPayload]).select();
       if (error) {
         console.error('Supabase createEvent error:', error.message);
+        console.error('Supabase createEvent full error:', JSON.stringify(error));
         return res.status(500).json({ error: 'Failed to create event' });
       }
+      console.log('📸 Supabase RAW response data:', JSON.stringify(data?.[0], null, 2));
       console.log('📸 Supabase inserted event ID:', data?.[0]?.id);
       console.log('📸 Supabase inserted event cover_image_url:', data?.[0]?.cover_image_url ? data[0].cover_image_url.substring(0, 80) + '...' : '(empty)');
 
