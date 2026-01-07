@@ -456,11 +456,10 @@ async function getEventsFromSupabase(creatorId = null, unassigned = false) {
     console.error('Supabase getEvents error:', error.message);
     return [];
   }
-  // Debug: Check if any events have _cover_image_url in event_details
-  const eventsWithCover = (data || []).filter(e => e.event_details?._cover_image_url);
-  if (eventsWithCover.length > 0) {
-    console.log('📸 [FETCH] Found', eventsWithCover.length, 'events with _cover_image_url in event_details');
-  }
+  // Debug: Log event_details for first 3 events to see what's there
+  (data || []).slice(0, 3).forEach((e, i) => {
+    console.log(`📸 [FETCH] Event ${i} "${e.title?.substring(0,20)}" event_details:`, JSON.stringify(e.event_details || null).substring(0, 100));
+  });
   return data || [];
 }
 
