@@ -277,9 +277,6 @@ function mapSupabaseEvent(e) {
   // WORKAROUND: Check event_details._cover_image_url as fallback since cover_image_url column has issues
   const eventDetails = e.event_details || {};
   const coverUrl = e.cover_image_url || eventDetails._cover_image_url || e.image_url || '';
-  if (eventDetails._cover_image_url) {
-    console.log('📸 [MAP] Found _cover_image_url in event_details for:', e.title);
-  }
 
   return {
     id: e.id,
@@ -456,10 +453,6 @@ async function getEventsFromSupabase(creatorId = null, unassigned = false) {
     console.error('Supabase getEvents error:', error.message);
     return [];
   }
-  // Debug: Log event_details for first 3 events to see what's there
-  (data || []).slice(0, 3).forEach((e, i) => {
-    console.log(`📸 [FETCH] Event ${i} "${e.title?.substring(0,20)}" event_details:`, JSON.stringify(e.event_details || null).substring(0, 100));
-  });
   return data || [];
 }
 
@@ -694,7 +687,6 @@ app.put('/api/events/:id', async (req, res) => {
     // WORKAROUND: Store cover_image_url in event_details._cover_image_url since column has issues
     const coverUrl = dbUpdates.cover_image_url;
     if (coverUrl) {
-      console.log('📸 [UPDATE] Storing cover_image_url in event_details:', coverUrl.substring(0, 60) + '...');
       // First, fetch existing event_details to merge
       const { data: existingEvent } = await supabase
         .from('ec_events')
@@ -705,7 +697,6 @@ app.put('/api/events/:id', async (req, res) => {
       const existingDetails = existingEvent?.event_details || {};
       dbUpdates.event_details = { ...existingDetails, _cover_image_url: coverUrl };
       delete dbUpdates.cover_image_url; // Remove problematic column from update
-      console.log('📸 [UPDATE] event_details will be:', JSON.stringify(dbUpdates.event_details).substring(0, 100));
     }
 
     const { data, error } = await supabase
@@ -922,13 +913,11 @@ app.post('/api/events', async (req, res) => {
 
     // Get cover image URL from various field names
     const coverUrl = eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '';
-    console.log('📸 [CREATE] Received cover URL:', coverUrl ? coverUrl.substring(0, 60) + '...' : '(empty)');
 
     // Store cover_image_url inside event_details JSONB as workaround for Supabase column issues
     let eventDetails = eventData.event_details || eventData.eventDetails || {};
     if (coverUrl) {
       eventDetails = { ...eventDetails, _cover_image_url: coverUrl };
-      console.log('📸 [CREATE] Storing in event_details._cover_image_url');
     }
 
     const event = {
@@ -953,20 +942,13 @@ app.post('/api/events', async (req, res) => {
     if (USE_SUPABASE) {
       // Insert event - cover_image_url is stored in event_details._cover_image_url as workaround
       const insertPayload = JSON.parse(JSON.stringify(event));
-      const savedCoverUrl = insertPayload.cover_image_url;
       delete insertPayload.cover_image_url; // Remove from insert since column has issues
 
-      console.log('📸 [CREATE] insertPayload.event_details:', JSON.stringify(insertPayload.event_details || {}).substring(0, 100));
       const { data, error } = await supabase.from('ec_events').insert([insertPayload]).select();
       if (error) {
         console.error('Supabase createEvent error:', error.message);
         return res.status(500).json({ error: 'Failed to create event' });
       }
-      console.log('📸 [CREATE] After INSERT, data.event_details:', JSON.stringify(data?.[0]?.event_details || {}).substring(0, 100));
-
-      // Verify insert by re-fetching
-      const { data: verifyData } = await supabase.from('ec_events').select('event_details').eq('id', eventId).single();
-      console.log('📸 [CREATE] VERIFY after insert:', JSON.stringify(verifyData?.event_details || {}).substring(0, 100));
     } else {
       // Save to GitHub
       const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
