@@ -918,11 +918,13 @@ app.post('/api/events', async (req, res) => {
 
     // Get cover image URL from various field names
     const coverUrl = eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '';
+    console.log('📸 [CREATE] Received cover URL:', coverUrl ? coverUrl.substring(0, 60) + '...' : '(empty)');
 
     // Store cover_image_url inside event_details JSONB as workaround for Supabase column issues
     let eventDetails = eventData.event_details || eventData.eventDetails || {};
     if (coverUrl) {
       eventDetails = { ...eventDetails, _cover_image_url: coverUrl };
+      console.log('📸 [CREATE] Storing in event_details._cover_image_url');
     }
 
     const event = {
