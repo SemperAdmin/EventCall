@@ -502,31 +502,10 @@ app.get('/api/events', async (req, res) => {
     events = await getEventsFromSupabase(creatorId, unassigned);
     console.log('[api/events] Supabase result', { creatorId, unassigned, count: Array.isArray(events) ? events.length : 0 });
     events = (events || []).map(mapSupabaseEvent).filter(e => !!e);
-    // Fallback to GitHub data store if Supabase has no events or mapping failed
-    if (!events || events.length === 0) {
-      const gh = await getEventsFromGitHub();
-      console.log('[api/events] GitHub fallback result', { creatorId, unassigned, count: Array.isArray(gh) ? gh.length : 0 });
-      if (creatorId) {
-        events = gh.filter(e => {
-          const owner = (e.creator_id || e.created_by || e.creatorId || e.owner || '').toString();
-          return owner === creatorId;
-        });
-        } else if (unassigned) {
-          events = gh.filter(e => {
-            const owner = (e.creator_id || e.created_by || e.creatorId || e.owner || '').toString();
-            return owner === '' || owner === 'null' || owner === 'undefined';
-          });
-        } else {
-          events = gh;
-        }
-      }
+    // Supabase is the sole data store - no GitHub fallback needed
     } else {
-      events = await getEventsFromGitHub();
-      if (creatorId) {
-        events = events.filter(e => e.creator_id === creatorId || e.creatorId === creatorId || e.created_by === creatorId);
-      } else if (unassigned) {
-        events = events.filter(e => !e.creator_id && !e.creatorId && !e.created_by);
-      }
+      // No Supabase configured - return empty (GitHub data store no longer used)
+      events = [];
     }
     res.json({ success: true, events });
   } catch (error) {
@@ -614,21 +593,8 @@ app.get('/api/events/:id', async (req, res) => {
         console.error('Supabase getEvent error:', error.message);
       }
       event = mapSupabaseEvent(data);
-    } else {
-      // Fetch single event directly from GitHub (more efficient than fetching all)
-      const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
-      const response = await fetch(eventUrl, {
-        headers: {
-          'Authorization': `token ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github+json',
-          'User-Agent': 'EventCall-Backend'
-        }
-      });
-      if (response.ok) {
-        const eventData = await response.json();
-        event = JSON.parse(Buffer.from(eventData.content, 'base64').toString('utf-8'));
-      }
     }
+    // Supabase is the sole data store - no GitHub fallback
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
