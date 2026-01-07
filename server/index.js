@@ -952,31 +952,17 @@ app.post('/api/events', async (req, res) => {
       const savedCoverUrl = insertPayload.cover_image_url;
       delete insertPayload.cover_image_url; // Remove from insert since column has issues
 
+      console.log('📸 [CREATE] insertPayload.event_details:', JSON.stringify(insertPayload.event_details || {}).substring(0, 100));
       const { data, error } = await supabase.from('ec_events').insert([insertPayload]).select();
       if (error) {
         console.error('Supabase createEvent error:', error.message);
         return res.status(500).json({ error: 'Failed to create event' });
       }
+      console.log('📸 [CREATE] After INSERT, data.event_details:', JSON.stringify(data?.[0]?.event_details || {}).substring(0, 100));
 
-      // Update event_details with _cover_image_url via REST API
-      if (savedCoverUrl) {
-        const patchUrl = `${SUPABASE_URL}/rest/v1/ec_events?id=eq.${eventId}`;
-        const currentDetails = insertPayload.event_details || {};
-        const updatedDetails = { ...currentDetails, _cover_image_url: savedCoverUrl };
-
-        await fetch(patchUrl, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_SERVICE_ROLE_KEY,
-            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify({
-            event_details: updatedDetails
-          })
-        });
-      }
+      // Verify insert by re-fetching
+      const { data: verifyData } = await supabase.from('ec_events').select('event_details').eq('id', eventId).single();
+      console.log('📸 [CREATE] VERIFY after insert:', JSON.stringify(verifyData?.event_details || {}).substring(0, 100));
     } else {
       // Save to GitHub
       const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
