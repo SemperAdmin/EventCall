@@ -549,6 +549,7 @@ class BackendAPI {
             cover_image_url: (eventData.coverImage || eventData.coverImageUrl || ''),
             created_by: (user && user.id) ? user.id : (eventData.createdByUserId || null),
             status: 'active',
+            ask_reason: !!eventData.askReason,
             allow_guests: !!eventData.allowGuests,
             requires_meal_choice: !!eventData.requiresMealChoice,
             custom_questions: Array.isArray(eventData.customQuestions) ? eventData.customQuestions : [],

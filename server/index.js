@@ -927,6 +927,10 @@ app.post('/api/events', async (req, res) => {
       return res.status(400).json({ error: 'Creator ID is required' });
     }
 
+    // Debug: Log cover image URL received
+    const coverUrl = eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '';
+    console.log('📸 Create event - Cover image URL received:', coverUrl ? coverUrl.substring(0, 80) + '...' : '(empty)');
+
     const event = {
       id: eventId,
       title: eventData.title,
@@ -934,7 +938,7 @@ app.post('/api/events', async (req, res) => {
       time: eventData.time || '',
       location: eventData.location || '',
       description: eventData.description || '',
-      cover_image_url: eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '',
+      cover_image_url: coverUrl,
       created_by: creatorId,
       created_at: new Date().toISOString(),
       status: eventData.status || 'active',
