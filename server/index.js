@@ -930,19 +930,13 @@ app.post('/api/events', async (req, res) => {
       return res.status(400).json({ error: 'Creator ID is required' });
     }
 
-    // Debug: Log cover image URL received
+    // Get cover image URL from various field names
     const coverUrl = eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '';
-    console.log('📸 Create event - Cover image URL received:', coverUrl ? coverUrl.substring(0, 80) + '...' : '(empty)');
-    console.log('📸 Raw eventData keys:', Object.keys(eventData));
-    console.log('📸 eventData.cover_image_url:', eventData.cover_image_url);
-    console.log('📸 eventData.coverImageUrl:', eventData.coverImageUrl);
-    console.log('📸 eventData.coverImage:', eventData.coverImage);
 
-    // WORKAROUND: Store cover_image_url inside event_details JSONB since the cover_image_url column has issues
+    // Store cover_image_url inside event_details JSONB as workaround for Supabase column issues
     let eventDetails = eventData.event_details || eventData.eventDetails || {};
     if (coverUrl) {
       eventDetails = { ...eventDetails, _cover_image_url: coverUrl };
-      console.log('📸 Storing cover_image_url inside event_details JSONB as workaround');
     }
 
     const event = {
@@ -964,42 +958,25 @@ app.post('/api/events', async (req, res) => {
       seating_chart: eventData.seating_chart || eventData.seatingChart || null
     };
 
-    console.log('📸 Event object cover_image_url:', event.cover_image_url ? event.cover_image_url.substring(0, 80) + '...' : '(empty)');
-    console.log('📸 FULL EVENT OBJECT KEYS:', Object.keys(event));
-    console.log('📸 typeof cover_image_url:', typeof event.cover_image_url);
-    console.log('📸 cover_image_url length:', event.cover_image_url ? event.cover_image_url.length : 0);
-
     if (USE_SUPABASE) {
-      // Try inserting WITHOUT cover_image_url first, then UPDATE it separately
+      // Insert event - cover_image_url is stored in event_details._cover_image_url as workaround
       const insertPayload = JSON.parse(JSON.stringify(event));
       const savedCoverUrl = insertPayload.cover_image_url;
-      delete insertPayload.cover_image_url; // Remove from insert
-
-      console.log('📸 Inserting event WITHOUT cover_image_url, will update separately');
-      console.log('📸 Saved cover URL for update:', savedCoverUrl ? savedCoverUrl.substring(0, 80) + '...' : '(empty)');
+      delete insertPayload.cover_image_url; // Remove from insert since column has issues
 
       const { data, error } = await supabase.from('ec_events').insert([insertPayload]).select();
       if (error) {
         console.error('Supabase createEvent error:', error.message);
         return res.status(500).json({ error: 'Failed to create event' });
       }
-      console.log('📸 Insert successful, event ID:', data?.[0]?.id);
 
-      // Now UPDATE the cover_image_url in event_details JSONB using direct PostgreSQL REST API
+      // Update event_details with _cover_image_url via REST API
       if (savedCoverUrl) {
-        console.log('📸 Attempting UPDATE via PostgreSQL REST API with JSONB merge...');
-
-        // Use direct REST API with raw SQL-like PATCH to merge into event_details
-        const restUrl = `${SUPABASE_URL}/rest/v1/rpc/update_event_cover_image`;
-
-        // First try regular REST update
         const patchUrl = `${SUPABASE_URL}/rest/v1/ec_events?id=eq.${eventId}`;
-
-        // Merge _cover_image_url into existing event_details
         const currentDetails = insertPayload.event_details || {};
         const updatedDetails = { ...currentDetails, _cover_image_url: savedCoverUrl };
 
-        const restResponse = await fetch(patchUrl, {
+        await fetch(patchUrl, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -1008,27 +985,10 @@ app.post('/api/events', async (req, res) => {
             'Prefer': 'return=representation'
           },
           body: JSON.stringify({
-            cover_image_url: savedCoverUrl,
             event_details: updatedDetails
           })
         });
-
-        const restResult = await restResponse.json();
-        console.log('📸 REST API response status:', restResponse.status);
-        console.log('📸 REST API response event_details:', restResult?.[0]?.event_details ? 'has data' : 'empty');
-        console.log('📸 REST API response has _cover_image_url:', restResult?.[0]?.event_details?._cover_image_url ? 'YES' : 'NO');
       }
-
-      // Verify by re-fetching the event
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('ec_events')
-        .select('id, title, cover_image_url')
-        .eq('id', eventId)
-        .single();
-      console.log('📸 FINAL Verification - Event ID:', verifyData?.id);
-      console.log('📸 FINAL Verification - Title:', verifyData?.title);
-      console.log('📸 FINAL Verification - cover_image_url:', verifyData?.cover_image_url ? verifyData.cover_image_url.substring(0, 80) + '...' : '(empty/null)');
-      if (verifyError) console.log('📸 Verification error:', verifyError.message);
     } else {
       // Save to GitHub
       const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
@@ -1276,17 +1236,13 @@ app.delete('/api/rsvps/:id', async (req, res) => {
 });
 
 // =============================================================================
-// IMAGE UPLOAD API - Upload images to Supabase Storage
+// IMAGE UPLOAD API - Upload images to GitHub (more reliable than Supabase for this project)
 // =============================================================================
 
 app.post('/api/images/upload', async (req, res) => {
   try {
     if (!isOriginAllowed(req)) {
       return res.status(403).json({ error: 'Origin not allowed' });
-    }
-
-    if (!USE_SUPABASE || !supabase) {
-      return res.status(503).json({ error: 'Image upload requires Supabase configuration' });
     }
 
     const { file_name, content_base64, event_id, caption, tags, uploader_username, uploader_id } = req.body;
@@ -1302,7 +1258,7 @@ app.post('/api/images/upload', async (req, res) => {
       return res.status(400).json({ error: 'Invalid file type. Allowed: jpg, jpeg, png, gif, webp, bmp' });
     }
 
-    // Decode base64 content
+    // Validate base64 content
     const buffer = Buffer.from(content_base64, 'base64');
 
     // Validate file size (max 10MB)
@@ -1311,94 +1267,49 @@ app.post('/api/images/upload', async (req, res) => {
       return res.status(400).json({ error: 'File too large. Maximum size is 10MB' });
     }
 
-    // Ensure bucket exists
-    const bucketResult = await ensurePublicBucket(IMAGE_BUCKET);
-    if (!bucketResult.ok) {
-      console.error('Failed to ensure bucket:', bucketResult.error);
-      return res.status(500).json({ error: 'Failed to initialize storage' });
-    }
-
-    // Generate unique file path
+    // Generate unique file path for GitHub
     const timestamp = Date.now();
     const randomId = crypto.randomBytes(8).toString('hex');
     const sanitizedFileName = file_name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const storagePath = event_id
-      ? `events/${event_id}/${timestamp}-${randomId}-${sanitizedFileName}`
-      : `uploads/${timestamp}-${randomId}-${sanitizedFileName}`;
+    const githubPath = `images/${timestamp}-${randomId}-${sanitizedFileName}`;
 
-    // Get MIME type
-    const mimeType = getMimeTypeFromExt(file_name);
+    // Upload to GitHub
+    const githubRepo = 'EventCall-Images';
+    const githubUrl = `https://api.github.com/repos/${REPO_OWNER}/${githubRepo}/contents/${githubPath}`;
 
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from(IMAGE_BUCKET)
-      .upload(storagePath, buffer, {
-        contentType: mimeType,
-        upsert: false
-      });
+    console.log('📷 Uploading image to GitHub:', githubPath);
 
-    if (uploadError) {
-      console.error('Supabase storage upload error:', uploadError.message);
-      return res.status(500).json({ error: 'Failed to upload image' });
+    const ghResp = await fetch(githubUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'EventCall-Backend'
+      },
+      body: JSON.stringify({
+        message: `Upload image: ${sanitizedFileName}`,
+        content: content_base64
+      })
+    });
+
+    if (!ghResp.ok) {
+      const errData = await ghResp.json().catch(() => ({}));
+      console.error('GitHub image upload error:', errData.message || ghResp.statusText);
+      return res.status(500).json({ error: 'Failed to upload image to GitHub' });
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from(IMAGE_BUCKET)
-      .getPublicUrl(storagePath);
+    const ghData = await ghResp.json();
 
-    const publicUrl = urlData?.publicUrl || '';
+    // Construct raw URL for the image
+    const publicUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${githubRepo}/main/${githubPath}`;
 
-    // Store photo metadata in ec_event_photos table
-    let photoId = null;
-    if (event_id) {
-      const photoRecord = {
-        event_id: event_id,
-        url: publicUrl,
-        storage_path: storagePath,
-        caption: caption || null,
-        uploaded_by: uploader_id || null
-      };
-
-      const { data: photoData, error: photoError } = await supabase
-        .from('ec_event_photos')
-        .insert([photoRecord])
-        .select('id')
-        .single();
-
-      if (photoError) {
-        console.error('Failed to save photo metadata:', photoError.message);
-        // Clean up orphaned file from storage
-        await supabase.storage.from(IMAGE_BUCKET).remove([storagePath]);
-        return res.status(500).json({ error: 'Failed to save photo metadata' });
-      }
-      photoId = photoData?.id || null;
-
-      // Also update the event's cover_image_url if this is the first photo or no cover set
-      const { data: eventData, error: fetchError } = await supabase
-        .from('ec_events')
-        .select('cover_image_url')
-        .eq('id', event_id)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching event to update cover image:', fetchError.message);
-      } else if (eventData && !eventData.cover_image_url) {
-        const { error: updateError } = await supabase
-          .from('ec_events')
-          .update({ cover_image_url: publicUrl, updated_at: new Date().toISOString() })
-          .eq('id', event_id);
-        if (updateError) {
-          console.error('Error updating event cover image:', updateError.message);
-        }
-      }
-    }
+    console.log('📷 Image uploaded successfully:', publicUrl);
 
     res.json({
       success: true,
       url: publicUrl,
-      photoId,
-      storagePath,
+      storagePath: githubPath,
       fileName: sanitizedFileName
     });
 
@@ -1441,51 +1352,64 @@ app.get('/api/events/:id/photos', async (req, res) => {
   }
 });
 
-// DELETE /api/photos/:id - Delete a photo
-app.delete('/api/photos/:id', async (req, res) => {
+// DELETE /api/photos - Delete a photo by storage path (GitHub)
+app.delete('/api/photos', async (req, res) => {
   try {
     if (!isOriginAllowed(req)) {
       return res.status(403).json({ error: 'Origin not allowed' });
     }
 
-    const photoId = req.params.id;
+    const { storagePath } = req.body;
 
-    if (!USE_SUPABASE || !supabase) {
-      return res.status(503).json({ error: 'Photo deletion requires Supabase configuration' });
+    if (!storagePath) {
+      return res.status(400).json({ error: 'storagePath is required' });
     }
 
-    // Get photo record to find storage path
-    const { data: photo, error: fetchError } = await supabase
-      .from('ec_event_photos')
-      .select('storage_path')
-      .eq('id', photoId)
-      .single();
+    // For GitHub-stored images, we need to get the file's SHA first
+    const githubRepo = 'EventCall-Images';
+    const githubUrl = `https://api.github.com/repos/${REPO_OWNER}/${githubRepo}/contents/${storagePath}`;
 
-    if (fetchError || !photo) {
-      return res.status(404).json({ error: 'Photo not found' });
+    // Get file info to retrieve SHA
+    const getResp = await fetch(githubUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'EventCall-Backend'
+      }
+    });
+
+    if (!getResp.ok) {
+      if (getResp.status === 404) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+      console.error('GitHub get file error:', getResp.statusText);
+      return res.status(500).json({ error: 'Failed to get file info from GitHub' });
     }
 
-    // Delete from storage first
-    const { error: storageError } = await supabase.storage
-      .from(IMAGE_BUCKET)
-      .remove([photo.storage_path]);
+    const fileData = await getResp.json();
 
-    if (storageError) {
-      console.error('Storage deletion error:', storageError.message);
-      return res.status(500).json({ error: 'Failed to delete image from storage' });
+    // Delete the file from GitHub
+    const deleteResp = await fetch(githubUrl, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'EventCall-Backend'
+      },
+      body: JSON.stringify({
+        message: `Delete image: ${storagePath}`,
+        sha: fileData.sha
+      })
+    });
+
+    if (!deleteResp.ok) {
+      const errData = await deleteResp.json().catch(() => ({}));
+      console.error('GitHub delete file error:', errData.message || deleteResp.statusText);
+      return res.status(500).json({ error: 'Failed to delete image from GitHub' });
     }
 
-    // Delete metadata record
-    const { error: deleteError } = await supabase
-      .from('ec_event_photos')
-      .delete()
-      .eq('id', photoId);
-
-    if (deleteError) {
-      console.error('Photo record deletion error:', deleteError.message);
-      return res.status(500).json({ error: 'Failed to delete photo' });
-    }
-
+    console.log('📷 Image deleted from GitHub:', storagePath);
     res.json({ success: true });
 
   } catch (error) {

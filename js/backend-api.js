@@ -625,12 +625,16 @@ class BackendAPI {
         return await resp.json();
     }
 
-    async deletePhoto(photoId) {
+    async deletePhoto(storagePath) {
         const cfg = window.BACKEND_CONFIG || {};
         const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
         if (!base) throw new Error('Backend not configured');
-        const url = base + '/api/photos/' + encodeURIComponent(String(photoId));
-        const resp = await this._fetch(url, { method: 'DELETE' }, { endpointKey: 'delete_photo' });
+        const url = base + '/api/photos';
+        const resp = await this._fetch(url, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ storagePath: String(storagePath) })
+        }, { endpointKey: 'delete_photo' });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to delete photo');
