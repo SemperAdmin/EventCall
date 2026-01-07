@@ -985,13 +985,21 @@ app.post('/api/events', async (req, res) => {
       }
       console.log('📸 Insert successful, event ID:', data?.[0]?.id);
 
-      // Now UPDATE the cover_image_url separately using direct REST API
+      // Now UPDATE the cover_image_url in event_details JSONB using direct PostgreSQL REST API
       if (savedCoverUrl) {
-        console.log('📸 Attempting UPDATE via direct REST API...');
+        console.log('📸 Attempting UPDATE via PostgreSQL REST API with JSONB merge...');
 
-        // Use direct REST API instead of JS client
-        const restUrl = `${SUPABASE_URL}/rest/v1/ec_events?id=eq.${eventId}`;
-        const restResponse = await fetch(restUrl, {
+        // Use direct REST API with raw SQL-like PATCH to merge into event_details
+        const restUrl = `${SUPABASE_URL}/rest/v1/rpc/update_event_cover_image`;
+
+        // First try regular REST update
+        const patchUrl = `${SUPABASE_URL}/rest/v1/ec_events?id=eq.${eventId}`;
+
+        // Merge _cover_image_url into existing event_details
+        const currentDetails = insertPayload.event_details || {};
+        const updatedDetails = { ...currentDetails, _cover_image_url: savedCoverUrl };
+
+        const restResponse = await fetch(patchUrl, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -999,12 +1007,16 @@ app.post('/api/events', async (req, res) => {
             'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
             'Prefer': 'return=representation'
           },
-          body: JSON.stringify({ cover_image_url: savedCoverUrl })
+          body: JSON.stringify({
+            cover_image_url: savedCoverUrl,
+            event_details: updatedDetails
+          })
         });
 
         const restResult = await restResponse.json();
         console.log('📸 REST API response status:', restResponse.status);
-        console.log('📸 REST API response:', JSON.stringify(restResult));
+        console.log('📸 REST API response event_details:', restResult?.[0]?.event_details ? 'has data' : 'empty');
+        console.log('📸 REST API response has _cover_image_url:', restResult?.[0]?.event_details?._cover_image_url ? 'YES' : 'NO');
       }
 
       // Verify by re-fetching the event
