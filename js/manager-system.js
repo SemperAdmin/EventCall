@@ -1718,6 +1718,9 @@ async function handleEventSubmit(e) {
         }
 
         // Collect form data
+        const coverImageUrlValue = document.getElementById('cover-image-url')?.value || '';
+        console.log('📸 [CREATE] Cover image URL from form:', coverImageUrlValue || '(empty)');
+
         const eventData = {
             id: generateUUID(),
             title: sanitizeText(document.getElementById('event-title').value),
@@ -1725,7 +1728,7 @@ async function handleEventSubmit(e) {
             time: document.getElementById('event-time').value,
             location: sanitizeText(document.getElementById('event-location').value),
             description: sanitizeText(document.getElementById('event-description').value),
-            coverImage: document.getElementById('cover-image-url').value || '',
+            coverImage: coverImageUrlValue,
             askReason: document.getElementById('ask-reason').checked,
             allowGuests: document.getElementById('allow-guests').checked,
             requiresMealChoice: document.getElementById('requires-meal-choice').checked,
