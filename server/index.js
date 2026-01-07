@@ -361,7 +361,8 @@ app.use(helmet({
     },
   },
 }));
-app.use(express.json({ limit: '256kb' }));
+// Increase body limit for image uploads (base64 images can be large)
+app.use(express.json({ limit: '15mb' }));
 // CORS configuration with explicit preflight handling
 app.use(cors({
   origin: function (origin, callback) {
