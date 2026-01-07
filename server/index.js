@@ -283,7 +283,6 @@ function mapSupabaseEvent(e) {
     time: e.time || '',
     location: e.location || '',
     description: e.description || '',
-    dress_code: e.dress_code || '',
     cover_image_url: coverUrl,
     coverImage: coverUrl, // Frontend UI expects this alias
 
@@ -685,8 +684,6 @@ app.put('/api/events/:id', async (req, res) => {
     if (updates.time !== undefined) dbUpdates.time = updates.time;
     if (updates.location !== undefined) dbUpdates.location = updates.location;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.dress_code !== undefined) dbUpdates.dress_code = updates.dress_code;
-    if (updates.dressCode !== undefined) dbUpdates.dress_code = updates.dressCode;
     if (updates.cover_image_url !== undefined) dbUpdates.cover_image_url = updates.cover_image_url;
     if (updates.coverImageUrl !== undefined) dbUpdates.cover_image_url = updates.coverImageUrl;
     if (updates.coverImage !== undefined) dbUpdates.cover_image_url = updates.coverImage;
@@ -917,7 +914,6 @@ app.post('/api/events', async (req, res) => {
       time: eventData.time || '',
       location: eventData.location || '',
       description: eventData.description || '',
-      dress_code: eventData.dress_code || eventData.dressCode || '',
       cover_image_url: eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '',
       created_by: creatorId,
       created_at: new Date().toISOString(),
@@ -927,7 +923,6 @@ app.post('/api/events', async (req, res) => {
       custom_questions: eventData.custom_questions || [],
       event_details: eventData.event_details || {},
       seating_chart: eventData.seating_chart || null
-
     };
     if (USE_SUPABASE) {
       const { error } = await supabase.from('ec_events').insert([event]);
