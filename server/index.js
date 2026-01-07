@@ -277,6 +277,9 @@ function mapSupabaseEvent(e) {
   // WORKAROUND: Check event_details._cover_image_url as fallback since cover_image_url column has issues
   const eventDetails = e.event_details || {};
   const coverUrl = e.cover_image_url || eventDetails._cover_image_url || e.image_url || '';
+  if (eventDetails._cover_image_url) {
+    console.log('📸 [MAP] Found _cover_image_url in event_details for:', e.title);
+  }
 
   return {
     id: e.id,
@@ -687,6 +690,7 @@ app.put('/api/events/:id', async (req, res) => {
     // WORKAROUND: Store cover_image_url in event_details._cover_image_url since column has issues
     const coverUrl = dbUpdates.cover_image_url;
     if (coverUrl) {
+      console.log('📸 [UPDATE] Storing cover_image_url in event_details:', coverUrl.substring(0, 60) + '...');
       // First, fetch existing event_details to merge
       const { data: existingEvent } = await supabase
         .from('ec_events')
@@ -697,6 +701,7 @@ app.put('/api/events/:id', async (req, res) => {
       const existingDetails = existingEvent?.event_details || {};
       dbUpdates.event_details = { ...existingDetails, _cover_image_url: coverUrl };
       delete dbUpdates.cover_image_url; // Remove problematic column from update
+      console.log('📸 [UPDATE] event_details will be:', JSON.stringify(dbUpdates.event_details).substring(0, 100));
     }
 
     const { data, error } = await supabase
