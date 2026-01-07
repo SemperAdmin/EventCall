@@ -486,6 +486,30 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
     color: #0369a1;
 }
 
+/* ===========================================
+   Event Details Fields (Template-driven)
+   =========================================== */
+.event-details-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.event-details-fields .form-group {
+    margin-bottom: 0;
+}
+
+.event-details-fields .form-group label {
+    font-weight: 600;
+    color: var(--semper-navy, #002147);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.event-details-fields .event-detail-field {
+    width: 100%;
+}
+
 /* Add Question Button */
 .form-group--custom-questions .btn-secondary {
     display: inline-flex;

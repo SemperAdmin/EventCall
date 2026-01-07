@@ -231,7 +231,7 @@ class EventTemplates {
                         name="${window.utils.escapeHTML(field.id)}"
                         placeholder="${window.utils.escapeHTML(field.placeholder || '')}"
                         ${field.required ? 'required' : ''}
-                        class="event-detail-field"
+                        class="form-control event-detail-field"
                         data-field-id="${window.utils.escapeHTML(field.id)}"
                         data-field-label="${window.utils.escapeHTML(field.label)}"
                     >
@@ -396,7 +396,7 @@ class EventTemplates {
                         placeholder="${window.utils.escapeHTML(field.placeholder || '')}"
                         value="${window.utils.escapeHTML(fieldValue)}"
                         ${field.required ? 'required' : ''}
-                        class="event-detail-field"
+                        class="form-control event-detail-field"
                         data-field-id="${window.utils.escapeHTML(field.id)}"
                         data-field-label="${window.utils.escapeHTML(field.label)}"
                     >
