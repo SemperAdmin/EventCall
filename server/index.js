@@ -962,7 +962,19 @@ app.post('/api/events', async (req, res) => {
         console.error('Supabase createEvent error:', error.message);
         return res.status(500).json({ error: 'Failed to create event' });
       }
+      console.log('📸 Supabase inserted event ID:', data?.[0]?.id);
       console.log('📸 Supabase inserted event cover_image_url:', data?.[0]?.cover_image_url ? data[0].cover_image_url.substring(0, 80) + '...' : '(empty)');
+
+      // Verify by re-fetching the event
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('ec_events')
+        .select('id, title, cover_image_url')
+        .eq('id', eventId)
+        .single();
+      console.log('📸 Verification fetch - Event ID:', verifyData?.id);
+      console.log('📸 Verification fetch - Title:', verifyData?.title);
+      console.log('📸 Verification fetch - cover_image_url:', verifyData?.cover_image_url ? verifyData.cover_image_url.substring(0, 80) + '...' : '(empty/null)');
+      if (verifyError) console.log('📸 Verification error:', verifyError.message);
     } else {
       // Save to GitHub
       const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
