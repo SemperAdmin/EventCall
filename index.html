@@ -802,9 +802,12 @@ function verifyDashboardTabs() {
                 </div><!-- End RSVP Settings Section -->
 
                 <!-- Event Details Section (populated by templates) -->
-                <div id="event-details-section" class="panel panel--info hidden">
-                    <div class="panel__title">📝 Event Details</div>
-                    <div id="event-details-container"></div>
+                <div id="event-details-section" class="form-section form-section--collapsible hidden">
+                    <div class="form-section__header">
+                        <h3 class="form-section__title">📝 Event Details</h3>
+                        <span class="form-section__optional">Template Fields</span>
+                    </div>
+                    <div id="event-details-container" class="event-details-fields"></div>
                 </div>
 
                 <!-- Advanced Options Section -->

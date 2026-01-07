@@ -283,7 +283,6 @@ function mapSupabaseEvent(e) {
     time: e.time || '',
     location: e.location || '',
     description: e.description || '',
-    dress_code: e.dress_code || '',
     cover_image_url: coverUrl,
     coverImage: coverUrl, // Frontend UI expects this alias
 
@@ -291,11 +290,18 @@ function mapSupabaseEvent(e) {
     created_by: e.creator_id || e.created_by || '',
     creator_id: e.creator_id || e.created_by || '',
     created_at: e.created_at || '',
+    ask_reason: e.ask_reason ?? false,
+    askReason: e.ask_reason ?? false, // Frontend alias
     allow_guests: e.allow_guests ?? true,
+    allowGuests: e.allow_guests ?? true, // Frontend alias
     requires_meal_choice: e.requires_meal_choice ?? false,
+    requiresMealChoice: e.requires_meal_choice ?? false, // Frontend alias
     custom_questions: e.custom_questions || [],
+    customQuestions: e.custom_questions || [], // Frontend alias
     event_details: e.event_details || {},
-    seating_chart: e.seating_chart || null
+    eventDetails: e.event_details || {}, // Frontend alias
+    seating_chart: e.seating_chart || null,
+    seatingChart: e.seating_chart || null // Frontend alias
   };
 }
 
@@ -685,17 +691,28 @@ app.put('/api/events/:id', async (req, res) => {
     if (updates.time !== undefined) dbUpdates.time = updates.time;
     if (updates.location !== undefined) dbUpdates.location = updates.location;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.dress_code !== undefined) dbUpdates.dress_code = updates.dress_code;
-    if (updates.dressCode !== undefined) dbUpdates.dress_code = updates.dressCode;
     if (updates.cover_image_url !== undefined) dbUpdates.cover_image_url = updates.cover_image_url;
     if (updates.coverImageUrl !== undefined) dbUpdates.cover_image_url = updates.coverImageUrl;
     if (updates.coverImage !== undefined) dbUpdates.cover_image_url = updates.coverImage;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
+    // ask_reason - accept both snake_case and camelCase
+    if (updates.ask_reason !== undefined) dbUpdates.ask_reason = updates.ask_reason;
+    if (updates.askReason !== undefined) dbUpdates.ask_reason = updates.askReason;
+    // allow_guests - accept both snake_case and camelCase
     if (updates.allow_guests !== undefined) dbUpdates.allow_guests = updates.allow_guests;
+    if (updates.allowGuests !== undefined) dbUpdates.allow_guests = updates.allowGuests;
+    // requires_meal_choice - accept both snake_case and camelCase
     if (updates.requires_meal_choice !== undefined) dbUpdates.requires_meal_choice = updates.requires_meal_choice;
+    if (updates.requiresMealChoice !== undefined) dbUpdates.requires_meal_choice = updates.requiresMealChoice;
+    // custom_questions - accept both snake_case and camelCase
     if (updates.custom_questions !== undefined) dbUpdates.custom_questions = updates.custom_questions;
+    if (updates.customQuestions !== undefined) dbUpdates.custom_questions = updates.customQuestions;
+    // event_details - accept both snake_case and camelCase
     if (updates.event_details !== undefined) dbUpdates.event_details = updates.event_details;
+    if (updates.eventDetails !== undefined) dbUpdates.event_details = updates.eventDetails;
+    // seating_chart - accept both snake_case and camelCase
     if (updates.seating_chart !== undefined) dbUpdates.seating_chart = updates.seating_chart;
+    if (updates.seatingChart !== undefined) dbUpdates.seating_chart = updates.seatingChart;
     dbUpdates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -917,17 +934,16 @@ app.post('/api/events', async (req, res) => {
       time: eventData.time || '',
       location: eventData.location || '',
       description: eventData.description || '',
-      dress_code: eventData.dress_code || eventData.dressCode || '',
       cover_image_url: eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '',
       created_by: creatorId,
       created_at: new Date().toISOString(),
       status: eventData.status || 'active',
-      allow_guests: eventData.allow_guests ?? true,
-      requires_meal_choice: eventData.requires_meal_choice ?? false,
-      custom_questions: eventData.custom_questions || [],
-      event_details: eventData.event_details || {},
-      seating_chart: eventData.seating_chart || null
-
+      ask_reason: eventData.ask_reason ?? eventData.askReason ?? false,
+      allow_guests: eventData.allow_guests ?? eventData.allowGuests ?? true,
+      requires_meal_choice: eventData.requires_meal_choice ?? eventData.requiresMealChoice ?? false,
+      custom_questions: eventData.custom_questions || eventData.customQuestions || [],
+      event_details: eventData.event_details || eventData.eventDetails || {},
+      seating_chart: eventData.seating_chart || eventData.seatingChart || null
     };
     if (USE_SUPABASE) {
       const { error } = await supabase.from('ec_events').insert([event]);

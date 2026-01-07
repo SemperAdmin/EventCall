@@ -170,7 +170,11 @@ select {
 /* Exception: Auth/Login page needs WHITE text on dark background */
 .auth input,
 .auth textarea,
-.auth select {
+.auth select,
+.auth .form-control,
+.auth input.form-control,
+.auth textarea.form-control,
+.auth select.form-control {
     color: #ffffff !important;
 }
 
@@ -181,8 +185,9 @@ textarea::placeholder {
 
 /* Auth placeholders should be lighter */
 .auth input::placeholder,
-.auth textarea::placeholder {
-    color: #94a3b8 !important;
+.auth textarea::placeholder,
+.auth .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
 }
 
 /* Input wrapper for icons/addons */
@@ -479,6 +484,30 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
 
 .btn-add-option__text {
     color: #0369a1;
+}
+
+/* ===========================================
+   Event Details Fields (Template-driven)
+   =========================================== */
+.event-details-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.event-details-fields .form-group {
+    margin-bottom: 0;
+}
+
+.event-details-fields .form-group label {
+    font-weight: 600;
+    color: var(--semper-navy, #002147);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.event-details-fields .event-detail-field {
+    width: 100%;
 }
 
 /* Add Question Button */
