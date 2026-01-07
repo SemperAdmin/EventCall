@@ -2,3 +2,9 @@ node_modules/
 EventCall-Updates.txt
 *.log
 
+# Environment files (contain secrets)
+.env
+.env.local
+.env.production
+server/.env
+
