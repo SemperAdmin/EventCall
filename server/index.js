@@ -975,20 +975,26 @@ app.post('/api/events', async (req, res) => {
       }
       console.log('📸 Insert successful, event ID:', data?.[0]?.id);
 
-      // Now UPDATE the cover_image_url separately
+      // Now UPDATE the cover_image_url separately using direct REST API
       if (savedCoverUrl) {
-        console.log('📸 Attempting separate UPDATE for cover_image_url...');
-        const { data: updateData, error: updateError } = await supabase
-          .from('ec_events')
-          .update({ cover_image_url: savedCoverUrl })
-          .eq('id', eventId)
-          .select('id, cover_image_url');
+        console.log('📸 Attempting UPDATE via direct REST API...');
 
-        if (updateError) {
-          console.error('📸 UPDATE cover_image_url ERROR:', updateError.message);
-        } else {
-          console.log('📸 UPDATE response:', JSON.stringify(updateData));
-        }
+        // Use direct REST API instead of JS client
+        const restUrl = `${SUPABASE_URL}/rest/v1/ec_events?id=eq.${eventId}`;
+        const restResponse = await fetch(restUrl, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({ cover_image_url: savedCoverUrl })
+        });
+
+        const restResult = await restResponse.json();
+        console.log('📸 REST API response status:', restResponse.status);
+        console.log('📸 REST API response:', JSON.stringify(restResult));
       }
 
       // Verify by re-fetching the event
