@@ -274,7 +274,9 @@ async function saveUser(username, userData) {
 // Map Supabase event data to frontend-expected format
 function mapSupabaseEvent(e) {
   if (!e) return null;
-  const coverUrl = e.cover_image_url || e.image_url || '';
+  // WORKAROUND: Check event_details._cover_image_url as fallback since cover_image_url column has issues
+  const eventDetails = e.event_details || {};
+  const coverUrl = e.cover_image_url || eventDetails._cover_image_url || e.image_url || '';
 
   return {
     id: e.id,
@@ -935,6 +937,13 @@ app.post('/api/events', async (req, res) => {
     console.log('📸 eventData.coverImageUrl:', eventData.coverImageUrl);
     console.log('📸 eventData.coverImage:', eventData.coverImage);
 
+    // WORKAROUND: Store cover_image_url inside event_details JSONB since the cover_image_url column has issues
+    let eventDetails = eventData.event_details || eventData.eventDetails || {};
+    if (coverUrl) {
+      eventDetails = { ...eventDetails, _cover_image_url: coverUrl };
+      console.log('📸 Storing cover_image_url inside event_details JSONB as workaround');
+    }
+
     const event = {
       id: eventId,
       title: eventData.title,
@@ -942,7 +951,7 @@ app.post('/api/events', async (req, res) => {
       time: eventData.time || '',
       location: eventData.location || '',
       description: eventData.description || '',
-      cover_image_url: coverUrl,
+      cover_image_url: coverUrl, // Still try to set it
       created_by: creatorId,
       created_at: new Date().toISOString(),
       status: eventData.status || 'active',
@@ -950,7 +959,7 @@ app.post('/api/events', async (req, res) => {
       allow_guests: eventData.allow_guests ?? eventData.allowGuests ?? true,
       requires_meal_choice: eventData.requires_meal_choice ?? eventData.requiresMealChoice ?? false,
       custom_questions: eventData.custom_questions || eventData.customQuestions || [],
-      event_details: eventData.event_details || eventData.eventDetails || {},
+      event_details: eventDetails,
       seating_chart: eventData.seating_chart || eventData.seatingChart || null
     };
 
