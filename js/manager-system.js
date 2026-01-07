@@ -2141,8 +2141,26 @@ async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInp
         let uploadResult = null;
         const activePage = document.querySelector('.page.active');
         const isManagePage = activePage && activePage.id === 'manage';
-        const isEdit = !!(window.eventManager && window.eventManager.currentEvent && (window.eventManager.editMode || isManagePage));
-        const eventIdForUpload = isEdit ? window.eventManager.currentEvent.id : null;
+
+        // Get event ID from multiple sources for reliability
+        let eventIdForUpload = null;
+        if (window.eventManager && window.eventManager.currentEvent) {
+            eventIdForUpload = window.eventManager.currentEvent.id;
+        } else if (isManagePage) {
+            // Try to get from URL hash or hidden input
+            const hashMatch = window.location.hash.match(/manage\/([a-f0-9-]+)/i);
+            if (hashMatch) {
+                eventIdForUpload = hashMatch[1];
+            } else {
+                // Try hidden input on form
+                const eventIdInput = document.getElementById('manage-event-id');
+                if (eventIdInput && eventIdInput.value) {
+                    eventIdForUpload = eventIdInput.value;
+                }
+            }
+        }
+        console.log('📸 [UPLOAD] eventIdForUpload:', eventIdForUpload, 'isManagePage:', isManagePage);
+
         if (window.BackendAPI && window.BackendAPI.uploadImage) {
             try {
                 uploadResult = await window.BackendAPI.uploadImage(file, uniqueFileName, { eventId: eventIdForUpload, tags: [] });
@@ -2166,13 +2184,14 @@ async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInp
             throw new Error('Image upload failed');
         }
 
-        // Fallback: ensure Supabase cover_image_url is set in edit mode
+        // Save cover_image_url to event in Supabase
         if (eventIdForUpload && imageUrl) {
             try {
-                const verified = !!(uploadResult && uploadResult.supabase && uploadResult.supabase.verified);
-                if (!verified && window.BackendAPI && window.BackendAPI.updateEvent) {
+                console.log('📸 [UPLOAD] Saving cover image to event:', eventIdForUpload);
+                if (window.BackendAPI && window.BackendAPI.updateEvent) {
                     await window.BackendAPI.updateEvent(eventIdForUpload, { coverImageUrl: imageUrl });
-                    showToast('✅ Cover image saved to Supabase', 'success');
+                    console.log('📸 [UPLOAD] Cover image saved successfully');
+                    showToast('✅ Cover image saved', 'success');
                 }
                 if (window.events && window.events[eventIdForUpload]) {
                     window.events[eventIdForUpload] = { ...window.events[eventIdForUpload], coverImage: imageUrl };
