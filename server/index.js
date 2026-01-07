@@ -960,19 +960,36 @@ app.post('/api/events', async (req, res) => {
     console.log('📸 cover_image_url length:', event.cover_image_url ? event.cover_image_url.length : 0);
 
     if (USE_SUPABASE) {
-      // Log the exact payload being sent
+      // Try inserting WITHOUT cover_image_url first, then UPDATE it separately
       const insertPayload = JSON.parse(JSON.stringify(event));
-      console.log('📸 INSERT PAYLOAD cover_image_url VALUE:', insertPayload.cover_image_url);
+      const savedCoverUrl = insertPayload.cover_image_url;
+      delete insertPayload.cover_image_url; // Remove from insert
+
+      console.log('📸 Inserting event WITHOUT cover_image_url, will update separately');
+      console.log('📸 Saved cover URL for update:', savedCoverUrl ? savedCoverUrl.substring(0, 80) + '...' : '(empty)');
 
       const { data, error } = await supabase.from('ec_events').insert([insertPayload]).select();
       if (error) {
         console.error('Supabase createEvent error:', error.message);
-        console.error('Supabase createEvent full error:', JSON.stringify(error));
         return res.status(500).json({ error: 'Failed to create event' });
       }
-      console.log('📸 Supabase RAW response data:', JSON.stringify(data?.[0], null, 2));
-      console.log('📸 Supabase inserted event ID:', data?.[0]?.id);
-      console.log('📸 Supabase inserted event cover_image_url:', data?.[0]?.cover_image_url ? data[0].cover_image_url.substring(0, 80) + '...' : '(empty)');
+      console.log('📸 Insert successful, event ID:', data?.[0]?.id);
+
+      // Now UPDATE the cover_image_url separately
+      if (savedCoverUrl) {
+        console.log('📸 Attempting separate UPDATE for cover_image_url...');
+        const { data: updateData, error: updateError } = await supabase
+          .from('ec_events')
+          .update({ cover_image_url: savedCoverUrl })
+          .eq('id', eventId)
+          .select('id, cover_image_url');
+
+        if (updateError) {
+          console.error('📸 UPDATE cover_image_url ERROR:', updateError.message);
+        } else {
+          console.log('📸 UPDATE response:', JSON.stringify(updateData));
+        }
+      }
 
       // Verify by re-fetching the event
       const { data: verifyData, error: verifyError } = await supabase
@@ -980,9 +997,9 @@ app.post('/api/events', async (req, res) => {
         .select('id, title, cover_image_url')
         .eq('id', eventId)
         .single();
-      console.log('📸 Verification fetch - Event ID:', verifyData?.id);
-      console.log('📸 Verification fetch - Title:', verifyData?.title);
-      console.log('📸 Verification fetch - cover_image_url:', verifyData?.cover_image_url ? verifyData.cover_image_url.substring(0, 80) + '...' : '(empty/null)');
+      console.log('📸 FINAL Verification - Event ID:', verifyData?.id);
+      console.log('📸 FINAL Verification - Title:', verifyData?.title);
+      console.log('📸 FINAL Verification - cover_image_url:', verifyData?.cover_image_url ? verifyData.cover_image_url.substring(0, 80) + '...' : '(empty/null)');
       if (verifyError) console.log('📸 Verification error:', verifyError.message);
     } else {
       // Save to GitHub
