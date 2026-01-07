@@ -718,6 +718,21 @@ app.put('/api/events/:id', async (req, res) => {
     if (updates.seatingChart !== undefined) dbUpdates.seating_chart = updates.seatingChart;
     dbUpdates.updated_at = new Date().toISOString();
 
+    // WORKAROUND: Store cover_image_url in event_details._cover_image_url since column has issues
+    const coverUrl = dbUpdates.cover_image_url;
+    if (coverUrl) {
+      // First, fetch existing event_details to merge
+      const { data: existingEvent } = await supabase
+        .from('ec_events')
+        .select('event_details')
+        .eq('id', eventId)
+        .single();
+
+      const existingDetails = existingEvent?.event_details || {};
+      dbUpdates.event_details = { ...existingDetails, _cover_image_url: coverUrl };
+      delete dbUpdates.cover_image_url; // Remove problematic column from update
+    }
+
     const { data, error } = await supabase
       .from('ec_events')
       .update(dbUpdates)
