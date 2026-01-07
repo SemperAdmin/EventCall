@@ -930,6 +930,10 @@ app.post('/api/events', async (req, res) => {
     // Debug: Log cover image URL received
     const coverUrl = eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '';
     console.log('📸 Create event - Cover image URL received:', coverUrl ? coverUrl.substring(0, 80) + '...' : '(empty)');
+    console.log('📸 Raw eventData keys:', Object.keys(eventData));
+    console.log('📸 eventData.cover_image_url:', eventData.cover_image_url);
+    console.log('📸 eventData.coverImageUrl:', eventData.coverImageUrl);
+    console.log('📸 eventData.coverImage:', eventData.coverImage);
 
     const event = {
       id: eventId,
@@ -949,12 +953,16 @@ app.post('/api/events', async (req, res) => {
       event_details: eventData.event_details || eventData.eventDetails || {},
       seating_chart: eventData.seating_chart || eventData.seatingChart || null
     };
+
+    console.log('📸 Event object cover_image_url:', event.cover_image_url ? event.cover_image_url.substring(0, 80) + '...' : '(empty)');
+
     if (USE_SUPABASE) {
-      const { error } = await supabase.from('ec_events').insert([event]);
+      const { data, error } = await supabase.from('ec_events').insert([event]).select();
       if (error) {
         console.error('Supabase createEvent error:', error.message);
         return res.status(500).json({ error: 'Failed to create event' });
       }
+      console.log('📸 Supabase inserted event cover_image_url:', data?.[0]?.cover_image_url ? data[0].cover_image_url.substring(0, 80) + '...' : '(empty)');
     } else {
       // Save to GitHub
       const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
