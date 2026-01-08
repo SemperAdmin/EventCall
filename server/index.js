@@ -925,13 +925,23 @@ app.post('/api/events', async (req, res) => {
     };
 
     if (USE_SUPABASE) {
+      console.log('[createEvent] Full event object:', JSON.stringify(event, null, 2));
       console.log('[createEvent] Inserting event with cover_image_url:', event.cover_image_url || '(none)');
       const { data, error } = await supabase.from('ec_events').insert([event]).select();
       if (error) {
-        console.error('Supabase createEvent error:', error.message);
+        console.error('Supabase createEvent error:', error.message, error.details, error.hint);
         return res.status(500).json({ error: 'Failed to create event' });
       }
-      console.log('[createEvent] Supabase returned cover_image_url:', data?.[0]?.cover_image_url || '(none)');
+      console.log('[createEvent] Supabase returned data:', JSON.stringify(data?.[0], null, 2));
+
+      // Verify with a direct SELECT to see what's actually in the database
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('ec_events')
+        .select('id, cover_image_url')
+        .eq('id', data?.[0]?.id)
+        .single();
+      console.log('[createEvent] VERIFY SELECT result:', JSON.stringify(verifyData, null, 2));
+      if (verifyError) console.error('[createEvent] VERIFY SELECT error:', verifyError.message);
 
       const createdEvent = data && data[0] ? mapSupabaseEvent(data[0]) : event;
       createdEvent.coverImage = createdEvent.coverImage || coverUrl;
