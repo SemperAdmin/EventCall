@@ -1857,6 +1857,9 @@ app.post('/api/auth/login', async (req, res) => {
   console.log('[LOGIN DEBUG] Hash exists:', !!hash);
   console.log('[LOGIN DEBUG] Hash starts with $2:', hash && hash.startsWith('$2'));
   console.log('[LOGIN DEBUG] Hash length:', hash ? hash.length : 0);
+  console.log('[LOGIN DEBUG] Actual hash from DB:', hash);
+  console.log('[LOGIN DEBUG] Expected hash:       $2a$10$5Q9dvqOb7jaZeSNustCkYehBq94XK7MhfXUcKSuLTJDx/aGY1.HMm');
+  console.log('[LOGIN DEBUG] Hashes identical:', hash === '$2a$10$5Q9dvqOb7jaZeSNustCkYehBq94XK7MhfXUcKSuLTJDx/aGY1.HMm');
   if (typeof hash !== 'string' || !hash.startsWith('$2')) {
     // Require bcrypt hashes only
     console.log('[LOGIN DEBUG] Invalid hash format');
