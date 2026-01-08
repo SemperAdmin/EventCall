@@ -293,6 +293,8 @@ class BackendAPI {
         const url = base + endpoint;
 
         console.log(`🚀 Using direct authentication: ${endpoint}`);
+        console.log('[AUTH DEBUG] Username being sent:', credentials.username);
+        console.log('[AUTH DEBUG] Password length:', credentials.password ? credentials.password.length : 0);
 
         const startTime = Date.now();
         try {
