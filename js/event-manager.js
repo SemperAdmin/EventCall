@@ -489,7 +489,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     
                     <!-- Cover Image Upload -->
                     <div class="form-group" style="margin-top: 1rem;">
-                        <label for="manage-cover-input" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--semper-navy);">Cover Image</label>
+                        <label for="manage-cover-input" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #ffd700;">Cover Image</label>
                         <div class="image-upload" id="manage-cover-upload" role="button" tabindex="0" aria-label="Change cover image">
                             <p>${event.coverImage ? 'Click or drag to change image' : 'Click or drag to upload cover image'}</p>
                             <input type="file" id="manage-cover-input" accept="image/*" class="file-input">
@@ -563,7 +563,7 @@ generateEventDetailsHTML(event, eventId, responseTableHTML) {
                     <div class="chart-card">
                         <div class="time-filter">
                             <label for="time-range">Time range</label>
-                            <select id="time-range">
+                            <select id="time-range" class="filter-select">
                                 <option value="7">7 days</option>
                                 <option value="14">14 days</option>
                                 <option value="30" selected>30 days</option>
