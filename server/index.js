@@ -899,6 +899,10 @@ app.post('/api/events', async (req, res) => {
 
     // Get cover image URL from various field names
     const coverUrl = eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '';
+    console.log('[createEvent] Received cover_image_url:', eventData.cover_image_url || '(none)');
+    console.log('[createEvent] Received coverImageUrl:', eventData.coverImageUrl || '(none)');
+    console.log('[createEvent] Received coverImage:', eventData.coverImage || '(none)');
+    console.log('[createEvent] Final coverUrl:', coverUrl || '(none)');
     const eventDetails = eventData.event_details || eventData.eventDetails || {};
 
     const event = {
@@ -921,11 +925,13 @@ app.post('/api/events', async (req, res) => {
     };
 
     if (USE_SUPABASE) {
+      console.log('[createEvent] Inserting event with cover_image_url:', event.cover_image_url || '(none)');
       const { data, error } = await supabase.from('ec_events').insert([event]).select();
       if (error) {
         console.error('Supabase createEvent error:', error.message);
         return res.status(500).json({ error: 'Failed to create event' });
       }
+      console.log('[createEvent] Supabase returned cover_image_url:', data?.[0]?.cover_image_url || '(none)');
 
       const createdEvent = data && data[0] ? mapSupabaseEvent(data[0]) : event;
       createdEvent.coverImage = createdEvent.coverImage || coverUrl;
