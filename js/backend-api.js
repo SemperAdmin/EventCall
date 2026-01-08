@@ -540,6 +540,8 @@ class BackendAPI {
         const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
         if (!base) throw new Error('Backend not configured');
 
+        console.log('[BackendAPI.createEvent] eventData.coverImage:', eventData.coverImage || '(none)');
+        console.log('[BackendAPI.createEvent] eventData.coverImageUrl:', eventData.coverImageUrl || '(none)');
         const payload = {
             title: String(eventData.title || '').trim(),
             description: String(eventData.description || '').trim().substring(0, 500),
@@ -560,6 +562,7 @@ class BackendAPI {
         if (!payload.title || !payload.date || !payload.time) {
             throw new Error('Missing required event fields');
         }
+        console.log('[BackendAPI.createEvent] Sending payload.cover_image_url:', payload.cover_image_url || '(none)');
 
         const url = base + '/api/events';
         const resp = await this._fetch(url, {
