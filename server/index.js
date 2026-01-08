@@ -961,7 +961,23 @@ app.post('/api/events', async (req, res) => {
 
       // Log what Supabase actually saved
       const insertedEvent = data && data[0];
-      console.log('[createEvent] Supabase returned event_details:', JSON.stringify(insertedEvent?.event_details || null));
+      console.log('[createEvent] Event ID:', insertedEvent?.id);
+      console.log('[createEvent] Supabase INSERT returned event_details:', JSON.stringify(insertedEvent?.event_details || null));
+
+      // Verify by fetching the event again
+      if (insertedEvent?.id) {
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('ec_events')
+          .select('id, event_details')
+          .eq('id', insertedEvent.id)
+          .single();
+
+        if (verifyError) {
+          console.error('[createEvent] Verify SELECT failed:', verifyError.message);
+        } else {
+          console.log('[createEvent] Verify SELECT event_details:', JSON.stringify(verifyData?.event_details || null));
+        }
+      }
 
       // WORKAROUND: If event_details wasn't saved properly, do a separate UPDATE
       const savedCoverUrl = insertedEvent?.event_details?._cover_image_url;
