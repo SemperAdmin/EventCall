@@ -662,6 +662,10 @@ class BackendAPI {
         for (const e of list) {
             const id = String(e.id ?? e.eventId ?? '');
             if (!id) continue;
+            // FIX: Check multiple sources for cover image URL
+            // Server stores in event_details._cover_image_url and returns both cover_image_url and coverImage
+            const eventDetails = e.event_details || {};
+            const coverImage = e.cover_image_url || e.coverImage || eventDetails._cover_image_url || '';
             out[id] = {
                 id,
                 title: String(e.title || '').trim(),
@@ -669,14 +673,15 @@ class BackendAPI {
                 time: String(e.time || '').trim(),
                 location: String(e.location || '').trim(),
                 description: String(e.description || '').trim(),
-                coverImage: e.cover_image_url || '',
+                coverImage: coverImage,
                 status: String(e.status || 'active').trim(),
                 createdBy: e.created_by || '',
                 created: e.created_at || Date.now(),
+                askReason: !!(e.ask_reason ?? e.askReason),
                 allowGuests: !!e.allow_guests,
                 requiresMealChoice: !!e.requires_meal_choice,
                 customQuestions: e.custom_questions || [],
-                eventDetails: e.event_details || {},
+                eventDetails: eventDetails,
                 seatingChart: e.seating_chart || null
             };
         }

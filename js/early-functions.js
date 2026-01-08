@@ -1355,6 +1355,9 @@ function getBasePath() {
 function generateInviteURL(event) {
     const basePath = getBasePath();
     const baseURL = window.location.origin + basePath;
+    // FIX: Check multiple sources for cover image URL
+    const eventDetails = event.eventDetails || event.event_details || {};
+    const coverImage = event.coverImage || event.cover_image_url || eventDetails._cover_image_url || '';
     const encodedData = encodeURIComponent(JSON.stringify({
         id: event.id,
         title: event.title,
@@ -1362,12 +1365,12 @@ function generateInviteURL(event) {
         time: event.time,
         location: event.location,
         description: event.description,
-        coverImage: event.coverImage,
-        askReason: event.askReason,
-        allowGuests: event.allowGuests,
-        requiresMealChoice: event.requiresMealChoice || false,
-        eventDetails: event.eventDetails || {},
-        customQuestions: event.customQuestions || [],
+        coverImage: coverImage,
+        askReason: event.askReason ?? event.ask_reason ?? false,
+        allowGuests: event.allowGuests ?? event.allow_guests ?? true,
+        requiresMealChoice: event.requiresMealChoice ?? event.requires_meal_choice ?? false,
+        eventDetails: eventDetails,
+        customQuestions: event.customQuestions || event.custom_questions || [],
         created: event.created
     }));
     return `${baseURL}?data=${encodedData}#invite/${event.id}`;
