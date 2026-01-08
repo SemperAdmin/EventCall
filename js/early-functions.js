@@ -801,6 +801,64 @@ function showPageContent(pageId, param) {
     
     // Page-specific initializations
     if (pageId === 'create') {
+        // Reset form for new event creation (clear any leftover edit state)
+        const form = document.getElementById('event-form');
+        if (form) {
+            // Only reset if not in edit mode (editMode should be cleared first)
+            if (!window.eventManager || !window.eventManager.editMode) {
+                form.reset();
+
+                // Clear event details section
+                const detailsContainer = document.getElementById('event-details-container');
+                if (detailsContainer) detailsContainer.innerHTML = '';
+                const detailsSection = document.getElementById('event-details-section');
+                if (detailsSection) {
+                    detailsSection.classList.add('hidden');
+                    detailsSection.style.display = 'none';
+                }
+
+                // Clear custom questions
+                const questionsContainer = document.getElementById('custom-questions-container');
+                if (questionsContainer) questionsContainer.innerHTML = '';
+
+                // Reset cover image
+                const coverPreview = document.getElementById('cover-preview');
+                if (coverPreview) {
+                    coverPreview.src = '';
+                    coverPreview.classList.add('hidden');
+                }
+                const coverUrl = document.getElementById('cover-image-url');
+                if (coverUrl) coverUrl.value = '';
+
+                // Restore cover upload text if needed
+                const coverUpload = document.getElementById('cover-upload');
+                if (coverUpload) {
+                    const existingInput = coverUpload.querySelector('input[type="file"]');
+                    const pElements = coverUpload.querySelectorAll('p');
+                    pElements.forEach(p => p.remove());
+                    const p = document.createElement('p');
+                    p.textContent = 'Click or drag to upload cover image';
+                    if (existingInput) {
+                        coverUpload.insertBefore(p, existingInput);
+                    } else {
+                        // Recreate file input if missing
+                        coverUpload.innerHTML = '<p>Click or drag to upload cover image</p><input type="file" id="cover-input" accept="image/*" class="file-input" aria-label="Choose cover image file">';
+                    }
+                }
+
+                // Reset invite template to classic
+                const classicRadio = document.querySelector('input[name="invite_template"][value="classic"]');
+                if (classicRadio) classicRadio.checked = true;
+
+                // Reset submit button text
+                const submitBtn = document.querySelector('#event-form button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.textContent = '🚀 Deploy Event';
+                    submitBtn.style.background = '';
+                }
+            }
+        }
+
         // Initialize template selector
         if (window.eventTemplates) {
             const container = document.getElementById('template-selector-container');
