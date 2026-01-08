@@ -584,8 +584,12 @@ async function loadManagerData() {
             const filterParams = {};
             // Only filter by creator if we're not explicitly asked to show all events
             const useCreatorFilter = !window.managerShowAllEvents && currentUser && currentUser.id;
+            console.log('[EVENT FILTER DEBUG] currentUser:', currentUser);
+            console.log('[EVENT FILTER DEBUG] currentUser.id:', currentUser?.id);
+            console.log('[EVENT FILTER DEBUG] useCreatorFilter:', useCreatorFilter);
             if (useCreatorFilter) {
                 filterParams.created_by = currentUser.id;
+                console.log('[EVENT FILTER DEBUG] Filtering by created_by:', currentUser.id);
             }
 
             // PERFORMANCE: Load filtered events and unassigned events in PARALLEL
@@ -597,11 +601,9 @@ async function loadManagerData() {
 
             let allEventsList = extractEventsFromResponse(rawResponse);
 
-            // Fallback: if filtered by creator returned nothing, load ALL events
+            // If user has no events, that's fine - don't fall back to showing all events
             if (allEventsList.length === 0 && useCreatorFilter) {
-                console.log('ℹ️ No events found for user filter, loading all events as fallback');
-                const fallbackResponse = await window.BackendAPI.loadEvents({});
-                allEventsList = extractEventsFromResponse(fallbackResponse);
+                console.log('ℹ️ No events found for user - showing empty list');
             }
 
             // Helper to normalize event data
