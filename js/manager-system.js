@@ -1423,11 +1423,20 @@ function renderEventCard(event, isPast) {
 }
 
 function formatDate(dateString) {
+    // Guard against null, undefined, or non-string inputs.
+    if (typeof dateString !== 'string' || !dateString) {
+        return '';
+    }
     // Parse date string without timezone conversion to prevent day shift
     const parts = dateString.split('T')[0].split('-');
-    const year = parseInt(parts[0]);
-    const month = parseInt(parts[1]) - 1; // 0-indexed
-    const day = parseInt(parts[2]);
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // 0-indexed
+    const day = parseInt(parts[2], 10);
+
+    // Ensure parts were parsed correctly before creating a Date.
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+        return '';
+    }
 
     // Create a date object using local date components (no timezone shift)
     const date = new Date(year, month, day);
