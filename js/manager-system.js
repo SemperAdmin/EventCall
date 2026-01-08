@@ -605,20 +605,27 @@ async function loadManagerData() {
             }
 
             // Helper to normalize event data
-            const normalizeEvent = (ev, overrides = {}) => ({
-                ...ev,
-                id: ev.id || ev.legacyId,
-                title: ev.title,
-                date: ev.date,
-                time: ev.time,
-                location: ev.location,
-                description: ev.description,
-                coverImage: ev.cover_image_url || ev.coverImageUrl || ev.coverImage,
-                createdBy: ev.created_by || ev.createdBy || ev.owner || '',
-                allowGuests: ev.allow_guests !== undefined ? ev.allow_guests : ev.allowGuests,
-                requiresMealChoice: ev.requires_meal_choice !== undefined ? ev.requires_meal_choice : ev.requiresMealChoice,
-                ...overrides
-            });
+            const normalizeEvent = (ev, overrides = {}) => {
+                // FIX: Check multiple sources for cover image URL including event_details._cover_image_url
+                const eventDetails = ev.event_details || ev.eventDetails || {};
+                const coverImage = ev.cover_image_url || ev.coverImageUrl || ev.coverImage || eventDetails._cover_image_url || '';
+                return {
+                    ...ev,
+                    id: ev.id || ev.legacyId,
+                    title: ev.title,
+                    date: ev.date,
+                    time: ev.time,
+                    location: ev.location,
+                    description: ev.description,
+                    coverImage: coverImage,
+                    createdBy: ev.created_by || ev.createdBy || ev.owner || '',
+                    askReason: ev.ask_reason !== undefined ? ev.ask_reason : ev.askReason,
+                    allowGuests: ev.allow_guests !== undefined ? ev.allow_guests : ev.allowGuests,
+                    requiresMealChoice: ev.requires_meal_choice !== undefined ? ev.requires_meal_choice : ev.requiresMealChoice,
+                    eventDetails: eventDetails,
+                    ...overrides
+                };
+            };
 
             // Convert to map and normalize
             const allEvents = {};
