@@ -300,7 +300,19 @@ class EventTemplates {
             return null;
         }
 
-        const eventDetailKeys = Object.keys(eventDetails);
+        // Filter out system keys (starting with _) and non-object values
+        const eventDetailKeys = Object.keys(eventDetails).filter(key => {
+            if (key.startsWith('_')) return false;
+            const val = eventDetails[key];
+            if (!val || typeof val !== 'object' || !val.label) return false;
+            return true;
+        });
+
+        // If no valid keys remain, return null
+        if (eventDetailKeys.length === 0) {
+            return null;
+        }
+
         const templates = this.getAllTemplates();
 
         let bestMatch = null;
@@ -348,7 +360,26 @@ class EventTemplates {
 
             eventDetailsContainer.innerHTML = '';
 
-            Object.entries(eventDetails).forEach(([key, detail]) => {
+            // Filter out system fields (keys starting with _) and non-object values
+            const validEntries = Object.entries(eventDetails).filter(([key, detail]) => {
+                // Skip system fields that start with underscore
+                if (key.startsWith('_')) return false;
+                // Skip non-object entries
+                if (!detail || typeof detail !== 'object' || !detail.label) return false;
+                return true;
+            });
+
+            // If no valid entries, hide the section and return
+            if (validEntries.length === 0) {
+                const eventDetailsSection = document.getElementById('event-details-section');
+                if (eventDetailsSection) {
+                    eventDetailsSection.classList.add('hidden');
+                    eventDetailsSection.style.display = 'none';
+                }
+                return false;
+            }
+
+            validEntries.forEach(([key, detail]) => {
                 const fieldDiv = document.createElement('div');
                 fieldDiv.className = 'form-group';
                 fieldDiv.innerHTML = window.utils.sanitizeHTML(`
