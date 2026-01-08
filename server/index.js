@@ -443,7 +443,7 @@ app.get('/api/csrf', (req, res) => {
 async function getEventsFromSupabase(creatorId = null, unassigned = false) {
   if (!supabase) return [];
   // FIX: Explicitly list columns instead of using '*' to avoid RLS/caching issues with event_details
-  const columns = 'id, title, date, time, location, description, cover_image_url, status, created_by, creator_id, created_at, ask_reason, allow_guests, requires_meal_choice, custom_questions, event_details, seating_chart';
+  const columns = 'id, title, date, time, location, description, cover_image_url, status, created_by, created_at, ask_reason, allow_guests, requires_meal_choice, custom_questions, event_details, seating_chart';
   let query = supabase.from('ec_events').select(columns);
   if (creatorId) {
     query = query.eq('created_by', String(creatorId));
