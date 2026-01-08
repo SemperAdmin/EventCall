@@ -501,6 +501,13 @@ app.get('/api/events', async (req, res) => {
   if (USE_SUPABASE) {
     events = await getEventsFromSupabase(creatorId, unassigned);
     console.log('[api/events] Supabase result', { creatorId, unassigned, count: Array.isArray(events) ? events.length : 0 });
+    // Log raw cover image data for debugging
+    if (Array.isArray(events)) {
+      events.forEach(e => {
+        const ed = e.event_details || {};
+        console.log(`[api/events] Event ${e.id}: cover_image_url=${e.cover_image_url || '(none)'}, event_details._cover_image_url=${ed._cover_image_url || '(none)'}`);
+      });
+    }
     events = (events || []).map(mapSupabaseEvent).filter(e => !!e);
     // Supabase is the sole data store - no GitHub fallback needed
     } else {
@@ -944,11 +951,18 @@ app.post('/api/events', async (req, res) => {
       const insertPayload = JSON.parse(JSON.stringify(event));
       delete insertPayload.cover_image_url; // Remove from insert since column has issues
 
+      console.log('[createEvent] Inserting with event_details:', JSON.stringify(insertPayload.event_details));
+
       const { data, error } = await supabase.from('ec_events').insert([insertPayload]).select();
       if (error) {
         console.error('Supabase createEvent error:', error.message);
         return res.status(500).json({ error: 'Failed to create event' });
       }
+
+      // Return the mapped event data for consistency
+      const createdEvent = data && data[0] ? mapSupabaseEvent(data[0]) : event;
+      console.log('[createEvent] Returning coverImage:', createdEvent.coverImage || '(none)');
+      res.json({ success: true, event: createdEvent, eventId });
     } else {
       // Save to GitHub
       const eventUrl = `https://api.github.com/repos/${REPO_OWNER}/EventCall-Data/contents/events/${eventId}.json`;
@@ -970,8 +984,8 @@ app.post('/api/events', async (req, res) => {
         console.error('GitHub createEvent error:', errData.message);
         return res.status(500).json({ error: 'Failed to create event' });
       }
+      res.json({ success: true, event, eventId });
     }
-    res.json({ success: true, event, eventId });
   } catch (error) {
     console.error('Failed to create event:', error);
     res.status(500).json({ error: 'Server error' });

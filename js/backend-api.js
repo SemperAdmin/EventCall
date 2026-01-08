@@ -666,6 +666,9 @@ class BackendAPI {
             // Server stores in event_details._cover_image_url and returns both cover_image_url and coverImage
             const eventDetails = e.event_details || {};
             const coverImage = e.cover_image_url || e.coverImage || eventDetails._cover_image_url || '';
+            if (coverImage || eventDetails._cover_image_url) {
+                console.log(`[loadEvents] Event ${id}: cover=${coverImage ? 'YES' : 'NO'}, from: cover_image_url=${e.cover_image_url ? 'YES' : 'NO'}, coverImage=${e.coverImage ? 'YES' : 'NO'}, _cover_image_url=${eventDetails._cover_image_url ? 'YES' : 'NO'}`);
+            }
             out[id] = {
                 id,
                 title: String(e.title || '').trim(),

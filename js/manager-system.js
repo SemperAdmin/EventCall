@@ -1837,9 +1837,16 @@ async function handleEventSubmit(e) {
             });
         }
 
-        // Update local state
+        // Update local state - merge server response with frontend data to ensure coverImage is correct
         if (!window.events) window.events = {};
-        window.events[eventData.id] = eventData;
+        // Use server's response for cover image as it has the properly mapped data
+        const mergedEvent = {
+            ...eventData,
+            coverImage: created?.coverImage || created?.cover_image_url || eventData.coverImage || '',
+            eventDetails: created?.eventDetails || created?.event_details || eventData.eventDetails || {}
+        };
+        console.log('📸 [CREATE] Stored event coverImage:', mergedEvent.coverImage || '(none)');
+        window.events[eventData.id] = mergedEvent;
 
         showToast('🎖️ Event deployed successfully!', 'success');
 
