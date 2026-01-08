@@ -584,12 +584,8 @@ async function loadManagerData() {
             const filterParams = {};
             // Only filter by creator if we're not explicitly asked to show all events
             const useCreatorFilter = !window.managerShowAllEvents && currentUser && currentUser.id;
-            console.log('[EVENT FILTER DEBUG] currentUser:', currentUser);
-            console.log('[EVENT FILTER DEBUG] currentUser.id:', currentUser?.id);
-            console.log('[EVENT FILTER DEBUG] useCreatorFilter:', useCreatorFilter);
             if (useCreatorFilter) {
                 filterParams.created_by = currentUser.id;
-                console.log('[EVENT FILTER DEBUG] Filtering by created_by:', currentUser.id);
             }
 
             // PERFORMANCE: Load filtered events and unassigned events in PARALLEL
@@ -2085,8 +2081,21 @@ function setupPhotoUpload() {
             return;
         }
 
-        // Note: Click handling is now done via overlay input in CSS/HTML to ensure reliability
-        // We only need to handle the file selection change event and visual feedback
+        // Click handler - clicking on the upload div triggers the hidden file input
+        coverUpload.addEventListener('click', (e) => {
+            // Don't trigger if clicking on the input itself
+            if (e.target !== coverInput) {
+                coverInput.click();
+            }
+        });
+
+        // Keyboard accessibility - Enter/Space triggers file input
+        coverUpload.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                coverInput.click();
+            }
+        });
 
         coverInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -2364,10 +2373,10 @@ function filterEventsBySearch(query) {
     let matchCount = 0;
     let totalCount = 0;
 
-    // Get all event cards
+    // Get all event cards (using event-card-v2 class)
     const allEventCards = [
-        ...(activeEventsList ? activeEventsList.querySelectorAll('.event-card') : []),
-        ...(pastEventsList ? pastEventsList.querySelectorAll('.event-card') : [])
+        ...(activeEventsList ? activeEventsList.querySelectorAll('.event-card-v2') : []),
+        ...(pastEventsList ? pastEventsList.querySelectorAll('.event-card-v2') : [])
     ];
 
     allEventCards.forEach(card => {
