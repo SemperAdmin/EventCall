@@ -1268,15 +1268,22 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
     flex: 1;
     min-width: 140px;
     cursor: pointer;
+    position: relative;
 }
 
 .invite-template-option input[type="radio"] {
     position: absolute;
+    width: 0;
+    height: 0;
     opacity: 0;
     pointer-events: none;
+    margin: 0;
+    padding: 0;
+    visibility: hidden;
 }
 
 .template-preview {
+    position: relative;
     padding: 1.25rem;
     border: 2px solid var(--border-color);
     border-radius: 12px;
@@ -1295,6 +1302,23 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
     border-color: var(--semper-navy);
     background: linear-gradient(135deg, rgba(0, 33, 71, 0.03) 0%, rgba(212, 175, 55, 0.05) 100%);
     box-shadow: 0 4px 12px rgba(0, 33, 71, 0.2);
+}
+
+.invite-template-option input[type="radio"]:checked + .template-preview::before {
+    content: '✓';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 22px;
+    height: 22px;
+    background: var(--semper-navy);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
 }
 
 .invite-template-option input[type="radio"]:focus + .template-preview {
