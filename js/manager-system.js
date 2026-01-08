@@ -1423,12 +1423,19 @@ function renderEventCard(event, isPast) {
 }
 
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
+    // Parse date string without timezone conversion to prevent day shift
+    const parts = dateString.split('T')[0].split('-');
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1; // 0-indexed
+    const day = parseInt(parts[2]);
+
+    // Create a date object using local date components (no timezone shift)
+    const date = new Date(year, month, day);
+    return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
     });
 }
 
