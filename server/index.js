@@ -1843,7 +1843,10 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
   const user = await getUser(uname);
+  console.log('[LOGIN DEBUG] Username:', uname);
+  console.log('[LOGIN DEBUG] User found:', !!user);
   if (!user) {
+    console.log('[LOGIN DEBUG] No user found for username:', uname);
     return res.status(401).json({
       success: false,
       error: 'Invalid credentials'
@@ -1851,16 +1854,22 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   const hash = user.passwordHash || user.password_hash;
+  console.log('[LOGIN DEBUG] Hash exists:', !!hash);
+  console.log('[LOGIN DEBUG] Hash starts with $2:', hash && hash.startsWith('$2'));
+  console.log('[LOGIN DEBUG] Hash length:', hash ? hash.length : 0);
   if (typeof hash !== 'string' || !hash.startsWith('$2')) {
     // Require bcrypt hashes only
+    console.log('[LOGIN DEBUG] Invalid hash format');
     return res.status(401).json({
       success: false,
       error: 'Invalid credentials'
     });
   }
   const isValid = await bcrypt.compare(password, hash);
+  console.log('[LOGIN DEBUG] bcrypt.compare result:', isValid);
 
   if (!isValid) {
+    console.log('[LOGIN DEBUG] Password mismatch for user:', uname);
     return res.status(401).json({
       success: false,
       error: 'Invalid credentials'
