@@ -795,13 +795,15 @@ class BackendAPI {
         const base = String(cfg.dispatchURL || '').replace(/\/$/, '');
         if (!base) throw new Error('Backend not configured');
         const url = base + '/api/events/' + encodeURIComponent(String(eventId));
+        // Only include cover_image_url if explicitly provided (don't send empty string which would overwrite existing)
+        const coverUrl = update.coverImageUrl || update.coverImage;
         const payload = {
             title: update.title,
             date: update.date,
             time: update.time,
             location: update.location,
             description: update.description,
-            cover_image_url: update.coverImageUrl || update.coverImage || '',
+            cover_image_url: coverUrl || undefined, // undefined = don't update, preserves existing value
             status: update.status,
             allow_guests: update.allowGuests,
             requires_meal_choice: update.requiresMealChoice,
