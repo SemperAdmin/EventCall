@@ -959,8 +959,33 @@ app.post('/api/events', async (req, res) => {
         return res.status(500).json({ error: 'Failed to create event' });
       }
 
+      // Log what Supabase actually saved
+      const insertedEvent = data && data[0];
+      console.log('[createEvent] Supabase returned event_details:', JSON.stringify(insertedEvent?.event_details || null));
+
+      // WORKAROUND: If event_details wasn't saved properly, do a separate UPDATE
+      const savedCoverUrl = insertedEvent?.event_details?._cover_image_url;
+      if (coverUrl && !savedCoverUrl && insertedEvent?.id) {
+        console.log('[createEvent] event_details not saved on insert, doing separate UPDATE...');
+        const { data: updateData, error: updateError } = await supabase
+          .from('ec_events')
+          .update({ event_details: { ...eventDetails, _cover_image_url: coverUrl } })
+          .eq('id', insertedEvent.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('[createEvent] UPDATE event_details failed:', updateError.message);
+        } else {
+          console.log('[createEvent] UPDATE succeeded, event_details:', JSON.stringify(updateData?.event_details || null));
+        }
+      }
+
       // Return the mapped event data for consistency
       const createdEvent = data && data[0] ? mapSupabaseEvent(data[0]) : event;
+      // Ensure coverImage is set from what we intended to save
+      createdEvent.coverImage = createdEvent.coverImage || coverUrl;
+      createdEvent.cover_image_url = createdEvent.cover_image_url || coverUrl;
       console.log('[createEvent] Returning coverImage:', createdEvent.coverImage || '(none)');
       res.json({ success: true, event: createdEvent, eventId });
     } else {
