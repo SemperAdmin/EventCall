@@ -1147,20 +1147,30 @@ function isEventInPast(date, time = '00:00') {
  * Format date for display
  */
 function formatDate(date, options = {}) {
+    if (!date) {
+        return '';
+    }
     // Parse date string without timezone conversion to prevent day shift
     let year, month, day;
 
     if (typeof date === 'string') {
         // Parse YYYY-MM-DD format directly without timezone conversion
         const parts = date.split('T')[0].split('-');
-        year = parseInt(parts[0]);
-        month = parseInt(parts[1]) - 1; // 0-indexed
-        day = parseInt(parts[2]);
-    } else {
+        year = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10) - 1; // 0-indexed
+        day = parseInt(parts[2], 10);
+    } else if (date instanceof Date) {
         // Handle Date object
         year = date.getFullYear();
         month = date.getMonth();
         day = date.getDate();
+    } else {
+        return ''; // Unsupported type
+    }
+
+    // Ensure parts were parsed correctly before creating a Date.
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+        return '';
     }
 
     const defaultOptions = {
