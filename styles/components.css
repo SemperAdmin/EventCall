@@ -1258,19 +1258,19 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
    INVITATION TEMPLATE SELECTOR
    ================================ */
 
-.template-selector {
+.invite-template-selector {
     display: flex;
     gap: 1rem;
     flex-wrap: wrap;
 }
 
-.template-option {
+.invite-template-option {
     flex: 1;
     min-width: 140px;
     cursor: pointer;
 }
 
-.template-option input[type="radio"] {
+.invite-template-option input[type="radio"] {
     position: absolute;
     opacity: 0;
     pointer-events: none;
@@ -1291,13 +1291,13 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
     box-shadow: 0 4px 12px rgba(0, 33, 71, 0.15);
 }
 
-.template-option input[type="radio"]:checked + .template-preview {
+.invite-template-option input[type="radio"]:checked + .template-preview {
     border-color: var(--semper-navy);
     background: linear-gradient(135deg, rgba(0, 33, 71, 0.03) 0%, rgba(212, 175, 55, 0.05) 100%);
     box-shadow: 0 4px 12px rgba(0, 33, 71, 0.2);
 }
 
-.template-option input[type="radio"]:focus + .template-preview {
+.invite-template-option input[type="radio"]:focus + .template-preview {
     outline: 2px solid var(--semper-navy);
     outline-offset: 2px;
 }
@@ -1337,17 +1337,17 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
     50% { transform: translateY(-3px); }
 }
 
-/* Responsive template selector */
+/* Responsive invite template selector */
 @media (max-width: 480px) {
-    .template-selector {
+    .invite-template-selector {
         flex-direction: column;
     }
 
-    .template-option {
+    .invite-template-option {
         min-width: 100%;
     }
 
-    .template-preview {
+    .invite-template-option .template-preview {
         display: flex;
         align-items: center;
         gap: 1rem;
@@ -1355,12 +1355,12 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
         padding: 1rem;
     }
 
-    .template-preview__icon {
+    .invite-template-option .template-preview__icon {
         font-size: 1.5rem;
         margin-bottom: 0;
     }
 
-    .template-preview__content {
+    .invite-template-option .template-preview__content {
         flex: 1;
     }
 }

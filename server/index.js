@@ -701,10 +701,10 @@ app.put('/api/events/:id', async (req, res) => {
       return res.status(503).json({ error: 'Event updates require Supabase configuration' });
     }
 
-    // Fetch existing event for version checking and cover image cleanup
+    // Fetch existing event for version checking, cover image cleanup, and event_details merging
     const { data: existingRow, error: fetchError } = await supabase
       .from('ec_events')
-      .select('cover_image_url, updated_at')
+      .select('cover_image_url, updated_at, event_details')
       .eq('id', eventId)
       .maybeSingle();
 
@@ -761,12 +761,26 @@ app.put('/api/events/:id', async (req, res) => {
     if (updates.customQuestions !== undefined) dbUpdates.custom_questions = updates.customQuestions;
     // event_details - accept both snake_case and camelCase
     // Also merge in invite_template as _invite_template (stored in JSONB)
-    let eventDetails = updates.event_details || updates.eventDetails;
+    // Preserve existing event_details and merge with updates
+    const existingEventDetails = existingRow?.event_details || {};
+    let newEventDetails = updates.event_details || updates.eventDetails;
     const inviteTemplate = updates.invite_template || updates.inviteTemplate;
-    if (eventDetails !== undefined || inviteTemplate !== undefined) {
-      // Start with existing or provided event_details
-      dbUpdates.event_details = eventDetails || {};
-      // Merge invite_template if provided
+
+    if (newEventDetails !== undefined || inviteTemplate !== undefined) {
+      // Start with existing event_details to preserve _invite_template and other fields
+      dbUpdates.event_details = { ...existingEventDetails };
+
+      // Merge new event_details if provided (but preserve _invite_template from existing)
+      if (newEventDetails !== undefined) {
+        const existingInviteTemplate = existingEventDetails._invite_template;
+        dbUpdates.event_details = { ...dbUpdates.event_details, ...newEventDetails };
+        // Restore existing _invite_template if new eventDetails didn't include it
+        if (existingInviteTemplate && !newEventDetails._invite_template) {
+          dbUpdates.event_details._invite_template = existingInviteTemplate;
+        }
+      }
+
+      // Override with new invite_template if explicitly provided
       if (inviteTemplate !== undefined) {
         dbUpdates.event_details._invite_template = inviteTemplate;
       }
