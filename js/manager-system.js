@@ -2077,7 +2077,11 @@ function setupPhotoUpload() {
             if (t < maxTries) {
                 setTimeout(tryInit, 100);
             } else {
-                console.warn(`⚠️ Photo upload elements not found (Page: ${activePage.id}, Prefix: "${prefix}"). Ensure all IDs exist.`);
+                console.warn(`⚠️ Photo upload elements not found (Page: ${activePage.id}, Prefix: "${prefix}").`);
+                console.warn(`   - ${prefix}cover-upload: ${!!coverUpload}`);
+                console.warn(`   - ${prefix}cover-input: ${!!coverInput}`);
+                console.warn(`   - ${prefix}cover-preview: ${!!coverPreview}`);
+                console.warn(`   - ${prefix}cover-image-url: ${!!coverImageUrlInput}`);
             }
             return;
         }
