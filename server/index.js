@@ -1857,6 +1857,9 @@ app.post('/api/auth/login', async (req, res) => {
   console.log('[LOGIN DEBUG] Hash exists:', !!hash);
   console.log('[LOGIN DEBUG] Hash starts with $2:', hash && hash.startsWith('$2'));
   console.log('[LOGIN DEBUG] Hash length:', hash ? hash.length : 0);
+  console.log('[LOGIN DEBUG] Actual hash from DB:', hash);
+  console.log('[LOGIN DEBUG] Expected hash:       $2a$10$5Q9dvqOb7jaZeSNustCkYehBq94XK7MhfXUcKSuLTJDx/aGY1.HMm');
+  console.log('[LOGIN DEBUG] Hashes identical:', hash === '$2a$10$5Q9dvqOb7jaZeSNustCkYehBq94XK7MhfXUcKSuLTJDx/aGY1.HMm');
   if (typeof hash !== 'string' || !hash.startsWith('$2')) {
     // Require bcrypt hashes only
     console.log('[LOGIN DEBUG] Invalid hash format');
@@ -2429,6 +2432,40 @@ app.post('/api/auth/change-password', async (req, res) => {
 });
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// DEBUG: Temporary diagnostic endpoint for auth troubleshooting
+// Remove after debugging is complete
+app.get('/api/debug/check-user/:username', async (req, res) => {
+  try {
+    if (!isOriginAllowed(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    const username = String(req.params.username || '').trim().toLowerCase();
+    if (!username) {
+      return res.status(400).json({ error: 'Username required' });
+    }
+    const user = await getUser(username);
+    if (!user) {
+      return res.json({
+        found: false,
+        message: 'User not found in database'
+      });
+    }
+    const hash = user.passwordHash || user.password_hash;
+    res.json({
+      found: true,
+      username: user.username,
+      hasPasswordHash: !!hash,
+      hashLength: hash ? hash.length : 0,
+      hashStartsWith$2: hash ? hash.startsWith('$2') : false,
+      hashPrefix: hash ? hash.substring(0, 7) : null,
+      userFields: Object.keys(user)
+    });
+  } catch (error) {
+    console.error('Debug check-user error:', error);
+    res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`EventCall proxy listening on port ${PORT}`);
