@@ -154,6 +154,84 @@ function extractStoragePathFromPublicUrl(url) {
   }
 }
 
+// Extract GitHub path from raw.githubusercontent.com URL
+// URL format: https://raw.githubusercontent.com/SemperAdmin/EventCall-Images/main/images/<filename>
+// Returns: images/<filename>
+function extractGitHubPathFromUrl(url) {
+  if (!url) return null;
+  try {
+    const u = String(url);
+    // Check if it's a GitHub raw content URL for EventCall-Images
+    const marker = `raw.githubusercontent.com/${REPO_OWNER}/EventCall-Images/main/`;
+    const idx = u.indexOf(marker);
+    if (idx >= 0) {
+      return u.slice(idx + marker.length);
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Delete an image from the GitHub EventCall-Images repository
+async function deleteGitHubImage(imagePath) {
+  if (!imagePath || !GITHUB_TOKEN) {
+    console.log('[deleteGitHubImage] Missing imagePath or GITHUB_TOKEN');
+    return { success: false, error: 'Missing required parameters' };
+  }
+
+  const githubRepo = 'EventCall-Images';
+  const githubUrl = `https://api.github.com/repos/${REPO_OWNER}/${githubRepo}/contents/${imagePath}`;
+
+  try {
+    // Get file info to retrieve SHA (required for deletion)
+    const getResp = await fetch(githubUrl, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'EventCall-Backend'
+      }
+    });
+
+    if (!getResp.ok) {
+      if (getResp.status === 404) {
+        console.log('[deleteGitHubImage] File not found:', imagePath);
+        return { success: true, message: 'File not found (already deleted)' };
+      }
+      console.error('[deleteGitHubImage] Failed to get file info:', getResp.statusText);
+      return { success: false, error: 'Failed to get file info from GitHub' };
+    }
+
+    const fileData = await getResp.json();
+
+    // Delete the file from GitHub
+    const deleteResp = await fetch(githubUrl, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'EventCall-Backend'
+      },
+      body: JSON.stringify({
+        message: `Delete image: ${imagePath}`,
+        sha: fileData.sha
+      })
+    });
+
+    if (!deleteResp.ok) {
+      console.error('[deleteGitHubImage] Failed to delete:', deleteResp.statusText);
+      return { success: false, error: 'Failed to delete from GitHub' };
+    }
+
+    console.log('[deleteGitHubImage] Successfully deleted:', imagePath);
+    return { success: true };
+  } catch (error) {
+    console.error('[deleteGitHubImage] Error:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 async function ensurePublicBucket(bucket) {
   if (!supabase) return { ok: false, error: 'Supabase not configured' };
   const { data } = await supabase.storage.getBucket(bucket);
@@ -698,14 +776,45 @@ app.put('/api/events/:id', async (req, res) => {
     }
 
     const newCoverUrl = data?.cover_image_url || null;
+    // Delete old cover image if it changed
     if (oldCoverUrl && newCoverUrl && oldCoverUrl !== newCoverUrl) {
-      const oldPath = extractStoragePathFromPublicUrl(oldCoverUrl);
-      if (oldPath) {
-        const { error: delErr } = await supabase.storage
-          .from(IMAGE_BUCKET)
-          .remove([oldPath]);
-        if (delErr) {
-          console.error('Failed to delete old cover image:', delErr.message);
+      // Try deleting from GitHub first (EventCall-Images repo)
+      const githubPath = extractGitHubPathFromUrl(oldCoverUrl);
+      if (githubPath) {
+        const result = await deleteGitHubImage(githubPath);
+        if (result.success) {
+          console.log('[updateEvent] Deleted old cover image from GitHub:', githubPath);
+        }
+      } else {
+        // Fall back to Supabase storage
+        const oldPath = extractStoragePathFromPublicUrl(oldCoverUrl);
+        if (oldPath) {
+          const { error: delErr } = await supabase.storage
+            .from(IMAGE_BUCKET)
+            .remove([oldPath]);
+          if (delErr) {
+            console.error('Failed to delete old cover image:', delErr.message);
+          }
+        }
+      }
+    }
+    // Also delete if cover image was removed (newCoverUrl is empty but oldCoverUrl exists)
+    if (oldCoverUrl && !newCoverUrl && dbUpdates.cover_image_url !== undefined) {
+      const githubPath = extractGitHubPathFromUrl(oldCoverUrl);
+      if (githubPath) {
+        const result = await deleteGitHubImage(githubPath);
+        if (result.success) {
+          console.log('[updateEvent] Deleted removed cover image from GitHub:', githubPath);
+        }
+      } else {
+        const oldPath = extractStoragePathFromPublicUrl(oldCoverUrl);
+        if (oldPath) {
+          const { error: delErr } = await supabase.storage
+            .from(IMAGE_BUCKET)
+            .remove([oldPath]);
+          if (delErr) {
+            console.error('Failed to delete removed cover image:', delErr.message);
+          }
         }
       }
     }
@@ -757,15 +866,26 @@ app.delete('/api/events/:id', async (req, res) => {
       .maybeSingle();
     let coverDeleted = false;
     if (eventRow && eventRow.cover_image_url) {
-      const coverPath = extractStoragePathFromPublicUrl(eventRow.cover_image_url);
-      if (coverPath && !photoPaths.includes(coverPath)) {
-        const { error: coverStorageErr } = await supabase.storage
-          .from(IMAGE_BUCKET)
-          .remove([coverPath]);
-        if (coverStorageErr) {
-          console.error('Failed to delete cover image from storage:', coverStorageErr.message);
-        } else {
+      // Try deleting from GitHub first (EventCall-Images repo)
+      const githubPath = extractGitHubPathFromUrl(eventRow.cover_image_url);
+      if (githubPath) {
+        const result = await deleteGitHubImage(githubPath);
+        if (result.success) {
           coverDeleted = true;
+          console.log('[deleteEvent] Deleted cover image from GitHub:', githubPath);
+        }
+      } else {
+        // Fall back to Supabase storage
+        const coverPath = extractStoragePathFromPublicUrl(eventRow.cover_image_url);
+        if (coverPath && !photoPaths.includes(coverPath)) {
+          const { error: coverStorageErr } = await supabase.storage
+            .from(IMAGE_BUCKET)
+            .remove([coverPath]);
+          if (coverStorageErr) {
+            console.error('Failed to delete cover image from storage:', coverStorageErr.message);
+          } else {
+            coverDeleted = true;
+          }
         }
       }
     }
@@ -899,10 +1019,6 @@ app.post('/api/events', async (req, res) => {
 
     // Get cover image URL from various field names
     const coverUrl = eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '';
-    console.log('[createEvent] Received cover_image_url:', eventData.cover_image_url || '(none)');
-    console.log('[createEvent] Received coverImageUrl:', eventData.coverImageUrl || '(none)');
-    console.log('[createEvent] Received coverImage:', eventData.coverImage || '(none)');
-    console.log('[createEvent] Final coverUrl:', coverUrl || '(none)');
     const eventDetails = eventData.event_details || eventData.eventDetails || {};
 
     const event = {
@@ -925,23 +1041,11 @@ app.post('/api/events', async (req, res) => {
     };
 
     if (USE_SUPABASE) {
-      console.log('[createEvent] Full event object:', JSON.stringify(event, null, 2));
-      console.log('[createEvent] Inserting event with cover_image_url:', event.cover_image_url || '(none)');
       const { data, error } = await supabase.from('ec_events').insert([event]).select();
       if (error) {
-        console.error('Supabase createEvent error:', error.message, error.details, error.hint);
+        console.error('Supabase createEvent error:', error.message);
         return res.status(500).json({ error: 'Failed to create event' });
       }
-      console.log('[createEvent] Supabase returned data:', JSON.stringify(data?.[0], null, 2));
-
-      // Verify with a direct SELECT to see what's actually in the database
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('ec_events')
-        .select('id, cover_image_url')
-        .eq('id', data?.[0]?.id)
-        .single();
-      console.log('[createEvent] VERIFY SELECT result:', JSON.stringify(verifyData, null, 2));
-      if (verifyError) console.error('[createEvent] VERIFY SELECT error:', verifyError.message);
 
       const createdEvent = data && data[0] ? mapSupabaseEvent(data[0]) : event;
       createdEvent.coverImage = createdEvent.coverImage || coverUrl;
