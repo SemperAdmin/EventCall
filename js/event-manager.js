@@ -2497,19 +2497,35 @@ Best regards`;
             const urlInput = document.getElementById('cover-image-url');
             if (urlInput) urlInput.value = event.coverImage;
             
-            // Update upload area to show existing image
+            // Update upload area to show existing image (preserve file input)
             const uploadArea = document.getElementById('cover-upload');
             if (uploadArea) {
-                uploadArea.innerHTML = window.utils.sanitizeHTML(`
-                    <p style="color: #10b981; font-weight: 600;">✅ Current image loaded</p>
-                    <p style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Click to change image</p>
-                `);
+                const existingInput = uploadArea.querySelector('input[type="file"]');
+                const pElements = uploadArea.querySelectorAll('p');
+                pElements.forEach(p => p.remove());
+
+                const p1 = document.createElement('p');
+                p1.style.cssText = 'color: #10b981; font-weight: 600;';
+                p1.textContent = '✅ Current image loaded';
+
+                const p2 = document.createElement('p');
+                p2.style.cssText = 'font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;';
+                p2.textContent = 'Click to change image';
+
+                uploadArea.insertBefore(p2, existingInput);
+                uploadArea.insertBefore(p1, p2);
             }
         } else {
-            // Reset upload area for new image
+            // Reset upload area for new image (preserve file input)
             const uploadArea = document.getElementById('cover-upload');
             if (uploadArea) {
-                uploadArea.innerHTML = window.utils.sanitizeHTML(`<p>Click or drag to upload cover image</p>`);
+                const existingInput = uploadArea.querySelector('input[type="file"]');
+                const pElements = uploadArea.querySelectorAll('p');
+                pElements.forEach(p => p.remove());
+
+                const p = document.createElement('p');
+                p.textContent = 'Click or drag to upload cover image';
+                uploadArea.insertBefore(p, existingInput);
             }
         }
 

@@ -1273,13 +1273,15 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
 
 .invite-template-option input[type="radio"] {
     position: absolute;
-    width: 0;
-    height: 0;
+    width: 1px;
+    height: 1px;
     opacity: 0;
-    pointer-events: none;
-    margin: 0;
+    margin: -1px;
     padding: 0;
-    visibility: hidden;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 .template-preview {
