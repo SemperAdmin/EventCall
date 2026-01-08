@@ -274,9 +274,9 @@ async function saveUser(username, userData) {
 // Map Supabase event data to frontend-expected format
 function mapSupabaseEvent(e) {
   if (!e) return null;
-  // WORKAROUND: Check event_details._cover_image_url as fallback since cover_image_url column has issues
+  // Get cover URL from the database column, with fallback for legacy data
   const eventDetails = e.event_details || {};
-  const coverUrl = e.cover_image_url || eventDetails._cover_image_url || e.image_url || '';
+  const coverUrl = e.cover_image_url || eventDetails._cover_image_url || '';
 
   return {
     id: e.id,
@@ -502,14 +502,6 @@ app.get('/api/events', async (req, res) => {
   let events;
   if (USE_SUPABASE) {
     events = await getEventsFromSupabase(creatorId, unassigned);
-    console.log('[api/events] Supabase result', { creatorId, unassigned, count: Array.isArray(events) ? events.length : 0 });
-    // Log raw cover image data for debugging
-    if (Array.isArray(events)) {
-      events.forEach(e => {
-        const ed = e.event_details || {};
-        console.log(`[api/events] Event ${e.id}: cover_image_url=${e.cover_image_url || '(none)'}, event_details._cover_image_url=${ed._cover_image_url || '(none)'}`);
-      });
-    }
     events = (events || []).map(mapSupabaseEvent).filter(e => !!e);
     // Supabase is the sole data store - no GitHub fallback needed
     } else {
@@ -692,21 +684,6 @@ app.put('/api/events/:id', async (req, res) => {
     if (updates.seating_chart !== undefined) dbUpdates.seating_chart = updates.seating_chart;
     if (updates.seatingChart !== undefined) dbUpdates.seating_chart = updates.seatingChart;
     dbUpdates.updated_at = new Date().toISOString();
-
-    // WORKAROUND: Store cover_image_url in event_details._cover_image_url since column has issues
-    const coverUrl = dbUpdates.cover_image_url;
-    if (coverUrl) {
-      // First, fetch existing event_details to merge
-      const { data: existingEvent } = await supabase
-        .from('ec_events')
-        .select('event_details')
-        .eq('id', eventId)
-        .single();
-
-      const existingDetails = existingEvent?.event_details || {};
-      dbUpdates.event_details = { ...existingDetails, _cover_image_url: coverUrl };
-      delete dbUpdates.cover_image_url; // Remove problematic column from update
-    }
 
     const { data, error } = await supabase
       .from('ec_events')
@@ -922,12 +899,7 @@ app.post('/api/events', async (req, res) => {
 
     // Get cover image URL from various field names
     const coverUrl = eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '';
-
-    // Store cover_image_url inside event_details JSONB as workaround for Supabase column issues
-    let eventDetails = eventData.event_details || eventData.eventDetails || {};
-    if (coverUrl) {
-      eventDetails = { ...eventDetails, _cover_image_url: coverUrl };
-    }
+    const eventDetails = eventData.event_details || eventData.eventDetails || {};
 
     const event = {
       id: eventId,
@@ -936,7 +908,7 @@ app.post('/api/events', async (req, res) => {
       time: eventData.time || '',
       location: eventData.location || '',
       description: eventData.description || '',
-      cover_image_url: coverUrl, // Still try to set it
+      cover_image_url: coverUrl,
       created_by: creatorId,
       created_at: new Date().toISOString(),
       status: eventData.status || 'active',
@@ -949,62 +921,15 @@ app.post('/api/events', async (req, res) => {
     };
 
     if (USE_SUPABASE) {
-      // Insert event - cover_image_url is stored in event_details._cover_image_url as workaround
-      const insertPayload = JSON.parse(JSON.stringify(event));
-      delete insertPayload.cover_image_url; // Remove from insert since column has issues
-
-      console.log('[createEvent] Inserting with event_details:', JSON.stringify(insertPayload.event_details));
-
-      const { data, error } = await supabase.from('ec_events').insert([insertPayload]).select();
+      const { data, error } = await supabase.from('ec_events').insert([event]).select();
       if (error) {
         console.error('Supabase createEvent error:', error.message);
         return res.status(500).json({ error: 'Failed to create event' });
       }
 
-      // Log what Supabase actually saved
-      const insertedEvent = data && data[0];
-      console.log('[createEvent] Event ID:', insertedEvent?.id);
-      console.log('[createEvent] Supabase INSERT returned event_details:', JSON.stringify(insertedEvent?.event_details || null));
-
-      // Verify by fetching the event again
-      if (insertedEvent?.id) {
-        const { data: verifyData, error: verifyError } = await supabase
-          .from('ec_events')
-          .select('id, event_details')
-          .eq('id', insertedEvent.id)
-          .single();
-
-        if (verifyError) {
-          console.error('[createEvent] Verify SELECT failed:', verifyError.message);
-        } else {
-          console.log('[createEvent] Verify SELECT event_details:', JSON.stringify(verifyData?.event_details || null));
-        }
-      }
-
-      // WORKAROUND: If event_details wasn't saved properly, do a separate UPDATE
-      const savedCoverUrl = insertedEvent?.event_details?._cover_image_url;
-      if (coverUrl && !savedCoverUrl && insertedEvent?.id) {
-        console.log('[createEvent] event_details not saved on insert, doing separate UPDATE...');
-        const { data: updateData, error: updateError } = await supabase
-          .from('ec_events')
-          .update({ event_details: { ...eventDetails, _cover_image_url: coverUrl } })
-          .eq('id', insertedEvent.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          console.error('[createEvent] UPDATE event_details failed:', updateError.message);
-        } else {
-          console.log('[createEvent] UPDATE succeeded, event_details:', JSON.stringify(updateData?.event_details || null));
-        }
-      }
-
-      // Return the mapped event data for consistency
       const createdEvent = data && data[0] ? mapSupabaseEvent(data[0]) : event;
-      // Ensure coverImage is set from what we intended to save
       createdEvent.coverImage = createdEvent.coverImage || coverUrl;
       createdEvent.cover_image_url = createdEvent.cover_image_url || coverUrl;
-      console.log('[createEvent] Returning coverImage:', createdEvent.coverImage || '(none)');
       res.json({ success: true, event: createdEvent, eventId });
     } else {
       // Save to GitHub
