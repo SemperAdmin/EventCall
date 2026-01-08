@@ -168,7 +168,16 @@ function createEnvelopeEventDetailsHTML(eventDetails) {
         return '';
     }
 
-    const detailsHTML = Object.values(eventDetails).map(detail => `
+    // Filter out non-object entries (like _invite_template which is a string)
+    const validDetails = Object.entries(eventDetails)
+        .filter(([key, val]) => val && typeof val === 'object' && val.label)
+        .map(([key, val]) => val);
+
+    if (validDetails.length === 0) {
+        return '';
+    }
+
+    const detailsHTML = validDetails.map(detail => `
         <div class="detail-item detail-item--custom">
             <span class="detail-icon">📌</span>
             <span class="detail-label">${escapeHTML(detail.label)}</span>
@@ -623,6 +632,15 @@ function createEventDetailsHTML(eventDetails) {
         return '';
     }
 
+    // Filter out non-object entries (like _invite_template which is a string)
+    const validDetails = Object.entries(eventDetails)
+        .filter(([key, val]) => val && typeof val === 'object' && val.label)
+        .map(([key, val]) => val);
+
+    if (validDetails.length === 0) {
+        return '';
+    }
+
     // Map field labels to appropriate icons
     const fieldIcons = {
         'honoree name': '🎖️',
@@ -673,7 +691,7 @@ function createEventDetailsHTML(eventDetails) {
         return '📌'; // Default icon
     };
 
-    const detailsHTML = Object.values(eventDetails).map(detail => `
+    const detailsHTML = validDetails.map(detail => `
         <div class="invite-detail" style="display: flex; align-items: start; gap: 0.75rem; padding: 0.75rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.02)); border-radius: 0.5rem; margin-bottom: 0.75rem; border-left: 3px solid #d4af37;">
             <span style="font-size: 1.25rem; flex-shrink: 0;">${getIcon(detail.label)}</span>
             <div style="flex: 1;">
