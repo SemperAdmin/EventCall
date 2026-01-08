@@ -1147,15 +1147,32 @@ function isEventInPast(date, time = '00:00') {
  * Format date for display
  */
 function formatDate(date, options = {}) {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    
+    // Parse date string without timezone conversion to prevent day shift
+    let year, month, day;
+
+    if (typeof date === 'string') {
+        // Parse YYYY-MM-DD format directly without timezone conversion
+        const parts = date.split('T')[0].split('-');
+        year = parseInt(parts[0]);
+        month = parseInt(parts[1]) - 1; // 0-indexed
+        day = parseInt(parts[2]);
+    } else {
+        // Handle Date object
+        year = date.getFullYear();
+        month = date.getMonth();
+        day = date.getDate();
+    }
+
     const defaultOptions = {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         ...options
     };
-    
+
+    // Create a date object using local date components (no timezone shift)
+    const dateObj = new Date(year, month, day);
+
     return dateObj.toLocaleDateString('en-US', defaultOptions);
 }
 
