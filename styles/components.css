@@ -735,6 +735,13 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
 }
 
 .modal-overlay.is-visible {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10001;
     visibility: visible;
     opacity: 1;
     transition: opacity 0.2s ease;
