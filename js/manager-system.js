@@ -1865,10 +1865,18 @@ async function handleEventSubmit(e) {
             coverImageUrlInput.value = '';
         }
 
-        // Reset upload area text
+        // Reset upload area text (preserve file input)
         const coverUpload = document.getElementById('cover-upload');
         if (coverUpload) {
-            coverUpload.innerHTML = window.utils.sanitizeHTML('<p>Click or drag to upload cover image</p>');
+            const p = coverUpload.querySelector('p');
+            if (p) {
+                p.textContent = 'Click or drag to upload cover image';
+            }
+            // Reset the file input
+            const fileInput = coverUpload.querySelector('input[type="file"]');
+            if (fileInput) fileInput.value = '';
+            // Mark as needing re-initialization
+            coverUpload.dataset.uploadInitialized = 'false';
         }
 
         clearCustomQuestions();
@@ -2157,9 +2165,22 @@ async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInp
         }
     }
 
+    // Get references to elements we need to preserve
+    const fileInput = coverUpload.querySelector('input[type="file"]');
+    let textElement = coverUpload.querySelector('p');
+
+    // Create a spinner for loading state
+    let spinner = null;
+
     try {
-        // Show loading state
-        coverUpload.innerHTML = window.utils.sanitizeHTML('<div class="spinner"></div><p>Uploading...</p>');
+        // Show loading state (preserve file input by just modifying text)
+        if (textElement) {
+            textElement.textContent = 'Uploading...';
+        }
+        // Add spinner if not exists
+        spinner = document.createElement('div');
+        spinner.className = 'spinner';
+        coverUpload.insertBefore(spinner, coverUpload.firstChild);
 
         // Generate a unique filename
         const fileExtension = file.name.split('.').pop();
@@ -2235,8 +2256,11 @@ async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInp
         coverPreview.src = imageUrl;
         coverPreview.classList.remove('hidden');
 
-        // Update upload area text
-        coverUpload.innerHTML = window.utils.sanitizeHTML('<p>✅ Image uploaded! Click or drag to change</p>');
+        // Update upload area text (preserve file input)
+        if (spinner && spinner.parentNode) spinner.remove();
+        if (textElement) {
+            textElement.textContent = '✅ Image uploaded! Click or drag to change';
+        }
 
         showToast('📷 Cover image uploaded successfully!', 'success');
 
@@ -2244,8 +2268,11 @@ async function handleImageFile(file, coverPreview, coverUpload, coverImageUrlInp
         console.error('Image upload failed:', error);
         showToast('❌ Failed to upload image: ' + error.message, 'error');
 
-        // Reset upload area
-        coverUpload.innerHTML = window.utils.sanitizeHTML('<p>Click or drag to upload cover image</p>');
+        // Reset upload area (preserve file input)
+        if (spinner && spinner.parentNode) spinner.remove();
+        if (textElement) {
+            textElement.textContent = 'Click or drag to upload cover image';
+        }
     }
 }
 
