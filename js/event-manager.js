@@ -2482,6 +2482,13 @@ Best regards`;
         document.getElementById('allow-guests').checked = event.allowGuests || false;
         document.getElementById('requires-meal-choice').checked = event.requiresMealChoice || false;
 
+        // Set invite template selection
+        const templateValue = event.inviteTemplate || event.invite_template || 'classic';
+        const templateRadio = document.querySelector(`input[name="invite_template"][value="${templateValue}"]`);
+        if (templateRadio) {
+            templateRadio.checked = true;
+        }
+
         // Handle cover image
         const coverPreview = document.getElementById('cover-preview');
         if (event.coverImage) {
@@ -2820,6 +2827,7 @@ Best regards`;
     getFormData() {
         const coverPreviewEl = document.getElementById('cover-preview');
         const coverUrlEl = document.getElementById('cover-image-url');
+        const selectedTemplate = document.querySelector('input[name="invite_template"]:checked');
 
         return {
             title: sanitizeText(document.getElementById('event-title').value),
@@ -2832,7 +2840,8 @@ Best regards`;
             allowGuests: document.getElementById('allow-guests').checked,
             requiresMealChoice: document.getElementById('requires-meal-choice')?.checked || false,
             customQuestions: getCustomQuestions(),
-            eventDetails: typeof getEventDetails === 'function' ? getEventDetails() : undefined
+            eventDetails: typeof getEventDetails === 'function' ? getEventDetails() : undefined,
+            inviteTemplate: selectedTemplate ? selectedTemplate.value : 'classic'
         };
     }
 

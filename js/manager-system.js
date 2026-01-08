@@ -1726,6 +1726,10 @@ async function handleEventSubmit(e) {
         const coverImageUrlValue = document.getElementById('cover-image-url')?.value || '';
         console.log('📸 [CREATE] Cover image URL from form:', coverImageUrlValue || '(empty)');
 
+        // Get selected invite template (classic or envelope)
+        const selectedTemplate = document.querySelector('input[name="invite_template"]:checked');
+        const inviteTemplate = selectedTemplate ? selectedTemplate.value : 'classic';
+
         const eventData = {
             id: generateUUID(),
             title: sanitizeText(document.getElementById('event-title').value),
@@ -1739,6 +1743,7 @@ async function handleEventSubmit(e) {
             requiresMealChoice: document.getElementById('requires-meal-choice').checked,
             customQuestions: getCustomQuestions(),
             eventDetails: getEventDetails(),
+            inviteTemplate: inviteTemplate,
             created: Date.now(),
             status: 'active',
             createdBy: currentUser.id || null,
@@ -1819,7 +1824,8 @@ async function handleEventSubmit(e) {
             requiresMealChoice: eventData.requiresMealChoice,
             customQuestions: eventData.customQuestions,
             eventDetails: eventData.eventDetails,
-            seatingChart: eventData.seatingChart
+            seatingChart: eventData.seatingChart,
+            inviteTemplate: eventData.inviteTemplate
         });
         const created = result && result.event ? result.event : null;
         if (created && created.id) {
@@ -1831,7 +1837,8 @@ async function handleEventSubmit(e) {
                 requiresMealChoice: eventData.requiresMealChoice,
                 customQuestions: eventData.customQuestions,
                 eventDetails: eventData.eventDetails,
-                seatingChart: eventData.seatingChart
+                seatingChart: eventData.seatingChart,
+                inviteTemplate: eventData.inviteTemplate
             });
         }
 
@@ -2077,7 +2084,11 @@ function setupPhotoUpload() {
             if (t < maxTries) {
                 setTimeout(tryInit, 100);
             } else {
-                console.warn(`⚠️ Photo upload elements not found (Page: ${activePage.id}, Prefix: "${prefix}"). Ensure all IDs exist.`);
+                console.warn(`⚠️ Photo upload elements not found (Page: ${activePage.id}, Prefix: "${prefix}").`);
+                console.warn(`   - ${prefix}cover-upload: ${!!coverUpload}`);
+                console.warn(`   - ${prefix}cover-input: ${!!coverInput}`);
+                console.warn(`   - ${prefix}cover-preview: ${!!coverPreview}`);
+                console.warn(`   - ${prefix}cover-image-url: ${!!coverImageUrlInput}`);
             }
             return;
         }

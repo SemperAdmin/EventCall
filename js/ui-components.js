@@ -62,13 +62,319 @@ function loadInviteContentDirect() {
 
 /**
  * Create invite HTML content
+ * Checks for template selection and renders accordingly
  */
 function createInviteHTML(event, eventId) {
+    // Check if envelope template is selected
+    if (event.invite_template === 'envelope') {
+        return createEnvelopeInviteHTML(event, eventId);
+    }
+
+    // Default classic template
     return `
         <div class="${event.coverImage ? 'invite-display-split' : 'invite-display'}">
             ${event.coverImage ? createInviteWithImageHTML(event, eventId) : createInviteWithoutImageHTML(event, eventId)}
         </div>
     `;
+}
+
+/**
+ * Create envelope-style animated invitation HTML
+ */
+function createEnvelopeInviteHTML(event, eventId) {
+    return `
+        <div class="envelope-invitation">
+            <div class="envelope-container">
+                <!-- Envelope Back -->
+                <div class="envelope-back"></div>
+
+                <!-- Card inside envelope -->
+                <div class="envelope-card">
+                    <div class="card-inner">
+                        <div class="card-header">
+                            <div class="card-ornament">✦</div>
+                            <h1 class="card-title">${escapeHTML(event.title)}</h1>
+                            <div class="card-ornament">✦</div>
+                        </div>
+
+                        <div class="card-body">
+                            ${event.description ? `
+                                <p class="card-description">${escapeHTMLPreserveNewlines(event.description)}</p>
+                            ` : ''}
+
+                            <div class="card-details">
+                                <div class="detail-item">
+                                    <span class="detail-icon">📅</span>
+                                    <span class="detail-label">Date</span>
+                                    <span class="detail-value">${formatDate(event.date)}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-icon">🕐</span>
+                                    <span class="detail-label">Time</span>
+                                    <span class="detail-value">${formatTime(event.time)}</span>
+                                </div>
+                                ${event.location ? `
+                                    <div class="detail-item">
+                                        <span class="detail-icon">📍</span>
+                                        <span class="detail-label">Location</span>
+                                        <span class="detail-value">${escapeHTML(event.location)}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+
+                            ${createEnvelopeEventDetailsHTML(event.eventDetails)}
+                        </div>
+
+                        <div class="card-footer">
+                            <p class="card-footer-text">We look forward to seeing you</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Envelope Front with Flap -->
+                <div class="envelope-front">
+                    <div class="envelope-flap"></div>
+                    <div class="envelope-pocket"></div>
+                </div>
+
+                <!-- Wax Seal -->
+                <div class="wax-seal">
+                    <span class="seal-text">RSVP</span>
+                </div>
+            </div>
+
+            <p class="envelope-instruction">Click the envelope to open your invitation</p>
+
+            <!-- RSVP Form Section (shown after envelope opens) -->
+            <div class="envelope-rsvp-section">
+                ${createEnvelopeRSVPFormHTML(event, eventId)}
+            </div>
+
+            <div class="envelope-powered-by">
+                <div class="powered-by-text">Powered by</div>
+                <a href="https://linktr.ee/semperadmin" target="_blank" class="powered-by-link">
+                    SEMPER ADMIN
+                </a>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create event details HTML for envelope template
+ */
+function createEnvelopeEventDetailsHTML(eventDetails) {
+    if (!eventDetails || Object.keys(eventDetails).length === 0) {
+        return '';
+    }
+
+    const detailsHTML = Object.values(eventDetails).map(detail => `
+        <div class="detail-item detail-item--custom">
+            <span class="detail-icon">📌</span>
+            <span class="detail-label">${escapeHTML(detail.label)}</span>
+            <span class="detail-value">${escapeHTMLPreserveNewlines(detail.value)}</span>
+        </div>
+    `).join('');
+
+    return `
+        <div class="card-custom-details">
+            ${detailsHTML}
+        </div>
+    `;
+}
+
+/**
+ * Create RSVP form HTML for envelope template
+ */
+function createEnvelopeRSVPFormHTML(event, eventId) {
+    return `
+        <div class="envelope-rsvp-form">
+            <h3 class="envelope-rsvp-title">RSVP</h3>
+
+            <!-- Progress Indicator -->
+            <div id="form-progress-container" class="form-progress-container">
+                <div class="form-progress-header">
+                    <div class="form-progress-label-group">
+                        <span class="form-progress-label">Form Progress</span>
+                        <span id="autosave-indicator" class="autosave-indicator">✓ Saved</span>
+                    </div>
+                    <span id="form-progress-text" class="form-progress-text">0%</span>
+                </div>
+                <div class="form-progress-bar-wrapper">
+                    <div id="form-progress-bar" class="form-progress-bar"></div>
+                </div>
+            </div>
+
+            <form id="rsvp-form" data-event-id="${eventId}">
+                <!-- Attending Decision -->
+                <div class="envelope-attending-section">
+                    <label class="envelope-attending-label">Will you be attending?</label>
+                    <div class="envelope-attending-options">
+                        <label class="envelope-radio-option">
+                            <input type="radio" name="attending" value="true" required id="attending-yes">
+                            <span class="envelope-radio-text">✅ Yes, I'll be there!</span>
+                        </label>
+                        <label class="envelope-radio-option">
+                            <input type="radio" name="attending" value="false" required id="attending-no">
+                            <span class="envelope-radio-text">❌ Can't make it</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Fields for DECLINE -->
+                <div id="decline-fields" style="display: none;">
+                    <p class="envelope-section-note">
+                        We're sorry you can't make it! Please provide your name and email so we can update our records.
+                    </p>
+
+                    <div class="form-group">
+                        <label for="rsvp-name-decline">Full Name *</label>
+                        <input type="text" id="rsvp-name-decline" name="name" autocomplete="name" placeholder="John Smith" class="envelope-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rsvp-email-decline">Email Address *</label>
+                        <input type="email" id="rsvp-email-decline" name="email" autocomplete="email" placeholder="john.smith@email.com" inputmode="email" class="envelope-input">
+                    </div>
+
+                    ${event.askReason ? `
+                        <div class="form-group">
+                            <label for="reason-decline">Would you like to share why you can't attend? (Optional)</label>
+                            <textarea id="reason-decline" placeholder="e.g., Prior commitment, traveling for work..." rows="3" class="envelope-textarea"></textarea>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Fields for ACCEPT -->
+                <div id="accept-fields" style="display: none;">
+                    <p class="envelope-section-note envelope-section-note--success">
+                        Great! Please provide your details below.
+                    </p>
+
+                    <div class="form-group">
+                        <label for="rsvp-name">Full Name *</label>
+                        <input type="text" id="rsvp-name" name="name" autocomplete="name" placeholder="John Smith" class="envelope-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rsvp-email">Email Address *</label>
+                        <input type="email" id="rsvp-email" name="email" autocomplete="email" placeholder="john.smith@email.com" inputmode="email" class="envelope-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rsvp-phone">Phone Number <span class="label-optional">(Optional)</span></label>
+                        <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="555-123-4567" inputmode="tel" class="envelope-input">
+                    </div>
+
+                    ${event.allowGuests ? `
+                        <div class="form-group" id="guest-count-group">
+                            <label for="guest-count">How many additional guests will you bring? <span class="label-optional">(Optional)</span></label>
+                            <select id="guest-count" class="envelope-select">
+                                <option value="0">Just me</option>
+                                <option value="1">+1 guest</option>
+                                <option value="2">+2 guests</option>
+                                <option value="3">+3 guests</option>
+                                <option value="4">+4 guests</option>
+                                <option value="5">+5 guests</option>
+                            </select>
+                        </div>
+                    ` : ''}
+
+                    ${event.requiresMealChoice ? `
+                        <div class="form-group">
+                            <label>Dietary Restrictions (Optional)</label>
+                            <div class="envelope-checkbox-group">
+                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="vegetarian"><span>Vegetarian</span></label>
+                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="vegan"><span>Vegan</span></label>
+                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="gluten-free"><span>Gluten-Free</span></label>
+                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="dairy-free"><span>Dairy-Free</span></label>
+                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="halal"><span>Halal</span></label>
+                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="kosher"><span>Kosher</span></label>
+                            </div>
+                            <div style="margin-top: 0.75rem;">
+                                <input type="text" id="allergy-details" placeholder="e.g., Nut allergy, shellfish allergy..." class="envelope-input">
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Military Information (Optional) -->
+                    <details class="envelope-details">
+                        <summary class="envelope-details-summary">
+                            🎖️ Military Information <span class="label-optional">(Optional - Click to expand)</span>
+                        </summary>
+
+                        <div class="form-group">
+                            <label for="branch">Service Branch</label>
+                            <select id="branch" onchange="window.updateRanksForBranch && window.updateRanksForBranch()" class="envelope-select">
+                                <option value="">Select service branch...</option>
+                                ${window.MilitaryData ? window.MilitaryData.branches.map(b =>
+                                    `<option value="${b.value}">${b.label}</option>`
+                                ).join('') : ''}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="rank">Rank</label>
+                            <select id="rank" class="envelope-select" disabled>
+                                <option value="">Select service branch first...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="unit">Unit</label>
+                            <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" class="envelope-input">
+                        </div>
+                    </details>
+
+                    ${createCustomQuestionsHTML(event.customQuestions || [])}
+
+                    ${event.askReason ? `
+                        <div class="form-group">
+                            <label for="reason">Why are you attending? (Optional)</label>
+                            <textarea id="reason" placeholder="Share your thoughts..." rows="3" class="envelope-textarea"></textarea>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div class="form-group" id="start-over-container" style="display: none; text-align: center;">
+                    <button type="button" id="rsvp-start-over" class="envelope-btn envelope-btn--secondary">🔄 Clear Form</button>
+                </div>
+
+                <div id="submit-container" style="display: none; text-align: center; margin-top: 1.5rem;">
+                    <button type="submit" class="envelope-btn envelope-btn--primary">📝 Submit RSVP</button>
+                </div>
+            </form>
+        </div>
+    `;
+}
+
+/**
+ * Initialize envelope animation interactions
+ */
+function initEnvelopeAnimation() {
+    const envelope = document.querySelector('.envelope-container');
+    if (!envelope) return;
+
+    envelope.addEventListener('click', function() {
+        if (!envelope.classList.contains('is-open')) {
+            envelope.classList.add('is-open');
+
+            // Show RSVP section after animation
+            setTimeout(() => {
+                const rsvpSection = document.querySelector('.envelope-rsvp-section');
+                if (rsvpSection) {
+                    rsvpSection.classList.add('is-visible');
+                    rsvpSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                // Hide instruction text
+                const instruction = document.querySelector('.envelope-instruction');
+                if (instruction) {
+                    instruction.style.opacity = '0';
+                }
+            }, 1200);
+        }
+    });
 }
 
 /**
@@ -582,6 +888,9 @@ async function setupRSVPForm() {
     // Setup datetime input synchronization
     setupDatetimeInputSync();
 
+    // Initialize envelope animation if using envelope template
+    initEnvelopeAnimation();
+
     // Setup military rank dropdown
     setupMilitaryRankDropdown();
 
@@ -1051,6 +1360,8 @@ window.formatTime = formatTime;
 window.createPastEventHTML = createPastEventHTML;
 window.createInviteWithImageHTML = createInviteWithImageHTML;
 window.updateRanksForBranch = updateRanksForBranch;
+window.createEnvelopeInviteHTML = createEnvelopeInviteHTML;
+window.initEnvelopeAnimation = initEnvelopeAnimation;
 
 function createRSVPSettingsHTML(event) {
     const badges = [];
