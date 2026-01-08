@@ -355,6 +355,8 @@ function mapSupabaseEvent(e) {
   // Get cover URL from the database column, with fallback for legacy data
   const eventDetails = e.event_details || {};
   const coverUrl = e.cover_image_url || eventDetails._cover_image_url || '';
+  // Get invite_template from event_details (stored in JSONB) or fallback to 'classic'
+  const inviteTemplate = eventDetails._invite_template || e.invite_template || 'classic';
 
   return {
     id: e.id,
@@ -382,8 +384,8 @@ function mapSupabaseEvent(e) {
     eventDetails: e.event_details || {}, // Frontend alias
     seating_chart: e.seating_chart || null,
     seatingChart: e.seating_chart || null, // Frontend alias
-    invite_template: e.invite_template || 'classic',
-    inviteTemplate: e.invite_template || 'classic' // Frontend alias
+    invite_template: inviteTemplate,
+    inviteTemplate: inviteTemplate // Frontend alias
   };
 }
 
@@ -758,14 +760,20 @@ app.put('/api/events/:id', async (req, res) => {
     if (updates.custom_questions !== undefined) dbUpdates.custom_questions = updates.custom_questions;
     if (updates.customQuestions !== undefined) dbUpdates.custom_questions = updates.customQuestions;
     // event_details - accept both snake_case and camelCase
-    if (updates.event_details !== undefined) dbUpdates.event_details = updates.event_details;
-    if (updates.eventDetails !== undefined) dbUpdates.event_details = updates.eventDetails;
+    // Also merge in invite_template as _invite_template (stored in JSONB)
+    let eventDetails = updates.event_details || updates.eventDetails;
+    const inviteTemplate = updates.invite_template || updates.inviteTemplate;
+    if (eventDetails !== undefined || inviteTemplate !== undefined) {
+      // Start with existing or provided event_details
+      dbUpdates.event_details = eventDetails || {};
+      // Merge invite_template if provided
+      if (inviteTemplate !== undefined) {
+        dbUpdates.event_details._invite_template = inviteTemplate;
+      }
+    }
     // seating_chart - accept both snake_case and camelCase
     if (updates.seating_chart !== undefined) dbUpdates.seating_chart = updates.seating_chart;
     if (updates.seatingChart !== undefined) dbUpdates.seating_chart = updates.seatingChart;
-    // invite_template - accept both snake_case and camelCase
-    if (updates.invite_template !== undefined) dbUpdates.invite_template = updates.invite_template;
-    if (updates.inviteTemplate !== undefined) dbUpdates.invite_template = updates.inviteTemplate;
     dbUpdates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -1025,6 +1033,10 @@ app.post('/api/events', async (req, res) => {
     // Get cover image URL from various field names
     const coverUrl = eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '';
     const eventDetails = eventData.event_details || eventData.eventDetails || {};
+    const inviteTemplate = eventData.invite_template || eventData.inviteTemplate || 'classic';
+
+    // Store invite_template in event_details for persistence (uses existing JSONB column)
+    eventDetails._invite_template = inviteTemplate;
 
     const event = {
       id: eventId,
@@ -1042,8 +1054,7 @@ app.post('/api/events', async (req, res) => {
       requires_meal_choice: eventData.requires_meal_choice ?? eventData.requiresMealChoice ?? false,
       custom_questions: eventData.custom_questions || eventData.customQuestions || [],
       event_details: eventDetails,
-      seating_chart: eventData.seating_chart || eventData.seatingChart || null,
-      invite_template: eventData.invite_template || eventData.inviteTemplate || 'classic'
+      seating_chart: eventData.seating_chart || eventData.seatingChart || null
     };
 
     if (USE_SUPABASE) {
@@ -1056,6 +1067,9 @@ app.post('/api/events', async (req, res) => {
       const createdEvent = data && data[0] ? mapSupabaseEvent(data[0]) : event;
       createdEvent.coverImage = createdEvent.coverImage || coverUrl;
       createdEvent.cover_image_url = createdEvent.cover_image_url || coverUrl;
+      // Add invite_template to response (stored in event_details until column exists)
+      createdEvent.invite_template = inviteTemplate;
+      createdEvent.inviteTemplate = inviteTemplate;
       res.json({ success: true, event: createdEvent, eventId });
     } else {
       // Save to GitHub
