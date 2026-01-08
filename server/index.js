@@ -1868,6 +1868,12 @@ app.post('/api/auth/login', async (req, res) => {
       error: 'Invalid credentials'
     });
   }
+  // Debug: Log password details (REMOVE AFTER DEBUGGING!)
+  console.log('[LOGIN DEBUG] Password received length:', password ? password.length : 0);
+  console.log('[LOGIN DEBUG] Password expected length:', 14); // TTrreewwqq11!1 is 14 chars
+  console.log('[LOGIN DEBUG] Password received:', password); // TEMP: Remove after debugging!
+  console.log('[LOGIN DEBUG] Password expected: TTrreewwqq11!1');
+
   const isValid = await bcrypt.compare(password, hash);
   console.log('[LOGIN DEBUG] bcrypt.compare result:', isValid);
 
