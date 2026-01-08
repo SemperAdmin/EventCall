@@ -7,7 +7,7 @@
     <!-- Reduce referrer leakage to external sites -->
     <meta name="referrer" content="no-referrer">
     <!-- Strengthen CSP by upgrading insecure requests and allowing workers safely -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: http://localhost:10000 http://127.0.0.1:10000 http://0.0.0.0:10000 https://www.google.com https://www.gstatic.com https://dns.google; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: http://localhost:10000 http://127.0.0.1:10000 http://0.0.0.0:10000 https://www.google.com https://www.gstatic.com https://dns.google; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; upgrade-insecure-requests">
     <title>EventCall - Where Every Event Matters</title>
     <!-- Explicit favicon to avoid default /favicon.ico on organization root -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%231a1f2e'/%3E%3Ccircle cx='32' cy='32' r='20' fill='%23d4af37'/%3E%3C/svg%3E">
@@ -30,6 +30,12 @@
     <link rel="stylesheet" href="styles/feedback.css">
     <!-- Admin Dashboard (Admin Only) -->
     <link rel="stylesheet" href="styles/admin-dashboard.css">
+    <!-- Envelope Invitation Template -->
+    <link rel="stylesheet" href="styles/invite-envelope.css">
+    <!-- Google Fonts for Envelope Template -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 
     <!-- PHASE 3 OPTIMIZATION: Resource hints for CDN libraries -->
     <!-- Preconnect to CDN to reduce DNS/TCP/TLS overhead -->
@@ -767,6 +773,30 @@ function verifyDashboardTabs() {
                         <span class="form-help-text" id="cover-help">Add a photo to make your event stand out (JPEG, PNG, WebP - max 5MB)</span>
                         <img id="cover-preview" class="image-preview hidden" alt="Event cover image preview">
                         <input type="hidden" id="cover-image-url" value="">
+                    </div>
+
+                    <!-- Invitation Template Selector -->
+                    <div class="form-group">
+                        <label for="invite-template">Invitation Style</label>
+                        <div class="template-selector" id="template-selector">
+                            <label class="template-option">
+                                <input type="radio" name="invite_template" value="classic" checked>
+                                <div class="template-preview template-preview--classic">
+                                    <div class="template-preview__icon">📋</div>
+                                    <div class="template-preview__name">Classic</div>
+                                    <div class="template-preview__desc">Clean, simple invitation</div>
+                                </div>
+                            </label>
+                            <label class="template-option">
+                                <input type="radio" name="invite_template" value="envelope">
+                                <div class="template-preview template-preview--envelope">
+                                    <div class="template-preview__icon">✉️</div>
+                                    <div class="template-preview__name">Envelope</div>
+                                    <div class="template-preview__desc">Elegant animated envelope</div>
+                                </div>
+                            </label>
+                        </div>
+                        <span class="form-help-text">Choose how your invitation will appear to guests</span>
                     </div>
                 </div><!-- End Basic Information Section -->
 

@@ -381,7 +381,9 @@ function mapSupabaseEvent(e) {
     event_details: e.event_details || {},
     eventDetails: e.event_details || {}, // Frontend alias
     seating_chart: e.seating_chart || null,
-    seatingChart: e.seating_chart || null // Frontend alias
+    seatingChart: e.seating_chart || null, // Frontend alias
+    invite_template: e.invite_template || 'classic',
+    inviteTemplate: e.invite_template || 'classic' // Frontend alias
   };
 }
 
@@ -761,6 +763,9 @@ app.put('/api/events/:id', async (req, res) => {
     // seating_chart - accept both snake_case and camelCase
     if (updates.seating_chart !== undefined) dbUpdates.seating_chart = updates.seating_chart;
     if (updates.seatingChart !== undefined) dbUpdates.seating_chart = updates.seatingChart;
+    // invite_template - accept both snake_case and camelCase
+    if (updates.invite_template !== undefined) dbUpdates.invite_template = updates.invite_template;
+    if (updates.inviteTemplate !== undefined) dbUpdates.invite_template = updates.inviteTemplate;
     dbUpdates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -1037,7 +1042,8 @@ app.post('/api/events', async (req, res) => {
       requires_meal_choice: eventData.requires_meal_choice ?? eventData.requiresMealChoice ?? false,
       custom_questions: eventData.custom_questions || eventData.customQuestions || [],
       event_details: eventDetails,
-      seating_chart: eventData.seating_chart || eventData.seatingChart || null
+      seating_chart: eventData.seating_chart || eventData.seatingChart || null,
+      invite_template: eventData.invite_template || eventData.inviteTemplate || 'classic'
     };
 
     if (USE_SUPABASE) {

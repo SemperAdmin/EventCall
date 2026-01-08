@@ -1,0 +1,700 @@
+/* =============================================================================
+   ENVELOPE INVITATION TEMPLATE STYLES
+   Premium animated envelope-style RSVP invitation
+   ============================================================================= */
+
+/* CSS Variables for Envelope Theme */
+:root {
+    --envelope-color: #f3f4f6;
+    --envelope-dark: #e5e7eb;
+    --flap-color: #f9fafb;
+    --envelope-card-color: #ffffff;
+    --envelope-accent: var(--semper-gold, #d4af37);
+}
+
+/* Container for the envelope interaction */
+.envelope-container {
+    position: relative;
+    width: 400px;
+    height: 280px;
+    cursor: pointer;
+    perspective: 2000px;
+    margin: 50px auto;
+}
+
+/* The Envelope Base */
+.envelope-base {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: var(--envelope-color);
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    z-index: 10;
+    bottom: 0;
+}
+
+/* Front details of the envelope (The V shape) */
+.envelope-base::before {
+    content: "";
+    position: absolute;
+    z-index: 20;
+    border-top: 140px solid transparent;
+    border-right: 200px solid var(--envelope-dark);
+    border-bottom: 140px solid var(--envelope-dark);
+    border-left: 200px solid transparent;
+    bottom: 0;
+}
+
+.envelope-base::after {
+    content: "";
+    position: absolute;
+    z-index: 20;
+    border-top: 140px solid transparent;
+    border-right: 200px solid transparent;
+    border-bottom: 140px solid var(--envelope-color);
+    border-left: 200px solid var(--envelope-color);
+    bottom: 0;
+}
+
+/* The Flap */
+.envelope-flap {
+    position: absolute;
+    top: 0;
+    width: 0;
+    height: 0;
+    border-left: 200px solid transparent;
+    border-right: 200px solid transparent;
+    border-top: 160px solid var(--flap-color);
+    transform-origin: top;
+    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 30;
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.1));
+}
+
+/* The Photo/Stamp on the flap */
+.envelope-stamp {
+    position: absolute;
+    top: -130px;
+    left: -40px;
+    width: 80px;
+    height: 80px;
+    background-color: white;
+    padding: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1px dashed #ccc;
+    transform: rotate(5deg);
+    z-index: 31;
+    transition: opacity 0.3s;
+    overflow: hidden;
+}
+
+.envelope-stamp img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Placeholder stamp when no image */
+.envelope-stamp-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--envelope-accent) 0%, #c4a030 100%);
+    color: white;
+    font-size: 2rem;
+}
+
+/* Click instruction text */
+.envelope-instruction {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    color: #6b7280;
+    white-space: nowrap;
+    animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+/* The Card - Hidden initially, expands to a wide split-screen view */
+.envelope-card {
+    position: absolute;
+    left: 20px;
+    width: 360px;
+    height: 240px;
+    background: var(--envelope-card-color);
+    z-index: 5;
+    top: 20px;
+    transition:
+        transform 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+        height 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.8s,
+        width 0.7s cubic-bezier(0.4, 0, 0.2, 1) 1s,
+        left 0.7s cubic-bezier(0.4, 0, 0.2, 1) 1s,
+        top 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.8s,
+        box-shadow 0.6s ease 0.8s,
+        z-index 0s 0.4s;
+    box-sizing: border-box;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+}
+
+/* Photo side of the card */
+.envelope-card-photo {
+    width: 0;
+    height: 100%;
+    background-color: #f3f4f6;
+    transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1) 1s;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.envelope-card-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.5s ease 1.5s;
+}
+
+/* Photo placeholder when no image */
+.envelope-card-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%);
+    color: var(--envelope-accent);
+    opacity: 0;
+    transition: opacity 0.5s ease 1.5s;
+}
+
+.envelope-card-photo-placeholder .placeholder-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.envelope-card-photo-placeholder .placeholder-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+}
+
+/* Info side of the card */
+.envelope-card-info {
+    flex: 1;
+    height: 100%;
+    padding: 40px;
+    overflow-y: auto;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.5s ease 1.2s, transform 0.5s ease 1.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/* Hide scrollbars */
+.envelope-card-info::-webkit-scrollbar { display: none; }
+.envelope-card-info { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* =============================================================================
+   OPEN STATE STYLES
+   ============================================================================= */
+
+.envelope-container.open .envelope-flap {
+    transform: rotateX(180deg);
+    z-index: 5;
+}
+
+.envelope-container.open .envelope-card {
+    z-index: 100;
+    transform: translateY(-120px);
+    height: 580px;
+    width: 850px;
+    left: -225px;
+    top: -150px;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.2);
+}
+
+.envelope-container.open .envelope-card-photo {
+    width: 45%;
+}
+
+.envelope-container.open .envelope-card-photo img,
+.envelope-container.open .envelope-card-photo-placeholder {
+    opacity: 1;
+}
+
+.envelope-container.open .envelope-card-info {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.envelope-container.open .envelope-stamp {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.envelope-container.open .envelope-instruction {
+    display: none;
+}
+
+/* =============================================================================
+   TYPOGRAPHY - Elegant invitation fonts
+   ============================================================================= */
+
+.envelope-title {
+    font-family: 'Dancing Script', cursive;
+    color: var(--envelope-accent);
+    font-size: 2.8rem;
+    margin-bottom: 10px;
+    line-height: 1.2;
+}
+
+.envelope-subtitle {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    margin-bottom: 30px;
+    color: #666;
+    position: relative;
+}
+
+.envelope-subtitle::after {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 25%;
+    width: 50%;
+    height: 1px;
+    background: #e5e7eb;
+}
+
+.envelope-details {
+    font-size: 1rem;
+    color: #555;
+    line-height: 1.8;
+    margin-bottom: 20px;
+}
+
+.envelope-details strong {
+    color: #111;
+    display: block;
+    margin-top: 15px;
+    font-size: 1.2rem;
+    font-family: 'Playfair Display', serif;
+}
+
+.envelope-details p {
+    margin: 0.5rem 0;
+}
+
+/* =============================================================================
+   RSVP FORM STYLES (Inside envelope card)
+   ============================================================================= */
+
+.envelope-rsvp-form {
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 1px solid #f3f4f6;
+    width: 100%;
+    max-width: 360px;
+}
+
+.envelope-rsvp-form .form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.envelope-rsvp-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.9rem;
+}
+
+.envelope-rsvp-form input[type="text"],
+.envelope-rsvp-form input[type="email"],
+.envelope-rsvp-form input[type="tel"],
+.envelope-rsvp-form select,
+.envelope-rsvp-form textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #fcfcfc;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: 'Poppins', sans-serif;
+}
+
+.envelope-rsvp-form input:focus,
+.envelope-rsvp-form select:focus,
+.envelope-rsvp-form textarea:focus {
+    outline: none;
+    border-color: var(--envelope-accent);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+}
+
+.envelope-rsvp-form textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Attending radio buttons - elegant style */
+.envelope-attending-choice {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.envelope-attending-option {
+    flex: 1;
+    position: relative;
+}
+
+.envelope-attending-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.envelope-attending-option .option-label {
+    display: block;
+    padding: 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+}
+
+.envelope-attending-option .option-label:hover {
+    border-color: var(--envelope-accent);
+}
+
+.envelope-attending-option input[type="radio"]:checked + .option-label {
+    border-color: var(--envelope-accent);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
+}
+
+.envelope-attending-option .option-icon {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.envelope-attending-option .option-text {
+    font-size: 0.85rem;
+    color: #374151;
+}
+
+/* Submit button */
+.envelope-btn-rsvp {
+    background-color: var(--envelope-accent);
+    color: white;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    width: 100%;
+    transition: all 0.2s;
+    margin-top: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-size: 0.85rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.envelope-btn-rsvp:hover {
+    background-color: #c4a030;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+    transform: translateY(-1px);
+}
+
+.envelope-btn-rsvp:active {
+    transform: translateY(0);
+}
+
+.envelope-btn-rsvp:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Success message */
+.envelope-success-message {
+    display: none;
+    color: #166534;
+    font-weight: 600;
+    margin-top: 20px;
+    padding: 20px;
+    background: #f0fdf4;
+    border-radius: 10px;
+    border: 1px solid #bbf7d0;
+    text-align: center;
+}
+
+.envelope-success-message .success-icon {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 10px;
+}
+
+/* Conditional fields sections */
+.envelope-accept-fields,
+.envelope-decline-fields {
+    display: none;
+}
+
+.envelope-accept-fields.visible,
+.envelope-decline-fields.visible {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Guest fields */
+.envelope-guest-fields {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed #e5e7eb;
+}
+
+/* Meal choice styling */
+.envelope-meal-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.envelope-meal-option {
+    flex: 1;
+    min-width: 100px;
+}
+
+.envelope-meal-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+}
+
+.envelope-meal-option label {
+    display: block;
+    padding: 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.envelope-meal-option input[type="radio"]:checked + label {
+    border-color: var(--envelope-accent);
+    background: rgba(212, 175, 55, 0.1);
+}
+
+/* =============================================================================
+   CLOSE BUTTON
+   ============================================================================= */
+
+.envelope-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: #6b7280;
+    transition: all 0.2s;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 101;
+}
+
+.envelope-container.open .envelope-close-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.envelope-close-btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #374151;
+}
+
+/* =============================================================================
+   POWERED BY FOOTER
+   ============================================================================= */
+
+.envelope-powered-by {
+    margin-top: auto;
+    padding-top: 20px;
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.envelope-powered-by a {
+    color: var(--envelope-accent);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.envelope-powered-by a:hover {
+    text-decoration: underline;
+}
+
+/* =============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================= */
+
+@media (max-width: 900px) {
+    .envelope-container.open .envelope-card {
+        width: 95vw;
+        max-width: 500px;
+        left: 50%;
+        transform: translate(-50%, -100px);
+        flex-direction: column;
+        height: 85vh;
+        max-height: 700px;
+        top: -100px;
+    }
+
+    .envelope-container.open .envelope-card-photo {
+        width: 100%;
+        height: 200px;
+        flex-shrink: 0;
+    }
+
+    .envelope-card-info {
+        padding: 25px 20px;
+    }
+
+    .envelope-title {
+        font-size: 2.2rem;
+    }
+}
+
+@media (max-width: 450px) {
+    .envelope-container {
+        width: 320px;
+        height: 224px;
+        margin: 30px auto;
+    }
+
+    .envelope-base::before,
+    .envelope-base::after {
+        border-top-width: 112px;
+        border-bottom-width: 112px;
+        border-left-width: 160px;
+        border-right-width: 160px;
+    }
+
+    .envelope-flap {
+        border-left-width: 160px;
+        border-right-width: 160px;
+        border-top-width: 128px;
+    }
+
+    .envelope-card {
+        width: 280px;
+        height: 184px;
+        left: 20px;
+    }
+
+    .envelope-stamp {
+        width: 60px;
+        height: 60px;
+        top: -100px;
+        left: -30px;
+    }
+
+    .envelope-container.open .envelope-card {
+        height: 90vh;
+        max-height: none;
+        top: -80px;
+    }
+
+    .envelope-container.open .envelope-card-photo {
+        height: 150px;
+    }
+
+    .envelope-title {
+        font-size: 1.8rem;
+    }
+
+    .envelope-subtitle {
+        font-size: 0.7rem;
+        letter-spacing: 2px;
+    }
+
+    .envelope-card-info {
+        padding: 20px 15px;
+    }
+
+    .envelope-rsvp-form {
+        max-width: 100%;
+    }
+}
+
+/* Full page wrapper for envelope invite */
+.envelope-invite-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #faf9f6 0%, #f5f5f0 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Override default invite page styles when using envelope */
+#invite.envelope-style {
+    background: linear-gradient(135deg, #faf9f6 0%, #f5f5f0 100%);
+}
+
+#invite.envelope-style .invite-content {
+    display: none;
+}
+
+#invite.envelope-style .envelope-invite-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
