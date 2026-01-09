@@ -2505,11 +2505,11 @@ Best regards`;
                 pElements.forEach(p => p.remove());
 
                 const p1 = document.createElement('p');
-                p1.style.cssText = 'color: #10b981; font-weight: 600;';
+                p1.classList.add('cover-upload-message', 'cover-upload-message--success');
                 p1.textContent = '✅ Current image loaded';
 
                 const p2 = document.createElement('p');
-                p2.style.cssText = 'font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;';
+                p2.classList.add('cover-upload-message', 'cover-upload-message--hint');
                 p2.textContent = 'Click to change image';
 
                 uploadArea.insertBefore(p2, existingInput);
@@ -2677,7 +2677,8 @@ Best regards`;
                     requiresMealChoice: eventData.requiresMealChoice,
                     customQuestions: eventData.customQuestions,
                     eventDetails: eventData.eventDetails,
-                    seatingChart: eventData.seatingChart
+                    seatingChart: eventData.seatingChart,
+                    inviteTemplate: eventData.inviteTemplate
                 });
             } else {
                 throw new Error('Backend API not available');

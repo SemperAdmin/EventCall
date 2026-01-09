@@ -1363,6 +1363,26 @@ input[type="time"].form-control:hover::-webkit-calendar-picker-indicator {
     50% { transform: translateY(-3px); }
 }
 
+/* =============================================================================
+   COVER UPLOAD MESSAGE STYLES
+   ============================================================================= */
+
+.cover-upload-message {
+    margin: 0;
+    text-align: center;
+}
+
+.cover-upload-message--success {
+    color: var(--success-color, #10b981);
+    font-weight: 600;
+}
+
+.cover-upload-message--hint {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin-top: 0.5rem;
+}
+
 /* Responsive invite template selector */
 @media (max-width: 480px) {
     .invite-template-selector {

@@ -275,65 +275,12 @@ function createEnvelopeRSVPFormHTML(event, eventId) {
                         <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="555-123-4567" inputmode="tel" class="envelope-input">
                     </div>
 
-                    ${event.allowGuests ? `
-                        <div class="form-group" id="guest-count-group">
-                            <label for="guest-count">How many additional guests will you bring? <span class="label-optional">(Optional)</span></label>
-                            <select id="guest-count" class="envelope-select">
-                                <option value="0">Just me</option>
-                                <option value="1">+1 guest</option>
-                                <option value="2">+2 guests</option>
-                                <option value="3">+3 guests</option>
-                                <option value="4">+4 guests</option>
-                                <option value="5">+5 guests</option>
-                            </select>
-                        </div>
-                    ` : ''}
+                    ${event.allowGuests ? createGuestCountFieldHTML('envelope') : ''}
 
-                    ${event.requiresMealChoice ? `
-                        <div class="form-group">
-                            <label>Dietary Restrictions (Optional)</label>
-                            <div class="envelope-checkbox-group">
-                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="vegetarian"><span>Vegetarian</span></label>
-                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="vegan"><span>Vegan</span></label>
-                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="gluten-free"><span>Gluten-Free</span></label>
-                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="dairy-free"><span>Dairy-Free</span></label>
-                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="halal"><span>Halal</span></label>
-                                <label class="envelope-checkbox"><input type="checkbox" name="dietary" value="kosher"><span>Kosher</span></label>
-                            </div>
-                            <div style="margin-top: 0.75rem;">
-                                <input type="text" id="allergy-details" placeholder="e.g., Nut allergy, shellfish allergy..." class="envelope-input">
-                            </div>
-                        </div>
-                    ` : ''}
+                    ${event.requiresMealChoice ? createDietaryFieldHTML('envelope') : ''}
 
                     <!-- Military Information (Optional) -->
-                    <details class="envelope-details">
-                        <summary class="envelope-details-summary">
-                            🎖️ Military Information <span class="label-optional">(Optional - Click to expand)</span>
-                        </summary>
-
-                        <div class="form-group">
-                            <label for="branch">Service Branch</label>
-                            <select id="branch" onchange="window.updateRanksForBranch && window.updateRanksForBranch()" class="envelope-select">
-                                <option value="">Select service branch...</option>
-                                ${window.MilitaryData ? window.MilitaryData.branches.map(b =>
-                                    `<option value="${b.value}">${b.label}</option>`
-                                ).join('') : ''}
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="rank">Rank</label>
-                            <select id="rank" class="envelope-select" disabled>
-                                <option value="">Select service branch first...</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="unit">Unit</label>
-                            <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" class="envelope-input">
-                        </div>
-                    </details>
+                    ${createMilitaryFieldsHTML('envelope')}
 
                     ${createCustomQuestionsHTML(event.customQuestions || [])}
 
@@ -442,6 +389,155 @@ function createInviteWithoutImageHTML(event, eventId) {
 }
 
 /**
+ * Create guest count field HTML
+ * @param {string} templateType - 'classic' or 'envelope' to determine styling
+ * @returns {string} HTML for guest count field
+ */
+function createGuestCountFieldHTML(templateType = 'classic') {
+    const selectClass = templateType === 'envelope' ? 'envelope-select' : '';
+    const selectStyle = templateType === 'classic' ? 'style="min-height: 44px; font-size: 16px;"' : '';
+    const labelOptionalClass = templateType === 'envelope' ? 'class="label-optional"' : 'style="color: #6b7280; font-weight: 400;"';
+
+    return `
+        <div class="form-group" id="guest-count-group">
+            <label for="guest-count">How many additional guests will you bring? <span ${labelOptionalClass}>(Optional)</span></label>
+            <select id="guest-count" class="${selectClass}" ${selectStyle}>
+                <option value="0">Just me</option>
+                <option value="1">+1 guest</option>
+                <option value="2">+2 guests</option>
+                <option value="3">+3 guests</option>
+                <option value="4">+4 guests</option>
+                <option value="5">+5 guests</option>
+            </select>
+        </div>
+    `;
+}
+
+/**
+ * Create dietary restrictions field HTML
+ * @param {string} templateType - 'classic' or 'envelope' to determine styling
+ * @returns {string} HTML for dietary restrictions field
+ */
+function createDietaryFieldHTML(templateType = 'classic') {
+    const inputClass = templateType === 'envelope' ? 'envelope-input' : '';
+    const inputStyle = templateType === 'classic' ? 'style="min-height: 44px;"' : '';
+    const checkboxClass = templateType === 'envelope' ? 'envelope-checkbox' : '';
+    const containerClass = templateType === 'envelope' ? 'envelope-checkbox-group' : '';
+
+    const dietaryOptions = ['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'halal', 'kosher'];
+
+    if (templateType === 'envelope') {
+        return `
+            <div class="form-group">
+                <label>Dietary Restrictions (Optional)</label>
+                <div class="${containerClass}">
+                    ${dietaryOptions.map(opt => `
+                        <label class="${checkboxClass}"><input type="checkbox" name="dietary" value="${opt}"><span>${opt.charAt(0).toUpperCase() + opt.slice(1).replace('-', '-')}</span></label>
+                    `).join('')}
+                </div>
+                <div style="margin-top: 0.75rem;">
+                    <input type="text" id="allergy-details" placeholder="e.g., Nut allergy, shellfish allergy..." class="${inputClass}">
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="form-group">
+            <label>Dietary Restrictions (Optional)</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
+                ${dietaryOptions.map(opt => `
+                    <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
+                        <input type="checkbox" name="dietary" value="${opt}" style="margin-right: 0.5rem;">
+                        <span>${opt.charAt(0).toUpperCase() + opt.slice(1).replace('-', '-')}</span>
+                    </label>
+                `).join('')}
+            </div>
+            <div style="margin-top: 0.75rem;">
+                <input type="text" id="allergy-details" placeholder="e.g., Nut allergy, shellfish allergy..." ${inputStyle}>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create military information fields HTML
+ * @param {string} templateType - 'classic' or 'envelope' to determine styling
+ * @returns {string} HTML for military info fields
+ */
+function createMilitaryFieldsHTML(templateType = 'classic') {
+    const selectClass = templateType === 'envelope' ? 'envelope-select' : '';
+    const inputClass = templateType === 'envelope' ? 'envelope-input' : '';
+    const selectStyle = templateType === 'classic' ? 'style="min-height: 44px; font-size: 16px;"' : '';
+    const inputStyle = templateType === 'classic' ? 'style="min-height: 44px;"' : '';
+    const detailsClass = templateType === 'envelope' ? 'envelope-details' : '';
+    const summaryClass = templateType === 'envelope' ? 'envelope-details-summary' : '';
+    const labelOptionalClass = templateType === 'envelope' ? 'class="label-optional"' : 'style="color: #94a3b8; font-weight: 400;"';
+
+    const branchOptions = window.MilitaryData ? window.MilitaryData.branches.map(b =>
+        `<option value="${b.value}">${b.label}</option>`
+    ).join('') : '';
+
+    if (templateType === 'envelope') {
+        return `
+            <details class="${detailsClass}">
+                <summary class="${summaryClass}">
+                    🎖️ Military Information <span ${labelOptionalClass}>(Optional - Click to expand)</span>
+                </summary>
+
+                <div class="form-group">
+                    <label for="branch">Service Branch</label>
+                    <select id="branch" onchange="window.updateRanksForBranch && window.updateRanksForBranch()" class="${selectClass}">
+                        <option value="">Select service branch...</option>
+                        ${branchOptions}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="rank">Rank</label>
+                    <select id="rank" class="${selectClass}" disabled>
+                        <option value="">Select service branch first...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="unit">Unit</label>
+                    <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" class="${inputClass}">
+                </div>
+            </details>
+        `;
+    }
+
+    return `
+        <details style="margin: 1.5rem 0; padding: 1rem; background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 0.5rem;">
+            <summary style="font-weight: 500; margin-bottom: 0.75rem; color: #475569; cursor: pointer; list-style-position: outside;">
+                🎖️ Military Information <span ${labelOptionalClass}>(Optional - Click to expand)</span>
+            </summary>
+
+            <div class="form-group" style="margin-bottom: 1rem; margin-top: 1rem;">
+                <label for="branch">Service Branch</label>
+                <select id="branch" onchange="window.updateRanksForBranch && window.updateRanksForBranch()" ${selectStyle}>
+                    <option value="">Select service branch...</option>
+                    ${branchOptions}
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="rank">Rank</label>
+                <select id="rank" ${selectStyle} disabled>
+                    <option value="">Select service branch first...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="unit">Unit</label>
+                <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" ${inputStyle}>
+            </div>
+        </details>
+    `;
+}
+
+/**
  * Create RSVP form HTML with original working fields
  */
 function createRSVPFormHTML(event, eventId) {
@@ -524,83 +620,12 @@ function createRSVPFormHTML(event, eventId) {
                         <input type="tel" id="rsvp-phone" name="tel" autocomplete="tel" placeholder="555-123-4567" inputmode="tel" style="min-height: 44px;">
                     </div>
 
-                    ${event.allowGuests ? `
-                        <div class="form-group" id="guest-count-group">
-                            <label for="guest-count">How many additional guests will you bring? <span style="color: #6b7280; font-weight: 400;">(Optional)</span></label>
-                            <select id="guest-count" style="min-height: 44px; font-size: 16px;">
-                                <option value="0">Just me</option>
-                                <option value="1">+1 guest</option>
-                                <option value="2">+2 guests</option>
-                                <option value="3">+3 guests</option>
-                                <option value="4">+4 guests</option>
-                                <option value="5">+5 guests</option>
-                            </select>
-                        </div>
-                    ` : ''}
+                    ${event.allowGuests ? createGuestCountFieldHTML('classic') : ''}
 
-                    ${event.requiresMealChoice ? `
-                        <div class="form-group">
-                            <label>Dietary Restrictions (Optional)</label>
-                            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
-                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
-                                    <input type="checkbox" name="dietary" value="vegetarian" style="margin-right: 0.5rem;">
-                                    <span>Vegetarian</span>
-                                </label>
-                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
-                                    <input type="checkbox" name="dietary" value="vegan" style="margin-right: 0.5rem;">
-                                    <span>Vegan</span>
-                                </label>
-                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
-                                    <input type="checkbox" name="dietary" value="gluten-free" style="margin-right: 0.5rem;">
-                                    <span>Gluten-Free</span>
-                                </label>
-                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
-                                    <input type="checkbox" name="dietary" value="dairy-free" style="margin-right: 0.5rem;">
-                                    <span>Dairy-Free</span>
-                                </label>
-                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
-                                    <input type="checkbox" name="dietary" value="halal" style="margin-right: 0.5rem;">
-                                    <span>Halal</span>
-                                </label>
-                                <label style="display: flex; align-items: center; cursor: pointer; min-height: 32px;">
-                                    <input type="checkbox" name="dietary" value="kosher" style="margin-right: 0.5rem;">
-                                    <span>Kosher</span>
-                                </label>
-                            </div>
-                            <div style="margin-top: 0.75rem;">
-                                <input type="text" id="allergy-details" placeholder="e.g., Nut allergy, shellfish allergy..." style="min-height: 44px;">
-                            </div>
-                        </div>
-                    ` : ''}
+                    ${event.requiresMealChoice ? createDietaryFieldHTML('classic') : ''}
 
                     <!-- Military Information (Optional) - Collapsed by default -->
-                    <details style="margin: 1.5rem 0; padding: 1rem; background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 0.5rem;">
-                        <summary style="font-weight: 500; margin-bottom: 0.75rem; color: #475569; cursor: pointer; list-style-position: outside;">
-                            🎖️ Military Information <span style="color: #94a3b8; font-weight: 400;">(Optional - Click to expand)</span>
-                        </summary>
-
-                        <div class="form-group" style="margin-bottom: 1rem; margin-top: 1rem;">
-                            <label for="branch">Service Branch</label>
-                            <select id="branch" onchange="window.updateRanksForBranch && window.updateRanksForBranch()" style="min-height: 44px; font-size: 16px;">
-                                <option value="">Select service branch...</option>
-                                ${window.MilitaryData ? window.MilitaryData.branches.map(b =>
-                                    `<option value="${b.value}">${b.label}</option>`
-                                ).join('') : ''}
-                            </select>
-                        </div>
-
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="rank">Rank</label>
-                            <select id="rank" style="min-height: 44px; font-size: 16px;" disabled>
-                                <option value="">Select service branch first...</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="unit">Unit</label>
-                            <input type="text" id="unit" placeholder="e.g., 2nd Battalion, 1st Marines" style="min-height: 44px;">
-                        </div>
-                    </details>
+                    ${createMilitaryFieldsHTML('classic')}
 
                     ${createCustomQuestionsHTML(event.customQuestions || [])}
 
