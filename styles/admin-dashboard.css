@@ -136,6 +136,47 @@
     height: 300px;
 }
 
+/* Filter Select (time range, attendee filter) */
+.filter-select {
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    color: var(--semper-gold) !important;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filter-select:hover {
+    border-color: var(--semper-gold);
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--semper-gold);
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+.filter-select option {
+    background: #1e293b;
+    color: var(--semper-gold);
+}
+
+.time-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.time-filter label {
+    color: #94a3b8;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
 /* Data Table */
 .admin-table {
     background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
