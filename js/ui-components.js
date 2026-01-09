@@ -83,82 +83,78 @@ function createInviteHTML(event, eventId) {
 
 /**
  * Create envelope-style animated invitation HTML
+ * Uses a click-to-open envelope that reveals a split-screen card with photo and details
  */
 function createEnvelopeInviteHTML(event, eventId) {
+    const hasPhoto = event.coverImage && event.coverImage.trim() !== '';
+
     return `
-        <div class="envelope-invitation">
-            <div class="envelope-container">
-                <!-- Envelope Back -->
-                <div class="envelope-back"></div>
-
-                <!-- Card inside envelope -->
-                <div class="envelope-card">
-                    <div class="card-inner">
-                        <div class="card-header">
-                            <div class="card-ornament">✦</div>
-                            <h1 class="card-title">${escapeHTML(event.title)}</h1>
-                            <div class="card-ornament">✦</div>
+        <div class="envelope-invite-page">
+            <div class="envelope-container" id="envelope-container">
+                <!-- The Flap (top triangle that opens) -->
+                <div class="envelope-flap">
+                    ${hasPhoto ? `
+                        <div class="envelope-stamp">
+                            <img src="${escapeHTML(event.coverImage)}" alt="Event Photo">
                         </div>
+                    ` : `
+                        <div class="envelope-stamp">
+                            <div class="envelope-stamp-placeholder">✉️</div>
+                        </div>
+                    `}
+                </div>
 
-                        <div class="card-body">
-                            ${event.description ? `
-                                <p class="card-description">${escapeHTMLPreserveNewlines(event.description)}</p>
-                            ` : ''}
+                <!-- The Card (hidden inside, expands when opened) -->
+                <div class="envelope-card">
+                    <!-- Close button -->
+                    <button class="envelope-close-btn" onclick="event.stopPropagation(); document.getElementById('envelope-container').classList.remove('open');" aria-label="Close invitation">✕</button>
 
-                            <div class="card-details">
-                                <div class="detail-item">
-                                    <span class="detail-icon">📅</span>
-                                    <span class="detail-label">Date</span>
-                                    <span class="detail-value">${formatDate(event.date)}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-icon">🕐</span>
-                                    <span class="detail-label">Time</span>
-                                    <span class="detail-value">${formatTime(event.time)}</span>
-                                </div>
-                                ${event.location ? `
-                                    <div class="detail-item">
-                                        <span class="detail-icon">📍</span>
-                                        <span class="detail-label">Location</span>
-                                        <span class="detail-value">${escapeHTML(event.location)}</span>
-                                    </div>
-                                ` : ''}
+                    <!-- Left Side: Photo -->
+                    <div class="envelope-card-photo">
+                        ${hasPhoto ? `
+                            <img src="${escapeHTML(event.coverImage)}" alt="Event Photo">
+                        ` : `
+                            <div class="envelope-card-photo-placeholder">
+                                <span class="placeholder-icon">🎉</span>
+                                <span class="placeholder-text">You're Invited</span>
                             </div>
+                        `}
+                    </div>
+
+                    <!-- Right Side: Details & RSVP Form -->
+                    <div class="envelope-card-info">
+                        <h1 class="envelope-title">${escapeHTML(event.title)}</h1>
+                        <p class="envelope-subtitle">You're Invited</p>
+
+                        <div class="envelope-details">
+                            ${event.description ? `<p>${escapeHTMLPreserveNewlines(event.description)}</p>` : ''}
+
+                            <strong>📅 ${formatDate(event.date)}</strong>
+                            <p>🕐 ${formatTime(event.time)}</p>
+
+                            ${event.location ? `
+                                <strong>📍 Location</strong>
+                                <p>${escapeHTML(event.location)}</p>
+                            ` : ''}
 
                             ${createEnvelopeEventDetailsHTML(event.eventDetails)}
                         </div>
 
-                        <div class="card-footer">
-                            <p class="card-footer-text">We look forward to seeing you</p>
+                        <!-- RSVP Form (inside the card) -->
+                        ${createEnvelopeRSVPFormHTML(event, eventId)}
+
+                        <div class="envelope-powered-by">
+                            <span>Powered by</span>
+                            <a href="https://linktr.ee/semperadmin" target="_blank">SEMPER ADMIN</a>
                         </div>
                     </div>
                 </div>
 
-                <!-- Envelope Front with Flap -->
-                <div class="envelope-front">
-                    <div class="envelope-flap"></div>
-                    <div class="envelope-pocket"></div>
-                </div>
-
-                <!-- Wax Seal -->
-                <div class="wax-seal">
-                    <span class="seal-text">RSVP</span>
-                </div>
+                <!-- The Envelope Base (behind everything) -->
+                <div class="envelope-base"></div>
             </div>
 
             <p class="envelope-instruction">Click the envelope to open your invitation</p>
-
-            <!-- RSVP Form Section (shown after envelope opens) -->
-            <div class="envelope-rsvp-section">
-                ${createEnvelopeRSVPFormHTML(event, eventId)}
-            </div>
-
-            <div class="envelope-powered-by">
-                <div class="powered-by-text">Powered by</div>
-                <a href="https://linktr.ee/semperadmin" target="_blank" class="powered-by-link">
-                    SEMPER ADMIN
-                </a>
-            </div>
         </div>
     `;
 }
@@ -314,24 +310,39 @@ function initEnvelopeAnimation() {
     const envelope = document.querySelector('.envelope-container');
     if (!envelope) return;
 
-    envelope.addEventListener('click', function() {
-        if (!envelope.classList.contains('is-open')) {
-            envelope.classList.add('is-open');
+    envelope.addEventListener('click', function(e) {
+        // Don't toggle if clicking on form elements inside the opened card
+        const tag = e.target.tagName.toLowerCase();
+        if (['input', 'select', 'button', 'textarea', 'option', 'label'].includes(tag)) {
+            return;
+        }
 
-            // Show RSVP section after animation
+        // Also check if clicking inside the form
+        if (e.target.closest('.envelope-rsvp-form') || e.target.closest('.envelope-close-btn')) {
+            return;
+        }
+
+        if (!envelope.classList.contains('open')) {
+            envelope.classList.add('open');
+
+            // Hide instruction text after animation starts
             setTimeout(() => {
-                const rsvpSection = document.querySelector('.envelope-rsvp-section');
-                if (rsvpSection) {
-                    rsvpSection.classList.add('is-visible');
-                    rsvpSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-
-                // Hide instruction text
                 const instruction = document.querySelector('.envelope-instruction');
                 if (instruction) {
-                    instruction.style.opacity = '0';
+                    instruction.style.display = 'none';
                 }
-            }, 1200);
+            }, 500);
+        }
+    });
+
+    // Allow closing with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && envelope.classList.contains('open')) {
+            envelope.classList.remove('open');
+            const instruction = document.querySelector('.envelope-instruction');
+            if (instruction) {
+                instruction.style.display = 'block';
+            }
         }
     });
 }

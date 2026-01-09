@@ -109,14 +109,12 @@
 
 /* Click instruction text */
 .envelope-instruction {
-    position: absolute;
-    bottom: -40px;
-    left: 50%;
-    transform: translateX(-50%);
+    margin-top: 30px;
     font-size: 0.9rem;
     color: #6b7280;
     white-space: nowrap;
     animation: pulse-text 2s ease-in-out infinite;
+    text-align: center;
 }
 
 @keyframes pulse-text {
