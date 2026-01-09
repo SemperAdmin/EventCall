@@ -1744,7 +1744,7 @@ async function handleEventSubmit(e) {
 
         // Get selected invite template (classic or envelope)
         const selectedTemplate = document.querySelector('input[name="invite_template"]:checked');
-        const inviteTemplate = selectedTemplate ? selectedTemplate.value : 'classic';
+        const inviteTemplate = selectedTemplate ? selectedTemplate.value : 'envelope';
 
         const eventData = {
             id: generateUUID(),

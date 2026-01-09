@@ -2483,7 +2483,7 @@ Best regards`;
         document.getElementById('requires-meal-choice').checked = event.requiresMealChoice || false;
 
         // Set invite template selection
-        const templateValue = event.inviteTemplate || event.invite_template || 'classic';
+        const templateValue = event.inviteTemplate || event.invite_template || 'envelope';
         const templateRadio = document.querySelector(`input[name="invite_template"][value="${templateValue}"]`);
         if (templateRadio) {
             templateRadio.checked = true;
@@ -2496,13 +2496,16 @@ Best regards`;
             coverPreview.classList.remove('hidden');
             const urlInput = document.getElementById('cover-image-url');
             if (urlInput) urlInput.value = event.coverImage;
-            
+
             // Update upload area to show existing image (preserve file input)
             const uploadArea = document.getElementById('cover-upload');
             if (uploadArea) {
                 const existingInput = uploadArea.querySelector('input[type="file"]');
                 const pElements = uploadArea.querySelectorAll('p');
                 pElements.forEach(p => p.remove());
+                // Remove any existing delete button
+                const existingDeleteBtn = uploadArea.querySelector('.cover-delete-btn');
+                if (existingDeleteBtn) existingDeleteBtn.remove();
 
                 const p1 = document.createElement('p');
                 p1.classList.add('cover-upload-message', 'cover-upload-message--success');
@@ -2512,8 +2515,19 @@ Best regards`;
                 p2.classList.add('cover-upload-message', 'cover-upload-message--hint');
                 p2.textContent = 'Click to change image';
 
+                // Add delete button for removing cover image
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'cover-delete-btn';
+                deleteBtn.textContent = '🗑️ Remove Cover Image';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.removeCoverImage();
+                };
+
                 uploadArea.insertBefore(p2, existingInput);
                 uploadArea.insertBefore(p1, p2);
+                uploadArea.insertBefore(deleteBtn, existingInput);
             }
         } else {
             // Reset upload area for new image (preserve file input)
@@ -2612,6 +2626,43 @@ Best regards`;
                 container.appendChild(questionItem);
             });
         }
+    }
+
+    /**
+     * Remove cover image from current edit
+     */
+    removeCoverImage() {
+        // Clear cover preview
+        const coverPreview = document.getElementById('cover-preview');
+        if (coverPreview) {
+            coverPreview.src = '';
+            coverPreview.classList.add('hidden');
+        }
+
+        // Clear cover URL input
+        const urlInput = document.getElementById('cover-image-url');
+        if (urlInput) urlInput.value = '';
+
+        // Clear file input
+        const fileInput = document.getElementById('cover-input');
+        if (fileInput) fileInput.value = '';
+
+        // Reset upload area UI
+        const uploadArea = document.getElementById('cover-upload');
+        if (uploadArea) {
+            const existingInput = uploadArea.querySelector('input[type="file"]');
+            const pElements = uploadArea.querySelectorAll('p');
+            pElements.forEach(p => p.remove());
+            // Remove delete button
+            const deleteBtn = uploadArea.querySelector('.cover-delete-btn');
+            if (deleteBtn) deleteBtn.remove();
+
+            const p = document.createElement('p');
+            p.textContent = 'Click or drag to upload cover image';
+            uploadArea.insertBefore(p, existingInput);
+        }
+
+        window.showToast('Cover image removed', 'info');
     }
 
     /**
@@ -2858,7 +2909,7 @@ Best regards`;
             requiresMealChoice: document.getElementById('requires-meal-choice')?.checked || false,
             customQuestions: getCustomQuestions(),
             eventDetails: typeof getEventDetails === 'function' ? getEventDetails() : undefined,
-            inviteTemplate: selectedTemplate ? selectedTemplate.value : 'classic'
+            inviteTemplate: selectedTemplate ? selectedTemplate.value : 'envelope'
         };
     }
 

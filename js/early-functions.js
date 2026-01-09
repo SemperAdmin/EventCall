@@ -808,9 +808,9 @@ function resetCreateEventForm() {
         }
     }
 
-    // Reset invite template to classic
-    const classicRadio = document.querySelector('input[name="invite_template"][value="classic"]');
-    if (classicRadio) classicRadio.checked = true;
+    // Reset invite template to envelope (default)
+    const envelopeRadio = document.querySelector('input[name="invite_template"][value="envelope"]');
+    if (envelopeRadio) envelopeRadio.checked = true;
 
     // Reset submit button text
     const submitBtn = document.querySelector('#event-form button[type="submit"]');

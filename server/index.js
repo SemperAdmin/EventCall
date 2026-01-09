@@ -355,8 +355,8 @@ function mapSupabaseEvent(e) {
   // Get cover URL from the database column, with fallback for legacy data
   const eventDetails = e.event_details || {};
   const coverUrl = e.cover_image_url || eventDetails._cover_image_url || '';
-  // Get invite_template from event_details (stored in JSONB) or fallback to 'classic'
-  const inviteTemplate = eventDetails._invite_template || e.invite_template || 'classic';
+  // Get invite_template from event_details (stored in JSONB) or fallback to 'envelope'
+  const inviteTemplate = eventDetails._invite_template || e.invite_template || 'envelope';
 
   return {
     id: e.id,
@@ -1047,7 +1047,7 @@ app.post('/api/events', async (req, res) => {
     // Get cover image URL from various field names
     const coverUrl = eventData.cover_image_url || eventData.coverImageUrl || eventData.coverImage || '';
     const eventDetails = eventData.event_details || eventData.eventDetails || {};
-    const inviteTemplate = eventData.invite_template || eventData.inviteTemplate || 'classic';
+    const inviteTemplate = eventData.invite_template || eventData.inviteTemplate || 'envelope';
 
     // Store invite_template in event_details for persistence (uses existing JSONB column)
     eventDetails._invite_template = inviteTemplate;
