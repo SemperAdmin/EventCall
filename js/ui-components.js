@@ -494,9 +494,9 @@ function createMilitaryFieldsHTML(templateType = 'classic') {
 
     if (templateType === 'envelope') {
         return `
-            <details class="${detailsClass}">
+            <details class="${detailsClass}" open>
                 <summary class="${summaryClass}">
-                    🎖️ Military Information <span ${labelOptionalClass}>(Optional - Click to expand)</span>
+                    🎖️ Military Information <span ${labelOptionalClass}>(Optional)</span>
                 </summary>
 
                 <div class="form-group">
@@ -523,9 +523,9 @@ function createMilitaryFieldsHTML(templateType = 'classic') {
     }
 
     return `
-        <details style="margin: 1.5rem 0; padding: 1rem; background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 0.5rem;">
+        <details open style="margin: 1.5rem 0; padding: 1rem; background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 0.5rem;">
             <summary style="font-weight: 500; margin-bottom: 0.75rem; color: #475569; cursor: pointer; list-style-position: outside;">
-                🎖️ Military Information <span ${labelOptionalClass}>(Optional - Click to expand)</span>
+                🎖️ Military Information <span ${labelOptionalClass}>(Optional)</span>
             </summary>
 
             <div class="form-group" style="margin-bottom: 1rem; margin-top: 1rem;">
