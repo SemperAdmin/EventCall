@@ -65,8 +65,11 @@ function loadInviteContentDirect() {
  * Checks for template selection and renders accordingly
  */
 function createInviteHTML(event, eventId) {
-    // Check if envelope template is selected
-    if (event.invite_template === 'envelope') {
+    // Check if envelope template is selected (check all possible locations)
+    const inviteTemplate = event.inviteTemplate || event.invite_template ||
+                          (event.eventDetails && event.eventDetails._invite_template) || 'envelope';
+
+    if (inviteTemplate === 'envelope') {
         return createEnvelopeInviteHTML(event, eventId);
     }
 
