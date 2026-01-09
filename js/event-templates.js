@@ -291,6 +291,17 @@ class EventTemplates {
     }
 
     /**
+     * Check if an event detail entry is valid (not a system field and has proper structure)
+     * @param {string} key - The field key
+     * @param {any} value - The field value
+     * @returns {boolean} True if valid event detail entry
+     * @private
+     */
+    _isValidEventDetailEntry(key, value) {
+        return !key.startsWith('_') && value && typeof value === 'object' && value.label;
+    }
+
+    /**
      * Detect which template was used based on eventDetails keys
      * @param {Object} eventDetails - Event details object with field keys
      * @returns {string|null} Template ID or null if no match found
@@ -301,12 +312,9 @@ class EventTemplates {
         }
 
         // Filter out system keys (starting with _) and non-object values
-        const eventDetailKeys = Object.keys(eventDetails).filter(key => {
-            if (key.startsWith('_')) return false;
-            const val = eventDetails[key];
-            if (!val || typeof val !== 'object' || !val.label) return false;
-            return true;
-        });
+        const eventDetailKeys = Object.keys(eventDetails).filter(key =>
+            this._isValidEventDetailEntry(key, eventDetails[key])
+        );
 
         // If no valid keys remain, return null
         if (eventDetailKeys.length === 0) {
@@ -361,13 +369,9 @@ class EventTemplates {
             eventDetailsContainer.innerHTML = '';
 
             // Filter out system fields (keys starting with _) and non-object values
-            const validEntries = Object.entries(eventDetails).filter(([key, detail]) => {
-                // Skip system fields that start with underscore
-                if (key.startsWith('_')) return false;
-                // Skip non-object entries
-                if (!detail || typeof detail !== 'object' || !detail.label) return false;
-                return true;
-            });
+            const validEntries = Object.entries(eventDetails).filter(([key, detail]) =>
+                this._isValidEventDetailEntry(key, detail)
+            );
 
             // If no valid entries, hide the section and return
             if (validEntries.length === 0) {

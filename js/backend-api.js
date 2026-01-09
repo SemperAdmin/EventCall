@@ -555,7 +555,7 @@ class BackendAPI {
             custom_questions: Array.isArray(eventData.customQuestions) ? eventData.customQuestions : [],
             event_details: typeof eventData.eventDetails === 'object' && eventData.eventDetails !== null ? eventData.eventDetails : {},
             seating_chart: typeof eventData.seatingChart === 'object' && eventData.seatingChart !== null ? eventData.seatingChart : null,
-            invite_template: eventData.inviteTemplate || eventData.invite_template || 'classic'
+            invite_template: eventData.inviteTemplate ?? eventData.invite_template ?? 'classic'
         };
 
         if (!payload.title || !payload.date || !payload.time) {
@@ -809,7 +809,7 @@ class BackendAPI {
             event_details: typeof update.eventDetails === 'object' && update.eventDetails !== null ? update.eventDetails : undefined,
             seating_chart: typeof update.seatingChart === 'object' && update.seatingChart !== null ? update.seatingChart : undefined,
             created_by: update.created_by,
-            invite_template: update.inviteTemplate || update.invite_template || undefined
+            invite_template: update.inviteTemplate ?? update.invite_template ?? undefined
         };
         const resp = await this._fetch(url, {
             method: 'PUT',
