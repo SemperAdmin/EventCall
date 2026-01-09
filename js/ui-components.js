@@ -652,11 +652,11 @@ function createRSVPFormHTML(event, eventId) {
                 </div>
 
                 <div class="form-group" id="start-over-container" style="display: none; text-align: center;">
-                  <button type="button" id="rsvp-start-over" class="btn-secondary" style="min-height: 44px;">🔄 Clear Form</button>
+                  <button type="button" id="rsvp-start-over" class="btn btn-secondary">🔄 Clear Form</button>
                 </div>
 
                 <div id="submit-container" style="display: none; text-align: center; margin-top: 1.5rem;">
-                    <button type="submit" class="btn" style="min-height: 48px; padding: 0.875rem 2rem; font-size: 1.1rem;">📝 Submit RSVP</button>
+                    <button type="submit" class="btn btn-gold">📝 Submit RSVP</button>
                 </div>
             </form>
         </div>
